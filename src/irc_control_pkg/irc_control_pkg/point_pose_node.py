@@ -38,10 +38,7 @@ CHEESE_PLACE_Q = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 치즈 p
 PEPPERONCINO_PLACE_Q = np.deg2rad([140.0, -90.0, -90.0, 130.0, 25.0, 0.0,]) # 페퍼론치노 place 위치
 CHEESE_RELEASE_Q6 = math.radians(-90.0)
 '''
-여기서 POINT1은 재료를 수직을 바라보는 위치
-INITIAL_PACK_PICK_POINT랑 INITIAL_PACK_PLACE_POINT는 맨 처음 용기 p2p 위치
-FIXED_PLACE_POINTS는 각 클래스 별로 놓을 place 위치
-공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065] 이 정도..
+공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065]
 base x = 7
 '''
 POINT1 = np.array([0.20, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 바라보는 위치
@@ -292,36 +289,31 @@ class PointPoseNode(Node):
             self.get_logger().error(str(error))
 
     def _start_cheese_path(self, push_position):
-        path = self._build_cheese_path(push_position)
-        self.cheese_commands = self._build_cheese_commands(path)
+        self.cheese_commands = self._build_cheese_commands(push_position)
         self.cheese_command_index = 0
         self.cheese_waiting_for_motion = False
         self._send_next_cheese_command()
 
-    def _build_cheese_path(self, push_position):
-        q_home = np.zeros(DOF, dtype=float)
-        q_start = (
-            self.point1_q
-            if self.point1_q is not None
-            else q_home
-        )
-        push_position = np.asarray(push_position, dtype=float)
+    def _build_cheese_commands(self, push_position):
+        q_home = np.zeros(DOF)
+        q_start = self.point1_q if self.point1_q is not None else q_home
 
         spoon_lift_position = SPOON_PICK_POSITION.copy()
-        spoon_lift_position[2] += 0.1 ## 얼마만큼 위에서 접근할 것이냐 (숟가락)
+        spoon_lift_position[2] += 0.1
 
         cheese_approach_position = push_position.copy()
-        cheese_approach_position[2] += 0.05  ## 얼마만큼 위에서 접근할 것이냐 (치즈, 페퍼론치노)
+        cheese_approach_position[2] += 0.05
 
         q_spoon_pick = self._solve_cheese_position(
             SPOON_PICK_POSITION,
             q_start,
             SPOON_Q6
-        ) ## POINT1에서 숟가락 잡는 위치로
+        )
         q_spoon_pick = self._set_horizontal_q5(
             q_spoon_pick,
             q_start[4]
         )
+
         q_spoon_lift = self._solve_cheese_position(
             spoon_lift_position,
             q_spoon_pick,
@@ -364,63 +356,39 @@ class PointPoseNode(Node):
             q_cheese_insert[4]
         )
 
-        if self.current_ingredient == 'cheese':
-            q_cheese_place_ready = CHEESE_PLACE_Q.copy()
-
-        elif self.current_ingredient == 'pepperoncino':
-            q_cheese_place_ready = PEPPERONCINO_PLACE_Q.copy()
+        q_cheese_place_ready = (
+            CHEESE_PLACE_Q.copy()
+            if self.current_ingredient == 'cheese'
+            else PEPPERONCINO_PLACE_Q.copy()
+        )
 
         q_cheese_release = q_cheese_place_ready.copy()
         q_cheese_release[5] += CHEESE_RELEASE_Q6
 
-        return {
-            'start': q_start,
-            'home': q_home,
-            'spoon_pick': q_spoon_pick,
-            'spoon_lift': q_spoon_lift,
-            'cheese_approach': q_cheese_approach,
-            'cheese_touch': q_cheese_touch,
-            'cheese_insert': q_cheese_insert,
-            'cheese_spread': q_cheese_spread,
-            'cheese_place_ready': q_cheese_place_ready,
-            'cheese_release': q_cheese_release,
-        }
-
-    def _build_cheese_commands(self, path):
         return [
-            self._cheese_motion((path['start'], path['spoon_pick'])),
-            {'kind': 'delay', 'duration': CHEESE_ACTION_DELAY},
-            {'kind': 'gripper', 'phase': 'grip_pick:spoon', 'q': path['spoon_pick'],},
-            
-            self._cheese_motion(
-                (path['spoon_pick'], path['spoon_lift']),
-                (path['spoon_lift'], path['cheese_approach']),
-                (path['cheese_approach'], path['cheese_touch']),
-                (path['cheese_touch'], path['cheese_insert']),
-                (path['cheese_insert'], path['cheese_spread']),
-                (path['cheese_spread'], path['cheese_place_ready']),
-                (path['cheese_place_ready'], path['cheese_release']),
-            ),
-            {'kind': 'delay', 'duration': CHEESE_RELEASE_HOLD_TIME},
-
-            self._cheese_motion(
-                (path['cheese_release'], path['cheese_place_ready']),
-                (path['cheese_place_ready'], path['spoon_lift']),
-                (path['spoon_lift'], path['spoon_pick']),
-                ),
-            {'kind': 'delay', 'duration': CHEESE_ACTION_DELAY},
-            {'kind': 'gripper', 'phase': 'grip_place:spoon', 'q': path['spoon_pick'],},
-            {'kind': 'delay', 'duration': (CHEESE_GRIPPER_HOLD_TIME - CHEESE_ACTION_DELAY),},
-
-            self._cheese_motion(
-                (path['spoon_pick'], path['home']),
-            ),
+            ('motion', [q_spoon_pick,]),
+            ('delay', CHEESE_ACTION_DELAY),
+            ('gripper', 'grip_pick:spoon', q_spoon_pick),
+            ('motion', [
+                q_spoon_lift,
+                q_cheese_approach,
+                q_cheese_touch,
+                q_cheese_insert,
+                q_cheese_spread,
+                q_cheese_place_ready,
+                q_cheese_release,
+            ]),
+            ('delay', CHEESE_RELEASE_HOLD_TIME),
+            ('motion', [
+                q_cheese_place_ready,
+                q_spoon_lift,
+                q_spoon_pick,
+            ]),
+            ('delay', CHEESE_ACTION_DELAY),
+            ('gripper', 'grip_place:spoon', q_spoon_pick),
+            ('delay', CHEESE_GRIPPER_HOLD_TIME - CHEESE_ACTION_DELAY),
+            ('motion', [q_home,]),
         ]
-
-    @staticmethod
-    def _cheese_motion(*segments):
-        return {'kind': 'motion', 'waypoints': [np.asarray(q_goal, dtype=float)
-                                                for _, q_goal in segments]}
 
     def _send_next_cheese_command(self):
         if self.cheese_command_index >= len(self.cheese_commands):
@@ -442,7 +410,6 @@ class PointPoseNode(Node):
                 self.pick_mode = None
                 self.point1_q = None
                 self.pick_lift_q = None
-
                 self.state = STATE_IDLE
 
                 msg = Int16()
@@ -453,33 +420,37 @@ class PointPoseNode(Node):
 
         command = self.cheese_commands[self.cheese_command_index]
         self.cheese_command_index += 1
+        kind = command[0]
 
-        if command['kind'] == 'motion':
+        if kind == 'motion':
             msg = Float64MultiArray()
-            msg.data = np.asarray(command['waypoints'], dtype=float).reshape(-1).tolist()
+            msg.data = np.asarray(command[1]).reshape(-1).tolist()
             self.cheese_waiting_for_motion = True
             self.joint_target_pub.publish(msg)
             return
 
-        if command['kind'] == 'gripper':
-            q = np.asarray(command['q'], dtype=float)
+        if kind == 'gripper':
+            phase = command[1]
+            q = command[2]
             msg = Float64MultiArray()
             msg.layout.dim = [
                 MultiArrayDimension(
-                    label=command['phase'],
+                    label=phase,
                     size=4,
                     stride=DOF * 4
                 )
             ]
             msg.data = np.tile(q, 4).tolist()
+
             self.cheese_waiting_for_motion = True
             self.grip_plan_pub.publish(msg)
             return
 
-        self.cheese_delay_timer = self.create_timer(
-            command['duration'],
-            self._cheese_delay_done
-        )
+        if kind == 'delay':
+            self.cheese_delay_timer = self.create_timer(
+                command[1],
+                self._cheese_delay_done
+            )
 
     def _cheese_delay_done(self):
         self.cheese_delay_timer.cancel()
@@ -1137,10 +1108,7 @@ class PointPoseNode(Node):
             seed[1] = math.radians(q2_deg)
             seed[3] = math.radians(q4_deg)
             seed[4] = math.radians(q5_deg)
-            result.append(
-                np.clip(seed, JOINT_MIN, JOINT_MAX)
-            )
-
+            result.append(np.clip(seed, JOINT_MIN, JOINT_MAX))
         return result
 
     def _candidates(self, chain, target, previous_q, q1):
@@ -1217,10 +1185,7 @@ class PointPoseNode(Node):
             )
 
         if selected[0] > 0.005:
-            raise RuntimeError(
-                f'IK 위치가 닿을 수 없는 곳에 있습니당: {selected[0]:.6f} m'
-            )
-
+            raise RuntimeError(f'IK 위치가 닿을 수 없는 곳에 있습니당: {selected[0]:.6f} m')
         return selected[2]
 
 
