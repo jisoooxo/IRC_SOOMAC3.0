@@ -1,0 +1,199 @@
+<<전체 과정>>
+===========================================
+(종류) → 양파 → 버섯 → 게살 → 소시지 → 면 → 뚜껑 → 소스 순서
+
+/gui/start_control
+→ 최초 공압 PTP(용기 옮기기)
+→ LLM 
+→ 레일 이동 완료(재료 선택)
+-------------------------------------------
+→ POINT1 이동
+→ /vision/pick_pose 대기
+→ pick 위치로 이동해 파지
+→ POINT2 이동
+→ /vision/place_pose 대기
+→ place 위치로 이동해 놓기
+→ HOME 복귀
+------------------------------------------- -> LLM 명령에 따라 반복(양 조절)
+→ LLM 부터 HOME 복귀 반복
+
+** 6자유도 테스크 뭐할지 빨리 정해야 할 듯...
+뚜껑 POINT1, POINT2 위치 다름 -> 수정 필요
+
+1. /llm/start_control
+   → 최초 용기 이동
+   → 자동 완료
+
+2. /llm/task_plan
+   → 재료 이름과 반복 횟수 전달
+
+3. /rail/motion_done
+   → 현재는 레일 노드가 없으므로 수동 전송
+   → POINT1 자동 이동
+
+4. WAIT_PICK 확인
+   → /vision/pick_pose 전송
+
+5. WAIT_PLACE 확인
+   → /vision/place_pose 전송
+
+6. 반복 횟수가 남으면
+   → POINT1 자동 이동
+   → 4~5번 반복
+
+7. 마지막 place 완료
+   → HOME 자동 이동
+   → WAIT_LLM_TASK
+
+8. 다음 /llm/task_plan 전송
+
+============================================
+
+state 확인 터미널
+
+source ~/irc_ws/install/setup.bash
+
+ros2 topic echo /planner/state
+
+============================================
+
+state: IDLE
+
+ros2 topic pub --once \
+/llm/start_control \
+std_msgs/msg/Empty \
+"{}"
+
+
+-> 실제 테스크에서는 LLM이 제어한테 보내주는 시작 신호
+-> 신호를 받으면 p2p로 용기를 옮겨놓는다
+*이때 공압은 작동 완료를 /pneumatic/command 로 발행
+
+--------------------------------------------
+
+state: WAIT_LLM_TASK
+
+ros2 topic pub --once \
+/llm/task_plan \
+std_msgs/msg/String \
+"{data: '{\"ingredient\":\"면\",\"repeat_count\":1}'}"
+
+ros2 topic pub --once \
+/llm/task_plan \
+std_msgs/msg/String \
+"{data: '{\"ingredient\":\"sausage\",\"repeat_count\":1}'}"
+
+
+
+-> LLM이 레일 이동 위치와 pick and place를 몇 번 할 지 알려주는 신호
+-> 신호 전달이 되면 그 위치로 레일이 이동
+
+그에 따라 레일 이동
+ros2 topic pub --once \
+/rail/motion_done \
+std_msgs/msg/Empty \
+"{}"
+
+*이때 레일은 이동 완료 신호를 /rail/target_ingredient 로 발행
+
+--------------------------------------------
+
+state: WAIT_PICK
+
+ros2 topic pub --once \
+/vision/pick_pose \
+std_msgs/msg/String \
+"{data: '{\"class_name\":\"면\",\"x\":0.35,\"y\":0.0,\"z\":0.03,\"yaw\":210.0}'}"
+
+-> 비전이 제어한테 보내주는 재료 좌표
+
+------------------------------------------- -> 이때 LLM이 보낸 repeat_count 만큼 pick and place 반복
+
+===========================================
+
+만약 공압일 경우, 
+state: WAIT_PLACE
+
+ros2 topic pub --once \
+/llm/task_plan \
+std_msgs/msg/String \
+"{data: '{\"ingredient\":\"뚜껑\",\"repeat_count\":1}'}" 
+
+-> 클래스 이름이 다름
+
+그에 따라 레일 이동
+ros2 topic pub --once \
+/rail/motion_done \
+std_msgs/msg/Empty \
+"{}"
+
+*이때 레일은 이동 완료 신호를 /rail/target_ingredient 로 발행
+
+-------------------------------------------
+
+state: WAIT_PICK
+
+ros2 topic pub --once \
+/vision/pick_pose \
+std_msgs/msg/String \
+"{data: '{\"class_name\":\"뚜껑\",\"x\":0.35,\"y\":0.0,\"z\":0.03}'}" -> 자동 yaw 값 180도
+
+-------------------------------------------
+
+===========================================
+
+토픽 정리
+
+/llm/start_control      최초 한 번
+/llm/task_plan          재료가 바뀔 때
+/rail/motion_done       레일 이동 완료를 대신할 때
+/control/motion_done    POINT1(카메라 수직 위치) 이동 후 비전한테 보낼 토픽 'pick' 이렇게 보낼 듯
+/vision/raw_pick_pose   비전 -> transform_node
+/vision/pick_pose       transform_node -> 제어
+
+
+
+
+
+** 주의할 것 
+- 아두이노 선이랑 모터 선 한 허브에 꽂으면 안됨.......
+
+
+노드 정리
+point 계산 노드
+하드웨어 연결 노드
+transform 노드
+(치즈 경로 노드)-> point 계산에 합칠 예정
+
+detect 노드
+detect pub 노드 -> 클래스 있으면 필요없음
+
+-------------------------------------------------------------------
+
+main 노드
+point 계산 노드
+하드웨어 연결 노드
+transform 노드
+detect 비전 노드
+제어 수행을 위한 pub echo -> rail, llm, UI 대체
+
+1. UI가 보내주는 start
+ros2 topic pub --once /ui/start std_msgs/msg/String \
+"{data: 'start'}"
+
+2. LLM이 보내주는 plan
+ros2 topic pub --once /llm/plan std_msgs/msg/String \
+"{data: '{\"class\":\"mushroom\",\"repeat_count\":1}'}"
+
+3. rail이 보내주는 완료 신호
+ros2 topic pub --once /rail/motion_done std_msgs/msg/String \
+"{data: 'done'}"
+
+4. LLM이 보내주는 초기화 완료 신호
+ros2 topic pub --once /llm/done std_msgs/msg/Bool "{data: true}"
+
+5. 아직 클래스 없는 비전 대체 신호
+ros2 topic pub --once /vision/pick_pose std_msgs/msg/String \
+"{data: '{\"x\":0.25,\"y\":0.0,\"z\":0.035,\"yaw\":180.0,\"class_name\":\"cream\"}'}"
+
+
