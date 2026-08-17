@@ -7,7 +7,6 @@ import rclpy
 from ikpy.chain import Chain
 from ikpy.link import Link, OriginLink
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from scipy.optimize import least_squares
 from std_msgs.msg import Empty, Float64MultiArray, MultiArrayDimension, String, Int16
 
@@ -123,64 +122,16 @@ class PointPoseNode(Node):
         self.fallback_chain = self._make_chain((1, 2, 3, 4))
         self.fk_chain = self._make_chain(tuple())
 
-        command_qos = QoSProfile(depth=10)
-        command_qos.reliability = ReliabilityPolicy.RELIABLE
-        command_qos.durability = DurabilityPolicy.VOLATILE
-
-        self.grip_plan_pub = self.create_publisher(
-            Float64MultiArray,
-            '/arm/joint_waypoints',
-            command_qos
-        )
-        self.pack_plan_pub = self.create_publisher(
-            Float64MultiArray,
-            '/arm/joint_waypoints_pack',
-            command_qos
-        )
-        self.joint_target_pub = self.create_publisher(
-            Float64MultiArray,
-            '/arm/joint_target',
-            command_qos
-        )
-        self.create_subscription(
-            Int16,
-            '/control/start',
-            self._start_callback,
-            10
-        )
-        self.create_subscription(
-            String,
-            '/control/plan',
-            self._control_plan_callback,
-            10
-        )
-        self.control_ready_pub = self.create_publisher(
-            Int16,
-            '/control/ready',
-            10
-        )
-        self.control_home_pub = self.create_publisher(
-            Int16,
-            '/control/home',
-            10
-        )
-        self.control_motion_done = self.create_publisher(
-            String,
-            '/control/motion_done',
-            10
-        )
-        self.create_subscription(
-            String,
-            '/vision/pick_pose',
-            self._pick_callback,
-            10
-        )
-        self.create_subscription(
-            Empty,
-            '/arm/motion_done',
-            self._motion_done_callback,
-            10
-        )
+        self.grip_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints', 10)
+        self.pack_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints_pack', 10)
+        self.joint_target_pub = self.create_publisher(Float64MultiArray, '/arm/joint_target', 10)
+        self.create_subscription(Int16, '/control/start', self._start_callback, 10)
+        self.create_subscription(String, '/control/plan', self._control_plan_callback, 10)
+        self.control_ready_pub = self.create_publisher(Int16, '/control/ready', 10)
+        self.control_home_pub = self.create_publisher(Int16, '/control/home', 10)
+        self.control_motion_done = self.create_publisher(String, '/control/motion_done', 10)
+        self.create_subscription(String, '/vision/pick_pose', self._pick_callback, 10)
+        self.create_subscription(Empty, '/arm/motion_done', self._motion_done_callback, 10)
 
         self.state = STATE_IDLE
         self.current_ingredient = None
@@ -194,13 +145,6 @@ class PointPoseNode(Node):
         self.cheese_command_index = 0
         self.cheese_waiting_for_motion = False
         self.cheese_delay_timer = None
-
-    def _publish_control_motion_done(self):
-        msg = String()
-        msg.data = self.current_ingredient
-        self.control_motion_done.publish(msg)
-
-        self.get_logger().info(f'class 전달: {self.current_ingredient}')
 
     def _start_callback(self, _msg):
         if self.state != STATE_IDLE:
@@ -262,14 +206,12 @@ class PointPoseNode(Node):
             self.state = STATE_WAIT_PICK
 
             # LLM에서 전달받은 클래스 전송
-            self._publish_control_motion_done()
+            msg = String()
+            msg.data = self.current_ingredient
+            self.control_motion_done.publish(msg)
             return
 
         if self.state == STATE_WAIT_PICK_DONE:
-            if self.pick_mode is None:
-                self.get_logger().error('Pick mode is not available.')
-                return
-
             try:
                 place_position, place_yaw = self._get_fixed_place_pose()
 
@@ -546,10 +488,7 @@ class PointPoseNode(Node):
         self._send_next_cheese_command()
 
     def _solve_cheese_position(self, position, previous_q, q6):
-        q = self._solve_point(
-            np.asarray(position, dtype=float),
-            np.asarray(previous_q, dtype=float)
-        )
+        q = self._solve_point(position, previous_q)
         q[5] = q6
         return q
 
@@ -598,9 +537,6 @@ class PointPoseNode(Node):
         ))
 
     def _solve_grip_place_pose(self, target, previous_q, place_yaw):
-        target = np.asarray(target, dtype=float)
-        previous_q = np.asarray(previous_q, dtype=float)
-
         q = self._solve_point(
             target,
             previous_q
@@ -642,7 +578,7 @@ class PointPoseNode(Node):
 
     def _move_home(self):
         msg = Float64MultiArray()
-        msg.data = np.zeros(DOF, dtype=float).tolist()
+        msg.data = [0.0] * DOF
         self.state = STATE_WAIT_HOME_DONE
         self.joint_target_pub.publish(msg)
 
@@ -657,11 +593,7 @@ class PointPoseNode(Node):
         raise ValueError(f'클래스 안맞음: {class_name}')
 
     def _get_fixed_place_pose(self):
-        if self.current_ingredient is None:
-            raise RuntimeError('Current ingredient is not available.')
-
         class_name = self.current_ingredient
-
         place_key = (
             'sauce'
             if class_name in {'tomato', 'cream', 'oil'}
@@ -669,15 +601,8 @@ class PointPoseNode(Node):
         )
 
         place_pose = FIXED_PLACE_POINTS[place_key]
-
         position = place_pose['position']
         yaw = math.radians(float(place_pose['yaw_deg']))
-
-        if (
-            not np.all(np.isfinite(position))
-            or not math.isfinite(yaw)
-        ):
-            raise RuntimeError(f'Fixed place pose for {place_key} contains a infinite value.')
 
         return position, yaw
 
@@ -707,9 +632,6 @@ class PointPoseNode(Node):
         ) as error:
             raise ValueError('Pick message must contain x, y, z, class_name, yaw') from error
 
-        if not np.all(np.isfinite(position)) or not math.isfinite(yaw):
-            raise ValueError('Pick pose가 사용할 수 없는 값을 포함하고 있습니당')
-
         return position, yaw, class_name
 
     ## 공압 IK에서는 q3을 홈 각도(180)로 강제
@@ -717,9 +639,6 @@ class PointPoseNode(Node):
         """
         용기 p2p와 공압 pick에서 사용하는 공압 pick/lift IK 계산 -> 5번 평행, 6번 고정
         """
-        position = np.asarray(position, dtype=float)
-        previous_q = np.asarray(previous_q, dtype=float)
-
         lift_position = position.copy()
         lift_position[2] += LIFT_HEIGHT
 
@@ -740,8 +659,6 @@ class PointPoseNode(Node):
         return q_pick, q_lift
 
     def _plan_pick(self, position, yaw, mode):
-        position = np.asarray(position, dtype=float)
-
         approach = position.copy()
         approach[2] += LIFT_HEIGHT
 
@@ -800,11 +717,6 @@ class PointPoseNode(Node):
         )
     
     def _plan_place(self, position, yaw, mode):
-        if self.pick_lift_q is None:
-            raise RuntimeError('lift 자세가 닿을 수 없는 위치에 있습니당')
-
-        position = np.asarray(position, dtype=float)
-
         approach = position.copy()
         approach[2] += LIFT_HEIGHT
 
@@ -898,8 +810,6 @@ class PointPoseNode(Node):
         )
 
     def _solve_pose(self, target, previous_q, yaw, mode):
-        previous_q = np.asarray(previous_q, dtype=float)
-
         if mode == 'pack':
             q = self._solve_pack_point(target, previous_q)
 
@@ -956,7 +866,7 @@ class PointPoseNode(Node):
 
     @staticmethod
     def _full_to_q(full):
-        return np.asarray(full[1:], dtype=float)
+        return full[1:]
 
     def _fk_matrix(self, q):
         return self.fk_chain.forward_kinematics(self._full_q(q))
@@ -1025,7 +935,6 @@ class PointPoseNode(Node):
         return result
 
     def _solve_pack_point(self, target, previous_q):
-        target = np.asarray(target, dtype=float)
         q1_target = self._target_q1(target, previous_q[0])
         candidates = []
 
@@ -1185,7 +1094,7 @@ class PointPoseNode(Node):
         return float(valid[np.argmin(np.abs(valid - previous_q6))])
 
     def _target_q1(self, target, previous_q1):
-        xy = np.asarray(target[:2], dtype=float)
+        xy = target[:2]
 
         if np.linalg.norm(xy) < 1.0e-8:
             return float(previous_q1)
