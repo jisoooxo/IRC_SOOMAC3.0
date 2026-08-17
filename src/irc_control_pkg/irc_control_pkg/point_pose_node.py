@@ -61,7 +61,6 @@ FIXED_PLACE_POINTS = {
 }
 
 LIFT_HEIGHT = 0.15
-PACK_OFFSET = np.array([0.080845, 0.09195, 0.0], dtype=float) ## 5번 모터에서 공압 끝까지 translation 적용 
 
 JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 360.0])
@@ -112,12 +111,7 @@ class DHLink(Link):
         self.translation = False
 
     def get_link_frame_matrix(self, actuator_parameter):
-        return dh_matrix(
-            float(actuator_parameter) + self.theta,
-            self.d,
-            self.a,
-            self.alpha,
-        )
+        return dh_matrix(float(actuator_parameter) + self.theta, self.d, self.a, self.alpha)
 
 
 class PointPoseNode(Node):
@@ -233,12 +227,7 @@ class PointPoseNode(Node):
 
             self._class_to_mode(class_name)
 
-        except (
-            json.JSONDecodeError,
-            KeyError,
-            TypeError,
-            ValueError
-        ) as error:
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
             self.get_logger().error(str(error))
             return
 
@@ -282,7 +271,7 @@ class PointPoseNode(Node):
                 return
 
             try:
-                place_position, place_yaw = (self._get_fixed_place_pose())
+                place_position, place_yaw = self._get_fixed_place_pose()
 
                 self.state = STATE_WAIT_PLACE_DONE
                 self._plan_place(
@@ -459,7 +448,7 @@ class PointPoseNode(Node):
         return [
             self._cheese_motion((path['start'], path['spoon_pick'])),
             {'kind': 'delay', 'duration': CHEESE_ACTION_DELAY},
-            {'kind': 'gripper', 'phase': 'grip_pick', 'class_name': 'spoon', 'q': path['spoon_pick'],},
+            {'kind': 'gripper', 'phase': 'grip_pick:spoon', 'q': path['spoon_pick'],},
             
             self._cheese_motion(
                 (path['spoon_pick'], path['spoon_lift']),
@@ -478,7 +467,7 @@ class PointPoseNode(Node):
                 (path['spoon_lift'], path['spoon_pick']),
                 ),
             {'kind': 'delay', 'duration': CHEESE_ACTION_DELAY},
-            {'kind': 'gripper', 'phase': 'grip_place', 'class_name': 'spoon', 'q': path['spoon_pick'],},
+            {'kind': 'gripper', 'phase': 'grip_place:spoon', 'q': path['spoon_pick'],},
             {'kind': 'delay', 'duration': (CHEESE_GRIPPER_HOLD_TIME - CHEESE_ACTION_DELAY),},
 
             self._cheese_motion(
@@ -486,7 +475,8 @@ class PointPoseNode(Node):
             ),
         ]
 
-    def _cheese_motion(self, *segments):
+    @staticmethod
+    def _cheese_motion(*segments):
         return {'kind': 'motion', 'waypoints': [np.asarray(q_goal, dtype=float)
                                                 for _, q_goal in segments]}
 
@@ -680,7 +670,7 @@ class PointPoseNode(Node):
 
         place_pose = FIXED_PLACE_POINTS[place_key]
 
-        position = place_pose['position'].copy()
+        position = place_pose['position']
         yaw = math.radians(float(place_pose['yaw_deg']))
 
         if (
@@ -717,7 +707,7 @@ class PointPoseNode(Node):
         ) as error:
             raise ValueError('Pick message must contain x, y, z, class_name, yaw') from error
 
-        if (not np.all(np.isfinite(position)) or not math.isfinite(yaw)):
+        if not np.all(np.isfinite(position)) or not math.isfinite(yaw):
             raise ValueError('Pick pose가 사용할 수 없는 값을 포함하고 있습니당')
 
         return position, yaw, class_name
@@ -792,11 +782,17 @@ class PointPoseNode(Node):
         # lift 된 지점에서 바로 place 시작
         self.pick_lift_q = q_lift
 
+        phase = (
+            'pack_pick'
+            if mode == 'pack'
+            else f'grip_pick:{self.current_ingredient}'
+        )
+
         self._publish_waypoints(
             self.pack_plan_pub
             if mode == 'pack'
             else self.grip_plan_pub,
-            f'{mode}_pick',
+            phase,
             q_approach,
             q_pick,
             q_lift,
@@ -850,11 +846,17 @@ class PointPoseNode(Node):
                 yaw
             )
 
+        phase = (
+            'pack_place'
+            if mode == 'pack'
+            else f'grip_place:{self.current_ingredient}'
+        )
+
         self._publish_waypoints(
             self.pack_plan_pub
             if mode == 'pack'
             else self.grip_plan_pub,
-            f'{mode}_place',
+            phase,
             q_approach,
             q_place,
             q_lift,
@@ -978,13 +980,11 @@ class PointPoseNode(Node):
 
         return (
             transform[:3, 3]
-            + transform[:3, :3] @ PACK_OFFSET
+            + transform[:3, :3] @ np.array([0.080845, 0.09195, 0.0], dtype=float) ## 5번 모터에서 공압 끝까지 translation 적용
         )
 
     def _pack_horizontal_component(self, q):
-        return float(
-            self._fk_to_pack_joint5(q)[2, 0]
-        )
+        return float(self._fk_to_pack_joint5(q)[2, 0])
 
     @staticmethod
     def _pack_q5(q2, q3, q4, branch, reference_q5):
@@ -1050,32 +1050,19 @@ class PointPoseNode(Node):
                 def residual(active_q):
                     q = build_q(active_q)
 
-                    q5_low = max(
-                        0.0,
-                        JOINT_MIN[4] - q[4]
-                    )
-                    q5_high = max(
-                        0.0,
-                        q[4] - JOINT_MAX[4]
-                    )
-
+                    q5_low = max(0.0, JOINT_MIN[4] - q[4])
+                    q5_high = max(0.0, q[4] - JOINT_MAX[4])
                     joint_delta = wrapped_q_delta(
                         q[np.array([0, 1, 3], dtype=int)],
                         previous_q[np.array([0, 1, 3], dtype=int)]
                     )
 
-                    q1_target_error = wrap_to_pi(
-                        q[0] - q1_target
-                    )
+                    q1_target_error = wrap_to_pi(q[0] - q1_target)
 
                     q2_backward = max(0.0, -q[1])
                     q4_backward = max(0.0, -q[3])
 
-                    continuity_weights = np.array([
-                        0.25,   # q1: 목표 방향 회전을 방해하지 않도록 작게
-                        1.0,    # q2
-                        1.0,    # q4
-                    ])
+                    continuity_weights = np.array([0.25, 1.0, 1.0])
 
                     return np.concatenate([
                         PACK_POSITION_WEIGHT * (self._pack_fk(q) - target),
@@ -1089,9 +1076,7 @@ class PointPoseNode(Node):
 
                         np.array([
                             2.0 * PACK_CONTINUITY_WEIGHT * q1_target_error,
-
                             2.0 * PACK_CONTINUITY_WEIGHT * q2_backward,
-
                             2.0 * PACK_CONTINUITY_WEIGHT * q4_backward,
                         ]),
                     ])
@@ -1115,31 +1100,21 @@ class PointPoseNode(Node):
                 ):
                     continue
 
-                position_error = float(
-                    np.linalg.norm(
-                        self._pack_fk(q) - target
-                    )
-                )
+                position_error = float(np.linalg.norm(self._pack_fk(q) - target))
 
-                horizontal_error = abs(
-                    self._pack_horizontal_component(q)
-                )
+                horizontal_error = abs(self._pack_horizontal_component(q))
 
                 joint_delta = wrapped_q_delta(
                     q[np.array([0, 1, 3], dtype=int)],
                     previous_q[np.array([0, 1, 3], dtype=int)]
                 )
 
-                q1_direction_error = abs(
-                    wrap_to_pi(q[0] - q1_target)
-                )
+                q1_direction_error = abs(wrap_to_pi(q[0] - q1_target))
 
                 q2_backward = max(0.0, -q[1])
                 q4_backward = max(0.0, -q[3])
 
-                total_motion = float(
-                    np.linalg.norm(joint_delta)
-                )
+                total_motion = float(np.linalg.norm(joint_delta))
 
                 # 위치 오차가 비슷한 후보끼리 비교할 자세 점수
                 posture_score = (
@@ -1191,19 +1166,14 @@ class PointPoseNode(Node):
             float(rotation[1, 0]),
             float(rotation[0, 0])
         )
-        desired = wrap_to_pi(
-            target_yaw - current_yaw
-        )
+        desired = wrap_to_pi(target_yaw - current_yaw)
 
         candidates = np.array([
             desired - 2.0 * math.pi,
             desired,
             desired + 2.0 * math.pi,
         ])
-        valid = candidates[
-            (candidates >= JOINT_MIN[5])
-            & (candidates <= JOINT_MAX[5])
-        ]
+        valid = candidates[(candidates >= JOINT_MIN[5]) & (candidates <= JOINT_MAX[5])]
 
         if valid.size == 0:
             return float(np.clip(
@@ -1220,18 +1190,13 @@ class PointPoseNode(Node):
         if np.linalg.norm(xy) < 1.0e-8:
             return float(previous_q1)
 
-        desired = wrap_to_pi(
-            math.atan2(float(xy[1]), float(xy[0]))
-        )
+        desired = wrap_to_pi(math.atan2(float(xy[1]), float(xy[0])))
         candidates = np.array([
             desired - 2.0 * math.pi,
             desired,
             desired + 2.0 * math.pi,
         ])
-        valid = candidates[
-            (candidates >= JOINT_MIN[0])
-            & (candidates <= JOINT_MAX[0])
-        ]
+        valid = candidates[(candidates >= JOINT_MIN[0]) & (candidates <= JOINT_MAX[0])]
 
         if valid.size == 0:
             return float(np.clip(
@@ -1289,10 +1254,7 @@ class PointPoseNode(Node):
             error = float(np.linalg.norm(target - self._fk(q)))
             q3_use = abs(wrap_to_pi(q[2] - previous_q[2]))
             continuity = float(np.linalg.norm(
-                wrapped_q_delta(
-                    q[[1, 3, 4]],
-                    previous_q[[1, 3, 4]]
-                )
+                wrapped_q_delta(q[[1, 3, 4]], previous_q[[1, 3, 4]])
             ))
             wrong_q2 = max(0.0, -float(q[1])) ** 2
             cost = (
