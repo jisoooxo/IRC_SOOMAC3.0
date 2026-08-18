@@ -37,10 +37,8 @@ CHEESE_INSERT_Q5_DELTA = math.radians(30.0)
 CHEESE_PLACE_Q = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
 PEPPERONCINO_PLACE_Q = np.deg2rad([140.0, -90.0, -90.0, 130.0, 25.0, 0.0,]) # 페퍼론치노 place 위치
 CHEESE_RELEASE_Q6 = math.radians(-90.0)
-'''
-공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065]
-base x = 7
-'''
+
+## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 POINT1 = np.array([0.20, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 바라보는 위치
 
 INITIAL_PACK_PICK_POINT = np.array([0.25, 0.0, 0.035], dtype=float)
@@ -139,8 +137,6 @@ class PointPoseNode(Node):
         self.pick_lift_q = None
 
         self.cheese_commands = []
-        self.cheese_command_index = 0
-        self.cheese_waiting_for_motion = False
         self.cheese_delay_timer = None
 
     def _start_callback(self, _msg):
@@ -186,9 +182,7 @@ class PointPoseNode(Node):
     def _motion_done_callback(self, _msg):
 
         if self.state == STATE_WAIT_CP_DONE:
-            if self.cheese_waiting_for_motion:
-                self.cheese_waiting_for_motion = False
-                self._send_next_cheese_command()
+            self._send_next_cheese_command()
             return
 
         if self.state == STATE_WAIT_INITIAL_DONE:
@@ -236,7 +230,10 @@ class PointPoseNode(Node):
                     STATE_WAIT_POINT1_DONE
                 )
             else:
-                self._move_home()
+                msg = Float64MultiArray()
+                msg.data = [0.0] * DOF
+                self.state = STATE_WAIT_HOME_DONE
+                self.joint_target_pub.publish(msg)
 
             return
 
@@ -272,7 +269,8 @@ class PointPoseNode(Node):
             self.state = STATE_WAIT_CP_DONE
         
             try:
-                self._start_cheese_path(position)
+                self.cheese_commands = self._build_cheese_commands(position)
+                self._send_next_cheese_command()
             except RuntimeError as error:
                 self.pick_mode = None
                 self.state = STATE_WAIT_PICK
@@ -288,12 +286,6 @@ class PointPoseNode(Node):
             self.state = STATE_WAIT_PICK
             self.get_logger().error(str(error))
 
-    def _start_cheese_path(self, push_position):
-        self.cheese_commands = self._build_cheese_commands(push_position)
-        self.cheese_command_index = 0
-        self.cheese_waiting_for_motion = False
-        self._send_next_cheese_command()
-
     def _build_cheese_commands(self, push_position):
         q_home = np.zeros(DOF)
         q_start = self.point1_q if self.point1_q is not None else q_home
@@ -305,13 +297,10 @@ class PointPoseNode(Node):
         cheese_approach_position[2] += 0.05
 
         q_spoon_pick = self._solve_cheese_position(
-            SPOON_PICK_POSITION,
-            q_start,
-            SPOON_Q6
-        )
+            SPOON_PICK_POSITION, q_start, SPOON_Q6
+        ) ## 갈 위치, 이전 위티
         q_spoon_pick = self._set_horizontal_q5(
-            q_spoon_pick,
-            q_start[4]
+            q_spoon_pick, q_start[4]
         )
 
         q_spoon_lift = self._solve_cheese_position(
@@ -393,8 +382,6 @@ class PointPoseNode(Node):
     def _send_next_cheese_command(self):
         if self.cheese_command_index >= len(self.cheese_commands):
             self.cheese_commands = []
-            self.cheese_command_index = 0
-            self.cheese_waiting_for_motion = False
             self.repeat_completed += 1
 
             if self.repeat_completed < self.repeat_total:
@@ -425,7 +412,6 @@ class PointPoseNode(Node):
         if kind == 'motion':
             msg = Float64MultiArray()
             msg.data = np.asarray(command[1]).reshape(-1).tolist()
-            self.cheese_waiting_for_motion = True
             self.joint_target_pub.publish(msg)
             return
 
@@ -441,8 +427,6 @@ class PointPoseNode(Node):
                 )
             ]
             msg.data = np.tile(q, 4).tolist()
-
-            self.cheese_waiting_for_motion = True
             self.grip_plan_pub.publish(msg)
             return
 
@@ -464,12 +448,8 @@ class PointPoseNode(Node):
         return q
 
     def _set_horizontal_q5(self, q, reference_q5):
-        q = np.asarray(q, dtype=float).copy()
         q[4] = self._horizontal_q5(
-            q[1],
-            q[2],
-            q[3],
-            reference_q5
+            q[1], q[2], q[3], reference_q5
         )
         return q
 
@@ -545,12 +525,6 @@ class PointPoseNode(Node):
         msg = Float64MultiArray()
         msg.data = q_target.tolist()
         self.state = next_state
-        self.joint_target_pub.publish(msg)
-
-    def _move_home(self):
-        msg = Float64MultiArray()
-        msg.data = [0.0] * DOF
-        self.state = STATE_WAIT_HOME_DONE
         self.joint_target_pub.publish(msg)
 
     @staticmethod
@@ -835,15 +809,8 @@ class PointPoseNode(Node):
     def _full_q(q):
         return np.concatenate(([0.0], q))
 
-    @staticmethod
-    def _full_to_q(full):
-        return full[1:]
-
     def _fk_matrix(self, q):
         return self.fk_chain.forward_kinematics(self._full_q(q))
-
-    def _fk(self, q):
-        return self._fk_matrix(q)[:3, 3]
 
     def _fk_to_pack_joint5(self, q):
         transform = np.eye(4, dtype=float)
@@ -863,9 +830,6 @@ class PointPoseNode(Node):
             transform[:3, 3]
             + transform[:3, :3] @ np.array([0.080845, 0.09195, 0.0], dtype=float) ## 5번 모터에서 공압 끝까지 translation 적용
         )
-
-    def _pack_horizontal_component(self, q):
-        return float(self._fk_to_pack_joint5(q)[2, 0])
 
     @staticmethod
     def _pack_q5(q2, q3, q4, branch, reference_q5):
@@ -981,8 +945,7 @@ class PointPoseNode(Node):
                     continue
 
                 position_error = float(np.linalg.norm(self._pack_fk(q) - target))
-
-                horizontal_error = abs(self._pack_horizontal_component(q))
+                horizontal_error = abs(self._fk_to_pack_joint5(q)[2, 0])
 
                 joint_delta = wrapped_q_delta(
                     q[np.array([0, 1, 3], dtype=int)],
@@ -1121,14 +1084,14 @@ class PointPoseNode(Node):
                 max_iter=100
             )
             q = np.clip(
-                self._full_to_q(full),
+                full[1:],
                 JOINT_MIN,
                 JOINT_MAX
             )
             q[0] = q1
             q[5] = previous_q[5]
 
-            error = float(np.linalg.norm(target - self._fk(q)))
+            error = float(np.linalg.norm(target - self._fk_matrix(q)[:3, 3]))
             q3_use = abs(wrap_to_pi(q[2] - previous_q[2]))
             continuity = float(np.linalg.norm(
                 wrapped_q_delta(q[[1, 3, 4]], previous_q[[1, 3, 4]])
