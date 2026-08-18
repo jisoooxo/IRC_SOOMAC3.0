@@ -22,90 +22,35 @@ class MainNode(Node):
         super().__init__('main_node')
 
         # MAIN -> LLM
-        self.llm_next_pub = self.create_publisher(
-            Int16,
-            '/llm/next',
-            10
-        )
-        self.llm_reset_pub = self.create_publisher(
-            String,
-            '/llm/reset',
-            10
-        )
+        self.llm_next_pub = self.create_publisher(Int16, '/llm/next', 10)
+        self.llm_reset_pub = self.create_publisher(String, '/llm/reset', 10)
 
         # MAIN -> CONTROL
-        self.control_start_pub = self.create_publisher(
-            Int16,
-            '/control/start',
-            10
-        )
-        self.control_plan_pub = self.create_publisher(
-            String,
-            '/control/plan',
-            10
-        )
+        self.control_start_pub = self.create_publisher(Int16, '/control/start', 10)
+        self.control_plan_pub = self.create_publisher(String, '/control/plan', 10)
 
         # MAIN -> RAIL
-        self.rail_motion_pub = self.create_publisher(
-            String,
-            '/rail/motion',
-            10
-        )
+        self.rail_motion_pub = self.create_publisher(String, '/rail/motion', 10)
 
         # MAIN -> 전체 노드 초기화
-        self.reset_pub = self.create_publisher(
-            String,
-            '/reset',
-            10
-        )
+        self.reset_pub = self.create_publisher(String, '/reset', 10)
 
         # UI -> MAIN
-        self.create_subscription(
-            String,
-            '/ui/start',
-            self._ui_start_callback,
-            10
-        )
+        self.create_subscription(String, '/ui/start', self._ui_start_callback, 10)
 
         # LLM -> MAIN
-        self.create_subscription(
-            String,
-            '/llm/plan',
-            self._llm_plan_callback,
-            10
-        )
-        self.create_subscription(
-            Bool,
-            '/llm/done',
-            self._llm_done_callback,
-            10
-        )
+        self.create_subscription(String, '/llm/plan', self._llm_plan_callback, 10)
+        self.create_subscription(Bool, '/llm/done', self._llm_done_callback, 10)
 
         # CONTROL -> MAIN
-        self.create_subscription(
-            Int16,
-            '/control/ready',
-            self._control_ready_callback,
-            10
-        )
-        self.create_subscription(
-            Int16,
-            '/control/home',
-            self._control_home_callback,
-            10
-        )
+        self.create_subscription(Int16, '/control/ready', self._control_ready_callback, 10)
+        self.create_subscription(Int16, '/control/home', self._control_home_callback, 10)
 
         # RAIL -> MAIN
-        self.create_subscription(
-            String,
-            '/rail/motion_done',
-            self._rail_motion_done_callback,
-            10
-        )
+        self.create_subscription(String, '/rail/motion_done', self._rail_motion_done_callback, 10)
 
-        # -------------------------
-        # MAIN 내부 상태
-        # -------------------------
+        
+        # MAIN 상태
         self.state = STATE_WAIT_START
         self.current_class = None
         self.repeat_count = 0
@@ -114,12 +59,10 @@ class MainNode(Node):
         self.first_llm_plan_received = False
         self.control_ready_received = False
 
-        self.get_logger().info('MAIN ready')
+        self.get_logger().info('MAIN 준비 완료')
 
-    # ================================================================
-    # UI START
-    # ================================================================
-
+  
+    ## ================ UI START ==================== ##
     def _ui_start_callback(self, msg):
         if self.state != STATE_WAIT_START:
             return
@@ -139,19 +82,14 @@ class MainNode(Node):
             '면, 소스 주문 받기 및 용기 옮기기 시작'
         )
 
-    # ================================================================
-    # LLM
-    # ================================================================
+    ## ================ LLM ==================== ##
     def _publish_llm_next(self):
         msg = Int16()
         msg.data = 3
         self.llm_next_pub.publish(msg)
     
     def _llm_plan_callback(self, msg):
-        if self.state not in (
-            STATE_WAIT_FIRST_SYNC,
-            STATE_WAIT_LLM_PLAN,
-        ):
+        if self.state not in (STATE_WAIT_FIRST_SYNC, STATE_WAIT_LLM_PLAN):
             return
 
         try:
@@ -178,9 +116,7 @@ class MainNode(Node):
 
     def _llm_done_callback(self, msg):
         if self.state != STATE_WAIT_LLM_DONE:
-            self.get_logger().warning(
-                f'LLM done ignored. Current state: {self.state}'
-            )
+            self.get_logger().warning(f'LLM done ignored. Current state: {self.state}')
             return
 
         if not msg.data:
@@ -193,22 +129,13 @@ class MainNode(Node):
         self._reset_main_values()
         self.state = STATE_WAIT_START
 
-    # ================================================================
-    # CONTROL
-    # ================================================================
-
+    ## ================ CONTROL ==================== ##
     def _control_ready_callback(self, _msg):
         if self.state != STATE_WAIT_FIRST_SYNC:
-            self.get_logger().warning(
-                f'Control ready ignored. Current state: {self.state}'
-            )
+            self.get_logger().warning(f'Control ready ignored. Current state: {self.state}')
             return
 
         self.control_ready_received = True
-
-        self.get_logger().info(
-            'Initial control motion completed.'
-        )
 
         self._try_start_first_rail_motion()
 
@@ -241,7 +168,7 @@ class MainNode(Node):
 
     def _publish_control_plan(self):
         if self.current_class is None or self.repeat_count < 1:
-            raise RuntimeError('Control plan is not available.')
+            return
 
         msg = String()
         msg.data = json.dumps({
@@ -252,28 +179,17 @@ class MainNode(Node):
         self.state = STATE_WAIT_CONTROL_HOME
         self.control_plan_pub.publish(msg)
 
-        self.get_logger().info(
-            f'class={self.current_class}, repeat_count={self.repeat_count}'
-        )
+        self.get_logger().info(f'class={self.current_class}, repeat_count={self.repeat_count}')
 
-    # ================================================================
-    # RAIL
-    # ================================================================
-
+    ## ================ RAIL ==================== ##
     def _try_start_first_rail_motion(self):
-        if not (
-            self.first_llm_plan_received
-            and self.control_ready_received
-        ):
+        if not self.first_llm_plan_received and self.control_ready_received:
             return
 
         self._start_rail_motion()
 
     def _start_rail_motion(self):
         if self.current_class is None:
-            self.get_logger().error(
-                'Cannot start rail motion without class.'
-            )
             return
 
         msg = String()
@@ -282,19 +198,13 @@ class MainNode(Node):
         self.state = STATE_WAIT_RAIL_DONE
         self.rail_motion_pub.publish(msg)
 
-        self.get_logger().info(
-            f'Rail motion requested: {self.current_class}'
-        )
+        self.get_logger().info(f'Rail class: {self.current_class}')
 
     def _rail_motion_done_callback(self, msg):
         if self.state != STATE_WAIT_RAIL_DONE:
             return
 
         self._publish_control_plan()
-
-    # ================================================================
-    # Message / state helpers
-    # ================================================================
 
     @staticmethod
     def _read_llm_plan(msg):
@@ -305,20 +215,14 @@ class MainNode(Node):
             repeat_count = int(data['repeat_count'])
 
         except (
-            json.JSONDecodeError,
-            KeyError,
-            TypeError,
-            ValueError,
+            json.JSONDecodeError, KeyError, TypeError, ValueError,
         ) as error:
-            raise ValueError(
-                'LLM plan must contain class and repeat_count.'
-            ) from error
+            return
 
         if not class_name:
-            raise ValueError('LLM class must not be empty.')
-
+            return
         if repeat_count < 1:
-            raise ValueError('repeat_count must be at least 1.')
+            return
 
         return class_name, repeat_count
     

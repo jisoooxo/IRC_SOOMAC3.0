@@ -7,7 +7,6 @@ import numpy as np
 import rclpy
 from dynamixel_sdk import PacketHandler, PortHandler
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Empty, Float64MultiArray
 from sensor_msgs.msg import JointState
 
@@ -20,8 +19,6 @@ ARM_IDS = [1, 2, 3, 4, 5, 6]
 GRIPPER_ID = 7
 ALL_IDS = ARM_IDS + [GRIPPER_ID]
 DOF = 6
-
-JOINT_NAMES = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6',]
 
 BAUDRATE = 1000000
 PROTOCOL_VERSION = 2.0
@@ -63,6 +60,15 @@ ACTION_DELAY = 0.3
 
 FINISH_TOLERANCE_DEG = 0.2
 
+ENABLE_MOTION = True
+
+PROFILE_VELOCITY = 20
+PROFILE_ACCELERATION = 10
+
+JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -170.0])
+JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 170.0])
+MAX_Q_STEP = math.radians(2.0)
+
 GRIP_PHASES = {'grip_pick', 'grip_place'}
 PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full'}
 
@@ -82,36 +88,6 @@ class HardwareMotionControlNode(Node):
 
     def __init__(self):
         super().__init__('hardware_motion_control_node')
-
-        self.declare_parameter('enable_motion', True)
-        self.declare_parameter('profile_velocity', 20)
-        self.declare_parameter('profile_acceleration', 10)
-        self.declare_parameter('joint_min_deg', [-170.0, -120.0, -170.0, -140.0, -120.0, -170.0])
-        self.declare_parameter('joint_max_deg', [170.0, 120.0, 170.0, 140.0, 120.0, 170.0])
-        self.declare_parameter('max_q_step_deg', 2.0)
-
-        self.enable_motion = bool(
-            self.get_parameter('enable_motion').value
-        )
-        self.profile_velocity = int(
-            self.get_parameter('profile_velocity').value
-        )
-        self.profile_acceleration = int(
-            self.get_parameter('profile_acceleration').value
-        )
-        self.joint_min = np.deg2rad(np.asarray(
-            self.get_parameter('joint_min_deg').value,
-            dtype=float
-        ))
-        self.joint_max = np.deg2rad(np.asarray(
-            self.get_parameter('joint_max_deg').value,
-            dtype=float
-        ))
-        self.max_q_step = math.radians(float(
-            self.get_parameter('max_q_step_deg').value
-        ))
-
-        self._validate_parameters()
 
         self.q_home = np.zeros(DOF, dtype=float)
         self.q_cmd_prev = self.q_home.copy()
@@ -138,67 +114,15 @@ class HardwareMotionControlNode(Node):
         self._setup_arduino()
         self._command_pneumatic(enabled=False)
 
-        command_qos = QoSProfile(
-            depth=10,
-            reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.VOLATILE
-        )
+        self.create_subscription(Float64MultiArray, '/arm/joint_waypoints', self._grip_plan_callback, 10)
+        self.create_subscription(Float64MultiArray, '/arm/joint_waypoints_pack', self._pack_plan_callback, 10)
+        self.create_subscription(Float64MultiArray, '/arm/joint_target', self._joint_target_callback, 10)
 
-        self.create_subscription(
-            Float64MultiArray,
-            '/arm/joint_waypoints',
-            self._grip_plan_callback,
-            command_qos
-        )
-        self.create_subscription(
-            Float64MultiArray,
-            '/arm/joint_waypoints_pack',
-            self._pack_plan_callback,
-            command_qos
-        )
-        self.create_subscription(
-            Float64MultiArray,
-            '/arm/joint_target',
-            self._joint_target_callback,
-            command_qos
-        )
-
-        self.motion_done_pub = self.create_publisher(
-            Empty,
-            '/arm/motion_done',
-            10
-        )
-        self.joint_state_pub = self.create_publisher(
-            JointState,
-            '/joint_states',
-            10
-        )
-        # POINT1에서 실제 관절각을 요청받았을 때만 사용 -> 변환행렬 계산에 필요함.
-        self.joint_state_request_sub = self.create_subscription(
-            Empty,
-            '/arm/request_joint_state',
-            self._joint_state_request_callback,
-            10
-        )
+        self.motion_done_pub = self.create_publisher(Empty, '/arm/motion_done', 10)
+        self.joint_state_pub = self.create_publisher(JointState, '/joint_states', 10)
+        self.joint_state_request_sub = self.create_subscription(Empty, '/arm/request_joint_state', self._joint_state_request_callback, 10) # POINT1에서 실제 관절각을 요청받았을 때만 사용 -> 변환행렬 계산에 필요
         # 모션 제어 주기
-        self.timer = self.create_timer(
-            0.05,
-            self._control_loop
-        )
-
-    def _validate_parameters(self):
-        for name, values in (
-            ('joint_min_deg', self.joint_min),
-            ('joint_max_deg', self.joint_max),
-        ):
-            if values.shape != (DOF,):
-                raise ValueError(f'{name} must contain {DOF} values.')
-
-        if np.any(self.joint_min >= self.joint_max):
-            raise ValueError('Each joint_min_deg value must be smaller than joint_max_deg')
-
-        if self.max_q_step <= 0.0:
-            raise ValueError('max_q_step_deg must be positive.')
+        self.timer = self.create_timer(0.05, self._control_loop)
 
     def _setup_arduino(self):
         try:
@@ -215,9 +139,7 @@ class HardwareMotionControlNode(Node):
             self.arduino.reset_output_buffer()
 
         except (serial.SerialException, OSError) as exc:
-            raise RuntimeError(
-                f'Arduino 포트 연결 실패'
-            ) from exc
+            raise RuntimeError(f'Arduino 포트 연결 실패') from exc
 
     def _grip_plan_callback(self, msg):
         self._waypoint_plan_callback(msg, GRIP_PHASES)
@@ -227,15 +149,10 @@ class HardwareMotionControlNode(Node):
 
     def _waypoint_plan_callback(self, msg, valid_phases):
         if self.motion_active:
-            self.get_logger().warning(
-                '로봇팔이 동작 중 입니당'
-            )
+            self.get_logger().warning('로봇팔이 동작 중 입니당')
             return
 
         if len(msg.data) != DOF * 4:
-            self.get_logger().error(
-                f'Waypoint command requires {DOF * 4} values.'
-            )
             return
 
         label = (
@@ -248,19 +165,12 @@ class HardwareMotionControlNode(Node):
         class_name = class_name.strip() or None
 
         if phase not in valid_phases:
-            self.get_logger().error(
-                f'Unsupported waypoint phase: {phase!r}'
-            )
             return
 
         if phase in GRIP_PHASES and class_name not in GRIPPER_CLOSE_DEG:
             return
 
-        waypoints = np.clip(
-            waypoints,
-            self.joint_min,
-            self.joint_max
-        )
+        waypoints = np.clip(waypoints, JOINT_MIN, JOINT_MAX)
 
         q_start = self._read_current_q()
 
@@ -295,12 +205,7 @@ class HardwareMotionControlNode(Node):
             return
 
         waypoints = joint_data.reshape(-1, DOF)
-
-        waypoints = np.clip(
-            waypoints,
-            self.joint_min,
-            self.joint_max
-        )
+        waypoints = np.clip(waypoints, JOINT_MIN, JOINT_MAX)
 
         q_start = self._read_current_q()
         trajectory = []
@@ -329,12 +234,7 @@ class HardwareMotionControlNode(Node):
             trajectory
         )
 
-    def _start_trajectory(
-        self,
-        phase,
-        q_start,
-        trajectory
-    ):
+    def _start_trajectory(self, phase, q_start, trajectory):
 
         self._connect_move_velocities(
             trajectory,
@@ -584,43 +484,20 @@ class HardwareMotionControlNode(Node):
         max_delta_deg = float(np.max(np.abs(np.rad2deg(
             wrapped_q_delta(q_goal, q_start)
         ))))
-        max_speed_deg_s = (
-            math.degrees(self.max_q_step) / 0.05
-        )
-        required_time = (
-            1.875 * max_delta_deg / max_speed_deg_s
-        )
+        max_speed_deg_s = math.degrees(MAX_Q_STEP) / 0.05
+        required_time = 1.875 * max_delta_deg / max_speed_deg_s
 
-        return max(
-            float(minimum_duration),
-            required_time * 1.2
-        )
+        return max(float(minimum_duration), required_time * 1.2)
 
-    def _connect_move_velocities(
-        self,
-        trajectory,
-        velocity_scale=0.5
-    ):
+    def _connect_move_velocities(self, trajectory, velocity_scale=0.5):
         for segment in trajectory:
             if segment['kind'] != 'move':
                 continue
 
-            segment['start_velocity'] = np.zeros(
-                DOF,
-                dtype=float
-            )
-            segment['goal_velocity'] = np.zeros(
-                DOF,
-                dtype=float
-            )
-            segment['start_acceleration'] = np.zeros(
-                DOF,
-                dtype=float
-            )
-            segment['goal_acceleration'] = np.zeros(
-                DOF,
-                dtype=float
-            )
+            segment['start_velocity'] = np.zeros(DOF, dtype=float)
+            segment['goal_velocity'] = np.zeros(DOF, dtype=float)
+            segment['start_acceleration'] = np.zeros(DOF, dtype=float)
+            segment['goal_acceleration'] = np.zeros(DOF, dtype=float)
 
         # 바로 이어지는 move → move 구간만 속도를 연결한다.
         for index in range(len(trajectory) - 1):
@@ -656,11 +533,7 @@ class HardwareMotionControlNode(Node):
                 * wrapped_q_delta(
                     q_next,
                     q_previous
-                )
-                / (
-                    previous_segment['duration']
-                    + next_segment['duration']
-                )
+                )/ (previous_segment['duration'] + next_segment['duration'])
             )
 
             # 방향이 반대로 바뀌는 관절은 중간점에서 정지해야 overshoot가 발생하지 않는다.
@@ -671,9 +544,7 @@ class HardwareMotionControlNode(Node):
             )
 
             # 기존 max_q_step 기준 속도보다 커지지 않도록 제한
-            max_velocity = (
-                self.max_q_step / 0.05
-            )
+            max_velocity = MAX_Q_STEP / 0.05
 
             v_middle = np.clip(
                 v_middle,
@@ -681,13 +552,8 @@ class HardwareMotionControlNode(Node):
                 max_velocity
             )
 
-            previous_segment[
-                'goal_velocity'
-            ] = v_middle.copy()
-
-            next_segment[
-                'start_velocity'
-            ] = v_middle.copy()
+            previous_segment['goal_velocity'] = v_middle.copy()
+            next_segment['start_velocity'] = v_middle.copy()
 
     @staticmethod
     def _quintic_joint(
@@ -701,10 +567,7 @@ class HardwareMotionControlNode(Node):
         duration
     ):
         q_start = np.asarray(q_start, dtype=float)
-        q_goal = (
-            q_start
-            + wrapped_q_delta(q_goal, q_start)
-        )
+        q_goal = q_start + wrapped_q_delta(q_goal, q_start)
 
         v_start = np.asarray(v_start, dtype=float)
         v_goal = np.asarray(v_goal, dtype=float)
@@ -774,9 +637,7 @@ class HardwareMotionControlNode(Node):
 
         if current_segment is None:
             q_ref = self.final_target.copy()
-            pack_horizontal = bool(
-                self.trajectory[-1]['pack_horizontal']
-            )
+            pack_horizontal = bool(self.trajectory[-1]['pack_horizontal'])
         elif current_segment['kind'] == 'move':
             q_ref = self._quintic_joint(
                 current_segment['start'],
@@ -788,14 +649,10 @@ class HardwareMotionControlNode(Node):
                 elapsed - current_segment['start_time'],
                 current_segment['duration']
             )
-            pack_horizontal = bool(
-                current_segment['pack_horizontal']
-            )
+            pack_horizontal = bool(current_segment['pack_horizontal'])
         else:
             q_ref = current_segment['goal'].copy()
-            pack_horizontal = bool(
-                current_segment['pack_horizontal']
-            )
+            pack_horizontal = bool(current_segment['pack_horizontal'])
 
         if pack_horizontal:
             q_ref[4] = self._horizontal_q5(
@@ -807,22 +664,22 @@ class HardwareMotionControlNode(Node):
 
         q_ref = np.clip(
             q_ref,
-            self.joint_min,
-            self.joint_max
+            JOINT_MIN,
+            JOINT_MAX
         )
         q_step = np.clip(
             wrapped_q_delta(q_ref, self.q_cmd_prev),
-            -self.max_q_step,
-            self.max_q_step
+            -MAX_Q_STEP,
+            MAX_Q_STEP
         )
         q_cmd = np.clip(
             self.q_cmd_prev + q_step,
-            self.joint_min,
-            self.joint_max
+            JOINT_MIN,
+            JOINT_MAX
         )
         self.q_cmd_prev = q_cmd
 
-        if self.enable_motion:
+        if ENABLE_MOTION:
             self._write_arm_positions(
                 self._q_to_raw(q_cmd)
             )
@@ -848,8 +705,7 @@ class HardwareMotionControlNode(Node):
             math.atan2(
                 math.cos(q2),
                 math.sin(q2) * math.cos(q3)
-            )
-            - q4
+            )- q4
         )
 
         candidates = []
@@ -860,18 +716,14 @@ class HardwareMotionControlNode(Node):
                 2.0 * math.pi
             ):
                 candidate = base_q5 + branch + turn
-                if (
-                    self.joint_min[4]
-                    <= candidate
-                    <= self.joint_max[4]
-                ):
+                if (JOINT_MIN[4] <= candidate <= JOINT_MAX[4]):
                     candidates.append(candidate)
 
         if not candidates:
             return float(np.clip(
                 base_q5,
-                self.joint_min[4],
-                self.joint_max[4]
+                JOINT_MIN[4],
+                JOINT_MAX[4]
             ))
 
         return float(min(
@@ -896,7 +748,7 @@ class HardwareMotionControlNode(Node):
             raise ValueError(f'Unsupported action: {action}')
 
     def _command_gripper(self, opened, class_name=None):
-        if not self.enable_motion:
+        if not ENABLE_MOTION:
             return
 
         if opened:
@@ -904,13 +756,10 @@ class HardwareMotionControlNode(Node):
 
         else:
             if class_name not in GRIPPER_CLOSE_DEG:
-                raise ValueError(
-                    f'Unsupported gripper class: {class_name!r}'
-                )
+                return
 
             goal_raw = int(round(
-                GRIPPER_HOME_RAW
-                + GRIPPER_CLOSE_DEG[class_name] * 4096.0 / 360.0
+                GRIPPER_HOME_RAW + GRIPPER_CLOSE_DEG[class_name] * 4096.0 / 360.0
             )) % 4096
 
         self._write4(
@@ -922,9 +771,7 @@ class HardwareMotionControlNode(Node):
 
     def _command_pneumatic(self, enabled):
         if self.arduino is None or not self.arduino.is_open:
-            raise RuntimeError(
-                'Arduino serial port is not open.'
-            )
+            raise RuntimeError('Arduino serial port is not open')
 
         command = (
             b'ON\n'
@@ -936,10 +783,8 @@ class HardwareMotionControlNode(Node):
             self.arduino.write(command)
             self.arduino.flush()
 
-        except (serial.SerialException, OSError) as exc:
-            raise RuntimeError(
-                f'Failed to send pneumatic command: {exc}'
-            ) from exc
+        except (serial.SerialException, OSError):
+            return
 
     def _finish_motion(self):
         self.motion_active = False
@@ -963,24 +808,18 @@ class HardwareMotionControlNode(Node):
             q_actual = self._read_current_q()
 
         except RuntimeError as exc:
-            self.get_logger().error(
-                f'Failed to read actual joint positions: {exc}'
-            )
+            self.get_logger().error(f'Failed to read actual joint positions: {exc}')
             return
 
         if (
             q_actual.shape != (DOF,)
             or not np.all(np.isfinite(q_actual))
         ):
-            self.get_logger().error(
-                'Actual joint positions contain invalid values.'
-            )
             return
 
         msg = JointState()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = 'base'
-        msg.name = JOINT_NAMES.copy()
         msg.position = q_actual.tolist()
         msg.velocity = []
         msg.effort = []
@@ -996,8 +835,7 @@ class HardwareMotionControlNode(Node):
                 GRIPPER_ID,
                 ADDR_PRESENT_POSITION,
                 'read gripper position'
-            )
-            % 4096
+            ) % 4096
         )
 
         self._write_arm_positions(current_raw)
@@ -1016,9 +854,7 @@ class HardwareMotionControlNode(Node):
                 raw_list[i],
                 HOME_RAW[i]
             )
-            motor_deg = (
-                delta_tick * 360.0 / 4096
-            )
+            motor_deg = delta_tick * 360.0 / 4096
             q[i] = math.radians(motor_deg)
 
         return q
@@ -1026,24 +862,16 @@ class HardwareMotionControlNode(Node):
     def _q_to_raw(self, q):
         q = np.clip(
             q,
-            self.joint_min,
-            self.joint_max
+            JOINT_MIN,
+            JOINT_MAX
         )
         raw_list = []
 
         for i in range(DOF):
             joint_deg = math.degrees(q[i])
             motor_deg = joint_deg
-            delta_tick = round(
-                motor_deg * 4096 / 360.0
-            )
-            raw_list.append(
-                (
-                    int(HOME_RAW[i])
-                    + int(delta_tick)
-                )
-                % 4096
-            )
+            delta_tick = round(motor_deg * 4096 / 360.0)
+            raw_list.append((int(HOME_RAW[i]) + int(delta_tick)) % 4096)
 
         return raw_list
 
@@ -1062,14 +890,10 @@ class HardwareMotionControlNode(Node):
         action
     ):
         if comm != 0:
-            raise RuntimeError(
-                f'ID {dxl_id} {action}: {self.packet.getTxRxResult(comm)}'
-            )
+            raise RuntimeError(f'ID {dxl_id} {action}: {self.packet.getTxRxResult(comm)}')
 
         if error != 0:
-            raise RuntimeError(
-                f'ID {dxl_id} {action}: {self.packet.getRxPacketError(error)}'
-            )
+            raise RuntimeError(f'ID {dxl_id} {action}: {self.packet.getRxPacketError(error)}')
 
     def _write1(
         self,
@@ -1132,15 +956,11 @@ class HardwareMotionControlNode(Node):
 
     def _setup_motors(self):
         if not self.port_xh.openPort():
-            raise RuntimeError(
-                f'{PORT_XH} 포트 열기 실패'
-            )
+            return
         self.xh_open = True
 
         if not self.port_xm.openPort():
-            raise RuntimeError(
-                f'{PORT_XM} 포트 열기 실패'
-            )
+            return
         self.xm_open = True
 
         for dxl_id in ALL_IDS:
@@ -1168,13 +988,13 @@ class HardwareMotionControlNode(Node):
             self._write4(
                 dxl_id,
                 ADDR_PROFILE_ACCELERATION,
-                self.profile_acceleration,
+                PROFILE_ACCELERATION,
                 'set profile acceleration'
             )
             self._write4(
                 dxl_id,
                 ADDR_PROFILE_VELOCITY,
-                self.profile_velocity,
+                PROFILE_VELOCITY,
                 'set profile velocity'
             )
 
@@ -1227,9 +1047,7 @@ class HardwareMotionControlNode(Node):
                 self._command_pneumatic(enabled=False)
 
         except Exception as exc:
-            self.get_logger().error(
-                f'공압 작동 안됨: {exc}'
-            )
+            self.get_logger().error(f'공압 작동 안됨: {exc}')
 
         try:
             if self.xh_open and self.xm_open:
@@ -1238,9 +1056,7 @@ class HardwareMotionControlNode(Node):
                 self._set_all_torque(False)
 
         except Exception as exc:
-            self.get_logger().error(
-                f'모터 작동 안됨: {exc}'
-            )
+            self.get_logger().error(f'모터 작동 안됨: {exc}')
 
         if self.arduino is not None and self.arduino.is_open:
             self.arduino.close()
