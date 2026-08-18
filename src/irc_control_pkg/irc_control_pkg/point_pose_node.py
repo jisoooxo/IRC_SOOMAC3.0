@@ -28,15 +28,12 @@ PACK_CONTINUITY_WEIGHT = 0.02
 
 SPOON_PICK_POSITION = np.array([0.30, -0.15, 0.20], dtype=float)
 
-CHEESE_ACTION_DELAY = 0.5
-CHEESE_GRIPPER_HOLD_TIME = 2.5
-CHEESE_RELEASE_HOLD_TIME = 1.5
-
 SPOON_Q6 = math.radians(90.0)
 CHEESE_INSERT_Q5_DELTA = math.radians(30.0)
 CHEESE_PLACE_Q = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
 PEPPERONCINO_PLACE_Q = np.deg2rad([140.0, -90.0, -90.0, 130.0, 25.0, 0.0,]) # 페퍼론치노 place 위치
 CHEESE_RELEASE_Q6 = math.radians(-90.0)
+CHEESE_RELEASE_HOLD_TIME = 1.5
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 POINT1 = np.array([0.20, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 바라보는 위치
@@ -60,13 +57,13 @@ JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 360.0])
 
 STATE_IDLE = '시작!'
-STATE_WAIT_INITIAL_DONE = '용기 옮기기 완료'
-STATE_WAIT_POINT1_DONE = '카메라-통 수직 위치 이동 완료'
-STATE_WAIT_PICK = 'PICK 좌표값 보내주세용'
-STATE_WAIT_PICK_DONE = 'PICK 완료'
-STATE_WAIT_PLACE_DONE = 'PLACE_완료'
-STATE_WAIT_HOME_DONE = 'HOME 이동 완료'
-STATE_WAIT_CP_DONE = '이동 완료'
+STATE_WAIT_INITIAL_DONE = '용기 옮기기'
+STATE_WAIT_POINT1_DONE = '카메라-통 수직 위치 이동'
+STATE_WAIT_PICK = 'PICK 좌표값 송수신'
+STATE_WAIT_PICK_DONE = 'PICK'
+STATE_WAIT_PLACE_DONE = 'PLACE'
+STATE_WAIT_HOME_DONE = 'HOME 이동'
+STATE_WAIT_CP_DONE = '추가 재료 경로 이동'
 
 
 def wrap_to_pi(angle):
@@ -299,39 +296,22 @@ class PointPoseNode(Node):
         q_spoon_pick = self._solve_cheese_position(
             SPOON_PICK_POSITION, q_start, SPOON_Q6
         ) ## 갈 위치, 이전 위티
-        q_spoon_pick = self._set_horizontal_q5(
-            q_spoon_pick, q_start[4]
-        )
+        q_spoon_pick = self._set_horizontal_q5(q_spoon_pick, q_start[4])
 
         q_spoon_lift = self._solve_cheese_position(
-            spoon_lift_position,
-            q_spoon_pick,
-            SPOON_Q6
+            spoon_lift_position, q_spoon_pick, SPOON_Q6
         )
-        q_spoon_lift = self._set_horizontal_q5(
-            q_spoon_lift,
-            q_spoon_pick[4]
-        )
+        q_spoon_lift = self._set_horizontal_q5(q_spoon_lift, q_spoon_pick[4])
 
         q_cheese_approach = self._solve_cheese_position(
-            cheese_approach_position,
-            q_spoon_lift,
-            SPOON_Q6
+            cheese_approach_position, q_spoon_lift, SPOON_Q6
         )
-        q_cheese_approach = self._set_horizontal_q5(
-            q_cheese_approach,
-            q_spoon_lift[4]
-        )
+        q_cheese_approach = self._set_horizontal_q5(q_cheese_approach, q_spoon_lift[4])
 
         q_cheese_touch = self._solve_cheese_position(
-            push_position,
-            q_cheese_approach,
-            SPOON_Q6
+            push_position, q_cheese_approach, SPOON_Q6
         )
-        q_cheese_touch = self._set_horizontal_q5(
-            q_cheese_touch,
-            q_cheese_approach[4]
-        )
+        q_cheese_touch = self._set_horizontal_q5(q_cheese_touch, q_cheese_approach[4])
 
         q_cheese_insert = q_cheese_touch.copy()
         q_cheese_insert[4] += CHEESE_INSERT_Q5_DELTA
@@ -356,7 +336,6 @@ class PointPoseNode(Node):
 
         return [
             ('motion', [q_spoon_pick,]),
-            ('delay', CHEESE_ACTION_DELAY),
             ('gripper', 'grip_pick:spoon', q_spoon_pick),
             ('motion', [
                 q_spoon_lift,
@@ -373,9 +352,7 @@ class PointPoseNode(Node):
                 q_spoon_lift,
                 q_spoon_pick,
             ]),
-            ('delay', CHEESE_ACTION_DELAY),
             ('gripper', 'grip_place:spoon', q_spoon_pick),
-            ('delay', CHEESE_GRIPPER_HOLD_TIME - CHEESE_ACTION_DELAY),
             ('motion', [q_home,]),
         ]
 
@@ -458,8 +435,7 @@ class PointPoseNode(Node):
             math.atan2(
                 math.cos(q2),
                 math.sin(q2) * math.cos(q3)
-            )
-            - q4
+            )- q4
         )
 
         candidates = []
@@ -570,10 +546,7 @@ class PointPoseNode(Node):
             class_name = str(data['class_name']).strip()
 
         except (
-            json.JSONDecodeError,
-            KeyError,
-            TypeError,
-            ValueError
+            json.JSONDecodeError, KeyError, TypeError, ValueError
         ) as error:
             raise ValueError('Pick message must contain x, y, z, class_name, yaw') from error
 
@@ -686,21 +659,15 @@ class PointPoseNode(Node):
 
         else:
             q_approach = self._solve_grip_place_pose(
-                approach,
-                self.pick_lift_q,
-                yaw
+                approach, self.pick_lift_q, yaw
             )
 
             q_place = self._solve_grip_place_pose(
-                position,
-                q_approach,
-                yaw
+                position, q_approach, yaw
             )
 
             q_lift = self._solve_grip_place_pose(
-                approach,
-                q_place,
-                yaw
+                approach, q_place, yaw
             )
 
         phase = (
