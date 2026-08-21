@@ -183,7 +183,7 @@ class MainNode(Node):
 
     ## ================ RAIL ==================== ##
     def _try_start_first_rail_motion(self):
-        if not (self.first_llm_plan_received and self.control_ready_received):
+        if not self.first_llm_plan_received and self.control_ready_received:
             return
 
         self._start_rail_motion()
@@ -210,16 +210,19 @@ class MainNode(Node):
     def _read_llm_plan(msg):
         try:
             data = json.loads(msg.data)
+
             class_name = str(data['class']).strip()
             repeat_count = int(data['repeat_count'])
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
-            raise ValueError('LLM plan 형식이 잘못되었습니다.') from error
+
+        except (
+            json.JSONDecodeError, KeyError, TypeError, ValueError,
+        ) as error:
+            return
 
         if not class_name:
-            raise ValueError('LLM class가 비어 있습니다.')
-
+            return
         if repeat_count < 1:
-            raise ValueError('repeat_count는 1 이상이어야 합니다.')
+            return
 
         return class_name, repeat_count
     

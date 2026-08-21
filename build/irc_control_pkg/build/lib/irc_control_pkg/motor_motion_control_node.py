@@ -11,8 +11,8 @@ from std_msgs.msg import Empty, Float64MultiArray
 from sensor_msgs.msg import JointState
 
 PORT_XH = '/dev/ttyUSB0'
-PORT_XM = '/dev/ttyUSB1'
-ARDUINO_PORT = '/dev/ttyUSB2'
+PORT_XM = '/dev/ttyUSB2'
+ARDUINO_PORT = '/dev/ttyUSB1'
 
 XH_IDS = [1, 2, 3, 4]
 ARM_IDS = [1, 2, 3, 4, 5, 6]
@@ -20,7 +20,7 @@ GRIPPER_ID = 7
 ALL_IDS = ARM_IDS + [GRIPPER_ID]
 DOF = 6
 
-BAUDRATE = 100000
+BAUDRATE = 1000000
 PROTOCOL_VERSION = 2.0
 
 ADDR_OPERATING_MODE = 11
@@ -45,8 +45,18 @@ GRIPPER_CLOSE_DEG = {
 }
 
 MIN_MOVE_TO_HOME_TIME = 3.0
+MOVE_APPROACH_TIME = 3.0
+MOVE_DESCEND_TIME = 3.0
+MOVE_LIFT_TIME = 3.0
+MOVE_TRANSFER_TIME = 6.0
 MOVE_SINGLE_TARGET_TIME = 4.0
 MOVE_RETURN_HOME_TIME = 4.0
+
+HOME_HOLD_TIME = 1.0
+APPROACH_HOLD_TIME = 0.5
+ACTION_HOLD_TIME = 0.8
+TRANSFER_HOLD_TIME = 0.5
+ACTION_DELAY = 0.3
 
 FINISH_TOLERANCE_DEG = 0.2
 
@@ -253,133 +263,151 @@ class HardwareMotionControlNode(Node):
             self._command_pneumatic(enabled=False)
 
     def _build_phase_trajectory(self, phase, q_start, waypoints, class_name):
-        w1, w2, w3, w4 = [waypoint.copy() for waypoint in waypoints]
+        w1, w2, w3, w4 = [
+            waypoint.copy()
+            for waypoint in waypoints
+        ]
         trajectory = []
 
-        if phase == 'grip_pick':
-            # 현재 위치 -> pick approach : 3.0초
-            self._append_move(trajectory, q_start, w1, 3.0)
+        if phase in GRIP_PHASES | {'pack_pick', 'pack_place'}:
+            is_pick = phase.endswith('pick')
+            pack_horizontal = phase.startswith('pack')
 
-            # approach 위치에서 0.5초 대기
-            self._append_hold(trajectory, w1, 0.5)
+            action = {
+                'grip_pick': f'grip_close:{class_name}',
+                'grip_place': 'grip_open',
+                'pack_pick': '공압 on',
+                'pack_place': '공압 off',
+            }[phase]
 
-            # approach -> pick : 3.0초
-            self._append_move(trajectory, w1, w2, 3.0)
+            self._append_move(
+                trajectory,
+                q_start,
+                w1,
+                MOVE_APPROACH_TIME,
+                pack_horizontal
+            )
+            self._append_hold(
+                trajectory,
+                w1,
+                APPROACH_HOLD_TIME,
+                pack_horizontal=pack_horizontal
+            )
+            self._append_move(
+                trajectory,
+                w1,
+                w2,
+                MOVE_DESCEND_TIME,
+                pack_horizontal
+            )
+            self._append_hold(
+                trajectory,
+                w2,
+                ACTION_HOLD_TIME,
+                action=action,
+                action_delay=ACTION_DELAY,
+                pack_horizontal=pack_horizontal
+            )
+            self._append_move(
+                trajectory,
+                w2,
+                w3,
+                MOVE_LIFT_TIME,
+                pack_horizontal
+            )
 
-            # pick 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 gripper close
-            self._append_hold(trajectory, w2, 1.5, action=f'grip_close:{class_name}', action_delay=0.3)
-
-            # pick -> lift : 3.0초
-            self._append_move(trajectory, w2, w3, 3.0)
-
-            # lift 위치에서 0.5초 대기
-            self._append_hold(trajectory, w3, 0.5)
-
-            # lift -> transfer : 6.0초
-            self._append_move(trajectory, w3, w4, 6.0)
-
-            return trajectory
-
-        if phase == 'grip_place':
-            # 현재 위치 -> place approach : 3.0초
-            self._append_move(trajectory, q_start, w1, 3.0)
-
-            # approach 위치에서 0.5초 대기
-            self._append_hold(trajectory, w1, 0.5)
-
-            # approach -> place : 3.0초
-            self._append_move(trajectory, w1, w2, 3.0)
-
-            # place 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 gripper open
-            self._append_hold(trajectory, w2, 1.5, action='grip_open', action_delay=0.3)
-
-            # place -> lift : 3.0초
-            self._append_move(trajectory, w2, w3, 3.0)
-
-            return trajectory
-
-        if phase == 'pack_pick':
-            # 현재 위치 -> pick approach : 3.0초
-            self._append_move(trajectory, q_start, w1, 3.0, True)
-
-            # approach 위치에서 0.5초 대기
-            self._append_hold(trajectory, w1, 0.5, pack_horizontal=True)
-
-            # approach -> pick : 3.0초
-            self._append_move(trajectory, w1, w2, 3.0, True)
-
-            # pick 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 공압 ON
-            self._append_hold(trajectory, w2, 1.5, action='공압 on', action_delay=0.3, pack_horizontal=True)
-
-            # pick -> lift : 3.0초
-            self._append_move(trajectory, w2, w3, 3.0, True)
-
-            # lift 위치에서 0.5초 대기
-            self._append_hold(trajectory, w3, 0.5, pack_horizontal=True)
-
-            # lift -> transfer : 6.0초
-            self._append_move(trajectory, w3, w4, 6.0, True)
+            if is_pick:
+                self._append_hold(
+                    trajectory,
+                    w3,
+                    TRANSFER_HOLD_TIME,
+                    pack_horizontal=pack_horizontal
+                )
+                self._append_move(
+                    trajectory,
+                    w3,
+                    w4,
+                    MOVE_TRANSFER_TIME,
+                    pack_horizontal
+                )
 
             return trajectory
 
-        if phase == 'pack_place':
-            # 현재 위치 -> place approach : 3.0초
-            self._append_move(trajectory, q_start, w1, 3.0, True)
-
-            # approach 위치에서 0.5초 대기
-            self._append_hold(trajectory, w1, 0.5, pack_horizontal=True)
-
-            # approach -> place : 3.0초
-            self._append_move(trajectory, w1, w2, 3.0, True)
-
-            # place 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 공압 OFF
-            self._append_hold(trajectory, w2, 1.5, action='공압 off', action_delay=0.3, pack_horizontal=True)
-
-            # place -> lift : 3.0초
-            self._append_move(trajectory, w2, w3, 3.0, True)
-
-            return trajectory
-
-        if phase == 'pack_full': ## 초기 용기 옮기기는 공압 pick, place를 한 번에 수행
-            # 현재 위치 -> HOME : 3.0초
-            self._append_move(trajectory, q_start, self.q_home, 3.0)
-
-            # HOME에서 1.0초 대기
-            self._append_hold(trajectory, self.q_home, 1.0)
-
-            # HOME -> pick approach : 3.0초
-            self._append_move(trajectory, self.q_home, w2, 3.0, True)
-
-            # pick approach -> pick : 3.0초
-            self._append_move(trajectory, w2, w1, 3.0, True)
-
-            # pick 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 공압 ON
-            self._append_hold(trajectory, w1, 1.5, action='공압 on', action_delay=0.3, pack_horizontal=True)
-
-            # pick -> lift : 3.0초
-            self._append_move(trajectory, w1, w2, 3.0, True)
-
-            # lift 위치에서 0.5초 대기
-            self._append_hold(trajectory, w2, 0.5, pack_horizontal=True)
-
-            # pick lift -> place approach : 6.0초
-            self._append_move(trajectory, w2, w3, 6.0, True)
-
-            # place approach -> place : 3.0초
-            self._append_move(trajectory, w3, w4, 3.0, True)
-
-            # place 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 공압 OFF
-            self._append_hold(trajectory, w4, 1.5, action='공압 off', action_delay=0.3, pack_horizontal=True)
-
-            # place -> HOME : 4.0초
-            self._append_move(trajectory, w4, self.q_home, 4.0)
-
+        if phase == 'pack_full':
+            self._append_move(
+                trajectory,
+                q_start,
+                self.q_home,
+                MIN_MOVE_TO_HOME_TIME
+            )
+            self._append_hold(
+                trajectory,
+                self.q_home,
+                HOME_HOLD_TIME
+            )
+            self._append_move(
+                trajectory,
+                self.q_home,
+                w2,
+                MOVE_APPROACH_TIME,
+                True
+            )
+            self._append_move(
+                trajectory,
+                w2,
+                w1,
+                MOVE_DESCEND_TIME,
+                True
+            )
+            self._append_hold(
+                trajectory,
+                w1,
+                ACTION_HOLD_TIME,
+                action='공압 on',
+                action_delay=ACTION_DELAY,
+                pack_horizontal=True
+            )
+            self._append_move(
+                trajectory,
+                w1,
+                w2,
+                MOVE_LIFT_TIME,
+                True
+            )
+            self._append_hold(
+                trajectory,
+                w2,
+                TRANSFER_HOLD_TIME,
+                pack_horizontal=True
+            )
+            self._append_move(
+                trajectory,
+                w2,
+                w3,
+                MOVE_TRANSFER_TIME,
+                True
+            )
+            self._append_move(
+                trajectory,
+                w3,
+                w4,
+                MOVE_DESCEND_TIME,
+                True
+            )
+            self._append_hold(
+                trajectory,
+                w4,
+                ACTION_HOLD_TIME,
+                action='공압 off',
+                action_delay=ACTION_DELAY,
+                pack_horizontal=True
+            )
+            self._append_move(
+                trajectory,
+                w4,
+                self.q_home,
+                MOVE_RETURN_HOME_TIME
+            )
             return trajectory
 
         return

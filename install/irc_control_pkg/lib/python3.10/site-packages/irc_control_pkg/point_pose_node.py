@@ -134,7 +134,6 @@ class PointPoseNode(Node):
         self.pick_lift_q = None
 
         self.cheese_commands = []
-        self.cheese_command_index = 0
         self.cheese_delay_timer = None
 
     def _start_callback(self, _msg):
@@ -264,7 +263,6 @@ class PointPoseNode(Node):
         
             try:
                 self.cheese_commands = self._build_cheese_commands(position)
-                self.cheese_command_index = 0
                 self._send_next_cheese_command()
             except RuntimeError:
                 self.pick_mode = None
