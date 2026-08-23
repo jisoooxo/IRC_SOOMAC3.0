@@ -10,9 +10,9 @@ from rclpy.node import Node
 from std_msgs.msg import Empty, Float64MultiArray
 from sensor_msgs.msg import JointState
 
-PORT_XH = '/dev/ttyUSB0'
-PORT_XM = '/dev/ttyUSB1'
-ARDUINO_PORT = '/dev/ttyUSB2'
+PORT_XH = '/dev/ttyUSB2'
+PORT_XM = '/dev/ttyUSB0'
+ARDUINO_PORT = '/dev/ttyUSB1'
 
 XH_IDS = [1, 2, 3, 4]
 ARM_IDS = [1, 2, 3, 4, 5, 6]
@@ -20,7 +20,7 @@ GRIPPER_ID = 7
 ALL_IDS = ARM_IDS + [GRIPPER_ID]
 DOF = 6
 
-BAUDRATE = 100000
+BAUDRATE = 1000000
 PROTOCOL_VERSION = 2.0
 
 ADDR_OPERATING_MODE = 11
@@ -36,16 +36,15 @@ HOME_RAW = np.full(DOF, 2048, dtype=int)
 GRIPPER_HOME_RAW = 2048
 
 GRIPPER_CLOSE_DEG = {
-    'noodle':   -68.4,
-    'mushroom': -68.4,
-    'onion':    -68.4,
-    'crab':     -68.4,
-    'sausage':  -68.4,
-    'spoon':    -68.4,
+    'noodle':   -70,
+    'mushroom': -75,
+    'onion':    -75,
+    'crab':     -70,
+    'sausage':  -65,
+    'spoon':    -54
 }
 
 MIN_MOVE_TO_HOME_TIME = 3.0
-MOVE_SINGLE_TARGET_TIME = 4.0
 MOVE_RETURN_HOME_TIME = 4.0
 
 FINISH_TOLERANCE_DEG = 0.2
@@ -208,7 +207,7 @@ class HardwareMotionControlNode(Node):
 
         for q_target in waypoints:
             minimum_duration = (
-                MOVE_SINGLE_TARGET_TIME
+                4.0  ## waypoint가 따로 없을 때 이동 시간
                 if len(waypoints) == 1
                 else 0.3
             )

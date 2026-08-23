@@ -26,7 +26,7 @@ PACK_POSITION_WEIGHT = 100.0
 PACK_Q5_LIMIT_WEIGHT = 100.0
 PACK_CONTINUITY_WEIGHT = 0.02
 
-SPOON_PICK_POSITION = np.array([0.30, -0.15, 0.20], dtype=float)
+SPOON_PICK_POSITION = np.array([0.4, 0.0, 0.205], dtype=float)
 
 SPOON_Q6 = math.radians(90.0)
 CHEESE_INSERT_Q5_DELTA = math.radians(30.0)
@@ -36,7 +36,8 @@ CHEESE_RELEASE_Q6 = math.radians(-90.0)
 CHEESE_RELEASE_HOLD_TIME = 1.5
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
-POINT1 = np.array([0.20, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 바라보는 위치
+# [0.20, 0.00, 0.27] -> 카메라가 수직으로 보는 위치
+POINT1 = np.array([0.25, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 바라보는 위치
 
 INITIAL_PACK_PICK_POINT = np.array([0.25, 0.0, 0.035], dtype=float)
 INITIAL_PACK_PLACE_POINT = np.array([0.0, 0.25, 0.05], dtype=float)
@@ -263,7 +264,7 @@ class PointPoseNode(Node):
             self.state = STATE_WAIT_CP_DONE
         
             try:
-                self.cheese_commands = self._build_cheese_commands(position)
+                self.cheese_commands = self.cheese_path(position)
                 self.cheese_command_index = 0
                 self._send_next_cheese_command()
             except RuntimeError:
@@ -279,39 +280,77 @@ class PointPoseNode(Node):
             self.pick_mode = None
             self.state = STATE_WAIT_PICK
 
-    def _build_cheese_commands(self, push_position):
+    def _solve_cheese_linear_x(
+        self,
+        start_position,
+        end_position,
+        previous_q,
+        q6,
+        step=0.01
+    ):
+        distance = abs(end_position[0] - start_position[0])
+        count = max(1, int(math.ceil(distance / step)))
+
+        waypoints = []
+        q_previous = previous_q.copy()
+
+        for i in range(1, count + 1):
+            ratio = i / count
+
+            position = start_position.copy()
+            position[0] = start_position[0] + ratio * (end_position[0] - start_position[0])
+
+            q = self._solve_cheese_position(position, q_previous, q6)
+
+            waypoints.append(q)
+            q_previous = q.copy()
+
+        return waypoints
+
+    def cheese_path(self, push_position):
         q_home = np.zeros(DOF)
-        q_start = self.point1_q if self.point1_q is not None else q_home
+        q_start = (
+            self.point1_q.copy()
+            if self.point1_q is not None
+            else q_home.copy()
+        )
 
+        # 숟가락 접근: 숟가락 위치에서 x축 -5cm
+        spoon_approach_position = SPOON_PICK_POSITION.copy()
+        spoon_approach_position[0] -= 0.05
+
+        # 숟가락 lift: 숟가락 위치에서 z축 +10cm
         spoon_lift_position = SPOON_PICK_POSITION.copy()
-        spoon_lift_position[2] += 0.1
+        spoon_lift_position[2] += 0.10
 
+        # 치즈 접근: push 위치에서 x축 -5cm
         cheese_approach_position = push_position.copy()
-        cheese_approach_position[2] += 0.05
+        cheese_approach_position[0] -= 0.05
 
-        q_spoon_pick = self._solve_cheese_position(
-            SPOON_PICK_POSITION, q_start, SPOON_Q6
-        ) ## 갈 위치, 이전 위티
-        q_spoon_pick = self._set_horizontal_q5(q_spoon_pick, q_start[4])
+        # 1. 숟가락 앞쪽 접근
+        q_spoon_approach = self._solve_cheese_position(spoon_approach_position, q_start, SPOON_Q6)
 
-        q_spoon_lift = self._solve_cheese_position(
-            spoon_lift_position, q_spoon_pick, SPOON_Q6
+        q_spoon_pick_path = self._solve_cheese_linear_x(
+        spoon_approach_position,
+        SPOON_PICK_POSITION, q_spoon_approach, SPOON_Q6,
+        step=0.01
         )
-        q_spoon_lift = self._set_horizontal_q5(q_spoon_lift, q_spoon_pick[4])
+        q_spoon_pick = q_spoon_pick_path[-1]
 
-        q_cheese_approach = self._solve_cheese_position(
-            cheese_approach_position, q_spoon_lift, SPOON_Q6
-        )
-        q_cheese_approach = self._set_horizontal_q5(q_cheese_approach, q_spoon_lift[4])
+        # 3. 숟가락 잡은 후 10cm lift
+        q_spoon_lift = self._solve_cheese_position(spoon_lift_position, q_spoon_pick, SPOON_Q6)
 
-        q_cheese_touch = self._solve_cheese_position(
-            push_position, q_cheese_approach, SPOON_Q6
-        )
-        q_cheese_touch = self._set_horizontal_q5(q_cheese_touch, q_cheese_approach[4])
+        # 4. 치즈 앞쪽 접근
+        q_cheese_approach = self._solve_cheese_position(cheese_approach_position, q_spoon_lift, SPOON_Q6)
 
+        # 5. 치즈 접촉
+        q_cheese_touch = self._solve_cheese_position(push_position, q_cheese_approach, SPOON_Q6)
+
+        # 6. 숟가락을 조금 더 안쪽으로 넣기
         q_cheese_insert = q_cheese_touch.copy()
         q_cheese_insert[4] += CHEESE_INSERT_Q5_DELTA
 
+        # 7. 치즈 펼치기
         q_cheese_spread = q_cheese_insert.copy()
         q_cheese_spread[1] += math.radians(15.0)
         q_cheese_spread[4] = self._horizontal_q5(
@@ -321,18 +360,38 @@ class PointPoseNode(Node):
             q_cheese_insert[4]
         )
 
+        # 8. 치즈 / 페페론치노 놓을 준비 자세
         q_cheese_place_ready = (
             CHEESE_PLACE_Q.copy()
             if self.current_ingredient == 'cheese'
             else PEPPERONCINO_PLACE_Q.copy()
         )
 
+        # 9. 6번 모터를 회전하여 내용물 떨어뜨리기
         q_cheese_release = q_cheese_place_ready.copy()
         q_cheese_release[5] += CHEESE_RELEASE_Q6
 
+        # 숟가락 내려놓은 뒤
+        # 숟가락 위치 -> x축 -5cm 직선 후퇴
+        q_spoon_retreat_path = self._solve_cheese_linear_x(
+            SPOON_PICK_POSITION,
+            spoon_approach_position,
+            q_spoon_pick,
+            SPOON_Q6,
+            step=0.01
+        )
+
         return [
-            ('motion', [q_spoon_pick,]),
+            # POINT1 -> 숟가락 x축 -5cm -> 숟가락 위치
+            ('motion', [
+                q_spoon_approach,
+                *q_spoon_pick_path,
+            ]),
+
+            # 숟가락 잡기
             ('gripper', 'grip_pick:spoon', q_spoon_pick),
+
+            # 숟가락 10cm lift -> 치즈 작업 -> 치즈 놓기
             ('motion', [
                 q_spoon_lift,
                 q_cheese_approach,
@@ -342,14 +401,26 @@ class PointPoseNode(Node):
                 q_cheese_place_ready,
                 q_cheese_release,
             ]),
+
+            # 치즈가 떨어질 때까지 대기
             ('delay', CHEESE_RELEASE_HOLD_TIME),
+
+            # 숟가락 위치 10cm 위 -> 숟가락 위치
             ('motion', [
-                q_cheese_place_ready,
                 q_spoon_lift,
                 q_spoon_pick,
             ]),
+
+            # 숟가락 내려놓기
             ('gripper', 'grip_place:spoon', q_spoon_pick),
-            ('motion', [q_home,]),
+
+            # 숟가락 위치에서 x축 -5cm 빠지기
+            ('motion', q_spoon_retreat_path),
+
+            # HOME 복귀
+            ('motion', [
+                q_home,
+            ]),
         ]
 
     def _send_next_cheese_command(self):
@@ -416,23 +487,67 @@ class PointPoseNode(Node):
         self._send_next_cheese_command()
 
     def _solve_cheese_position(self, position, previous_q, q6):
-        q = self._solve_point(position, previous_q)
-        q[5] = q6
-        return q
+        self.get_logger().info(f'Cheese IK 시작: target={position.tolist()}')
+
+        q1_target = self._target_q1(position, previous_q[0])
+        active_indices = np.array([1, 2, 3], dtype=int)
+        candidates = []
+
+        for seed in self._seeds(previous_q, q1_target):
+            def build_q(active_q):
+                q = previous_q.copy()
+                q[0] = q1_target
+                q[active_indices] = active_q
+                q[4] = self._horizontal_q5(q[1], q[2], q[3], previous_q[4])
+                q[5] = q6
+                return q
+
+            def residual(active_q):
+                q = build_q(active_q)
+                position_error = self._fk_matrix(q)[:3, 3] - position
+                joint_delta = wrapped_q_delta(q[active_indices], previous_q[active_indices])
+                return np.concatenate([100.0 * position_error, 0.02 * joint_delta])
+
+            result = least_squares(
+                residual,
+                seed[active_indices],
+                bounds=(JOINT_MIN[active_indices], JOINT_MAX[active_indices]),
+                max_nfev=300
+            )
+
+            q = build_q(result.x)
+            position_error = float(np.linalg.norm(self._fk_matrix(q)[:3, 3] - position))
+            joint_motion = float(np.linalg.norm(wrapped_q_delta(q, previous_q)))
+            candidates.append((position_error, joint_motion, q))
+
+        if not candidates:
+            self.get_logger().error(f'Cheese IK 후보 없음: target={position.tolist()}')
+            raise RuntimeError('Cheese IK 해를 찾지 못했습니당')
+
+        selected = min(candidates, key=lambda item: (item[0], item[1]))
+
+        self.get_logger().info(
+            f'Cheese IK 결과: target={position.tolist()}, '
+            f'error={selected[0]:.4f}m, '
+            f'q={np.rad2deg(selected[2]).round(1).tolist()}'
+        )
+
+        if selected[0] > 0.005:
+            raise RuntimeError(
+                f'Cheese IK 실패: target={position.tolist()}, error={selected[0]:.4f}m'
+            )
+
+        return selected[2]
 
     def _set_horizontal_q5(self, q, reference_q5):
-        q[4] = self._horizontal_q5(
-            q[1], q[2], q[3], reference_q5
-        )
+        q[4] = self._horizontal_q5(q[1], q[2], q[3], reference_q5)
         return q
 
     def _horizontal_q5(self, q2, q3, q4, reference_q5):
-        base_q5 = (
-            math.atan2(
+        base_q5 = math.atan2(
                 math.cos(q2),
                 math.sin(q2) * math.cos(q3)
             )- q4
-        )
 
         candidates = []
 
@@ -456,10 +571,7 @@ class PointPoseNode(Node):
         ))
 
     def _solve_grip_place_pose(self, target, previous_q, place_yaw):
-        q = self._solve_point(
-            target,
-            previous_q
-        )
+        q = self._solve_point(target, previous_q)
 
         ##### Place할 때 q1 회전량만큼 목표 yaw 보정 -> 하면서 안맞으면 부호 바꾸기  #####
         corrected_yaw = wrap_to_pi(float(place_yaw) + float(q[0]))
