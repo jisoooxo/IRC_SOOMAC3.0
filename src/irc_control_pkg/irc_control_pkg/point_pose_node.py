@@ -446,7 +446,7 @@ class PointPoseNode(Node):
             candidates.append((position_error, joint_motion, q))
 
         if not candidates:
-            raise RuntimeError('cp IK 자세 계산 실패')
+            raise RuntimeError('IK 자세 계산 실패')
 
         selected = min(candidates, key=lambda item: (item[0], item[1]))
 
@@ -942,9 +942,7 @@ class PointPoseNode(Node):
         )
 
         if selected[0] > 0.005:
-            raise RuntimeError(
-                f'IK 위치가 닿을 수 없는 곳에 있음: {selected[0]:.4f} m'
-            )  ## tolerance 검사
+            raise RuntimeError(f'IK가 닿을 수 없는 곳에 있음: {selected[0]:.4f} m')  ## tolerance 검사
 
         return selected[4] 
     
@@ -1021,7 +1019,7 @@ class PointPoseNode(Node):
             result.append(np.clip(seed, JOINT_MIN, JOINT_MAX))
         return result
 
-    def _candidates(self, chain, target, previous_q, q1):
+    def candidates(self, chain, target, previous_q, q1):
         result = []
 
         for seed in self.seeds(previous_q, q1):
@@ -1065,7 +1063,7 @@ class PointPoseNode(Node):
     def solve_point(self, target, previous_q):
         q1 = self.target_q1(target, previous_q[0])
         preferred = self.best(
-            self._candidates(
+            self.candidates(
                 self.preferred_chain,
                 target,
                 previous_q,
@@ -1077,7 +1075,7 @@ class PointPoseNode(Node):
             selected = preferred
         else:
             fallback = self.best(
-                self._candidates(
+                self.candidates(
                     self.fallback_chain,
                     target,
                     previous_q,
