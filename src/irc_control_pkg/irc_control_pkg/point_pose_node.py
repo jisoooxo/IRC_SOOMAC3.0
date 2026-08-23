@@ -16,7 +16,7 @@ DH_A = np.array([0.0, 0.0, 0.0, 0.220, 0.0, 0.0], dtype=float)
 DH_ALPHA = np.deg2rad([-90.0, 90.0, -90.0, 0.0, 90.0, 0.0])
 DH_THETA = np.deg2rad([0.0, 0.0, 0.0, -90.0, 90.0, 0.0])
 
-## 공압은 5번 모터 DH 계산에 회전행렬이 필요없기 때문에 DH를 따로 정의해줘야 됨
+## 공압은 5번 모터 DH 계산에 회전행렬이 필요없기 때문에 DH를 따로 정의
 PACK_DH_THETA = DH_THETA.copy()
 PACK_DH_THETA[4] = 0.0
 PACK_DH_ALPHA = DH_ALPHA.copy()
@@ -43,7 +43,7 @@ POINT1 = np.array([0.25, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 
 INITIAL_PACK_PICK_POINT = np.array([0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
 INITIAL_PACK_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
 
-FIXED_PLACE_POINTS = {
+PLACE_POINTS = {
     'noodle': {'position': np.array([0.012, 0.3, 0.07], dtype=float), 'yaw_deg': 90.0,},
     'sauce': {'position': np.array([0.03, 0.3, 0.07], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
     'mushroom': {'position': np.array([0.03, 0.3, 0.07], dtype=float), 'yaw_deg': 90.0,},
@@ -112,20 +112,20 @@ class PointPoseNode(Node):
     def __init__(self):
         super().__init__('point_pose_node')
 
-        self.preferred_chain = self._make_chain((1, 3, 4))
-        self.fallback_chain = self._make_chain((1, 2, 3, 4))
-        self.fk_chain = self._make_chain(tuple())
+        self.preferred_chain = self.make_chain((1, 3, 4))
+        self.fallback_chain = self.make_chain((1, 2, 3, 4))
+        self.fk_chain = self.make_chain(tuple())
 
         self.grip_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints', 10)
         self.pack_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints_pack', 10)
         self.joint_target_pub = self.create_publisher(Float64MultiArray, '/arm/joint_target', 10)
-        self.create_subscription(Int16, '/control/start', self._start_callback, 10)
-        self.create_subscription(String, '/control/plan', self._control_plan_callback, 10)
+        self.create_subscription(Int16, '/control/start', self.start_callback, 10)
+        self.create_subscription(String, '/control/plan', self.control_plan_callback, 10)
         self.control_ready_pub = self.create_publisher(Int16, '/control/ready', 10)
         self.control_home_pub = self.create_publisher(Int16, '/control/home', 10)
         self.control_motion_done = self.create_publisher(String, '/control/motion_done', 10)
-        self.create_subscription(String, '/vision/pick_pose', self._pick_callback, 10)
-        self.create_subscription(Empty, '/arm/motion_done', self._motion_done_callback, 10)
+        self.create_subscription(String, '/vision/pick_pose', self.pick_callback, 10)
+        self.create_subscription(Empty, '/arm/motion_done', self.motion_done_callback, 10)
 
         self.state = STATE_IDLE
         self.current_ingredient = None
@@ -139,32 +139,21 @@ class PointPoseNode(Node):
         self.cheese_command_index = 0
         self.cheese_delay_timer = None
 
-    def _start_callback(self, _msg):
+    def start_callback(self, _msg):
         if self.state != STATE_IDLE:
             return
 
         self.state = STATE_WAIT_INITIAL_DONE
+        self.plan_initial_pack()
 
-        try:
-            self._plan_initial_pack()
-
-        except RuntimeError:
-            self.state = STATE_IDLE
-
-    def _control_plan_callback(self, msg):
+    def control_plan_callback(self, msg):
         if self.state != STATE_IDLE:
             return
 
-        try:
-            data = json.loads(msg.data)
-
-            class_name = str(data['class']).strip()
-            repeat_count = int(data['repeat_count'])
-
-            mode = self._class_to_mode(class_name)
-
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
-            return
+        data = json.loads(msg.data)
+        class_name = str(data['class']).strip()
+        repeat_count = int(data['repeat_count'])
+        mode = self.select_mode(class_name)
 
         self.current_ingredient = class_name
         self.repeat_total = repeat_count
@@ -175,22 +164,18 @@ class PointPoseNode(Node):
         if mode == 'cp':
             self.state = STATE_WAIT_CP_DONE
 
-            try:
-                self.cheese_commands = self.cheese_path(class_name)
-                self.cheese_command_index = 0
-                self._send_next_cheese_command()
-            except RuntimeError:
-                self.pick_mode = None
-                self.state = STATE_IDLE
+            self.cheese_commands = self.cp_path(class_name)
+            self.cheese_command_index = 0
+            self.after_cp_path()
 
             return
 
-        self._move_to_point(POINT1, STATE_WAIT_POINT1_DONE)
+        self.move_point(POINT1, STATE_WAIT_POINT1_DONE)
 
-    def _motion_done_callback(self, _msg):
+    def motion_done_callback(self, _msg):
 
         if self.state == STATE_WAIT_CP_DONE:
-            self._send_next_cheese_command()
+            self.after_cp_path()
             return
 
         if self.state == STATE_WAIT_INITIAL_DONE:
@@ -211,18 +196,14 @@ class PointPoseNode(Node):
             return
 
         if self.state == STATE_WAIT_PICK_DONE:
-            try:
-                place_position, place_yaw = self._get_fixed_place_pose()
+            place_position, place_yaw = self.move_place_pose()
 
-                self.state = STATE_WAIT_PLACE_DONE
-                self._plan_place(
-                    place_position,
-                    place_yaw,
-                    self.pick_mode
-                )
-
-            except RuntimeError:
-                self.state = STATE_WAIT_PICK
+            self.state = STATE_WAIT_PLACE_DONE
+            self._plan_place(
+                place_position,
+                place_yaw,
+                self.pick_mode
+            )
 
             return
 
@@ -232,7 +213,7 @@ class PointPoseNode(Node):
             self.pick_lift_q = None
 
             if self.repeat_completed < self.repeat_total:
-                self._move_to_point(
+                self.move_point(
                     POINT1,
                     STATE_WAIT_POINT1_DONE
                 )
@@ -259,33 +240,20 @@ class PointPoseNode(Node):
             self.control_home_pub.publish(msg)
             return
 
-    def _pick_callback(self, msg):
+    def pick_callback(self, msg):
         if self.state != STATE_WAIT_PICK:
             return
 
-        try:
-            position, yaw, class_name = self._read_pick_message(msg)
-            mode = self._class_to_mode(class_name)
-        except ValueError:
-            return
+        position, yaw, class_name = self.vision_pick_pose(msg)
+        mode = self.select_mode(class_name)
 
         self.pick_mode = mode
         self.state = STATE_WAIT_PICK_DONE
 
-        try:
-            self._plan_pick(position, yaw, mode)
-        except RuntimeError:
-            self.pick_mode = None
-            self.state = STATE_WAIT_PICK
+        self.plan_pick(position, yaw, mode)
 
-    def _solve_cheese_linear_x(
-        self,
-        start_position,
-        end_position,
-        previous_q,
-        q6,
-        step=0.01
-    ):
+    ## 숟가락 잡을 때 x축으로 평행하게 접근 계산
+    def spoon_linear_x(self, start_position, end_position, previous_q, q6, step=0.01):
         distance = abs(end_position[0] - start_position[0])
         count = max(1, int(math.ceil(distance / step)))
 
@@ -298,14 +266,14 @@ class PointPoseNode(Node):
             position = start_position.copy()
             position[0] = start_position[0] + ratio * (end_position[0] - start_position[0])
 
-            q = self._solve_cheese_position(position, q_previous, q6)
+            q = self.solve_cp_path(position, q_previous, q6)
 
             waypoints.append(q)
             q_previous = q.copy()
 
         return waypoints
 
-    def cheese_path(self, class_name):
+    def cp_path(self, class_name):
         q_home = np.zeros(DOF)
         q_start = q_home.copy()
 
@@ -321,55 +289,43 @@ class PointPoseNode(Node):
         if class_name == 'cheese':
             q_cheese_approach = CHEESE_APPROACH_Q.copy()
 
-        elif class_name == 'pepperoncino':
-            q_cheese_approach = PEPPERONCINO_APPROACH_Q.copy()
+        else: q_cheese_approach = PEPPERONCINO_APPROACH_Q.copy()
 
-        # 치즈 푸기: 2번 모터 회전
+        # 치즈 푸기: 2번, 3번 모터 place 할 때랑 맞추기
         q_cheese_touch = q_cheese_approach.copy()
         q_cheese_touch[1] -= math.radians(30)
         q_cheese_touch[2] += math.radians(5)
 
         # 숟가락 접근
-        q_spoon_approach = self._solve_cheese_position(spoon_approach_position, q_start, SPOON_Q6)
+        q_spoon_approach = self.solve_cp_path(spoon_approach_position, q_start, SPOON_Q6)
 
-        q_spoon_pick_path = self._solve_cheese_linear_x(
-        spoon_approach_position,
-        SPOON_PICK_POSITION, q_spoon_approach, SPOON_Q6,
-        step=0.01
-        )
+        q_spoon_pick_path = self.spoon_linear_x(spoon_approach_position, SPOON_PICK_POSITION, q_spoon_approach, SPOON_Q6, step=0.01)
         q_spoon_pick = q_spoon_pick_path[-1]
 
         # 숟가락 잡은 후 10cm lift
-        q_spoon_lift = self._solve_cheese_position(spoon_lift_position, q_spoon_pick, SPOON_Q6)
+        q_spoon_lift = self.solve_cp_path(spoon_lift_position, q_spoon_pick, SPOON_Q6)
 
         # 치즈 / 페페론치노 place 준비
-        q_cheese_place_ready = (
-            CHEESE_PLACE_Q.copy()
-            if self.current_ingredient == 'cheese'
-            else PEPPERONCINO_PLACE_Q.copy()
-        )
+        if self.current_ingredient == 'cheese':
+            q_cheese_place_ready = CHEESE_PLACE_Q.copy()
+       
+        else: PEPPERONCINO_PLACE_Q.copy()
 
         # 치즈, 페퍼론치노 place
         q_cheese_release = q_cheese_place_ready.copy()
         q_cheese_release[5] += CHEESE_RELEASE_Q6
 
         # 숟가락 내려놓고 x축 -5cm 빠지기
-        q_spoon_retreat_path = self._solve_cheese_linear_x(
-            SPOON_PICK_POSITION,
-            spoon_approach_position,
-            q_spoon_pick,
-            SPOON_Q6,
-            step=0.01
-        )
+        q_spoon_retreat_path = self.spoon_linear_x(SPOON_PICK_POSITION, spoon_approach_position, q_spoon_pick, SPOON_Q6, step=0.01)
 
         return [
-            # POINT1 -> 숟가락 x축 -5cm -> 숟가락 위치
+            # POINT1 -> 숟가락 x축 -이동 -> 숟가락 위치
             ('motion', [q_spoon_approach, *q_spoon_pick_path]),
 
             # 숟가락 잡기
             ('gripper', 'grip_pick:spoon', q_spoon_pick),
 
-            # 숟가락 10cm lift -> 치즈 작업 -> 치즈 놓기
+            # 숟가락 lift -> 치즈 푸기 -> 치즈 놓기
             ('motion', [
                 q_spoon_lift,
                 q_cheese_approach,
@@ -381,28 +337,28 @@ class PointPoseNode(Node):
             # 치즈가 떨어질 때까지 대기
             ('delay', CHEESE_RELEASE_HOLD_TIME),
 
-            # 숟가락 위치 10cm 위 -> 숟가락 위치
+            # 숟가락 lift 위치 -> 숟가락 위치
             ('motion', [q_spoon_lift, q_spoon_pick]),
 
             # 숟가락 내려놓기
             ('gripper', 'grip_place:spoon', q_spoon_pick),
 
-            # 숟가락 위치에서 x축 -5cm 빠지기
+            # 숟가락 위치에서 x축 -로 빠지기
             ('motion', q_spoon_retreat_path),
 
             # HOME 복귀
             ('motion', [q_home]),
         ]
 
-    def _send_next_cheese_command(self):
+    def after_cp_path(self):
         if self.cheese_command_index >= len(self.cheese_commands):
             self.cheese_commands = []
             self.repeat_completed += 1
 
             if self.repeat_completed < self.repeat_total:
-                self.cheese_commands = self.cheese_path(self.current_ingredient)
+                self.cheese_commands = self.cp_path(self.current_ingredient)
                 self.cheese_command_index = 0
-                self._send_next_cheese_command()
+                self.after_cp_path()
             else:
                 self.current_ingredient = None
                 self.repeat_total = 0
@@ -446,34 +402,34 @@ class PointPoseNode(Node):
         if kind == 'delay':
             self.cheese_delay_timer = self.create_timer(
                 command[1],
-                self._cheese_delay_done
+                self.cheese_delay_done
             )
 
-    def _cheese_delay_done(self):
+    def cheese_delay_done(self):
         self.cheese_delay_timer.cancel()
         self.destroy_timer(self.cheese_delay_timer)
         self.cheese_delay_timer = None
-        self._send_next_cheese_command()
+        self.after_cp_path()
 
-    def _solve_cheese_position(self, position, previous_q, q6):
-        self.get_logger().info(f'Cheese IK 시작: target={position.tolist()}')
+    def solve_cp_path(self, position, previous_q, q6):
+        self.get_logger().info(f'cp 경로 시작: target={position.tolist()}')
 
-        q1_target = self._target_q1(position, previous_q[0])
+        q1_target = self.target_q1(position, previous_q[0])
         active_indices = np.array([1, 2, 3], dtype=int)
         candidates = []
 
-        for seed in self._seeds(previous_q, q1_target):
+        for seed in self.seeds(previous_q, q1_target):
             def build_q(active_q):
                 q = previous_q.copy()
                 q[0] = q1_target
                 q[active_indices] = active_q
-                q[4] = self._horizontal_q5(q[1], q[2], q[3], previous_q[4])
+                q[4] = self.horizontal_q5(q[1], q[2], q[3], previous_q[4])
                 q[5] = q6
                 return q
 
             def residual(active_q):
                 q = build_q(active_q)
-                position_error = self._fk_matrix(q)[:3, 3] - position
+                position_error = self.fk_matrix(q)[:3, 3] - position
                 joint_delta = wrapped_q_delta(q[active_indices], previous_q[active_indices])
                 return np.concatenate([100.0 * position_error, 0.02 * joint_delta])
 
@@ -485,34 +441,27 @@ class PointPoseNode(Node):
             )
 
             q = build_q(result.x)
-            position_error = float(np.linalg.norm(self._fk_matrix(q)[:3, 3] - position))
+            position_error = float(np.linalg.norm(self.fk_matrix(q)[:3, 3] - position))
             joint_motion = float(np.linalg.norm(wrapped_q_delta(q, previous_q)))
             candidates.append((position_error, joint_motion, q))
 
         if not candidates:
-            self.get_logger().error(f'Cheese IK 후보 없음: target={position.tolist()}')
-            raise RuntimeError('Cheese IK 해를 찾지 못했습니당')
+            raise RuntimeError('cp IK 자세 계산 실패')
 
         selected = min(candidates, key=lambda item: (item[0], item[1]))
 
         self.get_logger().info(
-            f'Cheese IK 결과: target={position.tolist()}, '
+            f'cp IK 결과: target={position.tolist()}, '
             f'error={selected[0]:.4f}m, '
             f'q={np.rad2deg(selected[2]).round(1).tolist()}'
         )
 
         if selected[0] > 0.005:
-            raise RuntimeError(
-                f'Cheese IK 실패: target={position.tolist()}, error={selected[0]:.4f}m'
-            )
+            return
 
         return selected[2]
 
-    def _set_horizontal_q5(self, q, reference_q5):
-        q[4] = self._horizontal_q5(q[1], q[2], q[3], reference_q5)
-        return q
-
-    def _horizontal_q5(self, q2, q3, q4, reference_q5):
+    def horizontal_q5(self, q2, q3, q4, reference_q5):
         base_q5 = math.atan2(
                 math.cos(q2),
                 math.sin(q2) * math.cos(q3)
@@ -539,14 +488,14 @@ class PointPoseNode(Node):
             key=lambda value: abs(value - reference_q5)
         ))
 
-    def _solve_grip_place_pose(self, target, previous_q, place_yaw):
-        q = self._solve_point(target, previous_q)
+    def solve_grip_place_pose(self, target, previous_q, place_yaw):
+        q = self.solve_point(target, previous_q)
 
         ##### Place할 때 q1 회전량만큼 목표 yaw 보정 -> 하면서 안맞으면 부호 바꾸기  #####
         corrected_yaw = wrap_to_pi(float(place_yaw) + float(q[0]))
 
         # 보정된 yaw를 기준으로 q6 계산
-        q[5] = self._target_q6(
+        q[5] = self.target_q6(
             corrected_yaw,
             q,
             previous_q[5]
@@ -554,9 +503,9 @@ class PointPoseNode(Node):
 
         return q
 
-    def _move_to_point(self, point, next_state):
+    def move_point(self, point, next_state):
         try:
-            q_target = self._solve_pose(
+            q_target = self.solve_pose(
                 point,
                 np.zeros(DOF, dtype=float),
                 math.pi,
@@ -574,7 +523,7 @@ class PointPoseNode(Node):
         self.joint_target_pub.publish(msg)
 
     @staticmethod
-    def _class_to_mode(class_name):
+    def select_mode(class_name):
         if class_name in {'cheese', 'pepperoncino'}:
             return 'cp'
         if class_name in {'noodle', 'mushroom', 'onion', 'crab', 'sausage'}:
@@ -583,22 +532,20 @@ class PointPoseNode(Node):
             return 'pack'
         raise ValueError(f'클래스 안맞음: {class_name}')
 
-    def _get_fixed_place_pose(self):
+    def move_place_pose(self):
         class_name = self.current_ingredient
-        place_key = (
-            'sauce'
-            if class_name in {'tomato', 'cream', 'oil'}
-            else class_name
-        )
+        if class_name in {'tomato', 'cream', 'oil'}:
+            place_key = 'sause'
+        else: place_key = class_name
 
-        place_pose = FIXED_PLACE_POINTS[place_key]
+        place_pose = PLACE_POINTS[place_key]
         position = place_pose['position']
         yaw = math.radians(float(place_pose['yaw_deg']))
 
         return position, yaw
 
     @staticmethod
-    def _read_pick_message(msg):
+    def vision_pick_pose(msg):
         try:
             data = json.loads(msg.data)
 
@@ -609,8 +556,7 @@ class PointPoseNode(Node):
             ], dtype=float)
 
             yaw_value = data.get('yaw', 180.0)
-            if yaw_value is None:
-                yaw_value = 180.0
+            if yaw_value is None: yaw_value = 180.0
 
             yaw = math.radians(float(yaw_value))
             class_name = str(data['class_name']).strip()
@@ -621,21 +567,18 @@ class PointPoseNode(Node):
         return position, yaw, class_name
 
     ## 공압 IK에서는 q3을 홈 각도(180)로 강제
-    def _solve_pack_pick_lift(self, position, previous_q):
-        """
-        용기 p2p와 공압 pick에서 사용하는 공압 pick/lift IK 계산 -> 5번 평행, 6번 고정
-        """
+    def solve_pack_pick_lift(self, position, previous_q):
         lift_position = position.copy()
         lift_position[2] += LIFT_HEIGHT
 
-        q_pick = self._solve_pose(
+        q_pick = self.solve_pose(
             position,
             previous_q,
             math.pi,
             'pack'
         )
 
-        q_lift = self._solve_pose(
+        q_lift = self.solve_pose(
             lift_position,
             q_pick,
             math.pi,
@@ -644,39 +587,33 @@ class PointPoseNode(Node):
 
         return q_pick, q_lift
 
-    def _plan_pick(self, position, yaw, mode):
+    def plan_pick(self, position, yaw, mode):
         approach = position.copy()
         approach[2] += LIFT_HEIGHT
 
-        q_motion_start = (
-            self.point1_q
-            if self.point1_q is not None
-            else np.zeros(DOF, dtype=float)
-        )
+        if self.point1_q is not None:
+            q_motion_start = self.point1_q
+        else: q_motion_start = np.zeros(DOF, dtype=float)
 
         if mode == 'pack':
-            q_pick, q_lift = self._solve_pack_pick_lift(
-                position,
-                q_motion_start
-            )
-
+            q_pick, q_lift = self.solve_pack_pick_lift(position, q_motion_start)
             q_approach = q_lift
         else:
-            q_approach = self._solve_pose(
+            q_approach = self.solve_pose(
                 approach,
                 q_motion_start,
                 yaw,
                 'grip'
             )
 
-            q_pick = self._solve_pose(
+            q_pick = self.solve_pose(
                 position,
                 q_approach,
                 yaw,
                 'grip'
             )
 
-            q_lift = self._solve_pose(
+            q_lift = self.solve_pose(
                 approach,
                 q_pick,
                 yaw,
@@ -685,13 +622,11 @@ class PointPoseNode(Node):
         # lift 된 지점에서 바로 place 시작
         self.pick_lift_q = q_lift
 
-        phase = (
-            'pack_pick'
-            if mode == 'pack'
-            else f'grip_pick:{self.current_ingredient}'
-        )
+        if mode == 'pack':
+            phase = 'pack_pick'
+        else: phase = f'grip_pick:{self.current_ingredient}'
 
-        self._publish_waypoints(
+        self.publish_waypoints(
             self.pack_plan_pub
             if mode == 'pack'
             else self.grip_plan_pub,
@@ -708,7 +643,7 @@ class PointPoseNode(Node):
 
         if mode == 'pack':
             # 용기 p2p의 q_p2_lift와 같은 순서
-            q_approach = self._solve_pose(
+            q_approach = self.solve_pose(
                 approach,
                 self.pick_lift_q,
                 math.pi,
@@ -716,7 +651,7 @@ class PointPoseNode(Node):
             )
 
             # 용기 p2p의 q_p2와 같은 순서
-            q_place = self._solve_pose(
+            q_place = self.solve_pose(
                 position,
                 q_approach,
                 math.pi,
@@ -726,25 +661,17 @@ class PointPoseNode(Node):
             q_lift = q_approach
 
         else:
-            q_approach = self._solve_grip_place_pose(
-                approach, self.pick_lift_q, yaw
-            )
+            q_approach = self.solve_grip_place_pose(approach, self.pick_lift_q, yaw)
 
-            q_place = self._solve_grip_place_pose(
-                position, q_approach, yaw
-            )
+            q_place = self.solve_grip_place_pose(position, q_approach, yaw)
 
-            q_lift = self._solve_grip_place_pose(
-                approach, q_place, yaw
-            )
+            q_lift = self.solve_grip_place_pose(approach, q_place, yaw)
 
-        phase = (
-            'pack_place'
-            if mode == 'pack'
-            else f'grip_place:{self.current_ingredient}'
-        )
+        if mode == 'pack':
+            phase = 'pack_place'
+        else: phase = f'grip_place:{self.current_ingredient}'
 
-        self._publish_waypoints(
+        self.publish_waypoints(
             self.pack_plan_pub
             if mode == 'pack'
             else self.grip_plan_pub,
@@ -755,7 +682,7 @@ class PointPoseNode(Node):
             q_lift
         )
 
-    def _plan_initial_pack(self):
+    def plan_initial_pack(self):
         p1 = INITIAL_PACK_PICK_POINT
         p2 = INITIAL_PACK_PLACE_POINT
 
@@ -763,24 +690,21 @@ class PointPoseNode(Node):
         p2_lift[2] = p1[2] + LIFT_HEIGHT
 
         q_home = np.zeros(DOF, dtype=float)
-        q_p1, q_p1_lift = self._solve_pack_pick_lift(
-            p1,
-            q_home
-        )
-        q_p2_lift = self._solve_pose(
+        q_p1, q_p1_lift = self.solve_pack_pick_lift(p1, q_home)
+        q_p2_lift = self.solve_pose(
             p2_lift,
             q_p1_lift,
             math.pi,
             'pack'
         )
-        q_p2 = self._solve_pose(
+        q_p2 = self.solve_pose(
             p2,
             q_p2_lift,
             math.pi,
             'pack'
         )
 
-        self._publish_waypoints(
+        self.publish_waypoints(
             self.pack_plan_pub,
             'pack_full',
             q_p1,
@@ -789,20 +713,20 @@ class PointPoseNode(Node):
             q_p2
         )
 
-    def _solve_pose(self, target, previous_q, yaw, mode):
+    def solve_pose(self, target, previous_q, yaw, mode):
         if mode == 'pack':
-            q = self._solve_pack_point(target, previous_q)
+            q = self.solve_pack_point(target, previous_q)
 
             q[2] = 0 # 고정
             q[5] = previous_q[5]
             return q
 
-        q = self._solve_point(target, previous_q)
-        q[5] = self._target_q6(yaw, q, previous_q[5])
+        q = self.solve_point(target, previous_q)
+        q[5] = self.target_q6(yaw, q, previous_q[5])
         return q
 
     @staticmethod
-    def _publish_waypoints(publisher, phase, q1, q2, q3, q4):
+    def publish_waypoints(publisher, phase, q1, q2, q3, q4):
         msg = Float64MultiArray()
         msg.layout.dim = [
             MultiArrayDimension(
@@ -814,7 +738,7 @@ class PointPoseNode(Node):
         msg.data = np.concatenate([q1, q2, q3, q4]).tolist()
         publisher.publish(msg)
 
-    def _make_chain(self, active_joints):
+    def make_chain(self, active_joints):
         links = [OriginLink()]
         active_mask = [False]
 
@@ -826,28 +750,25 @@ class PointPoseNode(Node):
                     a=DH_A[i],
                     alpha=DH_ALPHA[i],
                     theta=DH_THETA[i],
-                    bounds=(
-                        float(JOINT_MIN[i]),
-                        float(JOINT_MAX[i])
-                    )
+                    bounds=(float(JOINT_MIN[i]), float(JOINT_MAX[i]))
                 )
             )
             active_mask.append(i in active_joints)
 
         return Chain(
-            name='cp_dh',
+            name='irc_dh',
             links=links,
             active_links_mask=active_mask
         )
 
     @staticmethod
-    def _full_q(q):
+    def full_q(q):
         return np.concatenate(([0.0], q))
 
-    def _fk_matrix(self, q):
-        return self.fk_chain.forward_kinematics(self._full_q(q))
+    def fk_matrix(self, q):
+        return self.fk_chain.forward_kinematics(self.full_q(q))
 
-    def _fk_to_pack_joint5(self, q):
+    def pack_fk_q5(self, q):
         transform = np.eye(4, dtype=float)
         for i in range(5):
             transform = transform @ dh_matrix(
@@ -858,23 +779,20 @@ class PointPoseNode(Node):
             )
         return transform
 
-    def _pack_fk(self, q):
-        transform = self._fk_to_pack_joint5(q)
+    def pack_fk(self, q):
+        transform = self.pack_fk_q5(q)
 
         return (
             transform[:3, 3] + transform[:3, :3] @ np.array([0.080845, 0.09195, 0.0], dtype=float) ## 5번 모터에서 공압 끝까지 translation 적용
         )
 
     @staticmethod
-    def _pack_q5(q2, q3, q4, branch, reference_q5):
-        link_angle = math.atan2(
-            math.cos(q2),
-            math.sin(q2) * math.cos(q3)
-        )
+    def pack_q5(q2, q3, q4, branch, reference_q5):
+        link_angle = math.atan2(math.cos(q2), math.sin(q2) * math.cos(q3))
         raw_q5 = link_angle + branch - q4
         return float(reference_q5 + wrap_to_pi(raw_q5 - reference_q5))
 
-    def _pack_seeds(self, previous_q, q1):
+    def pack_seeds(self, previous_q, q1): ## 공압 자세 휴리스틱 후보 계산
         primary_postures = [
             (20.0, 20.0),
             (35.0, 30.0),
@@ -885,7 +803,7 @@ class PointPoseNode(Node):
 
         result = []
 
-        # q1을 목표 방향으로 변경한 seed를 우선으로 사용
+        # q1 = 목표 방향
         seed = previous_q.copy()
         seed[0] = q1
         seed[2] = 0
@@ -903,11 +821,11 @@ class PointPoseNode(Node):
             result.append(np.clip(seed, JOINT_MIN, JOINT_MAX))
         return result
 
-    def _solve_pack_point(self, target, previous_q):
-        q1_target = self._target_q1(target, previous_q[0])
+    def solve_pack_point(self, target, previous_q):
+        q1_target = self.target_q1(target, previous_q[0])
         candidates = []
 
-        for seed in self._pack_seeds(previous_q, q1_target):
+        for seed in self.pack_seeds(previous_q, q1_target):
             for branch in (0.0, math.pi):
 
                 def build_q(active_q):
@@ -916,7 +834,7 @@ class PointPoseNode(Node):
                     # 공압을 사용할 때 해 결정 변수는 q1, q2, q4만 사용
                     q[np.array([0, 1, 3], dtype=int)] = active_q
                     q[2] = 0 # 고정
-                    q[4] = self._pack_q5(
+                    q[4] = self.pack_q5(
                         q[1],
                         q[2],
                         q[3],
@@ -943,7 +861,7 @@ class PointPoseNode(Node):
                     continuity_weights = np.array([0.25, 1.0, 1.0])
 
                     return np.concatenate([
-                        PACK_POSITION_WEIGHT * (self._pack_fk(q) - target),
+                        PACK_POSITION_WEIGHT * (self.pack_fk(q) - target),
 
                         np.array([
                             PACK_Q5_LIMIT_WEIGHT * q5_low,
@@ -974,8 +892,8 @@ class PointPoseNode(Node):
                 if not (JOINT_MIN[4] <= q[4] <= JOINT_MAX[4]):
                     continue
 
-                position_error = float(np.linalg.norm(self._pack_fk(q) - target))
-                horizontal_error = abs(self._fk_to_pack_joint5(q)[2, 0])
+                position_error = float(np.linalg.norm(self.pack_fk(q) - target))
+                horizontal_error = abs(self.pack_fk_q5(q)[2, 0])
 
                 joint_delta = wrapped_q_delta(
                     q[np.array([0, 1, 3], dtype=int)],
@@ -1025,16 +943,16 @@ class PointPoseNode(Node):
 
         if selected[0] > 0.005:
             raise RuntimeError(
-                f'IK position이 닿을 수 없는 곳에 있습니당: {selected[0]:.4f} m'
+                f'IK 위치가 닿을 수 없는 곳에 있음: {selected[0]:.4f} m'
             )  ## tolerance 검사
 
         return selected[4] 
     
-    def _target_q6(self, target_yaw, q, previous_q6):
+    def target_q6(self, target_yaw, q, previous_q6):
         q_without_q6 = q.copy()
         q_without_q6[5] = 0.0
 
-        rotation = self._fk_matrix(q_without_q6)[:3, :3]
+        rotation = self.fk_matrix(q_without_q6)[:3, :3]
         current_yaw = math.atan2(
             float(rotation[1, 0]),
             float(rotation[0, 0])
@@ -1057,7 +975,7 @@ class PointPoseNode(Node):
 
         return float(valid[np.argmin(np.abs(valid - previous_q6))])
 
-    def _target_q1(self, target, previous_q1):
+    def target_q1(self, target, previous_q1):
         xy = target[:2]
 
         if np.linalg.norm(xy) < 1.0e-8:
@@ -1074,13 +992,12 @@ class PointPoseNode(Node):
         if valid.size == 0:
             return float(np.clip(
                 desired,
-                JOINT_MIN[0],
-                JOINT_MAX[0]
+                JOINT_MIN[0], JOINT_MAX[0]
             ))
 
         return float(valid[np.argmin(np.abs(valid - previous_q1))])
 
-    def _seeds(self, previous_q, q1):
+    def seeds(self, previous_q, q1): ## 일반 그리파 휴리스틱 자세 후보 계산
         postures = [
             (20.0, 20.0, 15.0),
             (35.0, 30.0, 25.0),
@@ -1107,17 +1024,17 @@ class PointPoseNode(Node):
     def _candidates(self, chain, target, previous_q, q1):
         result = []
 
-        for seed in self._seeds(previous_q, q1):
+        for seed in self.seeds(previous_q, q1):
             full = chain.inverse_kinematics(
                 target_position=target,
-                initial_position=self._full_q(seed),
+                initial_position=self.full_q(seed),
                 max_iter=100
             )
             q = np.clip(full[1:], JOINT_MIN, JOINT_MAX)
             q[0] = q1
             q[5] = previous_q[5]
 
-            error = float(np.linalg.norm(target - self._fk_matrix(q)[:3, 3]))
+            error = float(np.linalg.norm(target - self.fk_matrix(q)[:3, 3]))
             q3_use = abs(wrap_to_pi(q[2] - previous_q[2]))
             continuity = float(np.linalg.norm(
                 wrapped_q_delta(q[[1, 3, 4]], previous_q[[1, 3, 4]])
@@ -1134,7 +1051,7 @@ class PointPoseNode(Node):
         return result
 
     @staticmethod
-    def _best(candidates):
+    def best(candidates):
         min_error = min(item[0] for item in candidates)
         return min(
             (
@@ -1145,9 +1062,9 @@ class PointPoseNode(Node):
             key=lambda item: item[1]
         )
 
-    def _solve_point(self, target, previous_q):
-        q1 = self._target_q1(target, previous_q[0])
-        preferred = self._best(
+    def solve_point(self, target, previous_q):
+        q1 = self.target_q1(target, previous_q[0])
+        preferred = self.best(
             self._candidates(
                 self.preferred_chain,
                 target,
@@ -1159,7 +1076,7 @@ class PointPoseNode(Node):
         if preferred[0] <= 0.005:
             selected = preferred
         else:
-            fallback = self._best(
+            fallback = self.best(
                 self._candidates(
                     self.fallback_chain,
                     target,
@@ -1174,7 +1091,7 @@ class PointPoseNode(Node):
             )
 
         if selected[0] > 0.005:
-            raise RuntimeError(f'IK 위치가 닿을 수 없는 곳에 있습니당: {selected[0]:.4f} m')
+            raise RuntimeError(f'IK 위치가 닿을 수 없는 곳에 있음: {selected[0]:.4f} m')
         return selected[2]
 
 
