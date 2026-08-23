@@ -10,9 +10,9 @@ from rclpy.node import Node
 from std_msgs.msg import Empty, Float64MultiArray
 from sensor_msgs.msg import JointState
 
-PORT_XH = '/dev/ttyUSB2'
-PORT_XM = '/dev/ttyUSB0'
-ARDUINO_PORT = '/dev/ttyUSB1'
+PORT_XH = '/dev/ttyUSB0'
+PORT_XM = '/dev/ttyUSB1'
+ARDUINO_PORT = '/dev/ttyUSB2'
 
 XH_IDS = [1, 2, 3, 4]
 ARM_IDS = [1, 2, 3, 4, 5, 6]
