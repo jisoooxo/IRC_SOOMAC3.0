@@ -127,7 +127,7 @@ class HardwareMotionControlNode(Node):
             self.arduino.reset_output_buffer()
 
         except (serial.SerialException, OSError) as exc:
-            raise RuntimeError(f'Arduino 포트 연결 실패') from exc
+            raise RuntimeError(f'Arduino 연결 실패') from exc
 
     def grip_plan_callback(self, msg):
         self.waypoint_plan_callback(msg, GRIP_PHASES)
@@ -186,7 +186,7 @@ class HardwareMotionControlNode(Node):
 
     def joint_target_callback(self, msg):
         if self.motion_active:
-            self.get_logger().warning('로봇팔이 동작 중 입니당')
+            self.get_logger().warning('로봇팔이 동작 중')
             return
 
         if (len(msg.data) < DOF or len(msg.data) % DOF != 0):
@@ -253,20 +253,19 @@ class HardwareMotionControlNode(Node):
 
         if phase == 'grip_pick':
             # 현재 위치 -> pick approach : 3.0초
-            self.move(trajectory, q_start, w1, 3.0)
+            self.move(trajectory, q_start, w1, 2.0)
 
             # approach 위치에서 0.5초 대기
             self.hold(trajectory, w1, 0.5)
 
             # approach -> pick : 3.0초
-            self.move(trajectory, w1, w2, 3.0)
+            self.move(trajectory, w1, w2, 2.0)
 
-            # pick 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 gripper close
-            self.hold(trajectory, w2, 1.5, action=f'grip_close:{class_name}', action_delay=0.3)
+            # pick 위치에서 대기했다가 gripper close
+            self.hold(trajectory, w2, 0.5, action=f'grip_close:{class_name}', action_delay=0.3)
 
             # pick -> lift : 3.0초
-            self.move(trajectory, w2, w3, 3.0)
+            self.move(trajectory, w2, w3, 2.0)
 
             # lift 위치에서 0.5초 대기
             self.hold(trajectory, w3, 0.5)
@@ -278,101 +277,73 @@ class HardwareMotionControlNode(Node):
 
         if phase == 'grip_place':
             # 현재 위치 -> place approach : 3.0초
-            self.move(trajectory, q_start, w1, 3.0)
+            self.move(trajectory, q_start, w1, 2.0)
 
             # approach 위치에서 0.5초 대기
             self.hold(trajectory, w1, 0.5)
 
             # approach -> place : 3.0초
-            self.move(trajectory, w1, w2, 3.0)
+            self.move(trajectory, w1, w2, 2.0)
 
-            # place 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 gripper open
-            self.hold(trajectory, w2, 1.5, action='grip_open', action_delay=0.3)
+            # place 위치에서 대기했다가 gripper open
+            self.hold(trajectory, w2, 0.5, action='grip_open', action_delay=0.3)
 
             # place -> lift : 3.0초
-            self.move(trajectory, w2, w3, 3.0)
+            self.move(trajectory, w2, w3, 2.0)
 
             return trajectory
 
         if phase == 'pack_pick':
-            # 현재 위치 -> pick approach : 3.0초
-            self.move(trajectory, q_start, w1, 3.0, True)
+            self.move(trajectory, q_start, w1, 2.0, True)
 
-            # approach 위치에서 0.5초 대기
             self.hold(trajectory, w1, 0.5, pack_horizontal=True)
 
-            # approach -> pick : 3.0초
-            self.move(trajectory, w1, w2, 3.0, True)
+            self.move(trajectory, w1, w2, 2.0, True)
 
-            # pick 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 공압 ON
-            self.hold(trajectory, w2, 1.5, action='공압 on', action_delay=0.3, pack_horizontal=True)
+            self.hold(trajectory, w2, 0.5, action='공압 on', action_delay=0.3, pack_horizontal=True)
 
-            # pick -> lift : 3.0초
-            self.move(trajectory, w2, w3, 3.0, True)
+            self.move(trajectory, w2, w3, 2.0, True)
 
-            # lift 위치에서 0.5초 대기
             self.hold(trajectory, w3, 0.5, pack_horizontal=True)
 
-            # lift -> transfer : 6.0초
             self.move(trajectory, w3, w4, 6.0, True)
 
             return trajectory
 
         if phase == 'pack_place':
-            # 현재 위치 -> place approach : 3.0초
-            self.move(trajectory, q_start, w1, 3.0, True)
+            self.move(trajectory, q_start, w1, 2.0, True)
 
-            # approach 위치에서 0.5초 대기
             self.hold(trajectory, w1, 0.5, pack_horizontal=True)
 
-            # approach -> place : 3.0초
-            self.move(trajectory, w1, w2, 3.0, True)
+            self.move(trajectory, w1, w2, 2.0, True)
 
-            # place 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 공압 OFF
-            self.hold(trajectory, w2, 1.5, action='공압 off', action_delay=0.3, pack_horizontal=True)
+            self.hold(trajectory, w2, 0.5, action='공압 off', action_delay=0.3, pack_horizontal=True)
 
-            # place -> lift : 3.0초
-            self.move(trajectory, w2, w3, 3.0, True)
+            self.move(trajectory, w2, w3, 2.0, True)
 
             return trajectory
 
         if phase == 'pack_full': ## 초기 용기 옮기기는 공압 pick, place를 한 번에 수행
-            # 현재 위치 -> HOME : 3.0초
-            self.move(trajectory, q_start, self.q_home, 3.0)
+            self.move(trajectory, q_start, self.q_home, 2.0)
 
-            # HOME에서 1.0초 대기
             self.hold(trajectory, self.q_home, 1.0)
 
-            # HOME -> pick approach : 3.0초
-            self.move(trajectory, self.q_home, w2, 3.0, True)
+            self.move(trajectory, self.q_home, w2, 2.0, True)
 
-            # pick approach -> pick : 3.0초
-            self.move(trajectory, w2, w1, 3.0, True)
+            self.move(trajectory, w2, w1, 2.0, True)
 
-            # pick 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 공압 ON
-            self.hold(trajectory, w1, 1.5, action='공압 on', action_delay=0.3, pack_horizontal=True)
+            self.hold(trajectory, w1, 0.5, action='공압 on', action_delay=0.3, pack_horizontal=True)
 
-            # pick -> lift : 3.0초
-            self.move(trajectory, w1, w2, 3.0, True)
+            self.move(trajectory, w1, w2, 2.0, True)
 
-            # lift 위치에서 0.5초 대기
             self.hold(trajectory, w2, 0.5, pack_horizontal=True)
 
-            # pick lift -> place approach : 6.0초
             self.move(trajectory, w2, w3, 6.0, True)
 
-            # place approach -> place : 3.0초
-            self.move(trajectory, w3, w4, 3.0, True)
+            self.move(trajectory, w3, w4, 2.0, True)
 
-            # place 위치에서 1.5초 대기
-            # hold 시작 0.3초 후 공압 OFF
-            self.hold(trajectory, w4, 1.5, action='공압 off', action_delay=0.3, pack_horizontal=True)
+            self.hold(trajectory, w4, 0.5, action='공압 off', action_delay=0.3, pack_horizontal=True)
 
-            # place -> HOME : 4.0초
             self.move(trajectory, w4, self.q_home, 4.0)
 
             return trajectory
@@ -491,12 +462,7 @@ class HardwareMotionControlNode(Node):
                 )/ (previous_segment['duration'] + next_segment['duration'])
             )
 
-            # 방향이 반대로 바뀌는 관절은 중간점에서 정지해야 overshoot가 발생하지 않는다.
-            v_middle = np.where(
-                same_direction,
-                v_middle,
-                0.0
-            )
+            v_middle = np.where(same_direction, v_middle, 0.0)
 
             # 기존 max_q_step 기준 속도보다 커지지 않도록 제한
             max_velocity = MAX_Q_STEP / 0.05

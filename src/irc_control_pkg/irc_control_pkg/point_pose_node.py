@@ -105,11 +105,12 @@ class PointPoseNode(Node):
         self.pack_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints_pack', 10)
         self.joint_target_pub = self.create_publisher(Float64MultiArray, '/arm/joint_target', 10)
 
+        self.cp_done_pub = self.create_publisher(Int16, '/control/cp_done', 10)
         self.create_subscription(Int16, '/control/start', self.start_callback, 10)
         self.create_subscription(String, '/control/plan', self.control_plan_callback, 10)
         self.create_subscription(String, '/control/motion', self.control_motion_callback, 10)
         self.create_subscription(Int16, '/control/vision_request', self.vision_request_callback, 10)
-        self.create_subscription(Empty, '/cp/motion_done', self.cp_motion_done_callback, 10)
+        self.create_subscription(Empty, '/arm/motion_done', self.arm_motion_done_callback, 10)
 
         self.control_motion_done = self.create_publisher(String, '/control/motion_done', 10)
         self.create_subscription(String, '/vision/pick_pose', self.pick_callback, 10)
@@ -167,7 +168,10 @@ class PointPoseNode(Node):
             self.joint_target_pub.publish(msg)
             return
 
-    def cp_motion_done_callback(self, _msg):
+    def arm_motion_done_callback(self, _msg):
+        if not self.cheese_commands:
+            return
+
         self.after_cp_path()
 
     def pick_callback(self, msg):
@@ -301,6 +305,11 @@ class PointPoseNode(Node):
     def after_cp_path(self):
         if self.cheese_command_index >= len(self.cheese_commands):
             self.cheese_commands = []
+            self.cheese_command_index = 0
+
+            msg = Int16()
+            msg.data = 1
+            self.cp_done_pub.publish(msg)
             return
 
         command = self.cheese_commands[self.cheese_command_index]
