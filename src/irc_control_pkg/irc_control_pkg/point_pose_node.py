@@ -52,15 +52,6 @@ LIFT_HEIGHT = 0.15
 JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 360.0])
 
-STATE_IDLE = '시작!'
-STATE_WAIT_INITIAL_DONE = '용기 옮기기'
-STATE_WAIT_POINT1_DONE = '카메라-통 수직 위치 이동'
-STATE_WAIT_PICK = 'PICK 좌표값 송수신'
-STATE_WAIT_PICK_DONE = 'PICK'
-STATE_WAIT_PLACE_DONE = 'PLACE'
-STATE_WAIT_HOME_DONE = 'HOME 이동'
-STATE_WAIT_CP_DONE = '추가 재료 경로 이동'
-
 
 def wrap_to_pi(angle):
     return (float(angle) + math.pi) % (2.0 * math.pi) - math.pi
@@ -113,18 +104,17 @@ class PointPoseNode(Node):
         self.grip_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints', 10)
         self.pack_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints_pack', 10)
         self.joint_target_pub = self.create_publisher(Float64MultiArray, '/arm/joint_target', 10)
+
         self.create_subscription(Int16, '/control/start', self.start_callback, 10)
         self.create_subscription(String, '/control/plan', self.control_plan_callback, 10)
-        self.control_ready_pub = self.create_publisher(Int16, '/control/ready', 10)
-        self.control_home_pub = self.create_publisher(Int16, '/control/home', 10)
+        self.create_subscription(String, '/control/motion', self.control_motion_callback, 10)
+        self.create_subscription(Int16, '/control/vision_request', self.vision_request_callback, 10)
+        self.create_subscription(Empty, '/cp/motion_done', self.cp_motion_done_callback, 10)
+
         self.control_motion_done = self.create_publisher(String, '/control/motion_done', 10)
         self.create_subscription(String, '/vision/pick_pose', self.pick_callback, 10)
-        self.create_subscription(Empty, '/arm/motion_done', self.motion_done_callback, 10)
-
-        self.state = STATE_IDLE
+        
         self.current_ingredient = None
-        self.repeat_total = 0
-        self.repeat_completed = 0   
         self.pick_mode = None
         self.point1_q = None
         self.pick_lift_q = None
@@ -134,117 +124,63 @@ class PointPoseNode(Node):
         self.cheese_delay_timer = None
 
     def start_callback(self, _msg):
-        if self.state != STATE_IDLE:
-            return
-
-        self.state = STATE_WAIT_INITIAL_DONE
         self.plan_initial_pack()
 
     def control_plan_callback(self, msg):
-        if self.state != STATE_IDLE:
-            return
-
         data = json.loads(msg.data)
         class_name = str(data['class']).strip()
-        repeat_count = int(data['repeat_count'])
         mode = self.select_mode(class_name)
 
         self.current_ingredient = class_name
-        self.repeat_total = repeat_count
-        self.repeat_completed = 0
         self.pick_mode = mode
+        self.point1_q = None
         self.pick_lift_q = None
 
-        if mode == 'cp':
-            self.state = STATE_WAIT_CP_DONE
+    def control_motion_callback(self, msg):
+        command = msg.data.strip()
 
-            self.cheese_commands = self.cp_path(class_name)
+        if command == 'point1':
+            self.move_point(POINT1)
+            return
+
+        if command == 'place':
+            if self.current_ingredient is None:
+                return
+
+            mode = self.select_mode(self.current_ingredient)
+            position, yaw = self.move_place_pose()
+            self.plan_place(position, yaw, mode)
+            return
+
+        if command == 'cp':
+            if self.current_ingredient is None:
+                return
+
+            self.cheese_commands = self.cp_path(self.current_ingredient)
             self.cheese_command_index = 0
             self.after_cp_path()
-
             return
 
-        self.move_point(POINT1, STATE_WAIT_POINT1_DONE)
-
-    def motion_done_callback(self, _msg):
-
-        if self.state == STATE_WAIT_CP_DONE:
-            self.after_cp_path()
+        if command == 'home':
+            msg = Float64MultiArray()
+            msg.data = [0.0] * DOF
+            self.joint_target_pub.publish(msg)
             return
 
-        if self.state == STATE_WAIT_INITIAL_DONE:
-            self.state = STATE_IDLE
-
-            msg = Int16()
-            msg.data = 1
-            self.control_ready_pub.publish(msg)
-            return
-
-        if self.state == STATE_WAIT_POINT1_DONE:
-            self.state = STATE_WAIT_PICK
-
-            # LLM에서 전달받은 클래스 전송
-            msg = String()
-            msg.data = self.current_ingredient
-            self.control_motion_done.publish(msg)
-            return
-
-        if self.state == STATE_WAIT_PICK_DONE:
-            place_position, place_yaw = self.move_place_pose()
-
-            self.state = STATE_WAIT_PLACE_DONE
-            self.plan_place(
-                place_position,
-                place_yaw,
-                self.pick_mode
-            )
-
-            return
-
-        if self.state == STATE_WAIT_PLACE_DONE:
-            self.repeat_completed += 1
-            self.pick_mode = None
-            self.pick_lift_q = None
-
-            if self.repeat_completed < self.repeat_total:
-                self.move_point(
-                    POINT1,
-                    STATE_WAIT_POINT1_DONE
-                )
-            else:
-                msg = Float64MultiArray()
-                msg.data = [0.0] * DOF
-                self.state = STATE_WAIT_HOME_DONE
-                self.joint_target_pub.publish(msg)
-
-            return
-
-        if self.state == STATE_WAIT_HOME_DONE:
-            self.current_ingredient = None
-            self.repeat_total = 0
-            self.repeat_completed = 0
-            self.pick_mode = None
-            self.point1_q = None
-            self.pick_lift_q = None
-
-            self.state = STATE_IDLE
-
-            msg = Int16()
-            msg.data = 1
-            self.control_home_pub.publish(msg)
-            return
+    def cp_motion_done_callback(self, _msg):
+        self.after_cp_path()
 
     def pick_callback(self, msg):
-        if self.state != STATE_WAIT_PICK:
-            return
-
         position, yaw, class_name = self.vision_pick_pose(msg)
         mode = self.select_mode(class_name)
-
         self.pick_mode = mode
-        self.state = STATE_WAIT_PICK_DONE
 
         self.plan_pick(position, yaw, mode)
+
+    def vision_request_callback(self, _msg):
+        msg = String()
+        msg.data = self.current_ingredient
+        self.control_motion_done.publish(msg)
 
     ## 숟가락 잡을 때 x축으로 평행하게 접근 계산
     def spoon_linear_x(self, start_position, end_position, previous_q, q6, step=0.01):
@@ -315,10 +251,10 @@ class PointPoseNode(Node):
         q_spoon_lift = self.solve_cp_path(spoon_lift_position, q_spoon_pick, SPOON_Q6) 
 
         # 치즈 / 페페론치노 place 준비
-        if self.current_ingredient == 'cheese':
+        if class_name == 'cheese':
             q_cheese_place_ready = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
        
-        else: np.deg2rad([140.0, -90.0, -90.0, 130.0, 25.0, 0.0,]) # 페퍼론치노 place 위치
+        else: q_cheese_place_ready = np.deg2rad([140.0, -90.0, -90.0, 130.0, 25.0, 0.0,]) # 페퍼론치노 place 위치
 
         # 치즈, 페퍼론치노 place
         q_cheese_release_1 = q_cheese_place_ready.copy()
@@ -365,25 +301,6 @@ class PointPoseNode(Node):
     def after_cp_path(self):
         if self.cheese_command_index >= len(self.cheese_commands):
             self.cheese_commands = []
-            self.repeat_completed += 1
-
-            if self.repeat_completed < self.repeat_total:
-                self.cheese_commands = self.cp_path(self.current_ingredient)
-                self.cheese_command_index = 0
-                self.after_cp_path()
-            else:
-                self.current_ingredient = None
-                self.repeat_total = 0
-                self.repeat_completed = 0
-                self.pick_mode = None
-                self.point1_q = None
-                self.pick_lift_q = None
-                self.state = STATE_IDLE
-
-                msg = Int16()
-                msg.data = 1
-                self.control_home_pub.publish(msg)
-
             return
 
         command = self.cheese_commands[self.cheese_command_index]
@@ -507,31 +424,23 @@ class PointPoseNode(Node):
         corrected_yaw = wrap_to_pi(float(place_yaw) + float(q[0]))
 
         # 보정된 yaw를 기준으로 q6 계산
-        q[5] = self.target_q6(
-            corrected_yaw,
-            q,
-            previous_q[5]
-        )
+        q[5] = self.target_q6(corrected_yaw, q, previous_q[5])
 
         return q
 
-    def move_point(self, point, next_state):
-        try:
-            q_target = self.solve_pose(
-                point,
-                np.zeros(DOF, dtype=float),
-                math.pi,
-                'grip'
-            )
-        except RuntimeError:
-            return
+    def move_point(self, point):
+        q_target = self.solve_pose(
+            point,
+            np.zeros(DOF, dtype=float),
+            math.pi,
+            'grip'
+        )
 
         if np.allclose(point, POINT1):
             self.point1_q = q_target
 
         msg = Float64MultiArray()
         msg.data = q_target.tolist()
-        self.state = next_state
         self.joint_target_pub.publish(msg)
 
     @staticmethod
@@ -560,23 +469,19 @@ class PointPoseNode(Node):
 
     @staticmethod
     def vision_pick_pose(msg):
-        try:
-            data = json.loads(msg.data)
+        data = json.loads(msg.data)
 
-            position = np.array([
-                float(data['x']),
-                float(data['y']),
-                float(data['z']),
-            ], dtype=float)
+        position = np.array([
+            float(data['x']),
+            float(data['y']),
+            float(data['z']),
+        ], dtype=float)
 
-            yaw_value = data.get('yaw', 180.0)
-            if yaw_value is None: yaw_value = 180.0
+        yaw_value = data.get('yaw', 180.0)
+        if yaw_value is None: yaw_value = 180.0
 
-            yaw = math.radians(float(yaw_value))
-            class_name = str(data['class_name']).strip()
-
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
-            return
+        yaw = math.radians(float(yaw_value))
+        class_name = str(data['class_name']).strip()
 
         return position, yaw, class_name
 
@@ -815,7 +720,7 @@ class PointPoseNode(Node):
 
         result = []
 
-        # q1 = 목표 방향
+        # q1은 무조건 목표 방향으로
         seed = previous_q.copy()
         seed[0] = q1
         seed[2] = 0
