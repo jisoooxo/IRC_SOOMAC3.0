@@ -2,7 +2,6 @@
 
 import json
 import math
-from typing import Optional
 
 import numpy as np
 import rclpy
@@ -26,12 +25,7 @@ CAMERA_Y_OFFSET_M = -0.065561
 CAMERA_Z_OFFSET_M = -0.067205
 
 
-def dh_transform(
-    theta: float,
-    d: float,
-    a: float,
-    alpha: float,
-) -> np.ndarray:
+def dh_transform(theta, d, a, alpha):
     ct = math.cos(theta)
     st = math.sin(theta)
     ca = math.cos(alpha)
@@ -45,9 +39,7 @@ def dh_transform(
     ], dtype=float)
 
 
-def rotation_z_transform(
-    theta: float,
-) -> np.ndarray:
+def rotation_z_transform(theta):
     ct = math.cos(theta)
     st = math.sin(theta)
 
@@ -59,11 +51,7 @@ def rotation_z_transform(
     ], dtype=float)
 
 
-def translation_transform(
-    x: float,
-    y: float,
-    z: float,
-) -> np.ndarray:
+def translation_transform(x, y, z):
     return np.array([
         [1.0, 0.0, 0.0, x],
         [0.0, 1.0, 0.0, y],
@@ -83,9 +71,7 @@ class TransformNode(Node):
         )
 
         self.joint_names = list(
-            self.get_parameter(
-                'joint_names'
-            ).get_parameter_value().string_array_value
+            self.get_parameter('joint_names').get_parameter_value().string_array_value
         )
 
         self.pending_raw_pose = None
@@ -103,36 +89,13 @@ class TransformNode(Node):
             CAMERA_Z_OFFSET_M,
         )
 
-        self.joint_state_request_pub = self.create_publisher(
-            Empty,
-            '/arm/request_joint_state',
-            10,
-        )
+        self.joint_state_request_pub = self.create_publisher(Empty, '/arm/request_joint_state', 10,)
+        self.joint_state_sub = self.create_subscription(JointState, '/joint_states', self._joint_state_callback, 10,)
 
-        self.joint_state_sub = self.create_subscription(
-            JointState,
-            '/joint_states',
-            self._joint_state_callback,
-            10,
-        )
+        self.raw_pick_pose_sub = self.create_subscription(String, '/vision/raw_pick_pose', self._raw_pick_pose_callback, 10,)
+        self.pick_pose_pub = self.create_publisher(String, '/vision/pick_pose', 10,)
 
-        self.raw_pick_pose_sub = self.create_subscription(
-            String,
-            '/vision/raw_pick_pose',
-            self._raw_pick_pose_callback,
-            10,
-        )
-
-        self.pick_pose_pub = self.create_publisher(
-            String,
-            '/vision/pick_pose',
-            10,
-        )
-
-    def _joint_state_callback(
-        self,
-        msg: JointState,
-    ) -> None:
+    def _joint_state_callback(self, msg):
         if not self.waiting_for_joint_state:
             return
 
@@ -145,31 +108,17 @@ class TransformNode(Node):
         if q_actual is None:
             return
 
-        if not np.all(np.isfinite(q_actual)):
-            self.get_logger().error(
-                'Received non-finite joint positions.'
-            )
-            return
-
         raw_pose = self.pending_raw_pose
 
         self.pending_raw_pose = None
         self.waiting_for_joint_state = False
 
-        self._transform_and_publish(
-            raw_pose,
-            q_actual,
-        )
+        self._transform_and_publish(raw_pose, q_actual)
 
-    def _extract_joint_positions(
-        self,
-        msg: JointState,
-    ) -> Optional[np.ndarray]:
+    def _extract_joint_positions(self, msg):
         if msg.name:
             if len(msg.position) < len(msg.name):
-                self.get_logger().warning(
-                    'JointState position array is shorter than name array.'
-                )
+                self.get_logger().warning('JointState position array is shorter than name array')
                 return None
 
             index_by_name = {
@@ -192,29 +141,18 @@ class TransformNode(Node):
                 dtype=float,
             )
 
-        self.get_logger().warning(
-            f'JointState needs at least {DOF} positions received {len(msg.position)}.'
-        )
-
         return None
 
-    def _fk_base_ee(
-        self,
-        q: np.ndarray,
-    ) -> np.ndarray:
+    def _fk_base_ee(self, q):
         q = np.asarray(q, dtype=float)
 
         t_base_ee = np.eye(4, dtype=float)
 
         for index in range(DOF):
-            theta = float(
-                q[index]
-                + DH_THETA[index]
-            )
+            theta = float(q[index] + DH_THETA[index])
 
             t_base_ee = (
-                t_base_ee
-                @ dh_transform(
+                t_base_ee @ dh_transform(
                     theta,
                     float(DH_D[index]),
                     float(DH_A[index]),
@@ -224,28 +162,18 @@ class TransformNode(Node):
 
         return t_base_ee
 
-    def _raw_pick_pose_callback(
-        self,
-        msg: String,
-    ) -> None:
-        try:
-            fields = [
-                field.strip()
-                for field in msg.data.split(',')
-            ]
+    def _raw_pick_pose_callback(self, msg):
+        fields = [
+            field.strip()
+            for field in msg.data.split(',')
+        ]
 
-            class_name = fields[0]
+        class_name = fields[0]
 
-            x_camera = float(fields[1])
-            y_camera = float(fields[2])
-            z_camera = float(fields[3])
-            yaw_camera_deg = float(fields[4]) - 180
-
-        except (TypeError, ValueError) as exc:
-            self.get_logger().error(
-                f'Invalid /vision/raw_pick_pose CSV "{msg.data}": {exc}'
-            )
-            return
+        x_camera = float(fields[1])
+        y_camera = float(fields[2])
+        z_camera = float(fields[3])
+        yaw_camera_deg = float(fields[4]) - 180
 
         values = np.array([
             x_camera,
@@ -255,15 +183,11 @@ class TransformNode(Node):
         ], dtype=float)
 
         if not np.all(np.isfinite(values)):
-            self.get_logger().error(
-                'Raw camera pose contains non-finite values.'
-            )
+            self.get_logger().error('Raw camera pose contains non-finite values.')
             return
 
         if self.waiting_for_joint_state:
-            self.get_logger().warning(
-                'Already waiting for JointState'
-            )
+            self.get_logger().warning('Already waiting for JointState')
 
         self.pending_raw_pose = {
             'class_name': class_name,
@@ -275,19 +199,9 @@ class TransformNode(Node):
 
         self.waiting_for_joint_state = True
 
-        self.joint_state_request_pub.publish(
-            Empty()
-        )
+        self.joint_state_request_pub.publish(Empty())
 
-        self.get_logger().info(
-            'Raw vision pose received'
-        )
-
-    def _transform_and_publish(
-        self,
-        raw_pose,
-        q_actual: np.ndarray,
-    ) -> None:
+    def _transform_and_publish(self, raw_pose, q_actual):
         class_name = raw_pose['class_name']
         yaw_camera_deg = float(raw_pose['yaw'])
 
@@ -300,9 +214,7 @@ class TransformNode(Node):
         ], dtype=float)
 
         # Base -> EE
-        t_base_ee = self._fk_base_ee(
-            q_actual
-        )
+        t_base_ee = self._fk_base_ee(q_actual)
 
         p_base = (
             t_base_ee
@@ -335,9 +247,7 @@ class TransformNode(Node):
             ensure_ascii=False,
         )
 
-        self.pick_pose_pub.publish(
-            output_msg
-        )
+        self.pick_pose_pub.publish(output_msg)
 
         self.get_logger().info(
             '\n'

@@ -102,11 +102,11 @@ class HardwareMotionControlNode(Node):
         self.setup_arduino()
         self.command_pneumatic(enabled=False)
 
+        self.motion_done_pub = self.create_publisher(Empty, '/arm/motion_done', 10)
         self.create_subscription(Float64MultiArray, '/arm/joint_waypoints', self.grip_plan_callback, 10)
         self.create_subscription(Float64MultiArray, '/arm/joint_waypoints_pack', self.pack_plan_callback, 10)
         self.create_subscription(Float64MultiArray, '/arm/joint_target', self.joint_target_callback, 10)
 
-        self.motion_done_pub = self.create_publisher(Empty, '/arm/motion_done', 10)
         self.joint_state_pub = self.create_publisher(JointState, '/joint_states', 10)
         self.joint_state_request_sub = self.create_subscription(Empty, '/arm/request_joint_state', self.joint_state_request_callback, 10) # POINT1에서 실제 관절각을 요청받았을 때만 사용 -> 변환행렬 계산에 필요
         # 모션 제어 주기
@@ -186,7 +186,7 @@ class HardwareMotionControlNode(Node):
 
     def joint_target_callback(self, msg):
         if self.motion_active:
-            self.get_logger().warning('로봇팔이 동작 중')
+            self.get_logger().warning('로봇팔 동작 중')
             return
 
         if (len(msg.data) < DOF or len(msg.data) % DOF != 0):
@@ -252,43 +252,43 @@ class HardwareMotionControlNode(Node):
         trajectory = []
 
         if phase == 'grip_pick':
-            # 현재 위치 -> pick approach : 3.0초
+            # 현재 위치 -> pick approach
             self.move(trajectory, q_start, w1, 2.0)
 
-            # approach 위치에서 0.5초 대기
+            # approach 위치에서 대기
             self.hold(trajectory, w1, 0.5)
 
-            # approach -> pick : 3.0초
+            # approach -> pick
             self.move(trajectory, w1, w2, 2.0)
 
             # pick 위치에서 대기했다가 gripper close
             self.hold(trajectory, w2, 0.5, action=f'grip_close:{class_name}', action_delay=0.3)
 
-            # pick -> lift : 3.0초
+            # pick -> lift
             self.move(trajectory, w2, w3, 2.0)
 
-            # lift 위치에서 0.5초 대기
+            # lift 위치에서 대기
             self.hold(trajectory, w3, 0.5)
 
-            # lift -> transfer : 6.0초
+            # lift -> transfer
             self.move(trajectory, w3, w4, 6.0)
 
             return trajectory
 
         if phase == 'grip_place':
-            # 현재 위치 -> place approach : 3.0초
+            # 현재 위치 -> place approach
             self.move(trajectory, q_start, w1, 2.0)
 
-            # approach 위치에서 0.5초 대기
+            # approach 위치에서 대기
             self.hold(trajectory, w1, 0.5)
 
-            # approach -> place : 3.0초
+            # approach -> place
             self.move(trajectory, w1, w2, 2.0)
 
             # place 위치에서 대기했다가 gripper open
             self.hold(trajectory, w2, 0.5, action='grip_open', action_delay=0.3)
 
-            # place -> lift : 3.0초
+            # place -> lift
             self.move(trajectory, w2, w3, 2.0)
 
             return trajectory
@@ -585,18 +585,15 @@ class HardwareMotionControlNode(Node):
 
         q_ref = np.clip(
             q_ref,
-            JOINT_MIN,
-            JOINT_MAX
+            JOINT_MIN, JOINT_MAX
         )
         q_step = np.clip(
             wrapped_q_delta(q_ref, self.q_cmd_prev),
-            -MAX_Q_STEP,
-            MAX_Q_STEP
+            -MAX_Q_STEP, MAX_Q_STEP
         )
         q_cmd = np.clip(
             self.q_cmd_prev + q_step,
-            JOINT_MIN,
-            JOINT_MAX
+            JOINT_MIN, JOINT_MAX
         )
         self.q_cmd_prev = q_cmd
 
