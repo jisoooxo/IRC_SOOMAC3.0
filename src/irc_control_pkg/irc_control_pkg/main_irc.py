@@ -5,7 +5,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool, Int16, String
 
-SAUCE_CLASSES = {'cream', 'oil', 'tomato'}
+SAUCE_CLASSES = {'sauce_tomato', 'sauce_cream', 'sauce_oil'}
 
 # MAIN 상태
 STATE_WAIT_START = 'WAIT_START'

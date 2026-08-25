@@ -29,11 +29,6 @@ PACK_CONTINUITY_WEIGHT = 0.02
 SPOON_PICK_POSITION = np.array([0.4, 0.01, 0.265], dtype=float)
 
 SPOON_Q6 = math.radians(90.0)
-CHEESE_APPROACH_Q = np.deg2rad([-13.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
-PEPPERONCINO_APPROACH_Q = np.deg2rad([-8.0, 30.0, 0.0, 63.0, 85.0, 0.0]) # 페퍼론치노 접근 위치
-CHEESE_PLACE_Q = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
-PEPPERONCINO_PLACE_Q = np.deg2rad([140.0, -90.0, -90.0, 130.0, 25.0, 0.0,]) # 페퍼론치노 place 위치
-CHEESE_RELEASE_HOLD_TIME = 1.5
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 # [0.20, 0.00, 0.27] -> 카메라가 수직으로 보는 위치
@@ -286,16 +281,16 @@ class PointPoseNode(Node):
 
         # 치즈 접근 전 lift, 치즈 접근
         if class_name == 'cheese':
-            q_cheese_approach_lift = CHEESE_APPROACH_Q.copy()
+            q_cheese_approach_lift = np.deg2rad([-13.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
             q_cheese_approach_lift[3] += math.radians(-20)
             q_cheese_approach_lift[4] += math.radians(20)
-            q_cheese_approach = CHEESE_APPROACH_Q.copy()
+            q_cheese_approach = np.deg2rad([-13.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
 
         else: 
-            q_cheese_approach_lift = PEPPERONCINO_APPROACH_Q.copy()
+            q_cheese_approach_lift = np.deg2rad([-8.0, 30.0, 0.0, 63.0, 85.0, 0.0]) # 페퍼론치노 접근 위치
             q_cheese_approach_lift[3] += math.radians(-20)
             q_cheese_approach_lift[4] += math.radians(20)
-            q_cheese_approach = PEPPERONCINO_APPROACH_Q.copy()
+            q_cheese_approach = np.deg2rad([-8.0, 30.0, 0.0, 63.0, 85.0, 0.0]) # 페퍼론치노 접근 위치
 
         # 치즈 푸기: 2번, 3번 모터 place 할 때랑 맞추기
         q_cheese_touch_1 = q_cheese_approach.copy()
@@ -321,9 +316,9 @@ class PointPoseNode(Node):
 
         # 치즈 / 페페론치노 place 준비
         if self.current_ingredient == 'cheese':
-            q_cheese_place_ready = CHEESE_PLACE_Q.copy()
+            q_cheese_place_ready = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
        
-        else: PEPPERONCINO_PLACE_Q.copy()
+        else: np.deg2rad([140.0, -90.0, -90.0, 130.0, 25.0, 0.0,]) # 페퍼론치노 place 위치
 
         # 치즈, 페퍼론치노 place
         q_cheese_release_1 = q_cheese_place_ready.copy()
@@ -355,8 +350,7 @@ class PointPoseNode(Node):
                 q_cheese_release_2
             ]),
 
-            # 치즈가 떨어질 때까지 대기
-            ('delay', CHEESE_RELEASE_HOLD_TIME),
+            ('delay', 1.5), ## 치즈 놓고 나서 잠시 정지
 
             # 숟가락 lift 위치 -> 숟가락 위치
             ('motion', [q_spoon_lift, q_spoon_pick]),
@@ -364,10 +358,7 @@ class PointPoseNode(Node):
             # 숟가락 내려놓기
             ('gripper', 'grip_place:spoon', q_spoon_pick),
 
-            # 숟가락 위치에서 x축 -로 빠지기
             ('motion', q_spoon_retreat_path),
-
-            # HOME 복귀
             ('motion', [q_home]),
         ]
 
@@ -547,16 +538,18 @@ class PointPoseNode(Node):
     def select_mode(class_name):
         if class_name in {'cheese', 'pepperoncino'}:
             return 'cp'
-        if class_name in {'noodle', 'mushroom', 'onion', 'crab', 'sausage'}:
+        if class_name in {'noodle_thick', 'noodle_thin', 'mushroom', 'onion', 'crab', 'sausage'}:
             return 'grip'
-        if class_name in {'cover', 'tomato', 'cream', 'oil'}:
+        if class_name in {'cover', 'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
             return 'pack'
         raise ValueError(f'클래스 안맞음: {class_name}')
 
     def move_place_pose(self):
         class_name = self.current_ingredient
-        if class_name in {'tomato', 'cream', 'oil'}:
-            place_key = 'sause'
+        if class_name in {'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
+            place_key = 'sauce'
+        elif class_name in {'noodle_thick', 'noodle_thin'}:
+            place_key = 'noodle'
         else: place_key = class_name
 
         place_pose = PLACE_POINTS[place_key]
