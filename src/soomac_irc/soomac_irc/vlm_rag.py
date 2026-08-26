@@ -4,8 +4,8 @@ import numpy as np
 from PIL import Image
 
 
-DATA_ROOT = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco"
-CHROMA_PATH = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs"
+DATA_ROOT = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v11"
+CHROMA_PATH = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v11"
 
 
 class VlmRag:
@@ -54,6 +54,15 @@ class VlmRag:
 
         elif ingredient in ("얇은면", "넓적면"):
             name = "noodle"
+
+        elif ingredient == "크림":
+            name = "sauce_cream"
+
+        elif ingredient == "오일":
+            name = "sauce_oil"
+
+        elif ingredient == "토마토":
+            name = "sauce_tomato"
 
         else:
             return None
@@ -106,5 +115,4 @@ class VlmRag:
             image = image.convert("RGB")
 
             return image.crop((x, y, x+width, y+height))
-
 

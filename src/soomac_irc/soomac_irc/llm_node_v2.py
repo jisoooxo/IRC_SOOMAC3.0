@@ -90,6 +90,10 @@ class LLMNode(Node):
 
         self.robot_started = False # /llm/plan 발행 여부 ㅇㅇ
 
+        # 현재 active_task가 VLM PASS를 받았는지에 대한 여부
+        # PASS 뒤에 제어가 home으로 돌아와서 /llm/next=3를 보낼 때 까지 유지
+        self.vlm_confirmed = False
+
         self.awaiting_confirm = None
         # None : 확인 대기 아님
         # final_order : 뚜껑 닫기 전 마지막 확인 대기
@@ -149,7 +153,7 @@ class LLMNode(Node):
         self.status_pub = self.create_publisher(String, "/agent/status", 10) # 얘는 ui 한테
         self.stt_enable_pub = self.create_publisher(Bool, "/stt/enable", 10) # LLM -> STT, 손님 발화를 받아도 되는 구간인지
 
-        self.vlm_result_pub = self.create_publisher(String, "/vlm/result", 10) # vlm 판정 결과를 main에 전달
+        self.vlm_result_pub = self.create_publisher(String, "/vlm/confirm", 10) # vlm 판정 결과를 main에 전달
 
         # 구독 콜백이 받은 작업을 worker에 넘길 큐
         # 구독 직후 메시지가 들어와도 사용할 수 있도록 구독보다 먼저 만든다.
@@ -162,6 +166,8 @@ class LLMNode(Node):
         self.ui_start_sub = self.create_subscription(String, "/ui/start", self.ui_start_callback, 10)
         self.ui_reset_sub = self.create_subscription(String, "/ui/reset", self.ui_reset_callback, 10)
         self.next_trigger_sub = self.create_subscription(Int16, "/llm/next", self.trigger_callback, 10) # main이 제어 작업과 홈 복귀 완료 후 3을 발행
+        self.confirm_start_sub = self.create_subscription(Bool, "/llm/confirm_start", self.confirm_start_callback, 10)
+        # 이때부터 vlm 판단 시작 -> 이거 받으면 우리쪽에서 판단 후, /vlm/confim 토픽 보냄
 
         # llm_reset sub
 
@@ -196,6 +202,10 @@ class LLMNode(Node):
     def llm_reset_callback(self, msg: String):
         # main이 cover 작업 완료 후 보내는 최종 완료 신호
         self._jobs.put(("finish", msg.data))
+
+    def confirm_start_callback(self, msg: Bool):
+        # main이 제어의 VLM 촬영 준비 완료를 확인한 뒤 True를 보냄
+        self._jobs.put(("confirm", msg.data))
 
 
     def trigger_callback(self, msg: Int16):
@@ -249,6 +259,9 @@ class LLMNode(Node):
 
                         self.reply_pub.publish(String(data="포장이 끝났어요. 이용해 주셔서 감사합니다."))
                         self._finish_order()
+
+                elif mode == "confirm":
+                    self._process_vlm_confirm(data)
 
                 elif mode == "next":
                     self._process_next(data)
@@ -412,6 +425,7 @@ class LLMNode(Node):
         self.waiting_pick = False
         self.completed_tasks = []
         self.robot_started = False
+        self.vlm_confirmed = False
         self.awaiting_confirm = None
         self.order_finished = False
         self.ui_started = False
@@ -501,6 +515,7 @@ class LLMNode(Node):
 
 
         self.active_task = task # task를 현재 상태로 설정
+        self.vlm_confirmed = False
 
         plan_for_publish = {
             "class": TOPIC_CLASS_NAMES[task["class"]], # remapping해서 발행
@@ -600,11 +615,107 @@ class LLMNode(Node):
             f"{self._section_select_prompt()}"
         )
 
+    def _process_vlm_confirm(self, should_confirm: bool):
+        # /llm/confirm_start=True는 VLM 판정만 시작(응답은 뭐... 일단 하드코딩?)
+        # 작업 완료와 다음 단계 이동은 제어 home 뒤 /llm/next=3에서 처리
+
+        self.get_logger().info(f"/llm/confirm_start 수신 : {should_confirm}")
+
+        if not should_confirm:
+            self.get_logger().warning("confirm_start가 False라서 VLM 판정을 무시함")
+            return
+
+        if self.active_task is None:
+            self.get_logger().warning("판정할 active_task가 없어서 confirm_start를 무시함")
+            return
+
+        if self.section == "lid":
+            self.get_logger().warning("cover 작업은 VLM으로 판정하지 않음")
+            return
+
+        # VLM OFF 디버깅 모드는 판정을 생략하고 성공으로 통과
+        if not ENABLE_VLM:
+            self.vlm_result_pub.publish(String(data="success"))
+            self.vlm_confirmed = True
+            self.get_logger().info("VLM OFF 우회 결과 발행 : success")
+            return
+
+        if self.call_vlm is None:
+            self.get_logger().warning("VLM 함수가 준비되지 않아 판정할 수 없음")
+            return
+
+        self.vlm_confirmed = False
+
+        # 섹션별 판정 모드는 지금 실행 중인 재료 하나만 확인
+        if SECTION_SEQUENCE_VLM:
+            vlm_tasks = [self.active_task.copy()]
+
+        # 마지막 판정 모드는 소스 단계에서 담은 식재료 전체를 확인
+        elif self.section == "sauce":
+            vlm_tasks = []
+
+            for section_name in SECTION_ORDER:
+                if section_name == "lid":
+                    continue
+
+                section_tasks = build_section_plan(self.order, section_name)
+                vlm_tasks.extend(section_tasks)
+
+        else:
+            self.get_logger().warning("현재 단계는 마지막 VLM 판정 시점이 아님")
+            return
+
+        failed_tasks, vlm_results = self._judge_latest_tasks(vlm_tasks)
+
+        if failed_tasks:
+            failed_names = []
+
+            for task in failed_tasks:
+                failed_names.append(task["class"])
+
+                fail_for_publish = {
+                    "result": "fail",
+                    "class": TOPIC_CLASS_NAMES[task["class"]],
+                }
+
+                self.vlm_result_pub.publish(
+                    String(data=json.dumps(fail_for_publish, ensure_ascii=False))
+                )
+
+                self.get_logger().info(f"VLM 결과 발행 : {fail_for_publish}")
+
+            reply = (
+                f"{', '.join(failed_names)} 위치를 확인하지 못했어요. "
+                "해당 작업을 다시 확인할게요."
+            )
+
+            self.reply_pub.publish(String(data=reply))
+            return
+
+        # 성공할 때는 class 없이 success 문자열만 보낸다.
+        self.vlm_result_pub.publish(String(data="success"))
+        self.get_logger().info("VLM 결과 발행 : success")
+
+        self.vlm_confirmed = True
+
+        checked_names = []
+
+        for result in vlm_results:
+            checked_names.append(result["class"])
+
+        reply = f"{', '.join(checked_names)} 위치를 확인했어요. 로봇 작업을 마무리할게요."
+        self.reply_pub.publish(String(data=reply))
+
+
+        """
+        fail → active_task 유지, /llm/plan 재발행 안 함
+        pass → vlm_confirmed=True, active_task 유지
+        """
+
 
     def _process_next(self, result_code: int):
-        # 현재 재료 작업과 홈 복귀를 마치면 /llm/next에 3을 보냄(vlm 전에)
-        # VLM은 현재 작업 성공 시 /llm/next를 발행
-        # 성공한 작업은 active_task에서 빼고 다음 작업을 확인
+        # 첫 /llm/next=3은 주문 대화를 시작한다.
+        # 이후 /llm/next=3은 VLM PASS와 제어 home 복귀가 끝난 작업을 완료한다.
 
         self.get_logger().info(f"/llm/next 수신 : {result_code}")
 
@@ -631,20 +742,26 @@ class LLMNode(Node):
             self.get_logger().warning("cover 작업 완료를 위해 /llm/reset을 기다리는 중")
             return
 
+        needs_vlm_confirm = ENABLE_VLM and (
+            SECTION_SEQUENCE_VLM or self.section == "sauce"
+        )
+
+        if needs_vlm_confirm and not self.vlm_confirmed:
+            self.get_logger().warning("VLM PASS 전이라 /llm/next를 무시함")
+            return
+
         completed_task = self.active_task
         self.active_task = None
+        self.vlm_confirmed = False
+
+        if completed_task not in self.completed_tasks:
+            self.completed_tasks.append(completed_task.copy())
 
         self.get_logger().info(f"현재 하고 있는 작업 완료 : {completed_task}")
 
 
 
         if self.task_queue:
-
-            if not ENABLE_VLM or not SECTION_SEQUENCE_VLM:
-
-                if completed_task not in self.completed_tasks:
-                    self.completed_tasks.append(completed_task.copy())
-
             self._publish_next_task()
             return
 
@@ -653,82 +770,6 @@ class LLMNode(Node):
 
         if not self.waiting_pick:
             return
-
-        vlm_tasks = []
-
-        # 섹션 마다 판정하는 경우엔 현재 섹션 작업만 확인한다
-
-        # 식재료 작업만 VLM으로 확인하고 cover는 제어 완료 신호만 기다린다.
-        if ENABLE_VLM and SECTION_SEQUENCE_VLM and self.section != "lid":
-            vlm_tasks = build_section_plan(self.order, self.section)
-
-
-        # 마지막에 판정하면 소스 작업 끝났을 때 전체 주문 확인
-
-        elif ENABLE_VLM and not SECTION_SEQUENCE_VLM and self.section == "sauce":
-
-            for section_name in SECTION_ORDER:
-                section_tasks = build_section_plan(self.order, section_name)
-                vlm_tasks.extend(section_tasks)
-
-        if vlm_tasks:
-            failed_tasks, vlm_results = self._judge_latest_tasks(vlm_tasks)
-
-            # VLM return 결과를 main에 재료별로 발행
-
-            for result in vlm_results:
-                result_for_publish = {
-                    "class": TOPIC_CLASS_NAMES[result["class"]],
-                    "repeat_count": result["repeat_count"],
-                    "success": result["predict"] == "pass",
-                    "status": result["predict"],
-                }
-
-
-                self.vlm_result_pub.publish(
-                    String(data=json.dumps(result_for_publish, ensure_ascii=False))
-                )
-
-                self.get_logger().info(f"VLM 결과 발행 : {result_for_publish}")
-
-            # 실패 작업만 다시 plan으로 ㅇㅇ
-
-            if failed_tasks:
-                failed_names = []
-
-                for task in failed_tasks:
-                    failed_names.append(task["class"])
-
-                completed_after_vlm = []
-
-                for task in self.completed_tasks:
-
-                    if task["class"] not in failed_names:
-                        completed_after_vlm.append(task)
-
-                self.completed_tasks = completed_after_vlm
-                self.task_queue.extend(failed_tasks)
-                self._publish_next_task()
-
-
-                reply = (f"{', '.join(failed_names)} 위치를 확인하지 못했어요. "
-                         "해당 작업을 다시 시도할게요.")
-
-                self.reply_pub.publish(String(data=reply))
-                return
-
-
-        # 전부 PASS일 때만 완료 목록에 추가
-
-            for task in vlm_tasks:
-
-                if task not in self.completed_tasks:
-                    self.completed_tasks.append(task.copy())
-
-            # VLM을 사용하지 않는 기존 모드
-
-        elif completed_task not in self.completed_tasks:
-            self.completed_tasks.append(completed_task.copy())
 
         self.get_logger().info(f"총 작업 완료 : {self.completed_tasks}")
 
@@ -740,6 +781,7 @@ class LLMNode(Node):
             reply = f"{completed_task['class']} 담기가 끝났어요."
 
         reply = self._commit_section(reply)
+
 
         # 다음 선택 단계나 최종 포장 확인을 물었을 때만 다시 듣는다.
         if not self.waiting_pick and not self.order_finished:
