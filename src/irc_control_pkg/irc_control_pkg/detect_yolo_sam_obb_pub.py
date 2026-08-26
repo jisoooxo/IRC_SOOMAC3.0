@@ -30,13 +30,12 @@ TARGET_CLASSES = ["sausage", "crab", "noodle_thick", "noodle_thin", "mushroom", 
 
 # mushroom / cheese / onion 은 크기검증(SAM2) 없이 OBB 중앙 패치 min depth로 바로 발행하는 클래스
 SIMPLE_DEPTH_CLASSES = ["mushroom", "cheese", "onion", "sauce_cream", "sauce_oil","sauce_tomato"]
-# 치즈랑 페퍼론치노는 
+
 
 # 프레임 히스토리 개수 (몇 프레임 보고 나서 최종 발행 결정할지)
 NUM_HISTORY_FRAMES = 10
 
-# vision_start_callback(구독 콜백)과 main() 루프가 같은 객체를 참조해야 해서 모듈 전역으로 선언.
-# (원래는 main() 안에서만 지역변수로 선언돼 있어서 콜백에서 값을 바꿔도 main() 루프엔 반영 안 되는 버그가 있었음)
+
 current_target = None
 detection_history = {cls: deque(maxlen=NUM_HISTORY_FRAMES) for cls in TARGET_CLASSES}
 
@@ -592,9 +591,7 @@ def draw_last_published(overlay, last_published):
 
 
 def publish_and_show(overlay, img_pub, bridge, node):
-    '''overlay(BGR np array)를 sensor_msgs/Image로 퍼블리시하고 imshow도 같이 처리
-    -> 여러 분기(cover / simple_depth / 일반 클래스)에서 반복되던
-    "cv2.imshow + waitKey" 패턴에 퍼블리시 한 줄만 얹어서 통일한 헬퍼'''
+
     img_msg = bridge.cv2_to_imgmsg(overlay, encoding="bgr8")
     img_msg.header.stamp = node.get_clock().now().to_msg()
     img_pub.publish(img_msg)
@@ -609,10 +606,8 @@ def main(args=None):
     rclpy.init()
     node = Node("mealkit_pub")
     pub = node.create_publisher(String, '/vision/raw_pick_pose', 10)
-    sub = node.create_subscription(String, '/control/motion_done', vision_start_callback, 10) # 나중에 추가
+    sub = node.create_subscription(String, '/control/motion_done', vision_start_callback, 10) 
 
-    # 오버레이(디버그용 시각화 프레임) 이미지 토픽 퍼블리셔
-    # QoS는 sensor_data 프로파일(BEST_EFFORT, depth=1) 사용 -> 구독 쪽이 느려도 큐 안 쌓이게
     img_pub = node.create_publisher(Image, '/vision/overlay_image', qos_profile_sensor_data)
     bridge = CvBridge()
 
@@ -621,7 +616,7 @@ def main(args=None):
     depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
     prev_centers = {cls: [] for cls in TARGET_CLASSES}
 
-    num = NUM_HISTORY_FRAMES # 몇 프레임 보고나서 결정할건지 (콜백과 공유하는 전역 detection_history 기준)
+    num = NUM_HISTORY_FRAMES # 몇 프레임 보고나서 결정할건지
     last_published = None
 
     try:
@@ -643,8 +638,7 @@ def main(args=None):
 
             overlay = frame_full.copy()
 
-            # cover(뚜껑): YOLO 안 쓰고 색상+depth 기반 별도 모듈로 바로 처리.
-            # yolo_model 추론 전에 걸러서 뚜껑 검출 중엔 YOLO 연산 자체를 안 태움.
+            # cover
             if current_target == "cover":
                 cover = get_best_cover(frame_full, depth_full, depth_scale, intrinsics)
                 if cover is None:
@@ -781,7 +775,6 @@ def main(args=None):
                 if cls_name != current_target:   # current_target만 처리
                     continue
 
-                # noodle_thick/noodle_thin은 YOLO에서는 "noodle" 하나로만 검출되므로,
                 # 클래스 매칭은 noodle로, CROP_RATIOS 등 나머지 조회는 cls_name(thick/thin)으로
                 yolo_target = "noodle" if cls_name in ("noodle_thick", "noodle_thin") else cls_name
                 depth_masked, shrunk_poly = get_obb_masked_depth(
