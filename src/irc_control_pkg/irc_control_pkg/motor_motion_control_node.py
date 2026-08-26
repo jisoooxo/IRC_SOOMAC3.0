@@ -10,8 +10,8 @@ from rclpy.node import Node
 from std_msgs.msg import Empty, Float64MultiArray
 from sensor_msgs.msg import JointState
 
-PORT_XH = '/dev/ttyUSB0'
-PORT_XM = '/dev/ttyUSB1'
+PORT_XH = '/dev/ttyUSB1'
+PORT_XM = '/dev/ttyUSB0'
 ARDUINO_PORT = '/dev/ttyUSB2'
 
 XH_IDS = [1, 2, 3, 4]
@@ -58,7 +58,7 @@ JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 360.0])
 MAX_Q_STEP = math.radians(2.0)
 
-GRIP_PHASES = {'grip_pick', 'grip_place'}
+GRIP_PHASES = {'grip_pick', 'grip_place', 'spoon_pick', 'spoon_place'}
 PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full'}
 
 
@@ -251,6 +251,26 @@ class HardwareMotionControlNode(Node):
         w1, w2, w3, w4 = [waypoint.copy() for waypoint in waypoints]
         trajectory = []
 
+        if phase == 'spoon_pick':
+            self.hold(
+                trajectory,
+                q_start,
+                1.0,
+                action='grip_close:spoon',
+                action_delay=0.3
+            )
+            return trajectory
+
+        if phase == 'spoon_place':
+            self.hold(
+                trajectory,
+                q_start,
+                1.0,
+                action='grip_open',
+                action_delay=0.3
+            )
+            return trajectory
+
         if phase == 'grip_pick':
             # 현재 위치 -> pick approach
             self.move(trajectory, q_start, w1, 2.0)
@@ -262,7 +282,13 @@ class HardwareMotionControlNode(Node):
             self.move(trajectory, w1, w2, 2.0)
 
             # pick 위치에서 대기했다가 gripper close
-            self.hold(trajectory, w2, 0.5, action=f'grip_close:{class_name}', action_delay=0.3)
+            self.hold(
+                trajectory,
+                w2,
+                2.0,
+                action=f'grip_close:{class_name}',
+                action_delay=0.3
+            )
 
             # pick -> lift
             self.move(trajectory, w2, w3, 2.0)
@@ -286,7 +312,13 @@ class HardwareMotionControlNode(Node):
             self.move(trajectory, w1, w2, 2.0)
 
             # place 위치에서 대기했다가 gripper open
-            self.hold(trajectory, w2, 0.5, action='grip_open', action_delay=0.3)
+            self.hold(
+                trajectory,
+                w2,
+                2.0,
+                action='grip_open',
+                action_delay=0.3
+            )
 
             # place -> lift
             self.move(trajectory, w2, w3, 2.0)
@@ -295,15 +327,19 @@ class HardwareMotionControlNode(Node):
 
         if phase == 'pack_pick':
             self.move(trajectory, q_start, w1, 2.0, True)
-
             self.hold(trajectory, w1, 0.5, pack_horizontal=True)
 
             self.move(trajectory, w1, w2, 2.0, True)
-
-            self.hold(trajectory, w2, 0.5, action='공압 on', action_delay=0.3, pack_horizontal=True)
+            self.hold(
+                trajectory,
+                w2,
+                2.0,
+                action='공압 on',
+                action_delay=0.3,
+                pack_horizontal=True
+            )
 
             self.move(trajectory, w2, w3, 2.0, True)
-
             self.hold(trajectory, w3, 0.5, pack_horizontal=True)
 
             self.move(trajectory, w3, w4, 6.0, True)
@@ -312,37 +348,52 @@ class HardwareMotionControlNode(Node):
 
         if phase == 'pack_place':
             self.move(trajectory, q_start, w1, 2.0, True)
-
             self.hold(trajectory, w1, 0.5, pack_horizontal=True)
 
             self.move(trajectory, w1, w2, 2.0, True)
-
-            self.hold(trajectory, w2, 0.5, action='공압 off', action_delay=0.3, pack_horizontal=True)
+            self.hold(
+                trajectory,
+                w2,
+                2.0,
+                action='공압 off',
+                action_delay=0.3,
+                pack_horizontal=True
+            )
 
             self.move(trajectory, w2, w3, 2.0, True)
 
             return trajectory
 
-        if phase == 'pack_full': ## 초기 용기 옮기기는 공압 pick, place를 한 번에 수행
+        if phase == 'pack_full':
             self.move(trajectory, q_start, self.q_home, 2.0)
-
             self.hold(trajectory, self.q_home, 1.0)
 
             self.move(trajectory, self.q_home, w2, 2.0, True)
-
             self.move(trajectory, w2, w1, 2.0, True)
 
-            self.hold(trajectory, w1, 0.5, action='공압 on', action_delay=0.3, pack_horizontal=True)
+            self.hold(
+                trajectory,
+                w1,
+                1.5,
+                action='공압 on',
+                action_delay=0.3,
+                pack_horizontal=True
+            )
 
             self.move(trajectory, w1, w2, 2.0, True)
-
             self.hold(trajectory, w2, 0.5, pack_horizontal=True)
 
             self.move(trajectory, w2, w3, 6.0, True)
-
             self.move(trajectory, w3, w4, 2.0, True)
 
-            self.hold(trajectory, w4, 0.5, action='공압 off', action_delay=0.3, pack_horizontal=True)
+            self.hold(
+                trajectory,
+                w4,
+                1.5,
+                action='공압 off',
+                action_delay=0.3,
+                pack_horizontal=True
+            )
 
             self.move(trajectory, w4, self.q_home, 4.0)
 
@@ -358,11 +409,7 @@ class HardwareMotionControlNode(Node):
         minimum_duration,
         pack_horizontal=False
     ):
-        duration = self._safe_move_duration(
-            q_start,
-            q_goal,
-            minimum_duration
-        )
+        duration = self._safe_move_duration(q_start, q_goal, minimum_duration)
         start_time = (
             trajectory[-1]['end_time']
             if trajectory
@@ -623,9 +670,7 @@ class HardwareMotionControlNode(Node):
         candidates = []
         for branch in (0.0, math.pi):
             for turn in (
-                -2.0 * math.pi,
-                0.0,
-                2.0 * math.pi
+                -2.0 * math.pi, 0.0, 2.0 * math.pi
             ):
                 candidate = base_q5 + branch + turn
                 if (JOINT_MIN[4] <= candidate <= JOINT_MAX[4]):
@@ -776,13 +821,7 @@ class HardwareMotionControlNode(Node):
         if error != 0:
             return
 
-    def _write1(
-        self,
-        dxl_id,
-        address,
-        value,
-        action
-    ):
+    def _write1(self, dxl_id, address, value, action):
         comm, error = self.packet.write1ByteTxRx(
             self.port(dxl_id),
             dxl_id,
@@ -791,13 +830,7 @@ class HardwareMotionControlNode(Node):
         )
         self.check(comm, error)
 
-    def _write4(
-        self,
-        dxl_id,
-        address,
-        value,
-        action
-    ):
+    def _write4(self, dxl_id, address, value, action):
         comm, error = self.packet.write4ByteTxRx(
             self.port(dxl_id),
             dxl_id,
@@ -806,12 +839,7 @@ class HardwareMotionControlNode(Node):
         )
         self.check(comm, error)
 
-    def _read4(
-        self,
-        dxl_id,
-        address,
-        action
-    ):
+    def _read4(self, dxl_id, address, action):
         value, comm, error = self.packet.read4ByteTxRx(
             self.port(dxl_id),
             dxl_id,
@@ -860,11 +888,8 @@ class HardwareMotionControlNode(Node):
             )
 
     def set_all_torque(self, enabled):
-        value = (
-            1
-            if enabled
-            else 0
-        )
+        if enabled: value = 1
+        else: value = 0
 
         for dxl_id in ALL_IDS:
             self._write1(

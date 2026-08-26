@@ -5,7 +5,7 @@ import math
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from irc_control_pkg.irc_control_pkg.kinematics import Kinematics
+from irc_control_pkg.kinematics import Kinematics
 from std_msgs.msg import Empty, Float64MultiArray, MultiArrayDimension, String, Int16
 
 DOF = 6
