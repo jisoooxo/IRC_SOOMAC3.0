@@ -27,7 +27,6 @@ PACK_Q5_LIMIT_WEIGHT = 100.0
 PACK_CONTINUITY_WEIGHT = 0.02
 
 SPOON_PICK_POSITION = np.array([0.4, 0.01, 0.265], dtype=float)
-
 SPOON_Q6 = math.radians(90.0)
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
@@ -104,13 +103,13 @@ class PointPoseNode(Node):
         self.grip_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints', 10)
         self.pack_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints_pack', 10)
         self.joint_target_pub = self.create_publisher(Float64MultiArray, '/arm/joint_target', 10)
+        self.create_subscription(Empty, '/arm/motion_done', self.arm_motion_done_callback, 10)
 
         self.cp_done_pub = self.create_publisher(Int16, '/control/cp_done', 10)
         self.create_subscription(Int16, '/control/start', self.start_callback, 10)
         self.create_subscription(String, '/control/plan', self.control_plan_callback, 10)
         self.create_subscription(String, '/control/motion', self.control_motion_callback, 10)
         self.create_subscription(Int16, '/control/vision_request', self.vision_request_callback, 10)
-        self.create_subscription(Empty, '/arm/motion_done', self.arm_motion_done_callback, 10)
 
         self.control_motion_done = self.create_publisher(String, '/control/motion_done', 10)
         self.create_subscription(String, '/vision/pick_pose', self.pick_callback, 10)
