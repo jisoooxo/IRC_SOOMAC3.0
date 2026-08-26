@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>손님용 주문 화면 — 대화</title>
+  <script>
+    const 가게이름 = '가게 이름';
+  </script>
+  <style>
+    /* NVIDIA Elements DESIGN.md의 역할 기반 색상 체계만 가져온다.
+       Elements 컴포넌트나 런타임은 사용하지 않으며 아래 토큰은 이 화면의 CSS 계약이다. */
+    :root {
+      --ground:      #F0F2F4;
+      --ground:      oklch(95% .006 248);
+      --surface:     #FFFFFF;
+      --surface-2:   #F8F9FA;
+      --surface-2:   oklch(98% .003 248);
+      --line:        #D5D8DC;
+      --line-strong: #AEB3B9;
+      --ink:         #242528;
+      --ink:         oklch(20% .008 248);
+      --ink-soft:    #6D7177;
+      --ink-soft:    oklch(53% .01 248);
+      --ink-faint:   #92969C;
+      --accent:      #76B900;
+      --accent:      oklch(66% .18 127);
+      --accent-ink:  #101400;
+      --accent-weak: #EFF8DC;
+      --live:        #2F8F4E;
+      --info:        #2869D8;
+      --danger:      #CF3851;
+      --focus:       #242528;
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 14px;
+      --shadow-raised: 0 1px 2px rgb(18 22 26 / .06), 0 12px 32px rgb(18 22 26 / .07);
+
+      --shell: min(1400px, 100vw);
+      --pad: clamp(16px, 2.4vw, 32px);
+
+      /* 손님은 팔 길이에서 흘끗 본다. 본문이 데스크톱 기준보다 훨씬 커야 한다 */
+      --t-say:   clamp(30px, 4.4vw, 54px);
+      --t-heard: clamp(19px, 2.4vw, 28px);
+      --t-past:  clamp(16px, 1.9vw, 21px);
+      --t-label: clamp(11px, 1.15vw, 13px);
+
+      --kr: 'Pretendard', 'Pretendard Variable', 'Noto Sans KR',
+            'Noto Sans CJK KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+
+      color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ground:      #101214;
+        --surface:     #1B1E21;
+        --surface-2:   #24282C;
+        --line:        #3C4146;
+        --line-strong: #656B72;
+        --ink:         #F5F7F8;
+        --ink-soft:    #ADB3B9;
+        --ink-faint:   #7F868D;
+        --accent:      #93D529;
+        --accent-ink:  #101400;
+        --accent-weak: #29351C;
+        --live:        #63D987;
+        --info:        #75A7FF;
+        --danger:      #FF778B;
+        --focus:       #F5F7F8;
+        --shadow-raised: 0 1px 2px rgb(0 0 0 / .24), 0 16px 38px rgb(0 0 0 / .2);
+        color-scheme: dark;
+      }
+    }
+    /* 뷰어의 테마 토글이 미디어쿼리를 양방향으로 이겨야 한다 */
+    :root[data-theme="light"] {
+      --ground: #F0F2F4; --ground: oklch(95% .006 248); --surface: #FFFFFF;
+      --surface-2: #F8F9FA; --surface-2: oklch(98% .003 248);
+      --line: #D5D8DC; --line-strong: #AEB3B9;
+      --ink: #242528; --ink: oklch(20% .008 248); --ink-soft: #6D7177; --ink-faint: #92969C;
+      --accent: #76B900; --accent: oklch(66% .18 127); --accent-ink: #101400;
+      --accent-weak: #EFF8DC; --live: #2F8F4E; --info: #2869D8; --danger: #CF3851; --focus: #242528;
+      --shadow-raised: 0 1px 2px rgb(18 22 26 / .06), 0 12px 32px rgb(18 22 26 / .07);
+      color-scheme: light;
+    }
+    :root[data-theme="dark"] {
+      --ground: #101214; --surface: #1B1E21; --surface-2: #24282C;
+      --line: #3C4146; --line-strong: #656B72;
+      --ink: #F5F7F8; --ink-soft: #ADB3B9; --ink-faint: #7F868D;
+      --accent: #93D529; --accent-ink: #101400; --accent-weak: #29351C;
+      --live: #63D987; --info: #75A7FF; --danger: #FF778B; --focus: #F5F7F8;
+      --shadow-raised: 0 1px 2px rgb(0 0 0 / .24), 0 16px 38px rgb(0 0 0 / .2);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--ground);
+      color: var(--ink);
+      font-family: var(--kr);
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .shell {
+      width: var(--shell);
+      height: 100vh;
+      height: 100dvh;
+      min-height: 0;
+      padding: var(--pad);
+      display: grid;
+      /* 사용자가 정한 세로 7:3 비율: 대화 / 주문·작업 진행. */
+      grid-template-rows: auto minmax(0, 7fr) minmax(220px, 3fr) auto;
+      gap: clamp(12px, 1.5vw, 20px);
+    }
+
+    /* ── 머리글 ───────────────────────────────────────────────── */
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .top-main {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: clamp(12px, 1.5vw, 20px);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .nav-btn {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 11px;
+      color: var(--ink-soft);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      font: inherit;
+      font-size: clamp(12px, 1.15vw, 14px);
+      font-weight: 680;
+      cursor: pointer;
+      transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+    }
+    .nav-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+    .nav-btn:active { background: var(--surface-2); }
+    .nav-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .nav-icon { font-size: 1.3em; line-height: 1; }
+
+    .store {
+      font-size: var(--t-heard);
+      font-weight: 620;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .store .tbd {
+      color: var(--ink-faint);
+      font-weight: 450;
+      font-size: 0.62em;
+      letter-spacing: 0;
+      margin-left: 8px;
+    }
+
+    .step {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: var(--t-label);
+      font-weight: 650;
+      letter-spacing: 0.05em;
+      color: var(--ink-soft);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .step::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--line-strong);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--line-strong) 14%, transparent);
+    }
+    .step[data-status="connected"] { color: var(--live); }
+    .step[data-status="connected"]::before { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 14%, transparent); }
+    .step[data-status="error"] { color: var(--danger); }
+    .step[data-status="error"]::before { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent); }
+
+    /* ── 대화 ─────────────────────────────────────────────────── */
+    .talk {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(14px, 1.9vw, 26px);
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-strong) transparent;
+      padding: 4px clamp(10px, 1.3vw, 18px) 8px 2px;
+      scroll-behavior: smooth;
+    }
+
+    /* 대화가 적을 때는 아래에 붙이고, 많아지면 오른쪽 스크롤바로 이전 대화를 읽는다. */
+    .talk::before { content: ''; flex: 1 0 0; }
+    .talk::-webkit-scrollbar { width: 9px; }
+    .talk::-webkit-scrollbar-track { background: transparent; }
+    .talk::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
+
+    .turn { display: flex; flex: 0 0 auto; }
+    .turn.me { justify-content: flex-end; }
+
+    /* 지난 발화는 작아지고 흐려진다. 손님이 되돌아 읽을 일이 없고,
+       최신 한 쌍만 또렷하면 흘끗 봐도 지금 상황을 안다 */
+    .turn.past .bubble,
+    .turn.past .say { font-size: var(--t-past); color: var(--ink-soft); }
+    .turn.past .bubble { box-shadow: none; }
+
+    .say {
+      max-width: 22ch;
+      font-size: var(--t-say);
+      font-weight: 650;
+      line-height: 1.28;
+      letter-spacing: -0.025em;
+      text-wrap: balance;
+      margin: 0;
+    }
+
+    .say .em { color: var(--live); }
+
+    .bubble {
+      max-width: 26ch;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-lg);
+      padding: 12px 18px;
+      font-size: var(--t-heard);
+      line-height: 1.4;
+      margin: 0;
+      box-shadow: 0 1px 2px rgb(18 22 26 / .04);
+    }
+
+    .turn.me .bubble {
+      border-radius: var(--radius-lg) var(--radius-sm) var(--radius-lg) var(--radius-lg);
+      background: var(--surface-2);
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    /* 알아들은 말임을 밝힌다. 오인식이 났을 때 손님이 바로 알아채는 유일한 단서다 */
+    .heard-label {
+      display: block;
+      font-size: var(--t-label);
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 5px;
+      text-align: right;
+    }
+
+    .turn.past .heard-label { display: none; }
+
+    .enter { animation: rise .34s cubic-bezier(.2,.7,.3,1) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+    /* ── 주문·작업 진행: 화면 높이의 아래 30% ───────────────── */
+    .progress-panel {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 12px;
+      padding: clamp(14px, 1.5vw, 20px);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-raised);
+      overflow: hidden;
+    }
+
+    .progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .progress-title {
+      margin: 0;
+      font-size: clamp(16px, 1.5vw, 20px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: var(--ink-soft);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      font-size: var(--t-label);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .phase-badge[data-phase="running"] { color: var(--info); border-color: color-mix(in srgb, var(--info) 35%, var(--line)); }
+    .phase-badge[data-phase="completed"] { color: var(--live); border-color: color-mix(in srgb, var(--live) 35%, var(--line)); }
+    .phase-badge[data-phase="error"] { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); }
+
+    .progress-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1.3fr 1.35fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .status-card {
+      min-width: 0;
+      min-height: 0;
+      padding: 11px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-strong) transparent;
+    }
+
+    .status-card h2 {
+      margin: 0 0 9px;
+      color: var(--ink-faint);
+      font-size: var(--t-label);
+      font-weight: 750;
+      letter-spacing: .08em;
+    }
+
+    .empty-state {
+      margin: 0;
+      color: var(--ink-faint);
+      font-size: clamp(12px, 1.15vw, 14px);
+      line-height: 1.45;
+    }
+
+    .selected-chips,
+    .completed-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      padding: 6px 9px;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font-size: clamp(12px, 1.15vw, 14px);
+      font-weight: 620;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+    .completed-chips .chip { color: var(--live); border-color: color-mix(in srgb, var(--live) 28%, var(--line)); }
+
+    .target-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: target;
+    }
+
+    .target-list li {
+      counter-increment: target;
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      align-items: center;
+      gap: 7px;
+      color: var(--ink-soft);
+      font-size: clamp(12px, 1.15vw, 14px);
+      line-height: 1.3;
+    }
+    .target-list li::before {
+      content: counter(target);
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--ink-faint);
+      font-size: 10px;
+      font-weight: 750;
+    }
+    .target-list li.current { color: var(--ink); font-weight: 700; }
+    .target-list li.current::before { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+    .target-list li.completed { color: var(--ink-faint); text-decoration: line-through; }
+    .target-list li.completed::before { content: '✓'; color: var(--live); border-color: var(--live); }
+    .target-list li.target-empty { display: block; }
+    .target-list li.target-empty::before { display: none; }
+
+    .current-focus {
+      display: grid;
+      align-content: center;
+      min-height: 54px;
+      padding-left: 11px;
+      border-left: 3px solid var(--accent);
+    }
+    .current-focus strong {
+      color: var(--ink);
+      font-size: clamp(16px, 1.55vw, 21px);
+      line-height: 1.28;
+      letter-spacing: -0.02em;
+      overflow-wrap: anywhere;
+    }
+    .current-focus span {
+      margin-top: 4px;
+      color: var(--ink-soft);
+      font-size: var(--t-label);
+    }
+
+    /* ── 마이크 상태 ──────────────────────────────────────────── */
+    .mic {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: clamp(14px, 1.7vw, 20px) clamp(18px, 2vw, 26px);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-raised);
+      transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .mic[data-state="listening"] {
+      border-color: var(--live);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 12%, transparent), var(--shadow-raised);
+    }
+    .mic[data-state="thinking"] { border-color: var(--info); }
+    .mic[data-state="speaking"]  { background: var(--surface-2); border-color: transparent; }
+
+    .meter { display: flex; align-items: center; gap: 4px; height: 30px; }
+    .meter i {
+      display: block;
+      width: 4px;
+      height: 8px;
+      border-radius: 2px;
+      background: var(--ink-faint);
+      transform-origin: center;
+    }
+
+    .mic[data-state="listening"] .meter i {
+      background: var(--live);
+      animation: bounce 1s ease-in-out infinite;
+    }
+    .meter i:nth-child(2) { animation-delay: .12s; }
+    .meter i:nth-child(3) { animation-delay: .24s; }
+    .meter i:nth-child(4) { animation-delay: .36s; }
+    .meter i:nth-child(5) { animation-delay: .48s; }
+    @keyframes bounce { 0%,100% { height: 8px; } 50% { height: 28px; } }
+
+    .mic[data-state="thinking"] .meter i {
+      background: var(--info);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+
+    .mic-text { font-size: var(--t-heard); font-weight: 560; letter-spacing: -0.01em; }
+    .mic-hint { font-size: var(--t-label); color: var(--ink-soft); margin-left: auto; text-align: right; }
+
+    /* ── 시작 화면 ────────────────────────────────────────────── */
+    .start {
+      position: fixed;
+      inset: 0;
+      background: var(--ground);
+      display: grid;
+      place-items: center;
+      gap: 0;
+      z-index: 5;
+    }
+    .start::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto;
+      height: 5px;
+      background: var(--accent);
+    }
+    .start::after {
+      content: '';
+      position: absolute;
+      width: min(70vw, 760px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      filter: blur(90px);
+      pointer-events: none;
+      transform: translateY(28%);
+    }
+    .start[hidden] { display: none; }
+
+    .start-inner {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      display: grid;
+      gap: clamp(28px, 4vw, 48px);
+      padding: var(--pad);
+    }
+
+    .start h1 {
+      margin: 0;
+      font-size: clamp(34px, 5.6vw, 68px);
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.14;
+      text-wrap: balance;
+    }
+    .start p { margin: 0; font-size: var(--t-heard); color: var(--ink-soft); }
+
+    .start-btn {
+      justify-self: center;
+      font: inherit;
+      font-size: clamp(20px, 2.3vw, 27px);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--accent-ink);
+      background: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 84%, black);
+      border-radius: var(--radius-lg);
+      padding: clamp(18px, 2vw, 24px) clamp(48px, 6vw, 76px);
+      cursor: pointer;
+      box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 24%, transparent);
+      transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
+    }
+    .start-btn:hover { filter: brightness(1.04); box-shadow: 0 14px 30px color-mix(in srgb, var(--accent) 30%, transparent); }
+    .start-btn:active { transform: translateY(1px) scale(.99); }
+    .start-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+
+    /* ── 작업 초기화 확인 ─────────────────────────────────────── */
+    .reset-dialog {
+      width: min(480px, calc(100vw - 32px));
+      padding: 0;
+      color: var(--ink);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 70px rgb(0 0 0 / .24);
+    }
+    .reset-dialog::backdrop { background: rgb(12 15 18 / .48); backdrop-filter: blur(3px); }
+    .reset-dialog-inner { display: grid; gap: 18px; padding: 24px; }
+    .reset-dialog h2 { margin: 0; font-size: clamp(21px, 2.1vw, 27px); letter-spacing: -0.025em; }
+    .reset-dialog p { margin: 0; color: var(--ink-soft); font-size: 15px; line-height: 1.55; }
+    .reset-dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .dialog-btn {
+      min-height: 48px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .dialog-btn.cancel { color: var(--ink); background: var(--surface); }
+    .dialog-btn.confirm { color: white; background: var(--danger); border-color: var(--danger); }
+    .dialog-btn:disabled { cursor: wait; opacity: .6; }
+    .reset-error { color: var(--danger) !important; font-size: 13px !important; }
+    .reset-error[hidden] { display: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .enter, .meter i { animation: none !important; }
+      .start-btn { transition: none; }
+      .talk { scroll-behavior: auto; }
+      .nav-btn { transition: none; }
+    }
+
+    @media (max-width: 800px) {
+      body { height: auto; min-height: 100dvh; overflow-y: auto; }
+      .shell {
+        height: auto;
+        min-height: 100dvh;
+        grid-template-rows: auto minmax(55vh, 7fr) auto auto;
+      }
+      .progress-grid { grid-template-columns: 1fr 1fr; }
+      .status-card { min-height: 120px; }
+      .nav-btn .nav-label { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="start" id="startScreen">
+    <div class="start-inner">
+      <h1>커스텀 파스타 밀키트를<br>직접 담아드립니다</h1>
+      <p>화면을 눌러 시작하세요</p>
+      <button class="start-btn" id="startBtn" type="button">시작하기</button>
+    </div>
+  </div>
+
+  <dialog class="reset-dialog" id="resetDialog">
+    <div class="reset-dialog-inner">
+      <h2 id="resetDialogTitle">현재 작업을 초기화할까요?</h2>
+      <p>현재 주문, 대기 작업과 화면 대화가 모두 초기화됩니다. Chroma에 저장된 과거 기록은 삭제하지 않습니다.</p>
+      <p class="reset-error" id="resetError" hidden></p>
+      <div class="reset-dialog-actions">
+        <button class="dialog-btn cancel" type="button" id="resetCancel">취소</button>
+        <button class="dialog-btn confirm" type="button" id="resetConfirm">초기화</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="shell">
+    <header class="top">
+      <div class="top-main">
+        <nav class="nav-actions" aria-label="화면 이동">
+          <button class="nav-btn" type="button" data-reset-action="back" aria-label="뒤로가기와 작업 초기화">
+            <span class="nav-icon" aria-hidden="true">←</span>
+            <span class="nav-label">뒤로</span>
+          </button>
+          <button class="nav-btn" type="button" data-reset-action="home" aria-label="홈으로 이동하고 작업 초기화">
+            <span class="nav-icon" aria-hidden="true">⌂</span>
+            <span class="nav-label">홈</span>
+          </button>
+        </nav>
+        <h1 class="store"><span id="storeName"></span><span class="tbd">미정</span></h1>
+      </div>
+      <div class="step" id="stepLabel">서버 연결 중</div>
+    </header>
+
+    <main class="talk" id="talk" aria-live="polite"></main>
+
+    <section class="progress-panel" aria-label="주문과 작업 진행 상태">
+      <div class="progress-head">
+        <h2 class="progress-title">주문·작업 진행</h2>
+        <span class="phase-badge" id="phaseBadge" data-phase="idle">대기 중</span>
+      </div>
+
+      <div class="progress-grid" aria-live="polite">
+        <section class="status-card">
+          <h2>선택한 항목</h2>
+          <div class="selected-chips" id="selectedItems">
+            <p class="empty-state">아직 선택한 항목이 없어요.</p>
+          </div>
+        </section>
+
+        <section class="status-card">
+          <h2>목표 목록</h2>
+          <ol class="target-list" id="targetList">
+            <li class="empty-state">대기 중</li>
+          </ol>
+        </section>
+
+        <section class="status-card">
+          <h2>현재 상태</h2>
+          <div class="current-focus">
+            <strong id="currentStatus">주문 시작 전</strong>
+            <span id="currentSection">진행 정보 대기 중</span>
+          </div>
+        </section>
+
+        <section class="status-card">
+          <h2>완료한 항목</h2>
+          <div class="completed-chips" id="completedItems">
+            <p class="empty-state">완료한 항목이 없어요.</p>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <div class="mic" id="mic" data-state="idle">
+      <div class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="mic-text" id="micText">시작 버튼을 눌러주세요</div>
+      <div class="mic-hint" id="micHint"></div>
+    </div>
+  </div>
+
+  <!-- CDN 이 아니라 static/ 에 받아둔 파일을 쓴다. 대회장 인터넷을 전제로 하면 안 된다.
+       flask-socketio 는 서버만 제공하므로 이 파일이 없으면 io() 가 정의되지 않아
+       버튼이 눌려도 아무 일도 안 일어난다. -->
+  <script src="/static/socket.io.min.js"></script>
+  <script>
+    const talk = document.getElementById('talk');
+    const mic = document.getElementById('mic');
+    const micText = document.getElementById('micText');
+    const micHint = document.getElementById('micHint');
+    const stepLabel = document.getElementById('stepLabel');
+    const startScreen = document.getElementById('startScreen');
+    const phaseBadge = document.getElementById('phaseBadge');
+    const selectedItems = document.getElementById('selectedItems');
+    const targetList = document.getElementById('targetList');
+    const currentStatus = document.getElementById('currentStatus');
+    const currentSection = document.getElementById('currentSection');
+    const completedItems = document.getElementById('completedItems');
+    const resetDialog = document.getElementById('resetDialog');
+    const resetDialogTitle = document.getElementById('resetDialogTitle');
+    const resetError = document.getElementById('resetError');
+    const resetCancel = document.getElementById('resetCancel');
+    const resetConfirm = document.getElementById('resetConfirm');
+
+    const 최대화면대화수 = 200;
+    let 대기중인초기화동작 = null;
+
+    document.getElementById('storeName').textContent = 가게이름;
+
+    const 마이크상태문구 = {
+      idle: ['시작 버튼을 눌러주세요', ''],
+      listening: ['듣고 있어요', '편하게 말씀하세요'],
+      thinking: ['잠시만요', ''],
+      speaking: ['말하는 중', '']
+    };
+
+    function 마이크(state) {
+      const 문구 = 마이크상태문구[state];
+      if (!문구) return;
+
+      mic.dataset.state = state;
+      micText.textContent = 문구[0];
+      micHint.textContent = 문구[1];
+
+      // 늦게 접속했어도 서버가 이미 시작된 상태라면 시작 화면이 대화를 가리지 않게 한다.
+      if (state !== 'idle') startScreen.hidden = true;
+    }
+
+    function 최신대화강조() {
+      const 발화들 = Array.from(talk.querySelectorAll('.turn'));
+      발화들.forEach(el => el.classList.add('past'));
+      발화들.slice(-2).forEach(el => el.classList.remove('past'));
+    }
+
+    function 발화추가(who, text, options = {}) {
+      const 아래근처 = talk.scrollHeight - talk.scrollTop - talk.clientHeight < 80;
+
+      const turn = document.createElement('div');
+      turn.className = 'turn ' + (who === 'me' ? 'me' : 'bot');
+      if (options.animate !== false) turn.classList.add('enter');
+
+      if (who === 'me') {
+        turn.innerHTML = '<div><span class="heard-label">이렇게 들었어요</span>'
+                       + '<p class="bubble"></p></div>';
+        turn.querySelector('.bubble').textContent = text;
+      } else {
+        turn.innerHTML = '<p class="say"></p>';
+        turn.querySelector('.say').textContent = text;
+      }
+
+      talk.appendChild(turn);
+      while (talk.querySelectorAll('.turn').length > 최대화면대화수) {
+        const 가장오래된발화 = talk.querySelector('.turn');
+        if (!가장오래된발화) break;
+        가장오래된발화.remove();
+      }
+      최신대화강조();
+
+      if (아래근처 || options.forceScroll) {
+        requestAnimationFrame(() => { talk.scrollTop = talk.scrollHeight; });
+      }
+    }
+
+    const 단계문구 = {
+      idle: '대기 중',
+      ordering: '주문 받는 중',
+      running: '작업 중',
+      confirming: '확인 중',
+      executing: '작업 중',
+      completed: '완료',
+      error: '오류'
+    };
+
+    const 세부상태문구 = {
+      idle: '대기 중',
+      waiting: '대기 중',
+      waiting_input: '선택 대기',
+      ready: '준비됨',
+      executing: '담는 중',
+      verifying: '확인 중',
+      completed: '완료',
+      error: '오류'
+    };
+
+    function 작업문구(item) {
+      if (item === null || item === undefined) return '';
+      if (typeof item !== 'object') return String(item);
+
+      const 이름 = item.ingredient ?? item.target ?? item.name ?? item.item;
+      const 횟수 = item.repeat_count ?? item.quantity ?? item.count ?? item.amount;
+      if (이름 !== undefined) {
+        return 횟수 === undefined ? String(이름) : `${이름} × ${횟수}`;
+      }
+
+      return Object.entries(item)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(' · ');
+    }
+
+    function 작업이름(item) {
+      if (item === null || item === undefined) return '';
+      if (typeof item !== 'object') return String(item);
+      return String(item.ingredient ?? item.target ?? item.name ?? item.item ?? 작업문구(item));
+    }
+
+    function 선택문구목록(value, prefix = '') {
+      if (value === null || value === undefined || value === '' || value === false) return [];
+      if (Array.isArray(value)) {
+        return value.flatMap(item => {
+          if (item && typeof item === 'object') return [작업문구(item)];
+          return item === '' || item === null || item === undefined ? [] : [String(item)];
+        }).filter(Boolean);
+      }
+      if (typeof value !== 'object') return [prefix ? `${prefix}: ${value}` : String(value)];
+
+      return Object.entries(value).flatMap(([key, nested]) => {
+        const label = prefix ? `${prefix} · ${key}` : key;
+        if (nested === null || nested === undefined || nested === '' || nested === false || nested === 0) return [];
+        if (typeof nested === 'object') return 선택문구목록(nested, label);
+        return [`${label}: ${nested}`];
+      });
+    }
+
+    function 칩그리기(container, items, emptyText) {
+      container.replaceChildren();
+      if (!items.length) {
+        const empty = document.createElement('p');
+        empty.className = 'empty-state';
+        empty.textContent = emptyText;
+        container.appendChild(empty);
+        return;
+      }
+
+      items.forEach(text => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = text;
+        container.appendChild(chip);
+      });
+    }
+
+    function 진행상태그리기(data) {
+      if (!data || typeof data !== 'object') return;
+
+      const phase = typeof data.phase === 'string' ? data.phase : 'idle';
+      const section = typeof data.section === 'string' ? data.section : '';
+      const sectionState = typeof data.section_status === 'string' ? data.section_status : '';
+      const currentTask = 작업문구(data.current_task);
+      const currentTaskName = 작업이름(data.current_task);
+      const targets = Array.isArray(data.target_list)
+        ? data.target_list
+        : (Array.isArray(data.targets) ? data.targets : (Array.isArray(data.task_queue) ? data.task_queue : []));
+      const completed = Array.isArray(data.completed)
+        ? data.completed
+        : (Array.isArray(data.completed_tasks) ? data.completed_tasks : []);
+      const doneSections = Array.isArray(data.done_sections) ? data.done_sections : [];
+      const selected = data.selected ?? data.selected_items ?? data.order ?? [];
+
+      phaseBadge.dataset.phase = phase;
+      phaseBadge.textContent = 단계문구[phase] ?? phase;
+
+      const selectedLabels = 선택문구목록(selected);
+      칩그리기(selectedItems, selectedLabels, '아직 선택한 항목이 없어요.');
+
+      const completedLabels = completed.map(작업문구).filter(Boolean);
+      const doneSectionLabels = doneSections.map(name => `${name} 섹션`);
+      칩그리기(
+        completedItems,
+        [...completedLabels, ...doneSectionLabels],
+        '완료한 항목이 없어요.');
+
+      const completedNames = new Set(completed.map(작업이름).filter(Boolean));
+      targetList.replaceChildren();
+      if (!targets.length) {
+        const empty = document.createElement('li');
+        empty.className = 'empty-state target-empty';
+        empty.textContent = '대기 중';
+        targetList.appendChild(empty);
+      } else {
+        targets.forEach(target => {
+          const label = 작업문구(target);
+          const name = 작업이름(target);
+          const item = document.createElement('li');
+          item.textContent = label;
+          if (name === currentTaskName) item.classList.add('current');
+          if (completedNames.has(name)) item.classList.add('completed');
+          targetList.appendChild(item);
+        });
+      }
+
+      const userStatus = typeof data.status_text === 'string' ? data.status_text.trim() : '';
+      if (userStatus) {
+        currentStatus.textContent = userStatus;
+      } else if (currentTask) {
+        currentStatus.textContent = sectionState === 'completed'
+          ? `${currentTask} 완료`
+          : `${currentTask} ${세부상태문구[sectionState] ?? '진행 중'}`;
+      } else if (section) {
+        currentStatus.textContent = `${section} ${세부상태문구[sectionState] ?? '진행 중'}`;
+      } else {
+        currentStatus.textContent = 단계문구[phase] ?? '진행 정보 대기 중';
+      }
+
+      currentSection.textContent = section
+        ? `${section} · ${(세부상태문구[sectionState] ?? sectionState) || '대기 중'}`
+        : '진행 정보 대기 중';
+    }
+
+    function 화면세션초기화() {
+      talk.replaceChildren();
+      진행상태그리기({phase: 'idle'});
+      마이크('idle');
+      startScreen.hidden = false;
+    }
+
+    const socket = io({autoConnect: false});
+
+    socket.on('dialogue_snapshot', data => {
+      if (!data || !Array.isArray(data.items)) return;
+
+      talk.replaceChildren();
+      data.items.forEach(item => {
+        if (!item || typeof item.text !== 'string' || !item.text.trim()) return;
+        if (item.event === 'user_said') 발화추가('me', item.text, {animate: false});
+        if (item.event === 'bot_say') 발화추가('bot', item.text, {animate: false});
+      });
+      requestAnimationFrame(() => { talk.scrollTop = talk.scrollHeight; });
+    });
+
+    socket.on('bot_say', data => {
+      if (data && typeof data.text === 'string' && data.text.trim()) {
+        발화추가('bot', data.text);
+      }
+    });
+
+    socket.on('user_said', data => {
+      if (data && typeof data.text === 'string' && data.text.trim()) {
+        발화추가('me', data.text);
+      }
+    });
+
+    socket.on('mic_state', data => {
+      if (data && typeof data.state === 'string') 마이크(data.state);
+    });
+
+    socket.on('agent_status', 진행상태그리기);
+
+    socket.on('work_reset', () => {
+      화면세션초기화();
+      if (resetDialog.open) resetDialog.close();
+    });
+
+    socket.on('ros_status', data => {
+      const connected = Boolean(data && data.connected);
+      stepLabel.textContent = connected ? 'ROS 연결됨' : 'ROS 연결 안 됨';
+      stepLabel.dataset.status = connected ? 'connected' : 'error';
+    });
+
+    socket.on('disconnect', () => {
+      stepLabel.textContent = '서버 연결 끊김';
+      stepLabel.dataset.status = 'error';
+    });
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      startScreen.hidden = true;
+      socket.emit('start', {});
+    });
+
+    document.querySelectorAll('[data-reset-action]').forEach(button => {
+      button.addEventListener('click', () => {
+        대기중인초기화동작 = button.dataset.resetAction;
+        resetDialogTitle.textContent = 대기중인초기화동작 === 'home'
+          ? '홈으로 돌아갈까요?'
+          : '뒤로가며 초기화할까요?';
+        resetError.hidden = true;
+        resetError.textContent = '';
+        resetConfirm.disabled = false;
+        resetDialog.showModal();
+      });
+    });
+
+    resetCancel.addEventListener('click', () => {
+      대기중인초기화동작 = null;
+      resetDialog.close();
+    });
+
+    resetConfirm.addEventListener('click', () => {
+      if (!대기중인초기화동작 || resetConfirm.disabled) return;
+
+      resetConfirm.disabled = true;
+      resetError.hidden = true;
+      socket.timeout(3000).emit(
+        'reset_work',
+        {action: 대기중인초기화동작},
+        (error, response) => {
+          resetConfirm.disabled = false;
+          if (error || !response || response.ok !== true) {
+            resetError.textContent = error
+              ? '서버 응답이 없습니다. 연결 상태를 확인해 주세요.'
+              : (response.message || '작업을 초기화하지 못했습니다.');
+            resetError.hidden = false;
+            return;
+          }
+
+          화면세션초기화();
+          대기중인초기화동작 = null;
+          if (resetDialog.open) resetDialog.close();
+        });
+    });
+
+    // 수신기를 먼저 붙여야 연결 직후 서버가 보내는 마지막 상태를 놓치지 않는다.
+    socket.connect();
+  </script>
+</body>
+</html>

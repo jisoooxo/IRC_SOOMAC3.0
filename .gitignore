@@ -1,0 +1,50 @@
+# ROS 2 빌드 산출물
+build/
+install/
+log/
+
+# ROS bag 녹화 파일
+rosbag2_*/
+*.db3
+*.mcap
+
+# Python 실행·검사 산출물
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Python 가상환경
+.venv/
+venv/
+env/
+
+# 환경변수·비밀값
+.env
+.env.*
+!.env.example
+
+# 모델 및 대용량 추론 파일
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.engine
+
+# 런타임 디버깅 기록
+debug_logs/
+runtime_logs/
+*.log
+
+# 편집기·운영체제 임시 파일
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
