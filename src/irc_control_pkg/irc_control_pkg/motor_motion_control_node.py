@@ -36,7 +36,8 @@ HOME_RAW = np.full(DOF, 2048, dtype=int)
 GRIPPER_HOME_RAW = 2048
 
 GRIPPER_CLOSE_DEG = {
-    'noodle':   -70,
+    'noodle_thick': -70,
+    'noodle_thin': -70,
     'mushroom': -75,
     'onion':    -75,
     'crab':     -70,

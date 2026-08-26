@@ -124,8 +124,6 @@ class MainNode(Node):
             self.current_class = 'cover'
             self.repeat_count = 1
             self.repeat_completed = 0
-
-            self.publish_control_plan()
             self.start_rail_motion()
             return
 
@@ -167,8 +165,6 @@ class MainNode(Node):
         self.repeat_count = repeat_count
         self.repeat_completed = 0
 
-        self.publish_control_plan()
-
         self.get_logger().info(
             f'class={self.current_class}, repeat_count={self.repeat_count}'
         )
@@ -201,7 +197,6 @@ class MainNode(Node):
     def publish_control_plan(self):
         msg = String()
         msg.data = json.dumps({'class': self.current_class,}, ensure_ascii=False)
-
         self.control_plan_pub.publish(msg)
 
     def publish_control_motion(self, command):
@@ -252,11 +247,13 @@ class MainNode(Node):
         if self.state != STATE_WAIT_RAIL_DONE:
             return
 
+        self.publish_control_plan()
+
         if self.current_class in CP_CLASSES:
             self.state = STATE_WAIT_CP_DONE
             self.publish_control_motion('cp')
             return
-
+        
         self.state = STATE_WAIT_POINT1_DONE
         self.publish_control_motion('point1')
 
