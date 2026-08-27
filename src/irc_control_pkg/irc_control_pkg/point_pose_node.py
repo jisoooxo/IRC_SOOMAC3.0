@@ -6,7 +6,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from irc_control_pkg.kinematics import Kinematics
-from std_msgs.msg import Empty, Float64MultiArray, MultiArrayDimension, String, Int16
+from std_msgs.msg import Empty, Bool, Float64MultiArray, MultiArrayDimension, String, Int16
 
 DOF = 6
 
@@ -16,6 +16,7 @@ SPOON_Q6 = math.radians(90.0)
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 # [0.20, 0.00, 0.27] -> 카메라가 수직으로 보는 위치
 POINT1 = np.array([0.25, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 바라보는 위치
+VLM_CONFIRM_POINT = np.array([ ], dtype=float)
 
 INITIAL_PACK_PICK_POINT = np.array([0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
 INITIAL_PACK_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
@@ -51,6 +52,10 @@ class PointPoseNode(Node):
         self.create_subscription(String, '/control/motion', self.control_motion_callback, 10)
         self.create_subscription(Int16, '/control/vision_request', self.vision_request_callback, 10)
 
+        # self.vlm_confirm_ready_pub = self.create_publisher(Bool, '/control/vlm_confirm_ready', 10)
+        # self.control_home_pub = self.create_publisher(Int16, '/control/home', 10)
+        # self.create_subscription(String, '/main/confirm', self.main_confirm_callback, 10)
+
         self.control_motion_done = self.create_publisher(String, '/control/motion_done', 10)
         self.create_subscription(String, '/vision/pick_pose', self.pick_callback, 10)
         
@@ -62,6 +67,9 @@ class PointPoseNode(Node):
         self.cheese_commands = []
         self.cheese_command_index = 0
         self.cheese_delay_timer = None
+
+        # self.vlm_confirm_pending = False
+        # self.home_pending = False
 
     def start_callback(self, _msg):
         self.plan_initial_pack()

@@ -37,8 +37,7 @@ elif pc == "JUNMI":
     YOLO_PT_PATH = "/home/leejunmi/ros2_ws/src/vision/vision/best_11renamed.pt"  
     SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
     SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_base_plus.pt"
-
-
+    
 
 MODE = "real"  # "real" or "bag"
 TARGET_CLASSES = ["sausage", "crab", "noodle_thick", "noodle_thin", "mushroom", "cheese",  "pepperoncino",  "onion", "sauce_cream", "sauce_oil","sauce_tomato", "cover"] 
@@ -98,8 +97,10 @@ yolo_model = YOLO(YOLO_PT_PATH)
 # SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_t.yaml"          # 가장 작은 모델
 # SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_tiny.pt" 
 
+
 #SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
 #SAM2_CKPT   = '/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt'
+
 DEVICE      = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {DEVICE}")
 
@@ -841,6 +842,7 @@ def main(args=None):
                 if cls_name not in ("noodle_thick", "noodle_thin"):
                     local_points = get_min_depth_mask(depth_masked, depth_scale)
                     points_full = local_points if local_points else []
+<<<<<<< HEAD
                 else: # 면이면 색상 필터(빨강=두꺼운면/파랑=얇은면) 적용 후 마스크 안에서만 후보점 생성
                     color_mask = get_noodle_color_mask(frame_full, cls_name)
                     if color_mask is not None:
@@ -850,6 +852,17 @@ def main(args=None):
                     # 후보점 시각화 (kmeans로 뽑힌 30개 점)
                     for px, py in points_full:
                         cv2.circle(overlay, (int(px), int(py)), 2, (0, 255, 0), -1)
+=======
+                else: # 면이면 후보영역 작게해서 검출 + 색상 필터(빨강=두꺼운면/파랑=얇은면)로 영역 추가 제한
+                    parity = frame_toggle % 2
+                    frame_toggle += 1
+                    color_mask = get_noodle_color_mask(frame_full, cls_name)
+                    if color_mask is not None:
+                        cv2.imshow("noodle_color_mask", color_mask) # 색상 필터 확인용 창
+                    points_full = get_grid_points_checkerboard(
+                        depth_full, shrunk_poly, grid_cols=8, grid_rows=5,
+                        parity=parity, overlay=overlay, extra_mask=color_mask)
+>>>>>>> ce9cf85 (추가22)
 
                 # 이전 프레임에서 검출된 재료 중앙점 이어붙이기
                 if prev_centers[cls_name]:
@@ -966,4 +979,8 @@ def main(args=None):
         rclpy.shutdown()
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     main()
+=======
+    main()
+>>>>>>> ce9cf85 (추가22)

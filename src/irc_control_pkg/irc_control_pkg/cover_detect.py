@@ -16,6 +16,7 @@ import pyrealsense2 as rs
 
 TARGET_W_CM = 17.0
 TARGET_H_CM = 24.5
+
 SIZE_TOLERANCE_CM = 2
 
 HSV_V_MAX = 60
