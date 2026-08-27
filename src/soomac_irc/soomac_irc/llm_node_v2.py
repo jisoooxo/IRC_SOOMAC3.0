@@ -13,7 +13,7 @@ from sensor_msgs.msg import Image
 
 from order_v2 import new_order, missing_required, next_section, build_section_plan, SECTION_ORDER, SECTION_LABELS, VEGGIES, MEATS, EXTRAS
 from call_model_v2 import load_model, make_call_model, make_generate_reply, make_call_vlm, SCENE_SYSTEM
-from agent_v2 import build_graph
+from agent_v2 import build_graph, HISTORY_TURNS
 from vlm_rag import VlmRag
 
 ENABLE_VLM = True # 일단 LLM부터 완성. False면 VLM 함수 만들지 않음
@@ -82,9 +82,11 @@ class LLMNode(Node):
         self.section = "noodle" # noodle → veggie → meat → extra → sauce → lid
 
         self.history = []
+        self.action_history = [] # 실제 수행한 history
         self.task_queue = [] # 아직 로봇한테 안 보낸 작업
         self.active_task = None # 지금 로봇이 하고 있는 작업(방금 보낸거)
         self.completed_tasks = [] # 작업 성공까지 확인된 작업을 담을 리스트
+    
 
         self.waiting_pick = False # 로봇이 현재 섹션을 담는 중인지
 
@@ -244,18 +246,19 @@ class LLMNode(Node):
                     self._reset(data)
 
                 elif mode == "finish":
-                    if self.section != "lid" or self.active_task is None:
-                        self.get_logger().warning("포장 작업 중이 아니어서 /llm/reset을 무시함")
+                    if self.section != "sauce":
+                        self.get_logger().warning("소스 작업 중이 아니어서 /llm/reset을 무시함")
 
-                    elif self.active_task["class"] != "뚜껑":
-                        self.get_logger().warning("현재 작업이 cover가 아니어서 /llm/reset을 무시함")
 
                     else:
                         completed_task = self.active_task
                         self.active_task = None
 
-                        if completed_task not in self.completed_tasks:
+                        if completed_task not in self.completed_tasks and completed_task is not None:
                             self.completed_tasks.append(completed_task.copy())
+
+
+                        self.section = "lid"
 
                         self.reply_pub.publish(String(data="포장이 끝났어요. 이용해 주셔서 감사합니다."))
                         self._finish_order()
@@ -429,6 +432,7 @@ class LLMNode(Node):
         self.awaiting_confirm = None
         self.order_finished = False
         self.ui_started = False
+        self.action_history = []
         self.conversation_started = False
 
 
@@ -773,12 +777,28 @@ class LLMNode(Node):
 
         self.get_logger().info(f"총 작업 완료 : {self.completed_tasks}")
 
+        # 현재 섹션에서 실제 완료된 작업만 처리
 
-        if self.section == "lid":
-            reply = "포장이 끝났어요."
+        completed_section_tasks = []
+
+        for section_task in build_section_plan(self.order, self.section):
+            if section_task in self.completed_tasks:
+                completed_section_tasks.append(section_task)
+
+        completed_names = [] # 딕셔너리 넣어둠
+
+        for task in completed_section_tasks:
+            completed_names.append(task["class"])
+
+        if len(completed_names) == 1:
+            reply = f"{completed_names[0]} 담기가 끝났어요."
+
+        elif len(completed_names) >= 2:
+            completed_text = f"{', '.join(completed_names[:-1])}와 {completed_names[-1]}"
+            reply = f"{completed_text} 담기가 끝났어요."
 
         else:
-            reply = f"{completed_task['class']} 담기가 끝났어요."
+            reply = "현재 단계의 재료 담기가 끝났어요."
 
         reply = self._commit_section(reply)
 
@@ -955,6 +975,7 @@ class LLMNode(Node):
             "order": self.order,
             "section": self.section,
             "history": self.history,
+            "action_history": self.action_history,
             "completed_tasks": self.completed_tasks,
         }) # 그래프 내부 state
 
@@ -979,9 +1000,35 @@ class LLMNode(Node):
 
         elif action == "confirm_section":
             if missing:
-                reply = self._missing_prompt(missing) 
+                reply = self._missing_prompt(missing)
 
             else:
+                section_tasks = build_section_plan(self.order, self.section)
+
+                task_names = [task["class"] for task in section_tasks]
+
+                section_label = SECTION_LABELS[self.section]
+
+                if len(task_names) == 1:
+                    reply = (
+                        f"{section_label} 선택이 완료됐어요. "
+                        f"이제 {task_names[0]} 담기를 시작할게요."
+                    )
+
+                elif len(task_names) >= 2:
+                    task_text = (
+                        f"{', '.join(task_names[:-1])}와 "
+                        f"{task_names[-1]}"
+                    )
+
+                    reply = (
+                        f"{section_label} 선택이 완료됐어요. "
+                        f"이제 {task_text} 담기를 시작할게요."
+                    )
+
+                else:
+                    reply = f"{section_label} 선택이 완료됐어요."
+
                 reply = self._confirm_current_section(reply)
 
         elif action == "set_order":
@@ -995,7 +1042,20 @@ class LLMNode(Node):
 
         # 그리고 사용자와 tts에 전달한 문장을 history에 저장
 
-        self.history.append(result["user_msg"])
+        # 모델이 고른 행동보다 Python 검증이 끝난 실제 결과를 기억한다.
+        self.action_history.append({
+            "user_text": user_text,
+            "action": action,
+            "changed": result.get("changed", []),
+            "blocked": result.get("blocked", []),
+            "dropped": result.get("dropped", []),
+            "missing": result.get("missing", []),
+        })
+
+        # 현재 주문에서 필요한 최근 행동만 유지
+        self.action_history = self.action_history[-HISTORY_TURNS:]
+
+        self.history.append({"role": "user", "content": user_text})
 
         self.history.append({"role":"assistant", "content": reply}) # 모델의 대답
 

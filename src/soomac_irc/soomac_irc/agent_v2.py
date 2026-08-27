@@ -24,6 +24,7 @@ class AgentState(TypedDict, total=False):
     order: dict # 주문 상태
     section: str # 현재 섹션
     history: list[dict] # 멀티턴 [{user}, {assistant}] 대화
+    action_history: list[dict] # 최근 Tool 선택, 그리고 파이썬 예외처리 결과
     completed_tasks: list[dict] # 로봇 작업 성공까지 확인된 작업
 
     # choose_action에서 만드는 값
@@ -71,6 +72,10 @@ def build_graph(call_model, generate_reply):
         """
         # 전체 history를 전부 넣지 않고 최근 대화만 사용
         history = state.get("history", [])
+        # 전체 행동 기록도 전부 넣지 않고 최근 결과만 사용
+        action_history = state.get("action_history", [])
+        recent_actions = action_history[-HISTORY_TURNS:]
+        
         recent_history = history[-(HISTORY_TURNS * 2):]
 
         section = state["section"]
@@ -103,7 +108,7 @@ def build_graph(call_model, generate_reply):
         # 현재 section을 끝내기 전에 필요한 값도 모델에게 알려줌
         missing = missing_required(state["order"], section)
 
-        # 모델이 현재 주문과 섹션을 알고 이번 발화를 판단하게 함
+        # 모델이 현재 주문과 섹션, 완료 상태 알수 있도록
         user_msg = {
             "role": "user",
             "content": json.dumps(
@@ -113,6 +118,8 @@ def build_graph(call_model, generate_reply):
                     "section_order": SECTION_ORDER,
                     "section_rule": section_rule,
                     "missing": missing,
+                    "completed_tasks": state.get("completed_tasks", []),
+                    "action_history": recent_actions,
                     "message": state["user_text"],
                 },
                 ensure_ascii=False,
@@ -241,6 +248,8 @@ def build_graph(call_model, generate_reply):
         # 모델이 담았다고 거짓말하지 못하게 검증·반영·제약 적용이 끝난 값만 Reply로 보냄 ㅇㅇ
         # changed는 들어간 것, blocked는 다시 빠진 것, dropped는 처음부터 못 들어간 것
         facts = {
+            "history": state.get("history", [])[-(HISTORY_TURNS * 2):],
+            "action_history": state.get("action_history", [])[-HISTORY_TURNS:],
             "user_text": state["user_text"],
             "action": action,
             "section": section,
@@ -274,27 +283,7 @@ def build_graph(call_model, generate_reply):
         # 여기서 텍스트 Reply를 만들면 화면을 보지 않고 답할 수 있다.
         if action == "describe_scene":
             return {"reply": FALLBACK_REPLIES["describe_scene"]}
-
-        # 제약으로 다시 빠진 값은 모델이 넣었다고 잘못 말하지 않게 Python이 직접 안내
-        if state["blocked"]:
-            return {
-                "reply": (
-                    "식이 제약과 충돌하지 않는 항목만 반영했어요. "
-                    "충돌한 항목은 주문에 넣지 않았어요."
-                ),
-            }
-
-        # 일부 값만 검사에 통과했다면 통과한 값만 반영했다고 안내
-        if state["dropped"] and state["changed"]:
-            return {
-                "reply": "요청하신 내용 중 현재 단계에서 가능한 항목만 주문에 반영했어요.",
-            }
-
-        # 전부 검사에서 빠졌다면 아무것도 반영하지 않았다고 안내
-        if state["dropped"]:
-            return {
-                "reply": "현재 단계에서 선택할 수 없는 항목이라 주문에 반영하지 않았어요.",
-            }
+    
 
         # 정상 변경은 기존처럼 모델이 자연스럽게 답변
         # Reply 생성 실패가 주문 상태까지 터뜨리지 않게 Python 문장으로 대체
@@ -304,7 +293,47 @@ def build_graph(call_model, generate_reply):
             reply = ""
 
         if not isinstance(reply, str) or not reply.strip():
-            reply = FALLBACK_REPLIES[action]
+
+            if action == "set_order":
+                if state["changed"] and (state["blocked"] or state["dropped"]):
+                    reply = "가능한 주문 변경만 반영했고, 반영할 수 없는 내용은 제외했어요."
+
+                elif state["changed"]:
+                    reply = "요청한 주문 변경을 반영했어요."
+
+                elif state["blocked"]:
+                    reply = "식이 제약과 충돌한 항목은 주문에 반영하지 않았어요."
+
+                elif state["dropped"]:
+                    reply = "현재 단계에서 반영할 수 없는 요청이에요."
+
+                else:
+                    reply = "주문에서 새로 변경된 내용은 없어요."
+
+            elif action == "confirm_section":
+                task_names = [
+                    task["class"]
+                    for task in state["facts"]["section_tasks"]
+                ]
+
+                if state["missing"]:
+                    reply = "아직 필요한 선택이 남아 있어요."
+
+                elif len(task_names) == 1:
+                    reply = f"{task_names[0]} 선택을 확인했어요."
+
+                elif len(task_names) >= 2:
+                    task_text = f"{', '.join(task_names[:-1])}와 {task_names[-1]}"
+                    reply = f"{task_text} 선택을 확인했어요."
+
+                else:
+                    reply = "현재 선택을 확인했어요."
+
+            elif action == "respond":
+                reply = "요청을 정확히 이해하지 못했어요. 다시 말씀해 주세요."
+
+            else:
+                reply = FALLBACK_REPLIES.get(action, FALLBACK_REPLIES["error"])
 
         return {"reply": reply.strip()}
 
