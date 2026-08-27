@@ -118,7 +118,7 @@ class LLMNode(Node):
 
         call_model = make_call_model(model, processor)
 
-        generate_reply = make_generate_reply(model, processor)
+        generate_reply = make_generate_reply(model, processor) # 얘가 모델 응답하게 하는 함수
 
         self.graph = build_graph(call_model, generate_reply) # 함수 자체를 넘긴다.
         self.call_vlm = None # 얘는 나중에

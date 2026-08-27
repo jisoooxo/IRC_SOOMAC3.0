@@ -20,7 +20,7 @@ AMOUNTS = ["low", "normal", "high",]
 TOPPING_AMOUNTS = ["none", "low", "normal", "high",]
 
 # 양에 따라 로봇이 몇 번 집을지 결정한다.
-AMOUNT_TO_COUNT = {"low": 2, "normal": 3, "high": 4,}
+AMOUNT_TO_COUNT = {"low": 1, "normal": 2, "high": 3,}
 
 MIN_ITEM_NUM = 1
 
