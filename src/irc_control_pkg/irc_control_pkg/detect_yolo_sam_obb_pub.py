@@ -1,5 +1,7 @@
 '''
 이미지 토픽 추가
+경로 나눠놓음
+누들 후보점 생성방식 변경+크롭덜하기
 '''
 
 import cv2
@@ -19,10 +21,23 @@ from cv_bridge import CvBridge
 from rclpy.qos import qos_profile_sensor_data
 from collections import deque
 
-# from cover_detect import get_best_cover  # 뚜껑
-# ros2 run으로 실행할거라면 
-#from vision.cover_detect import get_best_cover 
-from irc_control_pkg.cover_detect import get_best_cover 
+pc = "JISU"
+
+if pc == "JISU":
+    from irc_control_pkg.cover_detect import get_best_cover 
+    YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_11.pt'
+    SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
+    SAM2_CKPT   = '/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt'
+
+elif pc == "JUNMI":
+    from cover_detect import get_best_cover  # 뚜껑
+    # ros2 run으로 실행할거라면 
+    #from vision.cover_detect import get_best_cover 
+    YOLO_PT_PATH = "/home/leejunmi/ros2_ws/src/vision/vision/best_11.pt"  
+    SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
+    SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_base_plus.pt"
+
+
 
 MODE = "real"  # "real" or "bag"
 TARGET_CLASSES = ["sausage", "crab", "noodle_thick", "noodle_thin", "mushroom", "cheese",  "pepperoncino",  "onion", "sauce_cream", "sauce_oil","sauce_tomato", "cover"] 
@@ -49,8 +64,8 @@ TARGET_SIZES = {
 CROP_RATIOS = {
     "sausage": {"vertical": 0.05,   "horizontal": 0.07}, 
     "crab":    {"vertical": 0.05,   "horizontal": 0.07},
-    "noodle_thick": {"vertical": 0.3, "horizontal": 0.05},
-    "noodle_thin":  {"vertical": 0.3, "horizontal": 0.05},
+    "noodle_thick": {"vertical": 0.05, "horizontal": 0.05},
+    "noodle_thin":  {"vertical": 0.05, "horizontal": 0.05},
     "mushroom": {"vertical": 0.05,  "horizontal": 0.05},
     "cheese":   {"vertical": 0.05,  "horizontal": 0.05},
     "onion":    {"vertical": 0.05,  "horizontal": 0.05},
@@ -69,7 +84,7 @@ NOODLE_THIN_HSV = {
 CENTER_PATCH_SIZE = 15
 
 # YOLO_PT_PATH = "/home/leejunmi/ros2_ws/src/vision/vision/best_11.pt"  
-YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_11.pt'
+#YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_11.pt'
 yolo_model = YOLO(YOLO_PT_PATH)
 
 # =====================
@@ -82,8 +97,8 @@ yolo_model = YOLO(YOLO_PT_PATH)
 # SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_t.yaml"          # 가장 작은 모델
 # SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_tiny.pt" 
 
-SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
-SAM2_CKPT   = '/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt'
+#SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
+#SAM2_CKPT   = '/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt'
 DEVICE      = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {DEVICE}")
 
@@ -404,6 +419,41 @@ def get_grid_points_checkerboard(depth_full, shrunk_poly, grid_cols=8, grid_rows
                     #     cv2.circle(overlay, (cx, cy), 3, (0, 255, 0), -1) # 시각화
 
     return points
+
+
+def get_mask_kmeans_points(shrunk_poly, depth_full, extra_mask, k=30):
+    '''shrunk_poly(OBB) 영역과 extra_mask(색상 필터)를 AND한 유효 영역 안에서만
+    kmeans로 k개의 대표점(centroid)을 뽑아 마스크 전체에 고르게 분산된 후보점 생성
+    (누들처럼 색상 필터가 필요한 클래스용, 기존 checkerboard 그리드 방식 대체)'''
+    H, W = depth_full.shape
+
+    # OBB(shrunk_poly) 마스크
+    obb_mask = np.zeros((H, W), dtype=np.uint8)
+    cv2.fillPoly(obb_mask, [shrunk_poly.astype(np.int32)], 255)
+
+    # 색상 마스크와 AND -> 최종 유효 영역
+    if extra_mask is not None:
+        valid_mask = cv2.bitwise_and(obb_mask, extra_mask)
+    else:
+        valid_mask = obb_mask
+
+    ys, xs = np.where(valid_mask > 0)
+    if len(xs) == 0:
+        return []
+
+    pts = np.stack([xs, ys], axis=1).astype(np.float32)
+
+    # 유효 픽셀이 k개 이하면 있는 만큼 다 반환 (kmeans 돌릴 필요 없음)
+    if len(pts) <= k:
+        return [tuple(p) for p in pts.astype(int)]
+
+    # kmeans로 마스크 전체 분포에 맞춰 k개의 대표점 추출 (밀도에 비례해 고르게 분산됨)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.5)
+    _, _, centers = cv2.kmeans(pts, k, None, criteria, 3, cv2.KMEANS_PP_CENTERS)
+
+    points_full = [tuple(c) for c in centers.astype(int)]
+    return points_full
+
 
 def shrink_obb(cx, cy, w, h, r, top=0.0, bottom=0.0, left=0.0, right=0.0):
     """
@@ -790,15 +840,15 @@ def main(args=None):
                 if cls_name not in ("noodle_thick", "noodle_thin"):
                     local_points = get_min_depth_mask(depth_masked, depth_scale)
                     points_full = local_points if local_points else []
-                else: # 면이면 후보영역 작게해서 검출 + 색상 필터(빨강=두꺼운면/파랑=얇은면)로 영역 추가 제한
-                    parity = frame_toggle % 2
-                    frame_toggle += 1
+                else: # 면이면 색상 필터(빨강=두꺼운면/파랑=얇은면) 적용 후 마스크 안에서만 후보점 생성
                     color_mask = get_noodle_color_mask(frame_full, cls_name)
                     if color_mask is not None:
                         cv2.imshow("noodle_color_mask", color_mask) # 색상 필터 확인용 창
-                    points_full = get_grid_points_checkerboard(
-                        depth_full, shrunk_poly, grid_cols=8, grid_rows=5,
-                        parity=parity, overlay=overlay, extra_mask=color_mask)
+                    # shrunk_poly(OBB) 영역 + 색상마스크 AND한 영역 안에서 kmeans로 30개 후보점 고르게 생성
+                    points_full = get_mask_kmeans_points(shrunk_poly, depth_full, color_mask, k=30)
+                    # 후보점 시각화 (kmeans로 뽑힌 30개 점)
+                    for px, py in points_full:
+                        cv2.circle(overlay, (int(px), int(py)), 2, (0, 255, 0), -1)
 
                 # 이전 프레임에서 검출된 재료 중앙점 이어붙이기
                 if prev_centers[cls_name]:
