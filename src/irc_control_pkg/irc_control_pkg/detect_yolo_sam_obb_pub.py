@@ -2,6 +2,7 @@
 이미지 토픽 추가
 경로 나눠놓음
 누들 후보점 생성방식 변경+크롭덜하기
+피티파일 이름 수정
 '''
 
 import cv2
@@ -25,7 +26,7 @@ pc = "JISU"
 
 if pc == "JISU":
     from irc_control_pkg.cover_detect import get_best_cover 
-    YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_11.pt'
+    YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_11renamed.pt'
     SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
     SAM2_CKPT   = '/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt'
 
@@ -33,7 +34,7 @@ elif pc == "JUNMI":
     from cover_detect import get_best_cover  # 뚜껑
     # ros2 run으로 실행할거라면 
     #from vision.cover_detect import get_best_cover 
-    YOLO_PT_PATH = "/home/leejunmi/ros2_ws/src/vision/vision/best_11.pt"  
+    YOLO_PT_PATH = "/home/leejunmi/ros2_ws/src/vision/vision/best_11renamed.pt"  
     SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
     SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_base_plus.pt"
 
