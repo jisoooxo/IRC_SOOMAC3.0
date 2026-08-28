@@ -177,6 +177,7 @@ class MainNode(Node):
         reset_msg = String()
         reset_msg.data = 'reset'
         self.reset_pub.publish(reset_msg)
+        self.get_logger().info('MAIN 초기화 완료')
 
         self.reset_main_values()
         self.state = STATE_WAIT_START
@@ -235,12 +236,14 @@ class MainNode(Node):
         result, class_name = self.read_vlm_confirm(msg)
         
         if result == 'success':
+            self.state = STATE_WAIT_HOME_DONE
             self.publish_main_confirm_success()
+            return
 
         elif result == 'fail':
+            self.state = STATE_WAIT_VLM_READY
             self.publish_main_confirm_fail(class_name)
-
-        self.state = STATE_WAIT_HOME_DONE
+            return
 
     def publish_main_confirm_success(self):
         msg = String()

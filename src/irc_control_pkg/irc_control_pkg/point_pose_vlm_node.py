@@ -16,7 +16,7 @@ SPOON_Q6 = math.radians(90.0)
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 # [0.20, 0.00, 0.27] -> 카메라가 수직으로 보는 위치
 POINT1 = np.array([0.25, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 바라보는 위치
-VLM_CONFIRM_POINT = {'position': np.array([0.00, 0.25, 0.27], dtype=float), 'yaw_deg': 270.0}
+VLM_CONFIRM_POINT = np.deg2rad([83.0, -3.0, 0.0, 87.0, 90.0, 0.0])
 
 INITIAL_PACK_PICK_POINT = np.array([0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
 INITIAL_PACK_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
@@ -73,6 +73,7 @@ class PointPoseNode(Node):
         self.confirm_retry_phase = None
         self.vlm_confirm_pending = False
         self.home_pending = False
+        self.vlm_confirm_delay = None
 
     def start_callback(self, _msg):
         self.plan_initial_pack()
@@ -131,10 +132,10 @@ class PointPoseNode(Node):
 
         if self.vlm_confirm_pending:
             self.vlm_confirm_pending = False
-
-            msg = Bool()
-            msg.data = True
-            self.vlm_confirm_ready_pub.publish(msg)
+            self.vlm_confirm_delay = self.create_timer(
+                2.0,
+                self.vlm_confirm_delay_done
+            )
             return
 
         if self.home_pending:
@@ -158,8 +159,17 @@ class PointPoseNode(Node):
 
         if self.confirm_retry_phase == 'place':
             self.confirm_retry_phase = None
-            self.move_home()
+            self.move_vlm_confirm()
             return
+
+    def vlm_confirm_delay_done(self):
+        self.vlm_confirm_delay.cancel()
+        self.destroy_timer(self.vlm_confirm_delay)
+
+        msg = Bool()
+        msg.data = True
+        self.vlm_confirm_ready_pub.publish(msg)
+
 
     def main_confirm_callback(self, msg):
         if msg.data.strip() == 'success':
@@ -208,6 +218,11 @@ class PointPoseNode(Node):
         self.confirm_retry_phase = None
         self.vlm_confirm_pending = False
         self.home_pending = False
+
+        if self.vlm_confirm_delay is not None:
+            self.vlm_confirm_delay.cancel()
+            self.destroy_timer(self.vlm_confirm_delay)
+            self.vlm_confirm_delay = None
 
         self.get_logger().info('초기화 완료')
 
@@ -360,7 +375,7 @@ class PointPoseNode(Node):
             # VLM fail로 CP를 한 번 더 하는 경우
             if self.confirm_retry_phase == 'cp':
                 self.confirm_retry_phase = None
-                self.move_home()
+                self.move_vlm_confirm()
                 return
 
             # 정상 CP 1회 완료
@@ -423,17 +438,7 @@ class PointPoseNode(Node):
         self.joint_target_pub.publish(msg)
 
     def move_vlm_confirm(self):
-        position = VLM_CONFIRM_POINT['position']
-        yaw = math.radians(float(VLM_CONFIRM_POINT['yaw_deg']))
-
-        q_target = self.kinematics.solve_pose(
-            position,
-            self.pick_lift_q
-            if self.pick_lift_q is not None
-            else np.zeros(DOF, dtype=float),
-            yaw,
-            'grip'
-        )
+        q_target = VLM_CONFIRM_POINT.copy()
 
         self.vlm_confirm_pending = True
 
