@@ -844,29 +844,6 @@ def main(args=None):
                 if cls_name not in ("noodle_thick", "noodle_thin"):
                     local_points = get_min_depth_mask(depth_masked, depth_scale)
                     points_full = local_points if local_points else []
-<<<<<<< HEAD
-<<<<<<< HEAD
-                else: # 면이면 색상 필터(빨강=두꺼운면/파랑=얇은면) 적용 후 마스크 안에서만 후보점 생성
-                    color_mask = get_noodle_color_mask(frame_full, cls_name)
-                    if color_mask is not None:
-                        cv2.imshow("noodle_color_mask", color_mask) # 색상 필터 확인용 창
-                    # shrunk_poly(OBB) 영역 + 색상마스크 AND한 영역 안에서 kmeans로 30개 후보점 고르게 생성
-                    points_full = get_mask_kmeans_points(shrunk_poly, depth_full, color_mask, k=30)
-                    # 후보점 시각화 (kmeans로 뽑힌 30개 점)
-                    for px, py in points_full:
-                        cv2.circle(overlay, (int(px), int(py)), 2, (0, 255, 0), -1)
-=======
-                else: # 면이면 후보영역 작게해서 검출 + 색상 필터(빨강=두꺼운면/파랑=얇은면)로 영역 추가 제한
-                    parity = frame_toggle % 2
-                    frame_toggle += 1
-                    color_mask = get_noodle_color_mask(frame_full, cls_name)
-                    if color_mask is not None:
-                        cv2.imshow("noodle_color_mask", color_mask) # 색상 필터 확인용 창
-                    points_full = get_grid_points_checkerboard(
-                        depth_full, shrunk_poly, grid_cols=8, grid_rows=5,
-                        parity=parity, overlay=overlay, extra_mask=color_mask)
->>>>>>> ce9cf85 (추가22)
-=======
                 else: # 면이면 색상 필터(빨강=두꺼운면/파랑=얇은면) 적용 후 마스크 안에서만 후보점 생성
                     color_mask = get_noodle_color_mask(frame_full, cls_name)
                     # if color_mask is not None:
@@ -876,7 +853,6 @@ def main(args=None):
                     # 후보점 시각화 (kmeans로 뽑힌 30개 점)
                     for px, py in points_full:
                         cv2.circle(overlay, (int(px), int(py)), 2, (0, 255, 0), -1)
->>>>>>> 7999316 (테스트 둘째날 완료)
 
                 # 이전 프레임에서 검출된 재료 중앙점 이어붙이기
                 if prev_centers[cls_name]:
@@ -993,8 +969,5 @@ def main(args=None):
         rclpy.shutdown()
 
 if __name__ == '__main__':
-<<<<<<< HEAD
     main()
-=======
-    main()
->>>>>>> ce9cf85 (추가22)
+

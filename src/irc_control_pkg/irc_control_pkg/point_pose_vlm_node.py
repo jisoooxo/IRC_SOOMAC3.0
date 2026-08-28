@@ -15,7 +15,7 @@ SPOON_Q6 = math.radians(90.0)
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 # [0.20, 0.00, 0.27] -> 카메라가 수직으로 보는 위치
-POINT1 = np.array([0.25, 0.00, 0.27], dtype=float) ## 카메라를 수직으로 바라보는 위치
+POINT1 = np.deg2rad([0.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라를 수직으로 바라보는 위치
 VLM_CONFIRM_POINT = np.deg2rad([83.0, -3.0, 0.0, 87.0, 90.0, 0.0])
 
 INITIAL_PACK_PICK_POINT = np.array([0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
@@ -423,12 +423,7 @@ class PointPoseNode(Node):
         self.after_cp_path()
 
     def move_point(self, point):
-        q_target = self.kinematics.solve_pose(
-            point,
-            np.zeros(DOF, dtype=float),
-            math.pi,
-            'grip'
-        )
+        q_target = point.copy()
 
         if np.allclose(point, POINT1):
             self.point1_q = q_target
