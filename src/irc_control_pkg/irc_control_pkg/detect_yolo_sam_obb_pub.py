@@ -3,12 +3,16 @@
 경로 나눠놓음
 누들 후보점 생성방식 변경+크롭덜하기
 피티파일 이름 수정
+----- 0829
+뚜껑 수정(cover_detect) -> 직사각형 피팅 말고 평면피팅
+버섯,양파 -> 박스 중앙점 말고 번갈아가면서 보내도록 수정  
 '''
 
 import cv2
 import numpy as np
 import pyrealsense2 as rs
 import torch
+import traceback
 
 from ultralytics import YOLO
 from sam2.build_sam import build_sam2
@@ -22,7 +26,7 @@ from cv_bridge import CvBridge
 from rclpy.qos import qos_profile_sensor_data
 from collections import deque
 
-pc = "JISU"
+pc = "JUNMI"
 
 if pc == "JISU":
     from irc_control_pkg.cover_detect import get_best_cover 
@@ -56,6 +60,9 @@ NUM_HISTORY_FRAMES = 6
 
 current_target = None
 detection_history = {cls: deque(maxlen=NUM_HISTORY_FRAMES) for cls in TARGET_CLASSES}
+
+# SIMPLE_DEPTH_CLASSES용: OBB 장축 1/3, 2/3 지점 중 이번 활성화에 쓸 쪽 (0 또는 1), 활성화마다 번갈아 바뀜
+current_pick_side = 0
 
 TARGET_SIZES = {
     "sausage": {"long": 0.10, "short": 0.02,  "Ltol": 0.01, "Stol": 0.01}, 
@@ -110,6 +117,13 @@ sam2_model = build_sam2(SAM2_CONFIG, SAM2_CKPT, device=DEVICE)
 predictor  = SAM2ImagePredictor(sam2_model)
 print(f"SAM2 로딩 성공")
 
+# 첫 추론 콜드스타트(CUDA 커널 컴파일 / cuDNN autotune, 1~3초)를 시작 시 미리 치른다.
+# 이후엔 모델이 상주하므로 매 프레임 돌리지 않아도 per-call 지연은 동일.
+_warm = np.zeros((480, 640, 3), dtype=np.uint8)
+yolo_model(_warm, verbose=False)
+predictor.set_image(_warm)
+print("warm-up 완료")
+
 # =====================
 # 초기 설정
 # =====================
@@ -121,7 +135,7 @@ if MODE == "real":
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
     profile = pipeline.start(config)
 elif MODE == "bag":
-    config.enable_device_from_file("/home/leejunmi/realsense_bag/0729(3).db3")
+    config.enable_device_from_file("/home/leejunmi/realsense_bag/0714_crab.db3")
     profile = pipeline.start(config)
     device = profile.get_device()
     playback = device.as_playback()
@@ -136,7 +150,9 @@ hole_filling = rs.hole_filling_filter()
 def preprocess_depth(depth_frame):
     depth_frame = spatial.process(depth_frame)
     depth_frame = temporal.process(depth_frame)
-    depth_frame = hole_filling.process(depth_frame)
+    # hole_filling은 빈 depth를 주변값으로 '지어내기' 때문에 제외.
+    # get_min_depth_mask / get_center_patch_min_depth가 min()·argmin()으로
+    # 파지점을 잡는데, 채워진 가짜 픽셀이 최소값이 되면 엉뚱한 곳을 집는다.
     depth_frame = depth_frame.as_depth_frame() # 필터 적용
     return depth_frame
 
@@ -563,21 +579,42 @@ def get_obb_center(yolo_result, class_names, target_class):
     return {
         "center": (cx, cy),
         "box_points": box_points,
+        "w": w, "h": h, "r": r,
     }
 
+
+def get_third_points_along_long_axis(cx, cy, w, h, r):
+    """OBB 장축 방향으로 중심에서 1/3, 2/3 지점(경계 쪽 두 점)의 풀 프레임 좌표 반환
+    mushroom/cheese/onion 등 뭉쳐있는 재료를 매번 같은 중앙점만 집지 않고
+    번갈아 잡기 위한 후보점 생성용"""
+    long_side = max(w, h)
+    if w >= h:
+        dx, dy = np.cos(r), np.sin(r)
+    else:
+        dx, dy = -np.sin(r), np.cos(r)
+
+    offset = long_side / 6  # 중심 기준 1/3 지점까지 거리 (long_side/2 - long_side/3)
+    p1 = (cx - dx * offset, cy - dy * offset)
+    p2 = (cx + dx * offset, cy + dy * offset)
+    return p1, p2
+
 def vision_start_callback(msg): # 수정
-    global current_target
+    global current_target, frame_toggle, current_pick_side
     data = msg.data.strip()
     if data in TARGET_CLASSES:
         current_target = data
         detection_history[data].clear() # 새 신호마다 10frame 새로 연산
+        if data in SIMPLE_DEPTH_CLASSES:
+            # 클래스 상관없이 활성화될 때마다 장축 1/3, 2/3 지점을 번갈아 사용
+            current_pick_side = frame_toggle
+            frame_toggle = 1 - frame_toggle
         print(f"SAM2 시작: {current_target}")
     else: #data == "none":
         current_target = None
         print("SAM2 중지")
 
 
-def get_most_frequent_detection(history, pixel_threshold=20, min_count=2): ## 수정
+def get_most_frequent_detection(history, pixel_threshold=20, min_count=0): ## 수정
     if not history:
         return None
 
@@ -655,7 +692,7 @@ def publish_and_show(overlay, img_pub, bridge, node):
 # main
 # =====================
 def main(args=None):
-    global current_target, detection_history, frame_toggle
+    global current_target, detection_history, frame_toggle, current_pick_side
 
     rclpy.init()
     node = Node("mealkit_pub")
@@ -675,264 +712,139 @@ def main(args=None):
 
     try:
         while True:
-            rclpy.spin_once(node, timeout_sec=0)
-            frames  = pipeline.wait_for_frames()
-            aligned = align.process(frames)
+            try:
+                rclpy.spin_once(node, timeout_sec=0)
+                frames  = pipeline.wait_for_frames()
+                aligned = align.process(frames)
 
-            color_frame = aligned.get_color_frame()
-            depth_frame = aligned.get_depth_frame()
-            depth_frame = preprocess_depth(depth_frame)
+                color_frame = aligned.get_color_frame()
+                depth_frame = aligned.get_depth_frame()
 
-            if not color_frame or not depth_frame:
-                continue
-            
-            frame_full = np.asanyarray(color_frame.get_data())  # BGR, 풀 프레임
-            depth_full = np.asanyarray(depth_frame.get_data())
-            intrinsics = color_frame.profile.as_video_stream_profile().intrinsics
+                if not color_frame or not depth_frame:
+                    continue
 
-            overlay = frame_full.copy()
+                depth_frame = preprocess_depth(depth_frame)
 
-            # cover
-            if current_target == "cover":
-                cover = get_best_cover(frame_full, depth_full, depth_scale, intrinsics)
-                if cover is None:
+                frame_full = np.asanyarray(color_frame.get_data())  # BGR, 풀 프레임
+                depth_full = np.asanyarray(depth_frame.get_data())
+                intrinsics = color_frame.profile.as_video_stream_profile().intrinsics
+
+                overlay = frame_full.copy()
+
+                # cover
+                if current_target == "cover":
+                    cover = get_best_cover(frame_full, depth_full, depth_scale, intrinsics)
+                    if cover is None:
+                        draw_last_published(overlay, last_published)
+                        publish_and_show(overlay, img_pub, bridge, node)
+                        if cv2.waitKey(1) == 27:
+                            break
+                        continue
+
+                    cx_full = int(cover["cx"])
+                    cy_full = int(cover["cy"])
+                    z_m = cover["z_m"]
+
+                    cv2.drawContours(overlay, [cover["box_points"]], 0, (255, 255, 0), 1)
+                    cv2.putText(overlay, f"{z_m*100:.1f}cm", (cx_full - 40, cy_full + 20),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1, cv2.LINE_AA)
+
+                    if z_m > 0:
+                        xyz = rs.rs2_deproject_pixel_to_point(intrinsics, [cx_full, cy_full], float(z_m))
+                        angle = get_orientation_from_box(cover["box_points"])
+
+                        detection_history["cover"].append({
+                            "xyz": xyz, "angle": angle,
+                            "cx": cx_full, "cy": cy_full
+                        })
+
+                        N = num
+                        if len(detection_history["cover"]) >= N:
+                            result = get_most_frequent_detection(detection_history["cover"])
+                            if result is not None:
+                                x, y, z = result["xyz"]
+                                msg = String()
+                                msg.data = f"cover,{x:.4f},{y:.4f},{z:.4f},{result['angle']:.2f}"
+                                pub.publish(msg)
+                                print(f"[cover] 발행: {msg.data}")
+
+                                last_published = {
+                                    "cls": "cover",
+                                    "cx": result["cx_med"],
+                                    "cy": result["cy_med"],
+                                    "angle": result["angle"],
+                                    "xyz": result["xyz"],
+                                }
+
+                            detection_history["cover"].clear()
+                            current_target = None
+
                     draw_last_published(overlay, last_published)
                     publish_and_show(overlay, img_pub, bridge, node)
                     if cv2.waitKey(1) == 27:
                         break
                     continue
 
-                cx_full = int(cover["cx"])
-                cy_full = int(cover["cy"])
-                z_m = cover["z_m"]
-
-                cv2.drawContours(overlay, [cover["box_points"]], 0, (255, 255, 0), 1)
-                cv2.putText(overlay, f"{z_m*100:.1f}cm", (cx_full - 40, cy_full + 20),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1, cv2.LINE_AA)
-
-                if z_m > 0:
-                    xyz = rs.rs2_deproject_pixel_to_point(intrinsics, [cx_full, cy_full], float(z_m))
-                    angle = get_orientation_from_box(cover["box_points"])
-
-                    detection_history["cover"].append({
-                        "xyz": xyz, "angle": angle,
-                        "cx": cx_full, "cy": cy_full
-                    })
-
-                    N = num
-                    if len(detection_history["cover"]) >= N:
-                        result = get_most_frequent_detection(detection_history["cover"])
-                        if result is not None:
-                            x, y, z = result["xyz"]
-                            msg = String()
-                            msg.data = f"cover,{x:.4f},{y:.4f},{z:.4f},{result['angle']:.2f}"
-                            pub.publish(msg)
-                            print(f"[cover] 발행: {msg.data}")
-
-                            last_published = {
-                                "cls": "cover",
-                                "cx": result["cx_med"],
-                                "cy": result["cy_med"],
-                                "angle": result["angle"],
-                                "xyz": result["xyz"],
-                            }
-
-                        detection_history["cover"].clear()
-                        current_target = None
-
-                draw_last_published(overlay, last_published)
-                publish_and_show(overlay, img_pub, bridge, node)
-                if cv2.waitKey(1) == 27:
-                    break
-                continue
-
-            rgb_full = cv2.cvtColor(frame_full, cv2.COLOR_BGR2RGB)
-            yolo_result = yolo_model(frame_full, verbose=False)[0]
-
-            if current_target is None:
-                draw_last_published(overlay, last_published) # 결정된 퍼블리시 객체 표시
-                publish_and_show(overlay, img_pub, bridge, node)
-                if cv2.waitKey(1) == 27:
-                    break
-                continue
-
-            # mushroom / cheese / onion
-            if current_target in SIMPLE_DEPTH_CLASSES:
-                cls_name = current_target
-                obb_info = get_obb_center(yolo_result, yolo_model.names, cls_name)
-                if obb_info is None:
-                    draw_last_published(overlay, last_published)
+                # 대기 중(요청 없음)에는 YOLO 추론을 돌리지 않는다 (idle GPU 부하 제거)
+                if current_target is None:
+                    draw_last_published(overlay, last_published) # 결정된 퍼블리시 객체 표시
                     publish_and_show(overlay, img_pub, bridge, node)
                     if cv2.waitKey(1) == 27:
                         break
                     continue
 
-                cx_obb, cy_obb = obb_info["center"]
-                cv2.drawContours(overlay, [obb_info["box_points"]], 0, (255, 255, 0), 1)
+                rgb_full = cv2.cvtColor(frame_full, cv2.COLOR_BGR2RGB)
+                yolo_result = yolo_model(frame_full, verbose=False)[0]
 
-                min_pt, min_depth_m = get_center_patch_min_depth(depth_full, cx_obb, cy_obb, depth_scale)
-                if min_pt is None:
-                    draw_last_published(overlay, last_published)
-                    publish_and_show(overlay, img_pub, bridge, node)
-                    if cv2.waitKey(1) == 27:
-                        break
-                    continue
+                # mushroom / cheese / onion
+                if current_target in SIMPLE_DEPTH_CLASSES:
+                    cls_name = current_target
+                    obb_info = get_obb_center(yolo_result, yolo_model.names, cls_name)
+                    if obb_info is None:
+                        draw_last_published(overlay, last_published)
+                        publish_and_show(overlay, img_pub, bridge, node)
+                        if cv2.waitKey(1) == 27:
+                            break
+                        continue
 
-                # xy는 중앙 픽셀(OBB 중심) 그대로, depth만 패치에서 찾은 min depth 사용
-                cx_full = int(cx_obb)
-                cy_full = int(cy_obb)
+                    cx_obb, cy_obb = obb_info["center"]
+                    cv2.drawContours(overlay, [obb_info["box_points"]], 0, (255, 255, 0), 1)
 
-                cv2.circle(overlay, (cx_full, cy_full), 5, (0, 0, 0), -1)
-                cv2.circle(overlay, min_pt, 3, (0, 0, 255), -1)
-                cv2.putText(overlay, f"{min_depth_m*100:.1f}cm", (cx_full - 40, cy_full + 20),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1, cv2.LINE_AA)
+                    # 중앙 대신 장축 1/3, 2/3 지점을 번갈아 픽업점으로 사용 (뭉친 더미가 중앙에 없어도 매번 같은 양이 잡히도록)
+                    p1, p2 = get_third_points_along_long_axis(
+                        cx_obb, cy_obb, obb_info["w"], obb_info["h"], obb_info["r"])
+                    candidates = [p1, p2] if current_pick_side == 0 else [p2, p1]
 
-                if min_depth_m > 0:
-                    xyz = rs.rs2_deproject_pixel_to_point(intrinsics, [cx_full, cy_full], float(min_depth_m))
-                    angle = get_orientation_from_box(obb_info["box_points"])
+                    for px, py in candidates:
+                        cv2.circle(overlay, (int(px), int(py)), 3, (200, 200, 200), -1)
 
-                    detection_history[cls_name].append({
-                        "xyz": xyz, "angle": angle,
-                        "cx": cx_full, "cy": cy_full
-                    })
+                    min_pt = min_depth_m = None
+                    cx_full = cy_full = None
+                    for px, py in candidates:
+                        min_pt, min_depth_m = get_center_patch_min_depth(depth_full, px, py, depth_scale)
+                        if min_pt is not None:
+                            cx_full, cy_full = int(px), int(py)
+                            break
 
-                    N = num
-                    if len(detection_history[cls_name]) >= N:
-                        result = get_most_frequent_detection(detection_history[cls_name])
-                        if result is not None:
-                            x, y, z = result["xyz"]
-                            msg = String()
-                            msg.data = f"{cls_name},{x:.4f},{y:.4f},{z:.4f},{result['angle']:.2f}"
-                            pub.publish(msg)
-                            print(f"[{cls_name}] 발행: {msg.data}")
+                    if min_pt is None:
+                        draw_last_published(overlay, last_published)
+                        publish_and_show(overlay, img_pub, bridge, node)
+                        if cv2.waitKey(1) == 27:
+                            break
+                        continue
 
-                            last_published = {
-                                "cls": cls_name,
-                                "cx": result["cx_med"],
-                                "cy": result["cy_med"],
-                                "angle": result["angle"],
-                                "xyz": result["xyz"],
-                            }
-
-                        detection_history[cls_name].clear()
-                        current_target = None
-
-                draw_last_published(overlay, last_published)
-                publish_and_show(overlay, img_pub, bridge, node)
-                if cv2.waitKey(1) == 27:
-                    break
-                continue
-
-            predictor.set_image(rgb_full)  
-                    
-            for cls_name in TARGET_CLASSES:
-                if cls_name != current_target:   # current_target만 처리
-                    continue
-
-                # 클래스 매칭은 noodle로, CROP_RATIOS 등 나머지 조회는 cls_name(thick/thin)으로
-                yolo_target = "noodle" if cls_name in ("noodle_thick", "noodle_thin") else cls_name
-                depth_masked, shrunk_poly = get_obb_masked_depth(
-                    yolo_result, yolo_model.names, yolo_target, depth_full, cls_name)
-                if depth_masked is None:
-                    prev_centers[cls_name] = []
-                    continue
-
-                # OBB 시각화(줄인것)
-                cv2.polylines(overlay, [shrunk_poly.astype(np.int32)], True, (255, 255, 0), 1)
-
-                # 후보점 생성
-                if cls_name not in ("noodle_thick", "noodle_thin"):
-                    local_points = get_min_depth_mask(depth_masked, depth_scale)
-                    points_full = local_points if local_points else []
-                else: # 면이면 색상 필터(빨강=두꺼운면/파랑=얇은면) 적용 후 마스크 안에서만 후보점 생성
-                    color_mask = get_noodle_color_mask(frame_full, cls_name)
-                    # if color_mask is not None:
-                    #     cv2.imshow("noodle_color_mask", color_mask) # 색상 필터 확인용 창
-                    # shrunk_poly(OBB) 영역 + 색상마스크 AND한 영역 안에서 kmeans로 30개 후보점 고르게 생성
-                    points_full = get_mask_kmeans_points(shrunk_poly, depth_full, color_mask, k=15)
-                    # 후보점 시각화 (kmeans로 뽑힌 30개 점)
-                    for px, py in points_full:
-                        cv2.circle(overlay, (int(px), int(py)), 2, (0, 255, 0), -1)
-
-                # 이전 프레임에서 검출된 재료 중앙점 이어붙이기
-                if prev_centers[cls_name]:
-                    H, W = depth_full.shape
-                    obb_mask = np.zeros((H, W), dtype=np.uint8)
-                    cv2.fillPoly(obb_mask, [shrunk_poly.astype(np.int32)], 255)
-                    for cxf, cyf in prev_centers[cls_name]:
-                        if 0 <= cyf < H and 0 <= cxf < W and obb_mask[cyf, cxf] > 0:
-                            if all(np.hypot(cxf-p[0], cyf-p[1]) > 30 for p in points_full):
-                                points_full.append((cxf, cyf))
-
-                if not points_full:
-                    prev_centers[cls_name] = []
-                    continue
-
-                ##################### 후보점 프레임에 표시
-                # if prev_centers[cls_name]:
-                #     for cxf, cyf in prev_centers[cls_name]:
-                #         if x1 <= cxf < x2 and y1 <= cyf < y2:
-                #             if all(np.hypot(cxf - p[0], cyf - p[1]) > 30 for p in points_full):
-                #                 points_full.append((cxf, cyf))
-
-                # if not points_full:
-                #     prev_centers[cls_name] = []
-                #     continue
-                # for px, py in points_full:
-                #     cv2.circle(overlay, (int(px), int(py)), 3, (0, 255, 0), -1)
-                ####################
-
-                found_boxes, best_box = sam2_seg(depth_full, points_full, cls_name, depth_scale, intrinsics) # 후보점을 sam2로 넘기기 -> 크기+깊이 검증
-                if found_boxes is None:
-                    prev_centers[cls_name] = []
-                    continue
-
-
-                new_centers = []
-                for box in found_boxes: # 후보 박스들
-                    is_best = (box is best_box)
-                    color = (0, 0, 255) if is_best else (0, 255, 255)
-
-                    cx_full = int(box["center"][0])
-                    cy_full = int(box["center"][1])
                     cv2.circle(overlay, (cx_full, cy_full), 5, (0, 0, 0), -1)
+                    cv2.circle(overlay, min_pt, 3, (0, 0, 255), -1)
+                    cv2.putText(overlay, f"{min_depth_m*100:.1f}cm", (cx_full - 40, cy_full + 20),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1, cv2.LINE_AA)
 
-                    depth_m = box['center_depth'] * depth_scale
-                    text = f"{depth_m*100:.1f}cm"
-                    cv2.putText(overlay, text, (cx_full - 40, cy_full + 20),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1, cv2.LINE_AA)
+                    if min_depth_m > 0:
+                        xyz = rs.rs2_deproject_pixel_to_point(intrinsics, [cx_full, cy_full], float(min_depth_m))
+                        angle = get_orientation_from_box(obb_info["box_points"])
 
-                    if is_best and box.get("mask") is not None:
-                        mask = box["mask"]
-                        overlay[mask] = (0.5 * overlay[mask] + 0.5 * np.array([255, 0, 0])).astype(np.uint8)
-                    cv2.drawContours(overlay, [box["box_points"]], 0, color, 2)
-
-                    if is_best:
-                        # best_box 안에 점 5개 생성해서 저장
-                        pts5 = get_points_in_box(box["box_points"], n=5)
-                        new_centers.extend(pts5)
-                        # 시각화 
-                        for px, py in pts5:
-                            cv2.circle(overlay, (px, py), 2, (255, 0, 255), -1)
-                    else:
-                        # 나머지 박스는 중앙점 하나만
-                        new_centers.append((cx_full, cy_full))
-
-                ###########
-                ## publish 
-                ###########
-                if best_box is not None:
-                    cx = int(best_box["center"][0])
-                    cy = int(best_box["center"][1])
-                    depth_m = best_box["center_depth"] * depth_scale
-                    if depth_m > 0:
-                        xyz = rs.rs2_deproject_pixel_to_point(intrinsics, [cx, cy], depth_m)
-                        angle = get_orientation_from_box(best_box["box_points"])
-
-                        # 픽셀 좌표도 함께 저장
                         detection_history[cls_name].append({
                             "xyz": xyz, "angle": angle,
-                            "cx": cx, "cy": cy  
+                            "cx": cx_full, "cy": cy_full
                         })
 
                         N = num
@@ -945,10 +857,9 @@ def main(args=None):
                                 pub.publish(msg)
                                 print(f"[{cls_name}] 발행: {msg.data}")
 
-                                # 발행한 픽셀 좌표 저장 (화면 표시용)
                                 last_published = {
                                     "cls": cls_name,
-                                    "cx": result["cx_med"],   # 아래에서 추가
+                                    "cx": result["cx_med"],
                                     "cy": result["cy_med"],
                                     "angle": result["angle"],
                                     "xyz": result["xyz"],
@@ -957,10 +868,155 @@ def main(args=None):
                             detection_history[cls_name].clear()
                             current_target = None
 
-            draw_last_published(overlay, last_published)  
-            publish_and_show(overlay, img_pub, bridge, node)
-            if cv2.waitKey(1) == 27:
-                break
+                    draw_last_published(overlay, last_published)
+                    publish_and_show(overlay, img_pub, bridge, node)
+                    if cv2.waitKey(1) == 27:
+                        break
+                    continue
+
+                predictor.set_image(rgb_full)  
+
+                for cls_name in TARGET_CLASSES:
+                    if cls_name != current_target:   # current_target만 처리
+                        continue
+
+                    # 클래스 매칭은 noodle로, CROP_RATIOS 등 나머지 조회는 cls_name(thick/thin)으로
+                    yolo_target = "noodle" if cls_name in ("noodle_thick", "noodle_thin") else cls_name
+                    depth_masked, shrunk_poly = get_obb_masked_depth(
+                        yolo_result, yolo_model.names, yolo_target, depth_full, cls_name)
+                    if depth_masked is None:
+                        prev_centers[cls_name] = []
+                        continue
+
+                    # OBB 시각화(줄인것)
+                    cv2.polylines(overlay, [shrunk_poly.astype(np.int32)], True, (255, 255, 0), 1)
+
+                    # 후보점 생성
+                    if cls_name not in ("noodle_thick", "noodle_thin"):
+                        local_points = get_min_depth_mask(depth_masked, depth_scale)
+                        points_full = local_points if local_points else []
+                    else: # 면이면 색상 필터(빨강=두꺼운면/파랑=얇은면) 적용 후 마스크 안에서만 후보점 생성
+                        color_mask = get_noodle_color_mask(frame_full, cls_name)
+                        # if color_mask is not None:
+                        #     cv2.imshow("noodle_color_mask", color_mask) # 색상 필터 확인용 창
+                        # shrunk_poly(OBB) 영역 + 색상마스크 AND한 영역 안에서 kmeans로 30개 후보점 고르게 생성
+                        points_full = get_mask_kmeans_points(shrunk_poly, depth_full, color_mask, k=15)
+                        # 후보점 시각화 (kmeans로 뽑힌 30개 점)
+                        for px, py in points_full:
+                            cv2.circle(overlay, (int(px), int(py)), 2, (0, 255, 0), -1)
+
+                    # 이전 프레임에서 검출된 재료 중앙점 이어붙이기
+                    if prev_centers[cls_name]:
+                        H, W = depth_full.shape
+                        obb_mask = np.zeros((H, W), dtype=np.uint8)
+                        cv2.fillPoly(obb_mask, [shrunk_poly.astype(np.int32)], 255)
+                        for cxf, cyf in prev_centers[cls_name]:
+                            if 0 <= cyf < H and 0 <= cxf < W and obb_mask[cyf, cxf] > 0:
+                                if all(np.hypot(cxf-p[0], cyf-p[1]) > 30 for p in points_full):
+                                    points_full.append((cxf, cyf))
+
+                    if not points_full:
+                        prev_centers[cls_name] = []
+                        continue
+
+                    ##################### 후보점 프레임에 표시
+                    # if prev_centers[cls_name]:
+                    #     for cxf, cyf in prev_centers[cls_name]:
+                    #         if x1 <= cxf < x2 and y1 <= cyf < y2:
+                    #             if all(np.hypot(cxf - p[0], cyf - p[1]) > 30 for p in points_full):
+                    #                 points_full.append((cxf, cyf))
+
+                    # if not points_full:
+                    #     prev_centers[cls_name] = []
+                    #     continue
+                    # for px, py in points_full:
+                    #     cv2.circle(overlay, (int(px), int(py)), 3, (0, 255, 0), -1)
+                    ####################
+
+                    found_boxes, best_box = sam2_seg(depth_full, points_full, cls_name, depth_scale, intrinsics) # 후보점을 sam2로 넘기기 -> 크기+깊이 검증
+                    if found_boxes is None:
+                        prev_centers[cls_name] = []
+                        continue
+
+
+                    new_centers = []
+                    for box in found_boxes: # 후보 박스들
+                        is_best = (box is best_box)
+                        color = (0, 0, 255) if is_best else (0, 255, 255)
+
+                        cx_full = int(box["center"][0])
+                        cy_full = int(box["center"][1])
+                        cv2.circle(overlay, (cx_full, cy_full), 5, (0, 0, 0), -1)
+
+                        depth_m = box['center_depth'] * depth_scale
+                        text = f"{depth_m*100:.1f}cm"
+                        cv2.putText(overlay, text, (cx_full - 40, cy_full + 20),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1, cv2.LINE_AA)
+
+                        if is_best and box.get("mask") is not None:
+                            mask = box["mask"]
+                            overlay[mask] = (0.5 * overlay[mask] + 0.5 * np.array([255, 0, 0])).astype(np.uint8)
+                        cv2.drawContours(overlay, [box["box_points"]], 0, color, 2)
+
+                        if is_best:
+                            # best_box 안에 점 5개 생성해서 저장
+                            pts5 = get_points_in_box(box["box_points"], n=5)
+                            new_centers.extend(pts5)
+                            # 시각화 
+                            for px, py in pts5:
+                                cv2.circle(overlay, (px, py), 2, (255, 0, 255), -1)
+                        else:
+                            # 나머지 박스는 중앙점 하나만
+                            new_centers.append((cx_full, cy_full))
+
+                    ###########
+                    ## publish 
+                    ###########
+                    if best_box is not None:
+                        cx = int(best_box["center"][0])
+                        cy = int(best_box["center"][1])
+                        depth_m = best_box["center_depth"] * depth_scale
+                        if depth_m > 0:
+                            xyz = rs.rs2_deproject_pixel_to_point(intrinsics, [cx, cy], depth_m)
+                            angle = get_orientation_from_box(best_box["box_points"])
+
+                            # 픽셀 좌표도 함께 저장
+                            detection_history[cls_name].append({
+                                "xyz": xyz, "angle": angle,
+                                "cx": cx, "cy": cy  
+                            })
+
+                            N = num
+                            if len(detection_history[cls_name]) >= N:
+                                result = get_most_frequent_detection(detection_history[cls_name])
+                                if result is not None:
+                                    x, y, z = result["xyz"]
+                                    msg = String()
+                                    msg.data = f"{cls_name},{x:.4f},{y:.4f},{z:.4f},{result['angle']:.2f}"
+                                    pub.publish(msg)
+                                    print(f"[{cls_name}] 발행: {msg.data}")
+
+                                    # 발행한 픽셀 좌표 저장 (화면 표시용)
+                                    last_published = {
+                                        "cls": cls_name,
+                                        "cx": result["cx_med"],   # 아래에서 추가
+                                        "cy": result["cy_med"],
+                                        "angle": result["angle"],
+                                        "xyz": result["xyz"],
+                                    }
+
+                                detection_history[cls_name].clear()
+                                current_target = None
+
+                draw_last_published(overlay, last_published)  
+                publish_and_show(overlay, img_pub, bridge, node)
+                if cv2.waitKey(1) == 27:
+                    break
+            except Exception as _e:
+                node.get_logger().error(f"[loop] frame skipped: {_e}")
+                traceback.print_exc()
+                continue
+
 
     finally:
         pipeline.stop()
