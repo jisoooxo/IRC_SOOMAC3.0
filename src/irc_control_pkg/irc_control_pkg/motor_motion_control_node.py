@@ -52,12 +52,12 @@ FINISH_TOLERANCE_DEG = 0.2
 
 ENABLE_MOTION = True
 
-PROFILE_VELOCITY = 20
-PROFILE_ACCELERATION = 10
+PROFILE_VELOCITY = 30
+PROFILE_ACCELERATION = 20
 
 JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 360.0])
-MAX_Q_STEP = math.radians(2.0)
+MAX_Q_STEP = math.radians(2.5)
 
 GRIP_PHASES = {'grip_pick', 'grip_place', 'spoon_pick', 'spoon_place'}
 PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full'}
@@ -208,7 +208,7 @@ class HardwareMotionControlNode(Node):
 
         for q_target in waypoints:
             minimum_duration = (
-                4.0  ## waypoint가 따로 없을 때 이동 시간
+                2.0  ## waypoint가 따로 없을 때 이동 시간
                 if len(waypoints) == 1
                 else 0.3
             )
@@ -256,9 +256,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 q_start,
-                1.0,
+                0.5,
                 action='grip_close:spoon',
-                action_delay=0.3
+                action_delay=0.1
             )
             return trajectory
 
@@ -266,9 +266,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 q_start,
-                1.0,
+                0.5,
                 action='grip_open',
-                action_delay=0.3
+                action_delay=0.1
             )
             return trajectory
 
@@ -286,13 +286,13 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w2,
-                2.0,
+                0.5,
                 action=f'grip_close:{class_name}',
-                action_delay=0.3
+                action_delay=0.1
             )
 
             # pick -> lift
-            self.move(trajectory, w2, w3, 2.0)
+            self.move(trajectory, w2, w3, 1.0)
 
             # lift 위치에서 대기
             self.hold(trajectory, w3, 0.5)
@@ -316,13 +316,13 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w2,
-                2.0,
+                0.5,
                 action='grip_open',
-                action_delay=0.3
+                action_delay=0.1
             )
 
             # place -> lift
-            self.move(trajectory, w2, w3, 2.0)
+            self.move(trajectory, w2, w3, 1.0)
 
             return trajectory
 
@@ -334,13 +334,13 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w2,
-                2.0,
+                1.0,
                 action='공압 on',
-                action_delay=0.3,
+                action_delay=0.1,
                 pack_horizontal=True
             )
 
-            self.move(trajectory, w2, w3, 2.0, True)
+            self.move(trajectory, w2, w3, 1.0, True)
             self.hold(trajectory, w3, 0.5, pack_horizontal=True)
 
             self.move(trajectory, w3, w4, 6.0, True)
@@ -355,13 +355,13 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w2,
-                2.0,
+                1.0,
                 action='공압 off',
-                action_delay=0.3,
+                action_delay=0.1,
                 pack_horizontal=True
             )
 
-            self.move(trajectory, w2, w3, 2.0, True)
+            self.move(trajectory, w2, w3, 1.0, True)
 
             return trajectory
 
@@ -375,9 +375,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w1,
-                1.5,
+                1.0,
                 action='공압 on',
-                action_delay=0.3,
+                action_delay=0.1,
                 pack_horizontal=True
             )
 
@@ -390,9 +390,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w4,
-                1.5,
+                1.9,
                 action='공압 off',
-                action_delay=0.3,
+                action_delay=0.1,
                 pack_horizontal=True
             )
 

@@ -335,7 +335,7 @@ class PointPoseNode(Node):
                 q_cheese_release_1,
                 q_cheese_release_2
             ]),
-            ('delay', 1.5),
+            ('delay', 0.5),
         ]
 
         commands_2 = [
@@ -350,7 +350,7 @@ class PointPoseNode(Node):
                 q_cheese_release_1,
                 q_cheese_release_2
             ]),
-            ('delay', 1.5),
+            ('delay', 0.5),
         ]
 
         commands = commands_1.copy()
