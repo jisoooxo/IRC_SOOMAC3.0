@@ -9,6 +9,7 @@ from irc_control_pkg.kinematics import Kinematics
 from std_msgs.msg import Empty, Bool, Float64MultiArray, MultiArrayDimension, String, Int16
 
 DOF = 6
+CONTROL_READY = np.deg2rad([0.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 
 SPOON_PICK_POSITION = np.array([0.4, 0.01, 0.265], dtype=float)
 SPOON_Q6 = math.radians(90.0)
@@ -65,10 +66,10 @@ class PointPoseNode(Node):
         self.point1_q = None
         self.pick_lift_q = None
 
-        self.cheese_commands = []
-        self.cheese_command_index = 0
+        self.cp_commands = []
+        self.cp_command_index = 0
         self.cp_repeat_count = 1
-        self.cheese_delay_timer = None
+        self.vlm_hold_timer = None
 
         self.confirm_retry_phase = None
         self.vlm_confirm_pending = False
@@ -93,27 +94,26 @@ class PointPoseNode(Node):
         command = msg.data.strip()
 
         if command == 'point1':
-            self.move_point(POINT1)
+            self.move_point1()
             return
 
         if command == 'place':
             if self.current_ingredient is None:
                 return
 
-            mode = self.select_mode(self.current_ingredient)
             position, yaw = self.move_place_pose()
-            self.plan_place(position, yaw, mode)
+            self.plan_place(position, yaw, self.pick_mode)
             return
 
         if command == 'cp':
             if self.current_ingredient is None:
                 return
 
-            self.cheese_commands = self.cp_path(
+            self.cp_commands = self.cp_path(
                 self.current_ingredient,
                 self.cp_repeat_count
             )
-            self.cheese_command_index = 0
+            self.cp_command_index = 0
             self.after_cp_path()
             return
 
@@ -126,7 +126,7 @@ class PointPoseNode(Node):
             return
 
     def arm_motion_done_callback(self, _msg):
-        if self.cheese_commands:
+        if self.cp_commands:
             self.after_cp_path()
             return
 
@@ -182,13 +182,13 @@ class PointPoseNode(Node):
 
         if self.pick_mode == 'cp':
             self.confirm_retry_phase = 'cp'
-            self.cheese_commands = self.cp_path(self.current_ingredient, 1)
-            self.cheese_command_index = 0
+            self.cp_commands = self.cp_path(self.current_ingredient, 1)
+            self.cp_command_index = 0
             self.after_cp_path()
             return
 
         self.confirm_retry_phase = 'point1'
-        self.move_point(POINT1)
+        self.move_point1()
 
     def pick_callback(self, msg):
         position, yaw, class_name = self.vision_pick_pose(msg)
@@ -206,14 +206,14 @@ class PointPoseNode(Node):
         self.point1_q = None
         self.pick_lift_q = None
 
-        self.cheese_commands = []
-        self.cheese_command_index = 0
+        self.cp_commands = []
+        self.cp_command_index = 0
         self.cp_repeat_count = 1
 
-        if self.cheese_delay_timer is not None:
-            self.cheese_delay_timer.cancel()
-            self.destroy_timer(self.cheese_delay_timer)
-            self.cheese_delay_timer = None
+        if self.vlm_hold_timer is not None:
+            self.vlm_hold_timer.cancel()
+            self.destroy_timer(self.vlm_hold_timer)
+            self.vlm_hold_timer = None
 
         self.confirm_retry_phase = None
         self.vlm_confirm_pending = False
@@ -253,8 +253,7 @@ class PointPoseNode(Node):
         return waypoints
 
     def cp_path(self, class_name, repeat_count=1):
-        q_home = np.zeros(DOF)
-        q_start = q_home.copy()
+        q_start = np.zeros(DOF)
 
         # 숟가락 접근
         spoon_approach_position = SPOON_PICK_POSITION.copy()
@@ -338,8 +337,8 @@ class PointPoseNode(Node):
             ('delay', 0.5),
         ]
 
+        # 숟가락은 이미 잡고 있으므로 다시 푸기 -> 놓기만 수행
         commands_2 = [
-            # 숟가락은 이미 잡고 있으므로 다시 푸기 -> 놓기만 수행
             ('motion', [
                 q_cheese_approach_lift,
                 q_cheese_approach,
@@ -368,9 +367,9 @@ class PointPoseNode(Node):
         return commands
 
     def after_cp_path(self):
-        if self.cheese_command_index >= len(self.cheese_commands):
-            self.cheese_commands = []
-            self.cheese_command_index = 0
+        if self.cp_command_index >= len(self.cp_commands):
+            self.cp_commands = []
+            self.cp_command_index = 0
 
             # VLM fail로 CP를 한 번 더 하는 경우
             if self.confirm_retry_phase == 'cp':
@@ -384,8 +383,8 @@ class PointPoseNode(Node):
             self.cp_done_pub.publish(msg)
             return
 
-        command = self.cheese_commands[self.cheese_command_index]
-        self.cheese_command_index += 1
+        command = self.cp_commands[self.cp_command_index]
+        self.cp_command_index += 1
         kind = command[0]
 
         if kind == 'motion':
@@ -411,25 +410,22 @@ class PointPoseNode(Node):
             return
 
         if kind == 'delay':
-            self.cheese_delay_timer = self.create_timer(
+            self.vlm_hold_timer = self.create_timer(
                 command[1],
                 self.cheese_delay_done
             )
 
     def cheese_delay_done(self):
-        self.cheese_delay_timer.cancel()
-        self.destroy_timer(self.cheese_delay_timer)
-        self.cheese_delay_timer = None
+        self.vlm_hold_timer.cancel()
+        self.destroy_timer(self.vlm_hold_timer)
+        self.vlm_hold_timer = None
         self.after_cp_path()
 
-    def move_point(self, point):
-        q_target = point.copy()
-
-        if np.allclose(point, POINT1):
-            self.point1_q = q_target
-
+    def move_point1(self):
+        self.point1_q = POINT1.copy()
+        
         msg = Float64MultiArray()
-        msg.data = q_target.tolist()
+        msg.data = self.point1_q.tolist()
         self.joint_target_pub.publish(msg)
 
     def move_vlm_confirm(self):
@@ -445,7 +441,7 @@ class PointPoseNode(Node):
         self.home_pending = True
 
         msg = Float64MultiArray()
-        msg.data = [0.0] * DOF
+        msg.data = CONTROL_READY.tolist()
         self.joint_target_pub.publish(msg)
 
     @staticmethod
@@ -547,17 +543,17 @@ class PointPoseNode(Node):
         self.pick_lift_q = q_lift
 
         if mode == 'pack':
+            publisher = self.pack_plan_pub
             phase = 'pack_pick'
-        else: phase = f'grip_pick:{self.current_ingredient}'
+        else:
+            publisher = self.grip_plan_pub
+            phase = f'grip_pick:{self.current_ingredient}'
 
         self.publish_waypoints(
-            self.pack_plan_pub
-            if mode == 'pack'
-            else self.grip_plan_pub,
+            publisher,
             phase,
             q_approach,
             q_pick,
-            q_lift,
             q_lift
         )
     
@@ -600,7 +596,6 @@ class PointPoseNode(Node):
             phase,
             q_approach,
             q_place,
-            q_lift,
             q_lift
         )
 
@@ -636,16 +631,18 @@ class PointPoseNode(Node):
         )
 
     @staticmethod
-    def publish_waypoints(publisher, phase, q1, q2, q3, q4):
+    def publish_waypoints(publisher, phase, *waypoints):
+        count = len(waypoints)
+
         msg = Float64MultiArray()
         msg.layout.dim = [
             MultiArrayDimension(
                 label=phase,
-                size=4,
-                stride=DOF * 4
+                size=count,
+                stride=DOF * count
             )
         ]
-        msg.data = np.concatenate([q1, q2, q3, q4]).tolist()
+        msg.data = np.concatenate(waypoints).tolist()
         publisher.publish(msg)
 
 

@@ -19,6 +19,7 @@ ARM_IDS = [1, 2, 3, 4, 5, 6]
 GRIPPER_ID = 7
 ALL_IDS = ARM_IDS + [GRIPPER_ID]
 DOF = 6
+CONTROL_READY = np.deg2rad([0.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 
 BAUDRATE = 1000000
 PROTOCOL_VERSION = 2.0
@@ -45,9 +46,6 @@ GRIPPER_CLOSE_DEG = {
     'spoon':    -54
 }
 
-MIN_MOVE_TO_HOME_TIME = 3.0
-MOVE_RETURN_HOME_TIME = 4.0
-
 FINISH_TOLERANCE_DEG = 0.2
 
 ENABLE_MOTION = True
@@ -57,7 +55,7 @@ PROFILE_ACCELERATION = 20
 
 JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 360.0])
-MAX_Q_STEP = math.radians(2.5)
+MAX_Q_STEP = math.radians(2.0)
 
 GRIP_PHASES = {'grip_pick', 'grip_place', 'spoon_pick', 'spoon_place'}
 PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full'}
@@ -141,7 +139,7 @@ class HardwareMotionControlNode(Node):
             self.get_logger().warning('로봇팔 동작 중')
             return
 
-        if len(msg.data) != DOF * 4:
+        if len(msg.data) < DOF or len(msg.data) % DOF != 0:
             return
 
         label = (
@@ -164,7 +162,7 @@ class HardwareMotionControlNode(Node):
         if not np.all(np.isfinite(joint_data)):
             return
 
-        waypoints = joint_data.reshape(4, DOF)
+        waypoints = joint_data.reshape(-1, DOF)
         waypoints = np.clip(waypoints, JOINT_MIN, JOINT_MAX)
 
         q_start = self.read_current_q()
@@ -206,13 +204,9 @@ class HardwareMotionControlNode(Node):
 
         q_previous = q_start.copy()
 
+        ## waypoint가 따로 없을 때 이동 시간
+        minimum_duration = 2.0 if len(waypoints) == 1 else 0.3
         for q_target in waypoints:
-            minimum_duration = (
-                2.0  ## waypoint가 따로 없을 때 이동 시간
-                if len(waypoints) == 1
-                else 0.3
-            )
-
             self.move(
                 trajectory,
                 q_previous,
@@ -249,7 +243,6 @@ class HardwareMotionControlNode(Node):
             self.command_pneumatic(enabled=False)
 
     def build_phase_trajectory(self, phase, q_start, waypoints, class_name):
-        w1, w2, w3, w4 = [waypoint.copy() for waypoint in waypoints]
         trajectory = []
 
         if phase == 'spoon_pick':
@@ -273,134 +266,133 @@ class HardwareMotionControlNode(Node):
             return trajectory
 
         if phase == 'grip_pick':
-            # 현재 위치 -> pick approach
-            self.move(trajectory, q_start, w1, 2.0)
+            approach, pick, lift = [q.copy() for q in waypoints]
 
-            # approach 위치에서 대기
-            self.hold(trajectory, w1, 0.5)
-
-            # approach -> pick
-            self.move(trajectory, w1, w2, 2.0)
-
-            # pick 위치에서 대기했다가 gripper close
-            self.hold(
+            self.build_grip_motion(
                 trajectory,
-                w2,
-                1.5,
-                action=f'grip_close:{class_name}',
-                action_delay=0.3
+                q_start,
+                approach,
+                pick,
+                lift,
+                f'grip_close:{class_name}'
             )
 
-            # pick -> lift
-            self.move(trajectory, w2, w3, 1.0)
-
-            # lift 위치에서 대기
-            self.hold(trajectory, w3, 0.5)
-
-            # lift -> transfer
-            self.move(trajectory, w3, w4, 6.0)
+            self.hold(trajectory, lift, 0.5)
 
             return trajectory
 
         if phase == 'grip_place':
-            # 현재 위치 -> place approach
-            self.move(trajectory, q_start, w1, 2.0)
+            approach, place, lift = [q.copy() for q in waypoints]
 
-            # approach 위치에서 대기
-            self.hold(trajectory, w1, 0.5)
-
-            # approach -> place
-            self.move(trajectory, w1, w2, 2.0)
-
-            # place 위치에서 대기했다가 gripper open
-            self.hold(
+            self.build_grip_motion(
                 trajectory,
-                w2,
-                1.5,
-                action='grip_open',
-                action_delay=0.3
+                q_start,
+                approach,
+                place,
+                lift,
+                'grip_open'
             )
-
-            # place -> lift
-            self.move(trajectory, w2, w3, 1.0)
 
             return trajectory
 
         if phase == 'pack_pick':
-            self.move(trajectory, q_start, w1, 2.0, True)
-            self.hold(trajectory, w1, 0.5, pack_horizontal=True)
+            approach, pick, lift = [q.copy() for q in waypoints]
 
-            self.move(trajectory, w1, w2, 2.0, True)
-            self.hold(
+            self.build_pack_motion(
                 trajectory,
-                w2,
-                1.5,
-                action='공압 on',
-                action_delay=0.3,
-                pack_horizontal=True
+                q_start,
+                approach,
+                pick,
+                lift,
+                '공압 on'
             )
 
-            self.move(trajectory, w2, w3, 1.0, True)
-            self.hold(trajectory, w3, 0.5, pack_horizontal=True)
-
-            self.move(trajectory, w3, w4, 6.0, True)
+            self.hold(trajectory, lift, 0.5, pack_horizontal=True)
 
             return trajectory
 
         if phase == 'pack_place':
-            self.move(trajectory, q_start, w1, 2.0, True)
-            self.hold(trajectory, w1, 0.5, pack_horizontal=True)
-
-            self.move(trajectory, w1, w2, 2.0, True)
-            self.hold(
+            approach, place, lift = [q.copy() for q in waypoints]
+            
+            self.build_pack_motion(
                 trajectory,
-                w2,
-                1.5,
-                action='공압 off',
-                action_delay=0.3,
-                pack_horizontal=True
+                q_start,
+                approach,
+                place,
+                lift,
+                '공압 off'
             )
-
-            self.move(trajectory, w2, w3, 1.0, True)
 
             return trajectory
 
         if phase == 'pack_full':
-            self.move(trajectory, q_start, self.q_home, 2.0)
-            self.hold(trajectory, self.q_home, 1.0)
+            pick, pick_lift, place_lift, place = [q.copy() for q in waypoints]
+            self.move(trajectory, q_start, CONTROL_READY, 2.0)
+            self.hold(trajectory, CONTROL_READY, 1.0)
 
-            self.move(trajectory, self.q_home, w2, 2.0, True)
-            self.move(trajectory, w2, w1, 2.0, True)
+            self.move(trajectory, CONTROL_READY, pick_lift, 2.0, True)
+            self.move(trajectory, pick_lift, pick, 2.0, True)
 
             self.hold(
                 trajectory,
-                w1,
+                pick,
                 1.0,
                 action='공압 on',
                 action_delay=0.1,
                 pack_horizontal=True
             )
 
-            self.move(trajectory, w1, w2, 2.0, True)
-            self.hold(trajectory, w2, 0.5, pack_horizontal=True)
+            self.move(trajectory, pick, pick_lift, 2.0, True)
+            self.hold(trajectory, pick_lift, 0.5, pack_horizontal=True)
 
-            self.move(trajectory, w2, w3, 6.0, True)
-            self.move(trajectory, w3, w4, 2.0, True)
+            self.move(trajectory, pick_lift, place_lift, 6.0, True)
+            self.move(trajectory, place_lift, place, 2.0, True)
 
             self.hold(
                 trajectory,
-                w4,
-                1.9,
+                place,
+                1.0,
                 action='공압 off',
                 action_delay=0.1,
                 pack_horizontal=True
             )
 
-            self.move(trajectory, w4, self.q_home, 4.0)
+            self.move(trajectory, place, CONTROL_READY, 4.0)
 
             return trajectory
 
         return
+
+    def build_grip_motion(self, trajectory, q_start, approach, target, lift, action):
+        self.move(trajectory, q_start, approach, 2.0)
+        self.hold(trajectory, approach, 0.5)
+
+        self.move(trajectory, approach, target, 2.0)
+        self.hold(
+            trajectory,
+            target,
+            1.5,
+            action=action,
+            action_delay=0.3
+        )
+
+        self.move(trajectory, target, lift, 1.0)
+
+    def build_pack_motion(self, trajectory, q_start, approach, target, lift, action):
+        self.move(trajectory, q_start, approach, 2.0, True)
+        self.hold(trajectory, approach, 0.5, pack_horizontal=True)
+    
+        self.move(trajectory, approach, target, 2.0, True)
+        self.hold(
+            trajectory,
+            target,
+            1.5,
+            action=action,
+            action_delay=0.3,
+            pack_horizontal=True
+        )
+    
+        self.move(trajectory, target, lift, 1.0, True)
 
     def move(
         self,
@@ -473,15 +465,6 @@ class HardwareMotionControlNode(Node):
         return max(float(minimum_duration), required_time * 1.2)
 
     def _connect_move_velocities(self, trajectory, velocity_scale=0.5):
-        for segment in trajectory:
-            if segment['kind'] != 'move':
-                continue
-
-            segment['start_velocity'] = np.zeros(DOF, dtype=float)
-            segment['goal_velocity'] = np.zeros(DOF, dtype=float)
-            segment['start_acceleration'] = np.zeros(DOF, dtype=float)
-            segment['goal_acceleration'] = np.zeros(DOF, dtype=float)
-
         # 바로 이어지는 move → move 구간만 속도를 연결한다.
         for index in range(len(trajectory) - 1):
             previous_segment = trajectory[index]
@@ -723,8 +706,7 @@ class HardwareMotionControlNode(Node):
         self._write4(
             GRIPPER_ID,
             ADDR_GOAL_POSITION,
-            goal_raw,
-            'write gripper position'
+            goal_raw
         )
 
     def command_pneumatic(self, enabled):
@@ -773,8 +755,7 @@ class HardwareMotionControlNode(Node):
         gripper_raw = (
             self._read4(
                 GRIPPER_ID,
-                ADDR_PRESENT_POSITION,
-                'read gripper position'
+                ADDR_PRESENT_POSITION
             ) % 4096
         )
 
@@ -782,8 +763,7 @@ class HardwareMotionControlNode(Node):
         self._write4(
             GRIPPER_ID,
             ADDR_GOAL_POSITION,
-            gripper_raw,
-            'hold gripper position'
+            gripper_raw
         )
 
     def raw_to_q(self, raw_list):
@@ -815,38 +795,28 @@ class HardwareMotionControlNode(Node):
             else self.port_xm
         )
 
-    def check(self, comm, error):
-        if comm != 0:
-            return
-
-        if error != 0:
-            return
-
-    def _write1(self, dxl_id, address, value, action):
-        comm, error = self.packet.write1ByteTxRx(
+    def _write1(self, dxl_id, address, value):
+        self.packet.write1ByteTxRx(
             self.port(dxl_id),
             dxl_id,
             address,
             int(value)
         )
-        self.check(comm, error)
 
-    def _write4(self, dxl_id, address, value, action):
-        comm, error = self.packet.write4ByteTxRx(
+    def _write4(self, dxl_id, address, value):
+        self.packet.write4ByteTxRx(
             self.port(dxl_id),
             dxl_id,
             address,
             to_u32(value)
         )
-        self.check(comm, error)
 
-    def _read4(self, dxl_id, address, action):
-        value, comm, error = self.packet.read4ByteTxRx(
+    def _read4(self, dxl_id, address):
+        value, _, _= self.packet.read4ByteTxRx(
             self.port(dxl_id),
             dxl_id,
             address
         )
-        self.check(comm, error)
         return int(value)
 
     def setup_motors(self):
@@ -859,11 +829,10 @@ class HardwareMotionControlNode(Node):
         self.xm_open = True
 
         for dxl_id in ALL_IDS:
-            _, comm, error = self.packet.ping(
+            self.packet.ping(
                 self.port(dxl_id),
                 dxl_id
             )
-            self.check(comm, error)
 
         self.set_all_torque(False)
         time.sleep(0.05)
@@ -872,40 +841,34 @@ class HardwareMotionControlNode(Node):
             self._write1(
                 dxl_id,
                 ADDR_OPERATING_MODE,
-                POSITION_MODE,
-                'set position mode'
+                POSITION_MODE
             )
             self._write4(
                 dxl_id,
                 ADDR_PROFILE_ACCELERATION,
-                PROFILE_ACCELERATION,
-                'set profile acceleration'
+                PROFILE_ACCELERATION
             )
             self._write4(
                 dxl_id,
                 ADDR_PROFILE_VELOCITY,
-                PROFILE_VELOCITY,
-                'set profile velocity'
+                PROFILE_VELOCITY
             )
 
     def set_all_torque(self, enabled):
-        if enabled: value = 1
-        else: value = 0
+        value = int(enabled)
 
         for dxl_id in ALL_IDS:
             self._write1(
                 dxl_id,
                 ADDR_TORQUE_ENABLE,
-                value,
-                'set torque'
+                value
             )
 
     def read_arm_positions(self):
         return [
             self._read4(
                 dxl_id,
-                ADDR_PRESENT_POSITION,
-                'read position'
+                ADDR_PRESENT_POSITION
             ) % 4096
             for dxl_id in ARM_IDS
         ]
@@ -915,8 +878,7 @@ class HardwareMotionControlNode(Node):
             self._write4(
                 dxl_id,
                 ADDR_GOAL_POSITION,
-                int(raw) % 4096,
-                'write position'
+                int(raw) % 4096
             )
 
     def shutdown(self):
