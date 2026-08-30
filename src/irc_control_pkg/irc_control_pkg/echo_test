@@ -185,15 +185,30 @@ ros2 topic pub --once /ui/start std_msgs/msg/String \
 ros2 topic pub --once /llm/plan std_msgs/msg/String \
 "{data: '{\"class\":\"mushroom\",\"repeat_count\":1}'}"
 
-3. rail이 보내주는 완료 신호
+3. rail이 보내주는 완료 신호   
 ros2 topic pub --once /rail/motion_done std_msgs/msg/String \
 "{data: 'done'}"
 
-4. LLM이 보내주는 초기화 완료 신호
+4. vlm이 보내주는 성공 신호
+ros2 topic pub --once /vlm/confirm std_msgs/msg/String "{data: 'success'}"
+
+5. LLM이 보내주는 초기화 완료 신호
 ros2 topic pub --once /llm/done std_msgs/msg/Bool "{data: true}"
 
-5. 아직 클래스 없는 비전 대체 신호
+6. 아직 클래스 없는 비전 대체 신호
 ros2 topic pub --once /vision/pick_pose std_msgs/msg/String \
 "{data: '{\"x\":0.25,\"y\":0.0,\"z\":0.035,\"yaw\":180.0,\"class_name\":\"cream\"}'}"
 
 
+터미널 6개 창
+메인(main_vlm_node)             | 하드웨어(motor_motion_control_node)
+point 계산(point_pose_vlm_node) | 카메라(detect_yolo_sam_obb_pub)
+transform(transform_node)      | 레일 완료 에코 쏴주는 터미널
+
+-> 마지막 터미널에서는 이거 보내면 됨
+rail이 보내주는 완료 신호   
+ros2 topic pub --once /rail/motion_done std_msgs/msg/String \
+"{data: 'done'}"
+
+detect_yolo_sam_obb_pub -> 재료 그립 위치 수정 ver.
+detect_yolo_sam_obb_pub(copy) -> 재료 그립 위치 중앙 일정 ver.

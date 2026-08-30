@@ -322,7 +322,7 @@ class PointPoseNode(Node):
             # 숟가락 잡기
             ('gripper', 'spoon_pick:spoon', q_spoon_pick),
 
-            # 숟가락 lift -> 첫 번째 치즈/페퍼론치노 푸기 -> 놓기
+            # 숟가락 lift -> 첫 번째 치즈/페퍼론치노 푸고 놓기
             ('motion', [
                 q_spoon_lift,
                 q_cheese_approach_lift,
@@ -337,7 +337,7 @@ class PointPoseNode(Node):
             ('delay', 0.5),
         ]
 
-        # 숟가락은 이미 잡고 있으므로 다시 푸기 -> 놓기만 수행
+        # 숟가락은 이미 잡고 있으므로 다시 푸기, 놓기만 수행
         commands_2 = [
             ('motion', [
                 q_cheese_approach_lift,

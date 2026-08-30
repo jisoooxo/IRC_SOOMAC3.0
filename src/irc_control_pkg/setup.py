@@ -34,6 +34,8 @@ setup(
             'motor_motion_control_node = irc_control_pkg.motor_motion_control_node:main',
             'main_irc_node = irc_control_pkg.main_irc:main',
             'point_pose_node = irc_control_pkg.point_pose_node:main',
+            'main_vlm_node = irc_control_pkg.main_vlm:main',
+            'point_pose_vlm_node = irc_control_pkg.point_pose_vlm_node:main',
             'detect_yolo_sam_obb_pub = irc_control_pkg.detect_yolo_sam_obb_pub:main',
             'transform_node = irc_control_pkg.transform_node:main',
         ],
