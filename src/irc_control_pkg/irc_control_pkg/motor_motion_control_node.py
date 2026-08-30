@@ -256,9 +256,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 q_start,
-                0.5,
+                2.0,
                 action='grip_close:spoon',
-                action_delay=0.1
+                action_delay=0.3
             )
             return trajectory
 
@@ -266,9 +266,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 q_start,
-                0.5,
+                2.0,
                 action='grip_open',
-                action_delay=0.1
+                action_delay=0.3
             )
             return trajectory
 
@@ -286,9 +286,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w2,
-                0.5,
+                1.5,
                 action=f'grip_close:{class_name}',
-                action_delay=0.1
+                action_delay=0.3
             )
 
             # pick -> lift
@@ -316,9 +316,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w2,
-                0.5,
+                1.5,
                 action='grip_open',
-                action_delay=0.1
+                action_delay=0.3
             )
 
             # place -> lift
@@ -334,9 +334,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w2,
-                1.0,
+                1.5,
                 action='공압 on',
-                action_delay=0.1,
+                action_delay=0.3,
                 pack_horizontal=True
             )
 
@@ -355,9 +355,9 @@ class HardwareMotionControlNode(Node):
             self.hold(
                 trajectory,
                 w2,
-                1.0,
+                1.5,
                 action='공압 off',
-                action_delay=0.1,
+                action_delay=0.3,
                 pack_horizontal=True
             )
 

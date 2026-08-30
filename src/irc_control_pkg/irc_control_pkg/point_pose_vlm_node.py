@@ -321,7 +321,7 @@ class PointPoseNode(Node):
             ('motion', [q_spoon_approach, *q_spoon_pick_path]),
 
             # 숟가락 잡기
-            ('gripper', 'grip_pick:spoon', q_spoon_pick),
+            ('gripper', 'spoon_pick:spoon', q_spoon_pick),
 
             # 숟가락 lift -> 첫 번째 치즈/페퍼론치노 푸기 -> 놓기
             ('motion', [
@@ -361,7 +361,7 @@ class PointPoseNode(Node):
         # 모든 반복이 끝난 뒤에만 숟가락 반납
         commands.extend([
             ('motion', [q_spoon_lift, q_spoon_pick]),
-            ('gripper', 'grip_place:spoon', q_spoon_pick),
+            ('gripper', 'spoon_place:spoon', q_spoon_pick),
             ('motion', q_spoon_retreat_path)
         ])
 
