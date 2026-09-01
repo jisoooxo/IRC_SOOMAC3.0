@@ -334,7 +334,7 @@ class PointPoseNode(Node):
                 q_cheese_release_1,
                 q_cheese_release_2
             ]),
-            ('delay', 0.5),
+            ('delay', 0.5)
         ]
 
         # 숟가락은 이미 잡고 있으므로 다시 푸기, 놓기만 수행
@@ -349,7 +349,7 @@ class PointPoseNode(Node):
                 q_cheese_release_1,
                 q_cheese_release_2
             ]),
-            ('delay', 0.5),
+            ('delay', 0.5)
         ]
 
         commands = commands_1.copy()
@@ -492,17 +492,11 @@ class PointPoseNode(Node):
         lift_position[2] += LIFT_HEIGHT
 
         q_pick = self.kinematics.solve_pose(
-            position,
-            previous_q,
-            math.pi,
-            'pack'
+            position, previous_q, math.pi, 'pack'
         )
 
         q_lift = self.kinematics.solve_pose(
-            lift_position,
-            q_pick,
-            math.pi,
-            'pack'
+            lift_position, q_pick, math.pi, 'pack'
         )
 
         return q_pick, q_lift
@@ -520,24 +514,15 @@ class PointPoseNode(Node):
             q_approach = q_lift
         else:
             q_approach = self.kinematics.solve_pose(
-                approach,
-                q_motion_start,
-                yaw,
-                'grip'
+                approach, q_motion_start, yaw, 'grip'
             )
 
             q_pick = self.kinematics.solve_pose(
-                position,
-                q_approach,
-                yaw,
-                'grip'
+                position, q_approach, yaw, 'grip'
             )
 
             q_lift = self.kinematics.solve_pose(
-                approach,
-                q_pick,
-                yaw,
-                'grip'
+                approach, q_pick, yaw, 'grip'
             )
         # lift 된 지점에서 바로 place 시작
         self.pick_lift_q = q_lift
@@ -563,27 +548,27 @@ class PointPoseNode(Node):
 
         if mode == 'pack':
             q_approach = self.kinematics.solve_pose(
-                approach,
-                self.pick_lift_q,
-                math.pi,
-                'pack'
+                approach, self.pick_lift_q, math.pi, 'pack'
             )
 
             q_place = self.kinematics.solve_pose(
-                position,
-                q_approach,
-                math.pi,
-                'pack'
+                position, q_approach, math.pi, 'pack'
             )
 
             q_lift = q_approach
 
         else:
-            q_approach = self.kinematics.solve_grip_place_pose(approach, self.pick_lift_q, yaw)
+            q_approach = self.kinematics.solve_grip_place_pose(
+                approach, self.pick_lift_q, yaw
+            )
 
-            q_place = self.kinematics.solve_grip_place_pose(position, q_approach, yaw)
+            q_place = self.kinematics.solve_grip_place_pose(
+                position, q_approach, yaw
+            )
 
-            q_lift = self.kinematics.solve_grip_place_pose(approach, q_place, yaw)
+            q_lift = self.kinematics.solve_grip_place_pose(
+                approach, q_place, yaw
+            )
 
         if mode == 'pack':
             phase = 'pack_place'
@@ -609,16 +594,10 @@ class PointPoseNode(Node):
         q_home = np.zeros(DOF, dtype=float)
         q_p1, q_p1_lift = self.solve_pack_pick_lift(p1, q_home)
         q_p2_lift = self.kinematics.solve_pose(
-            p2_lift,
-            q_p1_lift,
-            math.pi,
-            'pack'
+            p2_lift, q_p1_lift, math.pi, 'pack'
         )
         q_p2 = self.kinematics.solve_pose(
-            p2,
-            q_p2_lift,
-            math.pi,
-            'pack'
+            p2, q_p2_lift, math.pi, 'pack'
         )
 
         self.publish_waypoints(
