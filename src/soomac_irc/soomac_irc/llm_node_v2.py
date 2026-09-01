@@ -1,4 +1,5 @@
 import queue # 모델 추론은 ros 콜백에서 돌리면 막혀서 스레드랑 큐로 빼야함
+from collections import deque
 import json
 import threading
 
@@ -43,7 +44,7 @@ AFFIRM_WORDS = frozenset({"네", "예", "응", "맞아", "맞아요", "그래", 
 # 확정 언어
 # frozenset은 set과 같은데 한 번 만들면 내부 값을 바꿀 수 없음
 
-WORLD_CAM_TOPIC = "/world_camera/image_raw"
+WORLD_CAM_TOPIC = "/vision/overlay_image"
 BY_VLM_NUM = 3 # 완료 토픽
 
 # publish 할때만 영어로 바꿈(코드 내에선 한글로 가져감)
@@ -63,6 +64,9 @@ TOPIC_CLASS_NAMES = {
     "뚜껑": "cover",
 }
 
+CONFIRM_MULTI_IMAGE = False
+NUMBER_IMAGE_FOR_CONFIRM = 5 # 여러장 저장해서 비교
+# False면 단일 이미지, True면 이미지 여러장
 
 
 class LLMNode(Node):
@@ -125,7 +129,16 @@ class LLMNode(Node):
         self.vlm_reference = {} 
         self.vlm_rag = None
 
-        self.latest_camera_message = None
+
+        if CONFIRM_MULTI_IMAGE:
+            # maxlen을 넘으면 가장 오래된 이미지가 자동으로 빠진다.
+            self.latest_camera_message = deque(maxlen=NUMBER_IMAGE_FOR_CONFIRM)
+
+        else:
+            self.latest_camera_message = None
+
+
+
         self.camera_lock = threading.Lock()
         self.camera_sub = None
 
@@ -214,11 +227,15 @@ class LLMNode(Node):
         self._jobs.put(("next", msg.data))
 
     def camera_callback(self, msg: Image):
-        # 카메라는 작업 큐에 계속 쌓지 않고 최신 메시지만 교체한다.
-        # 주문 상태는 worker만 수정하고, 카메라 메시지는 lock으로 따로 보호한다.
+    # 카메라는 작업 큐에 계속 쌓지 않고 최신 메시지만 저장한다.
+    # deque는 설정한 개수를 넘으면 가장 오래된 이미지를 자동으로 제거한다.
 
         with self.camera_lock:
-            self.latest_camera_message = msg
+            if CONFIRM_MULTI_IMAGE:
+                self.latest_camera_message.append(msg)
+
+            else:
+                self.latest_camera_message = msg
 
 
     def _set_stt_enabled(self, enabled: bool):
@@ -434,6 +451,12 @@ class LLMNode(Node):
         self.ui_started = False
         self.action_history = []
         self.conversation_started = False
+        if CONFIRM_MULTI_IMAGE:
+            # maxlen을 넘으면 가장 오래된 이미지가 자동으로 빠진다.
+            self.latest_camera_message = deque(maxlen=NUMBER_IMAGE_FOR_CONFIRM)
+
+        else:
+            self.latest_camera_message = None
 
 
     def _section_items(self):
@@ -447,7 +470,6 @@ class LLMNode(Node):
 
         elif self.section == "extra":
             return EXTRAS
-
 
         return []
 
@@ -746,6 +768,8 @@ class LLMNode(Node):
             self.get_logger().warning("cover 작업 완료를 위해 /llm/reset을 기다리는 중")
             return
 
+        # 2026.08.27 -> 재시도는 한번만 ㅇㅇ 재시도 후 실패 성공 상관없이 /llm/next 보냄
+
         needs_vlm_confirm = ENABLE_VLM and (
             SECTION_SEQUENCE_VLM or self.section == "sauce"
         )
@@ -762,8 +786,6 @@ class LLMNode(Node):
             self.completed_tasks.append(completed_task.copy())
 
         self.get_logger().info(f"현재 하고 있는 작업 완료 : {completed_task}")
-
-
 
         if self.task_queue:
             self._publish_next_task()
@@ -811,7 +833,6 @@ class LLMNode(Node):
 
         self.reply_pub.publish(String(data=reply))
         
-
     def _finish_order(self):
         # 전체 주문 완료는 한 번만 발행
 
@@ -1102,6 +1123,7 @@ class LLMNode(Node):
 
         # 카메라 이미지가 없거나 깨졌으면 현재 작업을 전부 재시도 대상으로 반환
         if camera_image is None:
+            self.get_logger().warning("카메라 이미지가 없거나 깨졌어요")
 
             for task in tasks:
                 failed_tasks.append(task.copy())
@@ -1130,7 +1152,7 @@ class LLMNode(Node):
         # 현재 로봇 작업이 없거나 vlm 함수가 없으면 판정 x
 
         if self.call_vlm is None or not expected:
-            return "unknown_retake", ""
+            return "unknown_retake", "" 
 
          
         reference_image = self.vlm_reference.get(expected) # key값 넣음
