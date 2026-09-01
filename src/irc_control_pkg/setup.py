@@ -38,6 +38,7 @@ setup(
             'point_pose_vlm_node = irc_control_pkg.point_pose_vlm_node:main',
             'detect_yolo_sam_obb_pub = irc_control_pkg.detect_yolo_sam_obb_pub:main',
             'transform_node = irc_control_pkg.transform_node:main',
+            'rail_node = irc_control_pkg.rail_bridge:main',
         ],
     },
 )

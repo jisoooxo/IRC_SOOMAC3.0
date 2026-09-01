@@ -11,6 +11,7 @@ CP_CLASSES = {'cheese', 'pepperoncino'}
 
 # MAIN 상태
 STATE_WAIT_START = 'WAIT_START'
+STATE_WAIT_RAIL_HOME = 'WAIT_RAIL_HOME'
 STATE_WAIT_FIRST_SYNC = 'WAIT_FIRST_SYNC'
 STATE_WAIT_LLM_PLAN = 'WAIT_LLM_PLAN'
 STATE_WAIT_RAIL_DONE = 'WAIT_RAIL_DONE'
@@ -42,6 +43,7 @@ class MainNode(Node):
         self.main_confirm_pub = self.create_publisher(String, '/main/confirm', 10)
 
         # MAIN -> RAIL
+        self.rail_home_pub = self.create_publisher(Empty, '/rail/home', 10)
         self.rail_motion_pub = self.create_publisher(String, '/rail/motion', 10)
 
         # MAIN -> 전체 노드 초기화
@@ -62,6 +64,7 @@ class MainNode(Node):
         self.create_subscription(Int16, '/control/home', self.control_home_callback, 10)
 
         # RAIL -> MAIN
+        self.create_subscription(String, '/rail/home_done', self.rail_home_done_callback, 10)
         self.create_subscription(String, '/rail/motion_done', self.rail_motion_done_callback, 10)
 
         
@@ -121,16 +124,9 @@ class MainNode(Node):
             return
 
         self.reset_main_values()
-        self.state = STATE_WAIT_FIRST_SYNC
+        self.state = STATE_WAIT_RAIL_HOME
 
-        # 처음에는 LLM의 첫 계획과 CONTROL의 초기 용기 이동을 동시에 시작한다.
-        self.publish_llm_next()
-
-        control_msg = Int16()
-        control_msg.data = 0
-        self.control_start_pub.publish(control_msg)
-
-        self.get_logger().info('면, 소스 주문 받기 및 용기 옮기기 시작')
+        self.rail_home_pub.publish(Empty())
 
     ## ================ LLM ==================== ##
     def publish_llm_next(self):
@@ -260,6 +256,20 @@ class MainNode(Node):
         self.main_confirm_pub.publish(msg)
 
     ## ================ RAIL ==================== ##
+    def rail_home_done_callback(self, msg):
+        if self.state != STATE_WAIT_RAIL_HOME:
+            return
+
+        self.state = STATE_WAIT_FIRST_SYNC
+
+        self.publish_llm_next()
+
+        control_msg = Int16()
+        control_msg.data = 0
+        self.control_start_pub.publish(control_msg)
+
+        self.get_logger().info('면, 소스 주문 받기 및 용기 옮기기 시작')
+
     def start_first_rail_motion(self):
         if not (
             self.first_llm_plan_received
