@@ -1,0 +1,15 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Runtime logs
+runtime_logs/
+debug_logs/
+*.log
