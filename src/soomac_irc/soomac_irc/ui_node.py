@@ -16,11 +16,12 @@ try:
     import rclpy
     from rclpy.executors import ExternalShutdownException
     from rclpy.node import Node
-    from std_msgs.msg import String
+    from std_msgs.msg import Bool, String
 except Exception as error:
     rclpy = None
     Node = object
     String = None
+    Bool = None
     ExternalShutdownException = type(
         'ExternalShutdownException', (Exception,), {})
     ROS_IMPORT_ERROR = error
@@ -54,6 +55,7 @@ ros_node_lock = threading.Lock()
 ros_stop_event = threading.Event()
 
 latest_mic_state = 'idle'
+latest_stt_enabled = False
 ros_connected = False
 latest_agent_status = {}
 ui_session_active = False
@@ -68,6 +70,42 @@ def emit_mic_state(state):
     with socket_emit_lock:
         latest_mic_state = state
         socketio.emit('mic_state', {'state': state})
+
+def sync_mic_with_stt(enabled=None, *, tts_done=False):
+    """STT 허용값을 저장하고 실제 듣기 전환 시점에 맞춰 표시한다."""
+    global latest_mic_state, latest_stt_enabled
+
+    with socket_emit_lock:
+        previous_enabled = latest_stt_enabled
+
+        if enabled is not None:
+            latest_stt_enabled = bool(enabled)
+
+        if not ui_session_active:
+            return
+
+        if tts_done:
+            next_state = (
+                'listening' if latest_stt_enabled else 'waiting'
+            )
+
+        elif enabled is True:
+            if previous_enabled:
+                return
+
+            if latest_mic_state == 'speaking':
+                return
+
+            next_state = 'waiting'
+
+        else:
+            next_state = 'waiting'
+
+        latest_mic_state = next_state
+        socketio.emit(
+            'mic_state',
+            {'state': latest_mic_state},
+        )
 
 
 def emit_dialogue(event_name, text):
@@ -110,11 +148,13 @@ def activate_ui_session():
 
 def reset_ui_session(action):
     """영구 Chroma 기록은 보존하고 현재 화면 세션만 비운다."""
-    global latest_mic_state, latest_agent_status, ui_session_active
+    global latest_mic_state, latest_stt_enabled
+    global latest_agent_status, ui_session_active
 
     with socket_emit_lock:
         cached_dialogue.clear()
         latest_mic_state = 'idle'
+        latest_stt_enabled = False
         latest_agent_status = {}
         ui_session_active = False
         socketio.emit('dialogue_snapshot', {'items': []})
@@ -147,6 +187,13 @@ class UiNode(Node):
 
         # TTS가 재생 직전에 보내므로 마이크를 말하기 상태로 바꾼다.
         self.stt_stop_subscription = self.create_subscription(String, '/stt_stop', self.stt_stop_callback,SUBSCRIPTION_QUEUE_SIZE)
+
+        self.stt_enable_subscription = self.create_subscription(
+            Bool,
+            '/stt/enable',
+            self.stt_enable_callback,
+            SUBSCRIPTION_QUEUE_SIZE,
+        )
 
         # 재생 성공과 실패 모두 다시 들을 수 있다는 신호로 사용한다.
         self.tts_done_subscription = self.create_subscription(String, '/tts_done', self.tts_done_callback, SUBSCRIPTION_QUEUE_SIZE)
@@ -227,16 +274,33 @@ class UiNode(Node):
                 f'말하기 상태를 화면에 보내다가 터졌어요: '
                 f'{error}\n{traceback.format_exc()}')
 
+    def stt_enable_callback(self, message):
+        try:
+            enabled = bool(message.data)
+            sync_mic_with_stt(enabled)
+            self.get_logger().info(
+                f'/stt/enable={enabled}를 화면 상태로 저장했어요.'
+            )
+        except Exception as error:
+            self.get_logger().error(
+                f'STT 허용 상태를 화면에 보내다가 터졌어요: '
+                f'{error}\n{traceback.format_exc()}'
+            )
+
     def tts_done_callback(self, _message):
         try:
             if not is_ui_session_active():
                 return
-            emit_mic_state('listening')
-            self.get_logger().info('TTS가 끝나서 화면을 듣는 중으로 바꿨어요.')
+
+            sync_mic_with_stt(tts_done=True)
+            self.get_logger().info(
+                'TTS 종료 후 마지막 /stt/enable 상태를 화면에 반영했어요.'
+            )
         except Exception as error:
             self.get_logger().error(
-                f'듣기 상태를 화면에 보내다가 터졌어요: '
-                f'{error}\n{traceback.format_exc()}')
+                f'TTS 종료 상태를 화면에 보내다가 터졌어요: '
+                f'{error}\n{traceback.format_exc()}'
+            )
 
     def agent_status_callback(self, message):
         try:
@@ -311,7 +375,7 @@ def handle_start(_payload=None):
 
         # ROS가 없어도 디자인을 확인할 수 있어야 하므로 화면 상태는 독립적으로 전환한다.
         activate_ui_session()
-        emit_mic_state('listening')
+        sync_mic_with_stt()
     except Exception as error:
         print(
             f'시작 요청을 처리하다가 터졌어요: '

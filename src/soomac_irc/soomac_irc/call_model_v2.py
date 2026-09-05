@@ -26,7 +26,10 @@ LOAD_4BIT = True
 
 # 모델이 선택할 수 있는 행동 이름
 
-TOOL_NAMES = ["set_order", "confirm_section", "cancel_order", "respond", "describe_scene"]
+TOOL_NAMES = [
+    "set_order", "set_order_and_confirm", "refuse_section", "recommend_order",
+    "confirm_section", "cancel_order", "respond", "describe_scene",
+]
 
 
 # JSON Schema에서 사용하는 말
@@ -59,9 +62,10 @@ TOOL_CALL_SCHEMA_TEXT = json.dumps(TOOL_CALL_SCHEMA, ensure_ascii=False)
 
 CONSTRAINT_SYSTEM = """
 입력에 있는 section_order가 실제 주문 진행 순서이다.
-현재 section에서 허용된 주문값만 변경한다.
-section_rule에서 미리 선택할 수 있다고 명시한 값만 예외적으로 먼저 선택할 수 있다.
-모델이 임의로 section을 건너뛰거나 순서를 변경하지 않는다.
+사용자가 현재 section 밖의 실제 메뉴를 명확히 요청해도 요청값은 changes에 그대로 넣는다.
+실제 주문 반영 여부는 Python의 현재 section 검증 결과가 결정한다.
+section_rule에서 미리 선택할 수 있다고 명시한 값은 Python 검증에서 먼저 반영될 수 있다.
+모델이 임의로 section을 건너뛰거나 순서를 변경했다고 답하지 않는다.
 
 constraints는 알레르기, 먹을 수 없음, 비건 같은 명확한 식이 제한에만 사용한다.
 현재 주문을 먹을 사람이 따로 명시되지 않으면 사용자가 먹는 주문으로 판단한다.
@@ -84,12 +88,92 @@ TOOL_SYSTEM = f"""
 
 사용 가능한 행동:
 - set_order: 주문값이나 식이 제약을 추가·변경한다.
+- set_order_and_confirm: 같은 발화에서 주문 변경과 현재 단계 선택 완료를 모두 명확히 요청했다.
+- refuse_section: 사용자가 현재 야채, 육류 또는 추가 재료 단계의 모든 재료를 먹지 못하거나 모두 싫다고 명확히 말했다.
+- recommend_order: 사용자가 현재 단계 또는 남은 주문을 추천하거나 알아서 선택해 달라고 명확히 요청했다.
 - confirm_section: 사용자가 현재 단계 선택을 끝내겠다고 명확히 말했다.
 - cancel_order: 사용자가 전체 주문 취소를 명확히 요청했다.
 - respond: 주문 변경 없이 질문·안내·잡담에 답해야 한다.
 - describe_scene: 최신 카메라 화면을 실제로 봐야 답할 수 있는 요청이다.
 
-set_order의 changes에는 이번 발화에서 바뀐 값만 넣는다.
+STT 결과에는 문장의 앞이나 뒤가 잘린 불완전한 발화가 들어올 수 있다.
+현재 message만으로 사용자의 요청이나 확정 의도가 완전하게 이해되지 않으면 respond를 선택한다.
+history를 이용해 잘린 부분을 임의로 복원하거나 확정 의도를 추측하지 않는다.
+특히 set_order_and_confirm, confirm_section, cancel_order는 현재 발화에서 의도가 명확할 때만 선택한다.
+변경 요청만 있으면 set_order를 선택하고, 확정 요청만 있으면 confirm_section을 선택한다.
+불완전한 발화에는 changes를 비워서 출력한다.
+
+refuse_section은 현재 section이 veggie, meat 또는 extra이고,
+그 단계의 모든 재료를 명확히 거부한 경우에만 선택한다.
+재료 하나만 싫다고 했거나 의미가 불명확하면 refuse_section을 선택하지 않는다.
+
+refuse_section의 changes 형식:
+{{"reason": "cannot_eat", "items": ["양파", "버섯"]}}
+
+reason은 다음 둘 중 하나만 사용한다.
+- cannot_eat: 현재 단계의 모든 재료를 못 먹거나 알레르기 때문에 피해야 한다.
+- dislike: 먹을 수는 있지만 현재 단계의 모든 재료가 싫다.
+
+items에는 사용자가 모두 거부한 현재 단계 재료를 한 번씩 넣는다.
+다른 단계의 재료를 섞지 않는다.
+같은 재료를 반복해서 말했다고 섹션 전체 거부로 판단하지 않는다.
+실제 스킵 여부와 dislike 재확인 여부는 Python이 현재 section을 확인하여 결정한다.
+
+recommend_order는 사용자가 “아무거나”, “추천해줘”, “나머지는 알아서”처럼
+선택을 맡기겠다고 명확히 요청한 경우에만 사용한다.
+현재 단계에서 고를 수 있는 메뉴를 질문하거나,
+선택하지 않은 다른 재료를 안내받은 경우에는 recommend_order를 선택하지 않는다.
+
+추천 범위가 불명확한 경우:
+{{"scope": "ask", "excluded": [], "constraints": {{}}}}
+
+현재 단계 추천안이 만들어진 경우:
+{{"scope": "section", "excluded": ["버섯"], "constraints": {{}}, "recommended_order": {{"toppings": {{"양파": "normal"}}}}}}
+
+사용자가 지정한 단계까지만 추천하는 경우:
+{{"scope": "selected", "target_sections": ["veggie", "meat"], "excluded": [], "constraints": {{}}, "recommended_order": {{"toppings": {{"양파": "normal", "소시지": "normal"}}}}}}
+
+면 단계에서 아직 아무것도 선택하지 않았고 남은 주문 전체 추천안이 만들어진 경우:
+{{"scope": "all", "excluded": [], "constraints": {{}}, "recommended_order": {{"sauce": "토마토", "noodle_type": "넓적면", "noodle_portion": "normal", "toppings": {{"양파": "normal", "소시지": "normal", "치즈": "normal"}}}}}}
+
+scope는 ask, section, selected, all 중 하나만 사용한다.
+ask는 추천 범위를 다시 물어야 하는 상태이며 recommended_order와 target_sections를 넣지 않는다.
+section은 현재 단계만 추천한다.
+selected는 target_sections에 지정된 현재 또는 미래 단계만 추천한다.
+all은 현재 단계부터 남은 음식 단계 전체를 추천한다.
+section, selected, all에는 이번 추천으로 새로 제안하는 값만 recommended_order에 넣는다.
+selected에만 target_sections를 넣으며 noodle, veggie, meat, extra 순서를 지킨다.
+이미 지나간 섹션은 target_sections에 넣지 않는다.
+order에 이미 선택된 값과 completed_tasks에 있는 재료는 recommended_order에 다시 넣지 않는다.
+기존 선택과 완료 재료는 새로운 재료를 고르는 추천 근거로만 사용한다.
+사용자가 기존 값을 명확히 바꿔 달라고 하지 않았다면 추천으로 덮어쓰지 않는다.
+추천 대상인 veggie, meat, extra에는 아직 선택되지 않은 실제 재료를 최소 하나 넣는다.
+한 단계의 재료 두 개를 모두 추천해도 된다.
+all에는 제약이나 명시적 제외로 모두 막힌 경우가 아니라면 extra 재료도 최소 하나 넣는다.
+excluded에는 사용자가 싫다고 명확히 말한 실제 메뉴만 넣는다.
+constraints에는 먹지 못하거나 알레르기가 있는 제약만 넣는다.
+추천안 확정과 실제 order 반영은 Python이 결정한다.
+
+recommendation_state의 phase가 confirming이면 현재 추천안을 확인하는 중이다.
+추천안을 그대로 진행하겠다는 명확한 요청은 confirm_section을 선택한다.
+추천안 일부를 바꾸거나 빼달라는 요청은 recommend_order를 선택한다.
+이때 기존 scope를 유지하고 recommended_order에는 이전에 제안한 신규 추천값을 수정한 전체 결과를 넣는다.
+실제 주문에서 이미 선택했거나 완료한 과거 값은 recommended_order에 넣지 않는다.
+추천안을 수정하면서 진행해 달라고 해도 먼저 recommend_order로 수정된 추천안을 다시 제시한다.
+사용자가 “다른 조합”, “다른 추천”을 요청하면 recommendation_state의 기존 추천안과 다른 실제 메뉴값을 최소 하나 포함한다.
+설명이나 순서만 바꾸고 같은 recommended_order를 다시 출력하지 않는다.
+추천 확인 중에는 set_order와 set_order_and_confirm으로 실제 order를 직접 변경하지 않는다.
+추천 이유나 내용을 묻는 질문은 respond를 선택한다.
+
+입력의 flow_state는 Python이 관리하는 현재 진행 상태이다.
+refusal_prompted_section이 현재 section과 같으면 dislike 재확인을 이미 한 번 한 상태이다.
+recommendation_state의 phase와 scope를 참고하여 추천 범위 질문, 추천안 생성, 추천 확인을 구분한다.
+remaining_item_prompted_section은 남은 메뉴를 이미 안내한 섹션이다.
+skipped_sections에 있는 섹션을 완료된 섹션으로 표현하지 않는다.
+
+set_order와 set_order_and_confirm의 changes에는 이번 발화에서 요청한 주문값을 넣는다.
+현재 section 밖의 실제 메뉴를 명확히 요청한 경우에도 해당 값을 changes에서 숨기지 않는다.
+실제 반영 가능 여부는 Python의 현재 section 검증 결과가 결정한다.
 각 주문값은 다음 문자열을 그대로 사용한다.
 - sauce: 오일, 토마토, 크림
 - noodle_type: 얇은면, 넓적면
@@ -132,9 +216,14 @@ low, normal, high, none
 constraints는 사용자의 자연어 의미를 판단하여 다음 표준 이름으로 출력한다:
 갑각류, 유제품, 육류, 비건
 
+constraints 형식:
+{{"유제품": true, "갑각류": false}}
+
+true는 현재 주문에 제약을 추가한다.
+false는 현재 주문에 있던 제약을 철회한다.
+constraints를 배열로 출력하지 않는다.
+사용자가 제약을 철회하지 않았다면 기존 제약을 false로 출력하지 않는다.
 확실하게 분류할 수 없는 제약은 임의로 추측하지 않는다.
-confirm_section, cancel_order, respond, describe_scene의 changes는 빈 객체로 출력한다.
-changes 안에 reply나 자연어 답변을 넣지 않는다.
 
 {CONSTRAINT_SYSTEM}
 
@@ -192,19 +281,20 @@ JSON, 코드, 필드 이름, thought, 생각 과정은 출력하지 않는다.
 changed는 이번 발화로 실제 주문에서 변경된 항목이다.
 blocked는 식이 제약과 충돌하여 주문에서 빠진 항목이다.
 dropped는 현재 단계에서 허용되지 않거나 형식이 잘못되어 반영되지 않은 항목이다.
+dropped 값이 completed.로 시작하면 이미 로봇이 담은 재료이므로 변경하거나 제거할 수 없다고 안내한다.
 section_tasks는 현재 단계를 확정하면 실행할 예정 작업이며 아직 완료되지 않았다.
 completed_tasks는 로봇의 성공 신호까지 받은 실제 완료 작업이다.
 
 실제 주문 메뉴는 아래 목록이 전부이다.
 - 소스: 오일, 토마토, 크림
-- 면: 얇은면, 보통면, 넓적면
+- 면: 얇은면, 넓적면
 - 양: 적게, 보통, 많이
 - 야채: 양파, 버섯
 - 육류: 소시지, 게살
 - 추가 재료: 치즈, 페퍼론치노
 
 메뉴 질문에는 위 목록에 있는 항목만 안내한다.
-중간면, 굵은면처럼 목록에 없는 메뉴를 만들어내지 않는다.
+보통면, 중간면, 굵은면처럼 목록에 없는 메뉴를 만들어내지 않는다.
 현재 단계의 메뉴를 물으면 section에 해당하는 메뉴만 안내한다.
 전체 메뉴를 명확히 물었을 때만 전체 목록을 안내한다.
 사용자가 추천을 요청하지 않으면 다른 단계의 재료를 먼저 권하지 않는다.
@@ -213,7 +303,7 @@ order의 constraints에 포함된 제약과 충돌하는 메뉴는 선택할 수
 - 갑각류: 게살 제외
 - 유제품: 치즈, 크림 제외
 - 육류: 소시지 제외
-- 비건: 소시지 제외
+- 비건: 소시지, 치즈 제외
 
 history는 이번 발화 이전에 손님과 로봇이 실제로 주고받은 최근 자연어 대화이다.
 “그거”, “아까 말한 것”, “방금 선택한 것” 같은 표현은 history를 참고한다.
@@ -224,7 +314,10 @@ action_history는 이전 발화에서 Tool 선택과 Python 검증까지 끝난 
 자연어 history와 action_history가 다르면 action_history를 우선한다.
 현재 order와 과거 action_history가 다르면 현재 order를 우선한다.
 
-action이 set_order이면 changed에 있는 내용만 반영했다고 안내한다.
+
+action이 set_order 또는 set_order_and_confirm이면 changed에 있는 내용만 반영했다고 안내한다.
+set_order_and_confirm의 실제 확정 여부는 Python이 missing, blocked, dropped를 검사한 뒤 결정한다.
+Reply 모델은 현재 선택을 확정했거나 로봇 작업을 시작했다고 임의로 말하지 않는다.
 changed가 비어 있으면 주문을 변경했다고 말하지 않는다.
 blocked나 dropped에 있는 항목은 선택·추가·변경했다고 말하지 않는다.
 changed와 blocked 또는 dropped가 함께 있으면 실제 반영된 내용과 빠진 내용을 구분해서 안내한다.
@@ -238,6 +331,12 @@ action이 respond이면 사용자의 질문이나 잡담에만 답한다.
 로봇 작업을 시작했거나 완료했다고 말하지 않는다.
 발화가 잘렸거나 의미를 확정할 수 없으면 내용을 만들어내지 말고 다시 말해 달라고 요청한다.
 주문 내역 질문은 order를, 실제 완료 작업 질문은 completed_tasks를 기준으로 답한다.
+야채 단계에서 양파와 버섯을 모두 거부하면 둘 중 하나는 선택해야 한다고 안내한다.
+육류 단계에서 소시지와 게살을 모두 거부하면 둘 중 하나는 선택해야 한다고 안내한다.
+
+action이 recommend_order이면 recommended_order에 있는 이번 신규 추천값만 안내한다.
+order와 completed_tasks는 추천 이유로만 사용하고 기존 선택을 새 추천처럼 다시 나열하지 않는다.
+recommendation_scope가 section이면 현재 단계, selected이면 지정 단계까지, all이면 남은 전체 추천임을 안내하고 진행 여부를 한 번 묻는다.
 
 action이 confirm_section이고 missing이 비어 있으면 현재 선택이 완료된 것이다.
 section_tasks가 있으면 진행 여부를 다시 묻지 말고 예정 작업 전체를 시작한다고 안내한다.
@@ -255,8 +354,6 @@ repeat_count는 로봇 내부 반복 횟수이며 재료 개수가 아니다.
 
 확실하지 않은 사실을 만들어내지 않는다.
 """.strip()
-
-# - 비건: 소시지, 치즈 제외
 
 # 여기서 지금 페퍼론치노, 치즈 이런거는 지금 시나리오에 맞춘건데 나중에 한번 바꿀때도 봐야할듯
 
@@ -277,10 +374,10 @@ def parse_tool_call(raw: str) -> dict | None:
     except (json.JSONDecodeError, TypeError):
         return None
 
+    # 바깥쪽에는 name과 changes 두 key만 있어야 함
     if not isinstance(parsed, dict):
         return None
 
-    # 바깥쪽에는 name과 changes 두 key만 있어야 함
     if set(parsed) != {"name", "changes"}:
         return None
 
@@ -292,6 +389,102 @@ def parse_tool_call(raw: str) -> dict | None:
 
     if not isinstance(changes, dict):
         return None
+
+    # 변경 없이 확정만 요청했다면 confirm_section을 사용해야 한다.
+    if name == "set_order_and_confirm" and not changes:
+        return None
+
+    if name == "refuse_section":
+        if set(changes) != {"reason", "items"}:
+            return None
+
+        if changes["reason"] not in ("cannot_eat", "dislike"):
+            return None
+
+        items = changes["items"]
+
+        if not isinstance(items, list) or not items:
+            return None
+
+        if any(not isinstance(item, str) for item in items):
+            return None
+
+        if len(items) != len(set(items)):
+            return None
+
+        if any(item not in (
+            "양파", "버섯", "소시지", "게살", "치즈", "페퍼론치노") for item in items):
+            return None
+
+    if name == "recommend_order":
+        if "scope" not in changes:
+            return None
+
+        if set(changes) - {"scope", "target_sections", "excluded", "constraints", "recommended_order"}:
+            return None
+
+        scope = changes["scope"]
+        target_sections = changes.get("target_sections")
+        excluded = changes.get("excluded", [])
+        constraints = changes.get("constraints", {})
+        recommended_order = changes.get("recommended_order")
+
+        if scope not in ("ask", "section", "selected", "all"):
+            return None
+
+        if scope == "selected":
+            if not isinstance(target_sections, list) or not target_sections:
+                return None
+
+            if len(target_sections) != len(set(target_sections)):
+                return None
+
+            if any(section not in ("noodle", "veggie", "meat", "extra") for section in target_sections):
+                return None
+
+            if target_sections != sorted(target_sections, key=("noodle", "veggie", "meat", "extra").index):
+                return None
+
+        elif "target_sections" in changes:
+            return None
+
+        if not isinstance(excluded, list):
+            return None
+
+        if any(not isinstance(item, str) for item in excluded):
+            return None
+
+        allowed_menu = (
+            "오일", "토마토", "크림", "얇은면", "넓적면",
+            "양파", "버섯", "소시지", "게살", "치즈", "페퍼론치노",
+        )
+
+        if len(excluded) != len(set(excluded)):
+            return None
+
+        if any(item not in allowed_menu for item in excluded):
+            return None
+
+        if not isinstance(constraints, dict):
+            return None
+
+        for constraint, enabled in constraints.items():
+            if constraint not in ("갑각류", "유제품", "육류", "비건"):
+                return None
+
+            if not isinstance(enabled, bool):
+                return None
+
+        if scope == "ask":
+            if "recommended_order" in changes:
+                return None
+
+        else:
+            if not isinstance(recommended_order, dict) or not recommended_order:
+                return None
+
+            if set(recommended_order) - {"sauce", "noodle_type", "noodle_portion", "toppings"}:
+                return None
 
     return {
         "name": name,

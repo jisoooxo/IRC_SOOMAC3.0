@@ -725,6 +725,7 @@
 
     const 마이크상태문구 = {
       idle: ['시작 버튼을 눌러주세요', ''],
+      waiting: ['마이크 대기 중', '잠시만 기다려 주세요'],
       listening: ['듣고 있어요', '편하게 말씀하세요'],
       thinking: ['잠시만요', ''],
       speaking: ['말하는 중', '']
@@ -870,19 +871,22 @@
         ? data.completed
         : (Array.isArray(data.completed_tasks) ? data.completed_tasks : []);
       const doneSections = Array.isArray(data.done_sections) ? data.done_sections : [];
+      const autoRunning = data.auto_running === true;
+      const skipped = Array.isArray(data.skipped) ? data.skipped : [];
       const selected = data.selected ?? data.selected_items ?? data.order ?? [];
 
       phaseBadge.dataset.phase = phase;
-      phaseBadge.textContent = 단계문구[phase] ?? phase;
+      phaseBadge.textContent = autoRunning ? '자동 추천 실행 중' : (단계문구[phase] ?? phase);
 
       const selectedLabels = 선택문구목록(selected);
       칩그리기(selectedItems, selectedLabels, '아직 선택한 항목이 없어요.');
 
       const completedLabels = completed.map(작업문구).filter(Boolean);
       const doneSectionLabels = doneSections.map(name => `${name} 섹션`);
+      const skippedSectionLabels = skipped.map(name => `${name} 건너뜀`);
       칩그리기(
         completedItems,
-        [...completedLabels, ...doneSectionLabels],
+        [...completedLabels, ...doneSectionLabels, ...skippedSectionLabels],
         '완료한 항목이 없어요.');
 
       const completedNames = new Set(completed.map(작업이름).filter(Boolean));

@@ -1,4 +1,5 @@
 import json  # dict를 모델에게 넣을 JSON 문자열로 변환
+import copy
 from typing import TypedDict  # LangGraph State 안에 들어갈 key와 타입 설명
 
 from langgraph.graph import END, START, StateGraph
@@ -27,9 +28,17 @@ class AgentState(TypedDict, total=False):
     action_history: list[dict] # 최근 Tool 선택, 그리고 파이썬 예외처리 결과
     completed_tasks: list[dict] # 로봇 작업 성공까지 확인된 작업
 
+    # 거절, 추천, 남은 메뉴 안내, 건너뛴 섹션 관련 상태
+    refusal_prompted_section: str | None
+    recommendation_state: dict
+    last_recommendation: dict
+    remaining_item_prompted_section: str | None
+    skipped_sections: list[str]
+
     # choose_action에서 만드는 값
     user_msg: dict # 모델에 실제로 전달한 유저 입력·주문 상태·섹션
     tool_call: ToolCall | None
+    parser_status: str
 
     # execute_action에서 만드는 값
     action: str
@@ -44,13 +53,18 @@ class AgentState(TypedDict, total=False):
     reply: str
 
 
+
+
 FALLBACK_REPLIES = {
     "set_order": "주문을 반영했어요.",
+    "set_order_and_confirm": "주문 변경과 현재 선택을 확인했어요.",
     "confirm_section": "현재 선택을 확인했어요.",
     "cancel_order": "주문을 취소할게요.",
     "respond": "네, 말씀해 주세요.",
     "describe_scene": "카메라 화면을 확인할게요.",
     "error": "요청을 이해하지 못했어요. 다시 말씀해 주세요.",
+    "refuse_section": "현재 단계의 재료 제외 요청을 확인했어요.",
+    "recommend_order": "추천할 주문 범위를 확인할게요.",
 }
 
 
@@ -89,15 +103,25 @@ def build_graph(call_model, generate_reply):
                 "현재는 면 단계이다. sauce, noodle_type, noodle_portion을 선택할 수 있다. "
                 "치즈와 페퍼론치노는 미리 추가할 수 있다."
             ) # 모델한테 강제하는 설명 나중에 추가해야할 수도 ㅇㅇ
-
         elif section == "veggie":
-            section_rule = "현재는 야채 단계이다. toppings에는 양파와 버섯만 새로 선택할 수 있다."
+            section_rule = (
+                "현재는 야채 단계이다. toppings에는 양파와 버섯만 새로 선택할 수 있다. "
+                "일반 확정에는 양파와 버섯 중 최소 하나가 필요하다. "
+                "양파와 버섯을 모두 못 먹거나 모두 싫다고 명확히 말하면 refuse_section을 선택한다."
+            )
 
         elif section == "meat":
-            section_rule = "현재는 육류 단계이다. toppings에는 소시지와 게살만 새로 선택할 수 있다."
+            section_rule = (
+                "현재는 육류 단계이다. toppings에는 소시지와 게살만 새로 선택할 수 있다. "
+                "일반 확정에는 소시지와 게살 중 최소 하나가 필요하다. "
+                "소시지와 게살을 모두 못 먹거나 모두 싫다고 명확히 말하면 refuse_section을 선택한다."
+            )
 
         elif section == "extra":
-            section_rule = "현재는 추가 재료 단계이다. toppings에는 치즈와 페퍼론치노만 새로 선택할 수 있다."
+            section_rule = (
+                "현재는 추가 재료 단계이다. toppings에는 치즈와 페퍼론치노만 새로 선택할 수 있다. "
+                "추가 재료는 선택 사항이다. 둘 다 못 먹거나 둘 다 싫다고 명확히 말하면 refuse_section을 선택한다."
+            )
 
         elif section == "sauce":
             section_rule = "현재는 선택한 소스를 로봇이 투입하는 단계이다. 새로운 주문값을 선택하는 단계가 아니다."
@@ -120,6 +144,13 @@ def build_graph(call_model, generate_reply):
                     "missing": missing,
                     "completed_tasks": state.get("completed_tasks", []),
                     "action_history": recent_actions,
+                    "flow_state": {
+                        "refusal_prompted_section": state.get("refusal_prompted_section"),
+                        "recommendation_state": state.get("recommendation_state", {}),
+                        "last_recommendation": state.get("last_recommendation", {}),
+                        "remaining_item_prompted_section": state.get("remaining_item_prompted_section"),
+                        "skipped_sections": sorted(state.get("skipped_sections") or []),
+                    },
                     "message": state["user_text"],
                 },
                 ensure_ascii=False,
@@ -182,16 +213,18 @@ def build_graph(call_model, generate_reply):
         return {
             "user_msg": user_msg,
             "tool_call": tool_call,
+            "parser_status": "ok" if tool_call is not None else "invalid",
         }
 
 
 
-
     def execute_action(state: AgentState) -> dict:
-        # order는 llm_node가 소유한 주문이고 apply_delta가 제자리에서 수정함
-        order = state["order"]
+        # 실제 주문은 이 턴의 모든 검증이 끝날 때까지 건드리지 않는다.
+        order_before = state["order"]
+        order = copy.deepcopy(order_before)
         section = state["section"]
         tool_call = state.get("tool_call")
+        completed_classes = [task["class"] for task in state.get("completed_tasks", [])]
 
         action = "error"
         clean = {}
@@ -202,14 +235,18 @@ def build_graph(call_model, generate_reply):
         if tool_call is not None:
             action = tool_call["name"]
 
-            if action == "set_order":
-                changes = tool_call["changes"]
+            if action in ("set_order", "set_order_and_confirm"):
+                #changes = tool_call["changes"]
+                # 아래 중복 제거 과정에서 dict를 수정하므로 원본 Tool 출력은 보존한다.
+                changes = copy.deepcopy(tool_call["changes"])
 
                 # 모델이 기존 주문을 changes에 다시 복사해도 이번 변경으로 처리하지 않는다.
 
                 for field in ["sauce", "noodle_type", "noodle_portion"]:
                     if field in changes and changes[field] == order[field]:
                         del changes[field]
+
+
 
                 if isinstance(changes.get("toppings"), dict):
                     new_toppings = {}
@@ -220,13 +257,30 @@ def build_graph(call_model, generate_reply):
 
                     if new_toppings:
                         changes["toppings"] = new_toppings
-
                     else:
                         del changes["toppings"]
 
+                # 이미 로봇이 담은 재료는 이후 발화로 변경하거나 제거하지 않는다.
+                completed_dropped = []
 
+                if order["noodle_type"] in completed_classes:
+                    for field in ("noodle_type", "noodle_portion"):
+                        if field in changes:
+                            completed_dropped.append(f"completed.{field}={changes.pop(field)}")
+
+                if order["sauce"] in completed_classes and "sauce" in changes:
+                    completed_dropped.append(f"completed.sauce={changes.pop('sauce')}")
+
+                if isinstance(changes.get("toppings"), dict):
+                    for topping in list(changes["toppings"]):
+                        if topping in completed_classes:
+                            completed_dropped.append(f"completed.toppings.{topping}={changes['toppings'].pop(topping)}")
+
+                    if not changes["toppings"]:
+                        del changes["toppings"]
 
                 clean, dropped = validate_delta(changes, section)
+                dropped = completed_dropped + dropped
 
                 # changed는 사용자 요청으로 실제 바뀐 항목
                 changed = apply_delta(order, clean)
@@ -234,9 +288,35 @@ def build_graph(call_model, generate_reply):
                 # blocked는 제약 때문에 다시 빠진 항목
                 blocked = enforce_constraints(order)
 
+                # 새 제약이 이미 담은 재료와 충돌해도 완료된 재료는 되돌리지 않는다.
+                for completed_class in completed_classes:
+                    if completed_class in order_before["toppings"] and completed_class not in order["toppings"]:
+                        order["toppings"][completed_class] = order_before["toppings"][completed_class]
+                        blocked_field = f"toppings.{completed_class}"
+
+                        if blocked_field in blocked:
+                            blocked.remove(blocked_field)
+
+                        dropped.append(f"completed.constraint_conflict.{blocked_field}")
+
+                completed_sauce = order_before["sauce"]
+
+                if completed_sauce in completed_classes and order["sauce"] != completed_sauce:
+                    order["sauce"] = completed_sauce
+
+                    if "sauce" in blocked:
+                        blocked.remove("sauce")
+
+                    dropped.append(f"completed.constraint_conflict.sauce={completed_sauce}")
+
                 for blocked_field in blocked:
                     if blocked_field in changed:
                         changed.remove(blocked_field)
+
+            elif action in ("refuse_section", "recommend_order"):
+                # call_model_v2.parse_tool_call()을 통과한 새 Tool 전용 값이다.
+                # 실제 섹션 스킵과 추천안 반영은 llm_node가 Python 상태를 확인한 뒤 결정한다.
+                clean = copy.deepcopy(tool_call["changes"])
 
         # confirm_section일 때 llm_node가 다음 단계로 갈 수 있는지 확인할 때 사용
         missing = missing_required(order, section)
@@ -250,6 +330,13 @@ def build_graph(call_model, generate_reply):
         facts = {
             "history": state.get("history", [])[-(HISTORY_TURNS * 2):],
             "action_history": state.get("action_history", [])[-HISTORY_TURNS:],
+            "flow_state": {
+                "refusal_prompted_section": state.get("refusal_prompted_section"),
+                "recommendation_state": state.get("recommendation_state", {}),
+                "last_recommendation": state.get("last_recommendation", {}),
+                "remaining_item_prompted_section": state.get("remaining_item_prompted_section"),
+                "skipped_sections": sorted(state.get("skipped_sections") or []),
+            },
             "user_text": state["user_text"],
             "action": action,
             "section": section,
@@ -280,9 +367,10 @@ def build_graph(call_model, generate_reply):
             return {"reply": FALLBACK_REPLIES["error"]}
 
         # 장면 묘사는 llm_node가 최신 카메라 이미지를 받은 뒤 만든다.
-        # 여기서 텍스트 Reply를 만들면 화면을 보지 않고 답할 수 있다.
-        if action == "describe_scene":
-            return {"reply": FALLBACK_REPLIES["describe_scene"]}
+        # 추천 답변도 Python 검증을 통과한 추천값으로 llm_node가 만든다.
+        # 여기서 Reply를 만들면 화면 또는 검증 전 추천값을 사용하게 된다.
+        if action in ("describe_scene", "recommend_order"):
+            return {"reply": FALLBACK_REPLIES[action]}
     
 
         # 정상 변경은 기존처럼 모델이 자연스럽게 답변
@@ -293,8 +381,8 @@ def build_graph(call_model, generate_reply):
             reply = ""
 
         if not isinstance(reply, str) or not reply.strip():
-
-            if action == "set_order":
+            
+            if action in ("set_order", "set_order_and_confirm"):
                 if state["changed"] and (state["blocked"] or state["dropped"]):
                     reply = "가능한 주문 변경만 반영했고, 반영할 수 없는 내용은 제외했어요."
 

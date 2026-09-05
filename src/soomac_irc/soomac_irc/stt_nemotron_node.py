@@ -22,9 +22,15 @@ from std_msgs.msg import Bool, String
 #   토픽은 publisher·subscription 생성 위치에서 직접 확인할 수 있게 문자열로 적는다.
 
 
+# 모델 자체는 캐시 기반 스트리밍 추론을 지원하지만 현재 노드는 그 모드를 쓰지 않는다.
+#   Silero VAD 로 발화 끝을 찾은 뒤 완성된 음성 전체를 generate 에 한 번 넣는 구조이다.
 MODEL_DIR = '/home/roma/models/audio/stt/nemotron-3.5-asr-streaming-0.6b'
+# auto 는 CUDA 를 먼저 고르고 없으면 CPU 를 쓴다. CPU+bfloat16 경로는 아직 실측하지 않았다.
 COMPUTE_DEVICE = 'auto'
+# 모델이 한국어 표기와 디코딩 규칙을 선택할 때 사용하는 언어 코드이다.
 LANGUAGE = 'ko-KR'
+# 생성되는 글자 수의 안전 상한이다. 음성 청크 길이나 스트리밍 지연을 정하는 값은 아니다.
+#   긴 발화가 실제로 잘리는지 확인하기 전에는 임의로 줄이지 않는다.
 MAX_NEW_TOKENS = 1024
 # 모델 설정의 기본값은 float32 지만 가중치가 2,550MiB 로 두 배가 되고 얻는 게 없다.
 #   2026-07-31 실측에서 bfloat16 가중치 1,217MiB / 추론 피크 1,290MiB 로 정확도가 같았다.
@@ -35,20 +41,29 @@ MODEL_DTYPE = torch.bfloat16
 #   ⚠ USB 마이크를 안 꽂은 상태에서는 기본 소스가 S/PDIF 출력의 모니터로 떨어져
 #   전부 0인 무음이 잡힌다. 레벨이 -120데시벨로 고정되면 마이크가 안 꽂힌 것이다.
 AUDIO_DEVICE = 'default'
+# Nemotron processor 와 Silero VAD 모두 16킬로헤르츠 단일 채널 입력을 기준으로 한다.
 SAMPLE_RATE = 16000
 SAMPLE_WIDTH_BYTES = 2
 CHANNELS = 1
+# 이 값은 Nemotron 스트리밍 청크가 아니라 Silero VAD 입력 프레임이다.
+#   16킬로헤르츠에서 32밀리초가 정확히 512샘플이므로 다른 값으로 바꾸지 않는다.
 CHUNK_MS = 32
-THRESHOLD_DBFS = -38.0
+# 청크를 음성으로 볼 Silero 확률 기준이다. 높이면 잡음은 줄지만 작은 목소리를 놓칠 수 있다.
 SPEECH_PROBABILITY = 0.5
 # 참조 구현 값 그대로 0.8 이다. 줄이면 응답이 빨라지지만 문장 사이에서 발화가 쪼개진다.
 #   실측: 한국어 두 문장 사이 무음이 0.704초라 0.7 이하면 두 발화로 갈라져 LLM 에 따로 들어간다.
 #   0.8 이 지금 확인된 최소값이다. 더 줄이려면 그 전에 실제 주문 발화로 무음 길이를 다시 재라.
 SILENCE_SECONDS = 0.8
+# 실제 음성 청크의 합이 이보다 짧으면 잡음으로 보고 버린다.
+#   '네', '응', '끝'도 짧을 수 있으므로 값을 바꾸기 전에 실제 음성 시간을 먼저 확인한다.
 MIN_SPEECH_SECONDS = 0.35
+# 한 발화가 끝나지 않을 때 메모리와 추론 시간을 제한하는 안전 상한이다.
 MAX_SPEECH_SECONDS = 30.0
+# 말 시작 직전 소리를 함께 보관하여 첫 음절이 VAD 경계에서 잘리지 않게 한다.
 PRE_ROLL_MS = 300
+# 마이크 연결 진단용 로그 주기이다. 0이면 레벨 로그와 RMS 계산을 모두 끈다.
 LEVEL_LOG_SECONDS = 1.0
+# TTS 종료 직후 남은 스피커 잔향을 다시 받아쓰지 않도록 기다리는 시간이다.
 GUARD_TIME_SEC = 0.3
 QUEUE_WAIT_SEC = 0.1
 SILERO_REPO_DIR = '/home/roma/.cache/torch/hub/snakers4_silero-vad_master'
@@ -171,7 +186,8 @@ class NemotronSttNode(Node):
         self.microphone_thread.start()
         self.worker_thread.start()
 
-        self.get_logger().info('네모트론 STT 준비됐어요. 이제 말씀하시면 됩니다.')
+        self.get_logger().info(
+            '네모트론 STT 준비됐어요. /stt/enable 신호를 기다립니다.')
 
     def _validate_constants(self):
         if CHUNK_MS <= 0:
@@ -349,6 +365,12 @@ class NemotronSttNode(Node):
         enabled = bool(message.data)
 
         with self.state_lock:
+            # 같은 상태가 중복으로 들어오면 현재 발화와 세션을 그대로 유지한다.
+            if enabled == self.listening_enabled:
+                self.get_logger().info(
+                    f'STT 상태가 이미 {"열기 대기" if enabled else "닫기"}입니다.')
+                return
+
             self.listening_enabled = enabled
             self.gate_open = False
             self._gate_open_at = None
@@ -468,7 +490,12 @@ class NemotronSttNode(Node):
                         f'마이크 입력이 중단됐어요: {error_text or "arecord가 종료됐어요."}')
 
                 chunk_number += 1
-                level_dbfs = self._rms_dbfs(pcm)
+                should_log_level = (
+                    LEVEL_LOG_CHUNKS > 0
+                    and chunk_number % LEVEL_LOG_CHUNKS == 0)
+                level_dbfs = (
+                    self._rms_dbfs(pcm)
+                    if should_log_level else None)
 
                 with self.state_lock:
                     gate_reopened = self._update_gate_from_clock_locked()
@@ -489,7 +516,7 @@ class NemotronSttNode(Node):
                     if not self.gate_open:
                         continue
 
-                    if LEVEL_LOG_CHUNKS and chunk_number % LEVEL_LOG_CHUNKS == 0:
+                    if should_log_level:
                         level_log_text = (
                             f'마이크 레벨 {level_dbfs:.1f}데시벨 | '
                             f'음성확률 {speech_probability:.2f} | '
@@ -510,6 +537,7 @@ class NemotronSttNode(Node):
                 self.get_logger().error(
                     f'마이크 스레드가 터졌어요: {error}\n{traceback.format_exc()}')
                 self.stop_event.set()
+                rclpy.try_shutdown()
 
     def _capture_chunk_locked(self, pcm, is_voice):
         if not self.speaking:
@@ -593,6 +621,7 @@ class NemotronSttNode(Node):
                 self.get_logger().error(
                     f'STT 워커 스레드가 터졌어요: {error}\n{traceback.format_exc()}')
                 self.stop_event.set()
+                rclpy.try_shutdown()
 
     def _recognize_utterance(self, utterance_pcm, captured_session,
                              utterance_ended_at, captured_seconds):

@@ -20,7 +20,7 @@ AMOUNTS = ["low", "normal", "high",]
 TOPPING_AMOUNTS = ["none", "low", "normal", "high",]
 
 # 양에 따라 로봇이 몇 번 집을지 결정한다.
-AMOUNT_TO_COUNT = {"low": 1, "normal": 2, "high": 3,}
+AMOUNT_TO_COUNT = {"low": 2, "normal": 3, "high": 4,}
 
 MIN_ITEM_NUM = 1
 
@@ -71,7 +71,7 @@ CONSTRAINT_BLOCKS = {
     "갑각류": {"toppings": ["게살"]},
     "유제품": {"toppings": ["치즈"], "sauce": ["크림"]},
     "육류": {"toppings": ["소시지"]},
-    "비건": {"toppings": ["소시지", "게살", "치즈"], "sauce": ["크림"]},
+    "비건": {"toppings": ["소시지", "치즈"]},
 }
 
 # 사용자가 재료 이름으로 제약을 말했을 때 표준 이름으로 변환. 만약 게살 못먹어 이러면 CONSTRAIMT ALIASES로 매핑
@@ -234,30 +234,30 @@ def validate_delta(delta: dict, section: str) -> tuple[dict, list[str]]: # 튜�
             if clean_toppings:
                 clean[field] = clean_toppings
 
-        elif field == "constraints": # 제약은 리스트로
-            if not isinstance(value, list):
+        elif field == "constraints":
+            # Tool changes에서는 true가 제약 추가, false가 제약 철회이다.
+            # 실제 order에는 기존처럼 제약 이름만 list로 저장한다.
+            if not isinstance(value, dict):
                 dropped.append(f"{field}={value}")
                 continue
 
-            clean_constraints = []
+            clean_constraints = {}
 
-            for constraint in value:
-                if not isinstance(constraint, str):
-                    dropped.append(f"constraints={constraint}")
+            for constraint, enabled in value.items():
+                if not isinstance(constraint, str) or not isinstance(enabled, bool):
+                    dropped.append(f"constraints.{constraint}={enabled}")
                     continue
 
-                # 먼저 흔한 재료명은 alias로 빠르게 표준화
                 constraint_name = constraint.strip()
 
                 if constraint_name in CONSTRAINT_ALIASES:
                     constraint_name = CONSTRAINT_ALIASES[constraint_name]
 
-                # alias에 없으면 모델이 판단해서 준 이름을 그대로 검사
                 if constraint_name not in CONSTRAINT_BLOCKS:
-                    dropped.append(f"constraints={constraint}")
+                    dropped.append(f"constraints.{constraint}={enabled}")
+                    continue
 
-                elif constraint_name not in clean_constraints:
-                    clean_constraints.append(constraint_name)
+                clean_constraints[constraint_name] = enabled
 
             if clean_constraints:
                 clean[field] = clean_constraints
@@ -312,15 +312,16 @@ def apply_delta(order: dict, clean: dict) -> list[str]:
                 changed.append(f"toppings.{topping}")
 
     if "constraints" in clean:
-        # 제약은 덮어쓰지 않고 계속 누적
+        for constraint, enabled in clean["constraints"].items():
+            if enabled:
+                if constraint not in order["constraints"]:
+                    order["constraints"].append(constraint)
+                    changed.append(f"constraints.{constraint}")
 
-        for constraint in clean["constraints"]:
-
-            if constraint not in order["constraints"]:
-
-                order["constraints"].append(constraint)
-
-                changed.append(f"constraints.{constraint}")
+            else:
+                if constraint in order["constraints"]:
+                    order["constraints"].remove(constraint)
+                    changed.append(f"constraints.{constraint}")
 
     return changed
 
