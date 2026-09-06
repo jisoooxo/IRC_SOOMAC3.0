@@ -47,8 +47,8 @@ const float STEPS_PER_REV = -800.0;
 
 /* ==================== 일반 이동 설정 ==================== */
 
-const float MAX_SPEED_REV = 4.0;      // rev/s
-const float ACCEL_REV     = 18.75;    // rev/s^2
+const float MAX_SPEED_REV = 8.0;      // rev/s
+const float ACCEL_REV     = 12.75;    // rev/s^2
 
 
 /* ==================== HOME 설정 ==================== */
@@ -264,6 +264,28 @@ void gotoRotation(float rev) {
       rev * STEPS_PER_REV
     );
 
+  // 이미 목표 위치에 있는 경우
+  if (
+    targetStep == stepper.currentPosition() &&
+    !stepper.isRunning()
+  ) {
+    Serial.print(
+      F("GOTO R")
+    );
+
+    Serial.println(
+      rev,
+      3
+    );
+
+    printPosition(
+      "DONE"
+    );
+
+    wasMoving = false;
+    return;
+  }
+
   stepper.moveTo(
     targetStep
   );
@@ -277,7 +299,6 @@ void gotoRotation(float rev) {
     3
   );
 }
-
 
 /* ==================== SERIAL ==================== */
 

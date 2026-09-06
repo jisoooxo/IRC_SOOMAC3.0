@@ -6,23 +6,23 @@ from std_msgs.msg import Empty, String
 import serial
 
 # ==================== 레일 설정 ====================
-SERIAL_PORT = '/dev/ttyUSB0'
+SERIAL_PORT = '/dev/ttyACM0'
 SERIAL_BAUD = 115200
 
 # 원점 센서 = 0 rev 기준 절대 회전수
 RAIL_ROTATIONS = {
-    'noodle_thick': 12.5,
-    'noodle_thin': 12.5,
-    'sausage': 25.0,
-    'crab': 37.5,
-    'onion': 50.0,
-    'mushroom': 62.5,
-    'pepperoncino': 75.0,
-    'cheese': 75.0,
-    'sauce_cream': 87.5,
-    'sauce_oil': 87.5,
-    'sauce_tomato': 87.5,
-    'cover': 100.0,
+    'noodle_thick': 0,
+    'noodle_thin': 0,
+    'sausage': 208,
+    'crab': 280,
+    'onion': 60,
+    'mushroom': 135,
+    'pepperoncino': 360,
+    'cheese': 360,
+    'sauce_cream': 360,
+    'sauce_oil': 360,
+    'sauce_tomato': 360,
+    'cover': 360,
 }
 
 

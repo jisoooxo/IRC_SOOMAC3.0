@@ -5,7 +5,7 @@ import math
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from irc_control_pkg.kinematics import Kinematics
+from irc_control_pkg.kinematics_irc import IRCKinematics
 from std_msgs.msg import Empty, Bool, Float64MultiArray, MultiArrayDimension, String, Int16
 
 DOF = 6
@@ -15,8 +15,9 @@ SPOON_PICK_POSITION = np.array([0.4, 0.01, 0.265], dtype=float)
 SPOON_Q6 = math.radians(90.0)
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
-# [0.20, 0.00, 0.27] -> 카메라가 수직으로 보는 위치
-POINT1 = np.deg2rad([0.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라를 수직으로 바라보는 위치
+POINT1 = np.deg2rad([0.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라가 수직으로 바라보는 위치
+POINT2 = np.deg2rad([90.0, 37.0, 0.0, 20.0, 106.0, 0.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
+POINT3 = np.deg2rad([180.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라를 수직으로 바라보는 위치_소스
 VLM_CONFIRM_POINT = np.deg2rad([83.0, -3.0, 0.0, 87.0, 90.0, 0.0])
 
 INITIAL_PACK_PICK_POINT = np.array([0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
@@ -24,12 +25,12 @@ INITIAL_PACK_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
 
 PLACE_POINTS = {
     'noodle': {'position': np.array([0.012, 0.3, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'sauce': {'position': np.array([0.03, 0.3, 0.07], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
-    'mushroom': {'position': np.array([0.03, 0.3, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'onion': {'position': np.array([0.03, 0.3, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'crab': {'position': np.array([0.05, 0.25, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'sausage': {'position': np.array([-0.035, 0.25, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'cover': {'position': np.array([0.03, 0.3, 0.1], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
+    'sauce': {'position': np.array([-0.005, 0.25, 0.05], dtype=float), 'yaw_deg': 90.0,},  ##yaw 고정
+    'mushroom': {'position': np.array([-0.058, 0.195, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'onion': {'position': np.array([-0.058, 0.205, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'crab': {'position': np.array([-0.058, 0.25, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'sausage': {'position': np.array([0.062, 0.19, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'cover': {'position': np.array([-0.005, 0.25, 0.05], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
 }
 
 LIFT_HEIGHT = 0.15
@@ -40,7 +41,7 @@ class PointPoseNode(Node):
     def __init__(self):
         super().__init__('point_pose_node')
 
-        self.kinematics = Kinematics(self.get_logger())
+        self.kinematics = IRCKinematics(self.get_logger())
 
         self.grip_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints', 10)
         self.pack_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints_pack', 10)
@@ -265,16 +266,16 @@ class PointPoseNode(Node):
 
         # 치즈 접근 전 lift, 치즈 접근
         if class_name == 'cheese':
-            q_cheese_approach_lift = np.deg2rad([-13.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
-            q_cheese_approach_lift[3] += math.radians(-20)
+            q_cheese_approach_lift = np.deg2rad([-9.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
+            q_cheese_approach_lift[3] += math.radians(-20) 
             q_cheese_approach_lift[4] += math.radians(20)
-            q_cheese_approach = np.deg2rad([-13.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
+            q_cheese_approach = np.deg2rad([-9.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치(수정)
 
         else: 
-            q_cheese_approach_lift = np.deg2rad([-8.0, 30.0, 0.0, 63.0, 85.0, 0.0]) # 페퍼론치노 접근 위치
+            q_cheese_approach_lift = np.deg2rad([-5.0, 28.0, 0.0, 63.0, 97.0, 0.0]) # 페퍼론치노 접근 위치
             q_cheese_approach_lift[3] += math.radians(-20)
             q_cheese_approach_lift[4] += math.radians(20)
-            q_cheese_approach = np.deg2rad([-8.0, 30.0, 0.0, 63.0, 85.0, 0.0]) # 페퍼론치노 접근 위치
+            q_cheese_approach = np.deg2rad([-5.0, 28.0, 0.0, 63.0, 97.0, 0.0]) # 페퍼론치노 접근 위치(수정)
 
         # 치즈 푸기: 2번, 3번 모터 place 할 때랑 맞추기
         q_cheese_touch_1 = q_cheese_approach.copy()
@@ -303,7 +304,7 @@ class PointPoseNode(Node):
         if class_name == 'cheese':
             q_cheese_place_ready = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
        
-        else: q_cheese_place_ready = np.deg2rad([140.0, -90.0, -90.0, 130.0, 25.0, 0.0,]) # 페퍼론치노 place 위치
+        else: q_cheese_place_ready = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 페퍼론치노 place 위치
 
         # 치즈, 페퍼론치노 place
         q_cheese_release_1 = q_cheese_place_ready.copy()
@@ -422,7 +423,12 @@ class PointPoseNode(Node):
         self.after_cp_path()
 
     def move_point1(self):
-        self.point1_q = POINT1.copy()
+        if self.current_ingredient in {'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
+            self.point1_q = POINT3.copy()
+        elif self.current_ingredient == 'cover':
+            self.point1_q = POINT2.copy()
+        else:
+            self.point1_q = POINT1.copy()
         
         msg = Float64MultiArray()
         msg.data = self.point1_q.tolist()

@@ -148,12 +148,13 @@ class MainNode(Node):
             f'class={self.current_class}, repeat_count={self.repeat_count}'
         )
 
-        # 첫 면 단계에서는 control의 초기 용기 이동 동시 진행
+        # 첫 면 단계에서는 control의 초기 용기 이동도 동시에 진행 중이다.
         if self.state == STATE_WAIT_FIRST_SYNC:
             self.first_llm_plan_received = True
             self.start_first_rail_motion()
             return
 
+        # 이후 야채/육류/추가재료/소스 단계는 LLM plan을 받는 즉시 rail 이동을 시작한다.
         self.start_rail_motion()
 
     def publish_llm_confirm_start(self):
@@ -309,7 +310,8 @@ class MainNode(Node):
         finished_class = self.current_class
         self.clear_current_task()
 
-        if finished_class in SAUCE_CLASSES:
+        # cover 완료
+        if finished_class == 'cover':
             self.state = STATE_WAIT_LLM_DONE
 
             msg = String()
@@ -317,8 +319,19 @@ class MainNode(Node):
             self.llm_reset_pub.publish(msg)
             return
 
+        # sauce 다음에는 바로 cover
+        if finished_class in SAUCE_CLASSES:
+            self.current_class = 'cover'
+            self.repeat_count = 1
+            self.repeat_completed = 0
+
+            self.start_rail_motion()
+            return
+
+        # 일반 재료 완료 → 다음 LLM plan
         self.state = STATE_WAIT_LLM_PLAN
         self.publish_llm_next()
+
 
     @staticmethod
     def read_llm_plan(msg):
