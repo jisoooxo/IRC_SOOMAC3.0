@@ -11,7 +11,7 @@ from std_msgs.msg import Empty, Float64MultiArray
 from sensor_msgs.msg import JointState
 
 PORT_XH = '/dev/dynamixel_0'
-PORT_XM = '/dev/dynamixel_1'
+PORT_XM = '/dev/ttyUSB1'
 ARDUINO_PORT = '/dev/ttyUSB0'
 
 XH_IDS = [1, 2, 3, 4]
@@ -36,19 +36,19 @@ POSITION_MODE = 3
 HOME_RAW = np.full(DOF, 2048, dtype=int)
 GRIPPER_HOME_RAW = 2048
 
-GRIPPER_OPEN_DEG = {
-    'noodle_thick': -53,
-    'noodle_thin': -53,
-    'mushroom': -15,
-    'onion':    -15,
-    'crab':     -40,
-    'sausage':  -40,
-    'spoon':    -15
-}
+# GRIPPER_OPEN_DEG = {
+#     'noodle_thick': -53,
+#     'noodle_thin': -53,
+#     'mushroom': -15,
+#     'onion':    -15,
+#     'crab':     -40,
+#     'sausage':  -40,
+#     'spoon':    -15
+# }
 
 GRIPPER_CLOSE_DEG = {
-    'noodle_thick': -75,
-    'noodle_thin': -75,
+    'noodle_thick': -70,
+    'noodle_thin': -70,
     'mushroom': -70,
     'onion':    -70,
     'crab':     -65,
@@ -165,9 +165,6 @@ class HardwareMotionControlNode(Node):
             return
 
         if phase in GRIP_PHASES and class_name not in GRIPPER_CLOSE_DEG:
-            return
-
-        if phase in GRIP_PHASES and class_name not in GRIPPER_OPEN_DEG:
             return
 
         joint_data = np.asarray(msg.data, dtype=float)
@@ -706,17 +703,16 @@ class HardwareMotionControlNode(Node):
             return
 
         if opened:
-            goal_raw = int(round(
-                GRIPPER_HOME_RAW + GRIPPER_OPEN_DEG[class_name] * 4096.0 / 360.0
-            )) % 4096
+            goal_raw = GRIPPER_HOME_RAW
 
         else:
             if class_name not in GRIPPER_CLOSE_DEG:
                 return
 
             goal_raw = int(round(
-                GRIPPER_HOME_RAW + GRIPPER_CLOSE_DEG[class_name] * 4096.0 / 360.0
-            )) % 4096
+                GRIPPER_HOME_RAW
+                + GRIPPER_CLOSE_DEG[class_name] * 4096.0 / 360.0
+        )) % 4096
 
         self._write4(
             GRIPPER_ID,

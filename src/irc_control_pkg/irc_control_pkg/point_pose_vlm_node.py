@@ -24,7 +24,7 @@ INITIAL_PACK_PICK_POINT = np.array([0.25, 0.007, 0.035], dtype=float) # 용기 �
 INITIAL_PACK_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
 
 PLACE_POINTS = {
-    'noodle': {'position': np.array([0.012, 0.3, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'noodle': {'position': np.array([0.012, 0.33, 0.07], dtype=float), 'yaw_deg': 90.0,},
     'sauce': {'position': np.array([-0.005, 0.25, 0.05], dtype=float), 'yaw_deg': 90.0,},  ##yaw 고정
     'mushroom': {'position': np.array([-0.058, 0.195, 0.07], dtype=float), 'yaw_deg': 90.0,},
     'onion': {'position': np.array([-0.058, 0.205, 0.07], dtype=float), 'yaw_deg': 90.0,},
