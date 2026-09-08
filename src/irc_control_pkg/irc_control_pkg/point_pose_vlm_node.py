@@ -17,15 +17,15 @@ SPOON_Q6 = math.radians(90.0)
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 POINT1 = np.deg2rad([0.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라가 수직으로 바라보는 위치
 POINT2 = np.deg2rad([90.0, 37.0, 0.0, 20.0, 106.0, 0.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
-POINT3 = np.deg2rad([180.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라를 수직으로 바라보는 위치_소스
 VLM_CONFIRM_POINT = np.deg2rad([83.0, -3.0, 0.0, 87.0, 90.0, 0.0])
 
 INITIAL_PACK_PICK_POINT = np.array([0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
 INITIAL_PACK_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
 
+SAUCE_PICK_POINT = np.array([-0.25, 0.007, 0.035], dtype=float) # 베이스 자체가 이동하기 때문에 소스 3개 pick 위치는 동일하게
+SAUCE_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
 PLACE_POINTS = {
     'noodle': {'position': np.array([0.012, 0.33, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'sauce': {'position': np.array([-0.005, 0.25, 0.05], dtype=float), 'yaw_deg': 90.0,},  ##yaw 고정
     'mushroom': {'position': np.array([-0.058, 0.195, 0.07], dtype=float), 'yaw_deg': 90.0,},
     'onion': {'position': np.array([-0.058, 0.205, 0.07], dtype=float), 'yaw_deg': 90.0,},
     'crab': {'position': np.array([-0.058, 0.25, 0.07], dtype=float), 'yaw_deg': 90.0,},
@@ -83,13 +83,18 @@ class PointPoseNode(Node):
     def control_plan_callback(self, msg):
         data = json.loads(msg.data)
         class_name = str(data['class']).strip()
-        mode = self.select_mode(class_name)
 
         self.current_ingredient = class_name
-        self.pick_mode = mode
         self.point1_q = None
         self.pick_lift_q = None
         self.cp_repeat_count = max(1, int(data.get('repeat_count', 1)))
+
+        if class_name in {'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
+            self.pick_mode = 'sauce'
+            self.plan_sauce()
+            return
+
+        self.pick_mode = self.select_mode(class_name)
 
     def control_motion_callback(self, msg):
         command = msg.data.strip()
@@ -423,9 +428,7 @@ class PointPoseNode(Node):
         self.after_cp_path()
 
     def move_point1(self):
-        if self.current_ingredient in {'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
-            self.point1_q = POINT3.copy()
-        elif self.current_ingredient == 'cover':
+        if self.current_ingredient == 'cover':
             self.point1_q = POINT2.copy()
         else:
             self.point1_q = POINT1.copy()
@@ -456,15 +459,14 @@ class PointPoseNode(Node):
             return 'cp'
         if class_name in {'noodle_thick', 'noodle_thin', 'mushroom', 'onion', 'crab', 'sausage'}:
             return 'grip'
-        if class_name in {'cover', 'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
+        if class_name in {'cover'}:
             return 'pack'
         raise ValueError(f'클래스 안맞음: {class_name}')
 
     def move_place_pose(self):
         class_name = self.current_ingredient
-        if class_name in {'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
-            place_key = 'sauce'
-        elif class_name in {'noodle_thick', 'noodle_thin'}:
+    
+        if class_name in {'noodle_thick', 'noodle_thin'}:
             place_key = 'noodle'
         else: place_key = class_name
 
@@ -613,6 +615,43 @@ class PointPoseNode(Node):
             q_p1_lift,
             q_p2_lift,
             q_p2
+        )
+
+    def plan_sauce(self):
+        q_start = CONTROL_READY.copy()
+        pick = SAUCE_PICK_POINT.copy()
+
+        pick_lift = pick.copy()
+        pick_lift[2] += LIFT_HEIGHT
+
+        place = SAUCE_PLACE_POINT
+
+        place_lift = place.copy()
+        place_lift[2] = pick[2] + LIFT_HEIGHT
+
+        q_pick_lift = self.kinematics.solve_pose(
+            pick_lift, q_start, math.pi, 'pack'
+        )
+
+        q_pick = self.kinematics.solve_pose(
+            pick, q_pick_lift, math.pi, 'pack'
+        )
+
+        q_place_lift = self.kinematics.solve_pose(
+            place_lift, q_pick_lift, math.pi, 'pack'
+        )
+
+        q_place = self.kinematics.solve_pose(
+            place, q_place_lift, math.pi, 'pack'
+        )
+
+        self.publish_waypoints(
+            self.pack_plan_pub,
+            'pack_full',
+            q_pick,
+            q_pick_lift,
+            q_place_lift,
+            q_place
         )
 
     @staticmethod

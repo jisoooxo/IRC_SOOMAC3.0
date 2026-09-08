@@ -36,15 +36,15 @@ POSITION_MODE = 3
 HOME_RAW = np.full(DOF, 2048, dtype=int)
 GRIPPER_HOME_RAW = 2048
 
-# GRIPPER_OPEN_DEG = {
-#     'noodle_thick': -53,
-#     'noodle_thin': -53,
-#     'mushroom': -15,
-#     'onion':    -15,
-#     'crab':     -40,
-#     'sausage':  -40,
-#     'spoon':    -15
-# }
+GRIPPER_OPEN_DEG = {
+    'noodle_thick': -53,
+    'noodle_thin': -53,
+    'mushroom': -15,
+    'onion':    -15,
+    'crab':     -40,
+    'sausage':  -40,
+    'spoon':    -15
+}
 
 GRIPPER_CLOSE_DEG = {
     'noodle_thick': -70,
@@ -164,6 +164,9 @@ class HardwareMotionControlNode(Node):
         if phase not in valid_phases:
             return
 
+        if phase in GRIP_PHASES and class_name not in GRIPPER_OPEN_DEG:
+            return
+
         if phase in GRIP_PHASES and class_name not in GRIPPER_CLOSE_DEG:
             return
 
@@ -190,7 +193,8 @@ class HardwareMotionControlNode(Node):
         self.start_trajectory(
             phase,
             q_start,
-            trajectory
+            trajectory,
+            class_name
         )
 
     def joint_target_callback(self, msg):
@@ -228,7 +232,7 @@ class HardwareMotionControlNode(Node):
 
         self.start_trajectory('joint_target', q_start, trajectory)
 
-    def start_trajectory(self, phase, q_start, trajectory):
+    def start_trajectory(self, phase, q_start, trajectory, class_name=None):
 
         self._connect_move_velocities(
             trajectory,
@@ -243,13 +247,12 @@ class HardwareMotionControlNode(Node):
         self.start_time = time.monotonic()
 
         if phase == 'grip_pick':
-            self.command_gripper(opened=True)
+            self.command_gripper(opened=True, class_name=class_name)
 
         elif phase == 'pack_pick':
             self.command_pneumatic(enabled=False)
 
         elif phase == 'pack_full':
-            self.command_gripper(opened=True)
             self.command_pneumatic(enabled=False)
 
     def build_phase_trajectory(self, phase, q_start, waypoints, class_name):
@@ -270,7 +273,7 @@ class HardwareMotionControlNode(Node):
                 trajectory,
                 q_start,
                 2.0,
-                action='grip_open',
+                action='grip_open:spoon',
                 action_delay=0.3
             )
             return trajectory
@@ -300,7 +303,7 @@ class HardwareMotionControlNode(Node):
                 approach,
                 place,
                 lift,
-                'grip_open'
+                f'grip_open:{class_name}'
             )
 
             return trajectory
@@ -683,14 +686,19 @@ class HardwareMotionControlNode(Node):
         ))
 
     def execute_action(self, action):
-        if action == 'grip_open':
-            self.command_gripper(opened=True)
+        if action.startswith('grip_open:'):
+            class_name = action.split(':', 1)[1]
+            self.command_gripper(
+                opened=True,
+                class_name=class_name
+            )
         elif action.startswith('grip_close:'):
             class_name = action.split(':', 1)[1]
             self.command_gripper(
                 opened=False,
                 class_name=class_name
             )
+
         elif action == '공압 on':
             self.command_pneumatic(enabled=True)
         elif action == '공압 off':
@@ -703,15 +711,19 @@ class HardwareMotionControlNode(Node):
             return
 
         if opened:
-            goal_raw = GRIPPER_HOME_RAW
+            if class_name not in GRIPPER_OPEN_DEG:
+                return
+        
+            goal_raw = int(round(
+                GRIPPER_HOME_RAW + GRIPPER_OPEN_DEG[class_name] * 4096.0 / 360.0
+                    )) % 4096
 
         else:
             if class_name not in GRIPPER_CLOSE_DEG:
                 return
 
             goal_raw = int(round(
-                GRIPPER_HOME_RAW
-                + GRIPPER_CLOSE_DEG[class_name] * 4096.0 / 360.0
+                GRIPPER_HOME_RAW + GRIPPER_CLOSE_DEG[class_name] * 4096.0 / 360.0
         )) % 4096
 
         self._write4(
