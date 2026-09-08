@@ -31,8 +31,8 @@ GRIP_POSITION_TOLERANCE = 0.005
 GRIP_AXIS_TOLERANCE_DEG = 3.0
 
 GRIP_TARGET_AXIS = np.array([0.0, 0.0, -1.0], dtype=float)
-JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -360.0])
-JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 360.0])
+JOINT_MIN = np.deg2rad([-200.0, -120.0, -170.0, -140.0, -120.0, -360.0])
+JOINT_MAX = np.deg2rad([200.0, 120.0, 170.0, 140.0, 120.0, 360.0])
 
 
 def wrap_to_pi(angle):
@@ -270,6 +270,8 @@ class IRCKinematics:
 
     def solve_pack_point(self, target, previous_q):
         q1_target = self.target_q1(target, previous_q[0])
+
+        active_indices = np.array([1, 3], dtype=int)
         candidates = []
 
         for seed in self.pack_seeds(previous_q, q1_target):
@@ -278,9 +280,11 @@ class IRCKinematics:
                 def build_q(active_q):
                     q = previous_q.copy()
 
-                    # 공압을 사용할 때 해 결정 변수는 q1, q2, q4만 사용
-                    q[np.array([0, 1, 3], dtype=int)] = active_q
-                    q[2] = 0 # 고정
+                    q[0] = q1_target # 베이스 좌표는 무조건 목표를 향한 방향으로 강제
+                    q[1] = active_q[0]
+                    q[2] = 0.0
+                    q[3] = active_q[1]
+
                     q[4] = self.pack_q5(
                         q[1],
                         q[2],
@@ -288,6 +292,7 @@ class IRCKinematics:
                         branch,
                         previous_q[4]
                     )
+
                     return q
 
                 def residual(active_q):
@@ -295,30 +300,27 @@ class IRCKinematics:
 
                     q5_low = max(0.0, JOINT_MIN[4] - q[4])
                     q5_high = max(0.0, q[4] - JOINT_MAX[4])
-                    joint_delta = wrapped_q_delta(
-                        q[np.array([0, 1, 3], dtype=int)],
-                        previous_q[np.array([0, 1, 3], dtype=int)]
-                    )
 
-                    q1_target_error = wrap_to_pi(q[0] - q1_target)
+                    joint_delta = wrapped_q_delta(
+                        q[active_indices],
+                        previous_q[active_indices]
+                    )
 
                     q2_backward = max(0.0, -q[1])
                     q4_backward = max(0.0, -q[3])
 
-                    continuity_weights = np.array([0.25, 1.0, 1.0])
+                    continuity_weights = np.array([1.0, 1.0])
 
                     return np.concatenate([
                         PACK_POSITION_WEIGHT * (self.pack_fk(q) - target),
 
                         np.array([
-                            PACK_Q5_LIMIT_WEIGHT * q5_low,
-                            PACK_Q5_LIMIT_WEIGHT * q5_high,
+                            PACK_Q5_LIMIT_WEIGHT * q5_low, PACK_Q5_LIMIT_WEIGHT * q5_high,
                         ]),
 
                         PACK_CONTINUITY_WEIGHT * continuity_weights * joint_delta,
 
                         np.array([
-                            2.0 * PACK_CONTINUITY_WEIGHT * q1_target_error,
                             2.0 * PACK_CONTINUITY_WEIGHT * q2_backward,
                             2.0 * PACK_CONTINUITY_WEIGHT * q4_backward,
                         ]),
@@ -326,9 +328,11 @@ class IRCKinematics:
 
                 result = least_squares(
                     residual,
-                    seed[np.array([0, 1, 3], dtype=int)],
-                    bounds=(JOINT_MIN[np.array([0, 1, 3], dtype=int)], JOINT_MAX[np.array([0, 1, 3], dtype=int)]),
-                    max_nfev=300 ## 최적화 해 계산 300번 제한
+                    seed[active_indices],
+                    bounds=(
+                        JOINT_MIN[active_indices], JOINT_MAX[active_indices]
+                    ),
+                    max_nfev=300
                 )
 
                 q = build_q(result.x)
@@ -337,26 +341,22 @@ class IRCKinematics:
                     continue
 
                 position_error = float(np.linalg.norm(self.pack_fk(q) - target))
-                horizontal_error = abs(self.pack_fk_q5(q)[2, 0])
 
-                joint_delta = wrapped_q_delta(
-                    q[np.array([0, 1, 3], dtype=int)],
-                    previous_q[np.array([0, 1, 3], dtype=int)]
+                horizontal_error = abs(
+                    self.pack_fk_q5(q)[2, 0]
                 )
 
-                q1_direction_error = abs(wrap_to_pi(q[0] - q1_target))
+                joint_delta = wrapped_q_delta(
+                    q[active_indices], previous_q[active_indices]
+                )
 
                 q2_backward = max(0.0, -q[1])
                 q4_backward = max(0.0, -q[3])
 
                 total_motion = float(np.linalg.norm(joint_delta))
 
-                # 위치 오차가 비슷한 후보끼리 비교할 자세 점수
                 posture_score = (
-                    3.0 * q1_direction_error
-                    + 2.0 * q2_backward
-                    + 2.0 * q4_backward
-                    + total_motion
+                    2.0 * q2_backward + 2.0 * q4_backward + total_motion
                 )
 
                 candidates.append((
@@ -376,19 +376,22 @@ class IRCKinematics:
             (
                 item
                 for item in candidates
-                if item[0] <= min_error + 0.002 ## IK 후보 여유값
+                if item[0] <= min_error + 0.002
             ),
             key=lambda item: (
-                item[1],  # 공압 링크 수평 오차
-                item[2],  # q1 방향, q3 유지, 전방 자세 점수
-                item[3],  # 전체 관절 이동량
+                item[1],
+                item[2],
+                item[3],
             )
         )
 
         if selected[0] > 0.005:
-            raise RuntimeError(f'IK가 닿을 수 없는 곳에 있음: {selected[0]:.4f} m')  ## tolerance 검사
+            raise RuntimeError(
+                f'IK가 닿을 수 없는 곳에 있음: '
+                f'{selected[0]:.4f} m'
+            )
 
-        return selected[4] 
+        return selected[4]
     
     def target_q6(self, target_yaw, q, previous_q6):
         q_without_q6 = q.copy()
@@ -426,6 +429,12 @@ class IRCKinematics:
 
         if valid.size == 0:
             return float(np.clip(desired, JOINT_MIN[0], JOINT_MAX[0]))
+
+        if target[0] < 0.0 and target[1] > 0.0:
+            negative = valid[valid < 0.0]
+
+            if negative.size > 0:
+                return float(negative[np.argmin(np.abs(negative - previous_q1))])
 
         return float(valid[np.argmin(np.abs(valid - previous_q1))])
 

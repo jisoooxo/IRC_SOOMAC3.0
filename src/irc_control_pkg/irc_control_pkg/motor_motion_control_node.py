@@ -63,8 +63,8 @@ ENABLE_MOTION = True
 PROFILE_VELOCITY = 30
 PROFILE_ACCELERATION = 20
 
-JOINT_MIN = np.deg2rad([-170.0, -120.0, -170.0, -140.0, -120.0, -360.0])
-JOINT_MAX = np.deg2rad([170.0, 120.0, 170.0, 140.0, 120.0, 360.0])
+JOINT_MIN = np.deg2rad([-200.0, -120.0, -170.0, -140.0, -120.0, -360.0])
+JOINT_MAX = np.deg2rad([200.0, 120.0, 170.0, 140.0, 120.0, 360.0])
 MAX_Q_STEP = math.radians(2.0)
 
 GRIP_PHASES = {'grip_pick', 'grip_place', 'spoon_pick', 'spoon_place'}

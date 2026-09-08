@@ -19,11 +19,11 @@ POINT1 = np.deg2rad([0.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라가 수직�
 POINT2 = np.deg2rad([90.0, 37.0, 0.0, 20.0, 106.0, 0.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
 VLM_CONFIRM_POINT = np.deg2rad([83.0, -3.0, 0.0, 87.0, 90.0, 0.0])
 
-INITIAL_PACK_PICK_POINT = np.array([-0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
-INITIAL_PACK_PLACE_POINT = np.array([-0.005, -0.25, 0.05], dtype=float)
+INITIAL_PACK_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float) # 용기 실제 좌표 x = 0.23.5
+INITIAL_PACK_PLACE_POINT = np.array([0.000, -0.25, 0.04], dtype=float)
 
-SAUCE_PICK_POINT = np.array([-0.25, 0.007, 0.035], dtype=float) # 베이스 자체가 이동하기 때문에 소스 3개 pick 위치는 동일하게
-SAUCE_PLACE_POINT = np.array([-0.005, -0.25, 0.05], dtype=float)
+SAUCE_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float) # 베이스 자체가 이동하기 때문에 소스 3개 pick 위치는 동일하게
+SAUCE_PLACE_POINT = np.array([0.000, -0.25, 0.04], dtype=float)
 PLACE_POINTS = {
     'noodle': {'position': np.array([0.012, 0.33, 0.07], dtype=float), 'yaw_deg': 90.0,},
     'mushroom': {'position': np.array([-0.058, 0.195, 0.07], dtype=float), 'yaw_deg': 90.0,},

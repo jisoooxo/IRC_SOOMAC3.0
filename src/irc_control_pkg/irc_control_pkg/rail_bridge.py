@@ -19,9 +19,9 @@ RAIL_ROTATIONS = {
     'mushroom': 135,
     'pepperoncino': 360,
     'cheese': 360,
-    'sauce_cream': 280,
+    'sauce_cream': 275,
     'sauce_oil': 360,
-    'sauce_tomato': 208,
+    'sauce_tomato': 198,
     'cover': 360,
 }
 
