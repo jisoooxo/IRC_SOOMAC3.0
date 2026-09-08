@@ -140,10 +140,14 @@ def is_ui_session_active():
 
 
 def activate_ui_session():
-    global ui_session_active
+    global latest_agent_status, ui_session_active
 
     with socket_emit_lock:
+        cached_dialogue.clear()
+        latest_agent_status = {}
         ui_session_active = True
+        socketio.emit('dialogue_snapshot', {'items': []})
+        socketio.emit('agent_status', latest_agent_status)
 
 
 def reset_ui_session(action):
@@ -152,16 +156,21 @@ def reset_ui_session(action):
     global latest_agent_status, ui_session_active
 
     with socket_emit_lock:
-        cached_dialogue.clear()
+        if action != 'complete':
+            cached_dialogue.clear()
+
         latest_mic_state = 'idle'
         latest_stt_enabled = False
         latest_agent_status = {}
         ui_session_active = False
-        socketio.emit('dialogue_snapshot', {'items': []})
         socketio.emit('agent_status', latest_agent_status)
         socketio.emit('mic_state', {'state': latest_mic_state})
-        socketio.emit('work_reset', {'action': action})
 
+        if action == 'complete':
+            socketio.emit('work_complete', {'action': action})
+        else:
+            socketio.emit('dialogue_snapshot', {'items': []})
+            socketio.emit('work_reset', {'action': action})
 
 
 UI_START_TOPIC = '/ui/start'           # 손님이 시작할 때 다른 ROS 노드가 대화를 열도록 알린다.
@@ -175,9 +184,11 @@ class UiNode(Node):
 
         self.lifecycle_lock = threading.Lock()
         self.destroying = False
+        self.complete_reset_pending = False
 
         self.start_publisher = self.create_publisher(String, UI_START_TOPIC, PUBLISH_QUEUE_SIZE)
         self.reset_publisher = self.create_publisher(String, UI_RESET_TOPIC, PUBLISH_QUEUE_SIZE)
+        self.complete_reset_subscription = self.create_subscription(String, UI_RESET_TOPIC, self.ui_reset_callback, SUBSCRIPTION_QUEUE_SIZE)
 
         # STT가 손님의 최종 문장을 확정했을 때 화면에 보여준다.
         self.question_subscription = self.create_subscription(String, '/stt_question', self.stt_question_callback, SUBSCRIPTION_QUEUE_SIZE)
@@ -224,6 +235,17 @@ class UiNode(Node):
         self.get_logger().warning(
             f'손님이 {action} 버튼을 눌러 {UI_RESET_TOPIC}을 보냈어요.')
         return True
+
+    def ui_reset_callback(self, message):
+        try:
+            payload = json.loads(message.data)
+
+            if isinstance(payload, dict) and payload.get("action") == "complete":
+                self.complete_reset_pending = True
+                self.get_logger().info("최종 TTS 종료 후 UI를 초기화할 예정입니다.")
+
+        except (json.JSONDecodeError, TypeError):
+            self.get_logger().warning("형식이 잘못된 /ui/reset 메시지를 무시했어요.")
 
     def stt_question_callback(self, message):
         try:
@@ -289,6 +311,12 @@ class UiNode(Node):
 
     def tts_done_callback(self, _message):
         try:
+            if self.complete_reset_pending:
+                self.complete_reset_pending = False
+                reset_ui_session("complete")
+                self.get_logger().info("최종 TTS 종료 후 UI 완료 화면으로 전환했어요.")
+                return
+
             if not is_ui_session_active():
                 return
 
@@ -296,6 +324,7 @@ class UiNode(Node):
             self.get_logger().info(
                 'TTS 종료 후 마지막 /stt/enable 상태를 화면에 반영했어요.'
             )
+
         except Exception as error:
             self.get_logger().error(
                 f'TTS 종료 상태를 화면에 보내다가 터졌어요: '

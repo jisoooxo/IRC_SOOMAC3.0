@@ -638,10 +638,6 @@
             <span class="nav-icon" aria-hidden="true">←</span>
             <span class="nav-label">뒤로</span>
           </button>
-          <button class="nav-btn" type="button" data-reset-action="home" aria-label="홈으로 이동하고 작업 초기화">
-            <span class="nav-icon" aria-hidden="true">⌂</span>
-            <span class="nav-label">홈</span>
-          </button>
         </nav>
         <h1 class="store"><span id="storeName"></span><span class="tbd">미정</span></h1>
       </div>
@@ -967,6 +963,16 @@
 
     socket.on('work_reset', () => {
       화면세션초기화();
+      if (resetDialog.open) resetDialog.close();
+    });
+    socket.on('work_complete', () => {
+      진행상태그리기({
+        phase: 'completed',
+        section_status: 'completed',
+        status_text: '주문 완료'
+      });
+      마이크('idle');
+      startScreen.hidden = false;
       if (resetDialog.open) resetDialog.close();
     });
 
