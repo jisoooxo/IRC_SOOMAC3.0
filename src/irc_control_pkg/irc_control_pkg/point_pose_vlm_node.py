@@ -12,18 +12,18 @@ DOF = 6
 CONTROL_READY = np.deg2rad([0.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 
 SPOON_PICK_POSITION = np.array([0.4, 0.01, 0.265], dtype=float)
-SPOON_Q6 = math.radians(90.0)
+SPOON_Q6 = math.radians(-90.0)
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 POINT1 = np.deg2rad([0.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라가 수직으로 바라보는 위치
 POINT2 = np.deg2rad([90.0, 37.0, 0.0, 20.0, 106.0, 0.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
 VLM_CONFIRM_POINT = np.deg2rad([83.0, -3.0, 0.0, 87.0, 90.0, 0.0])
 
-INITIAL_PACK_PICK_POINT = np.array([0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
-INITIAL_PACK_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
+INITIAL_PACK_PICK_POINT = np.array([-0.25, 0.007, 0.035], dtype=float) # 용기 실제 좌표 x = 0.23.5
+INITIAL_PACK_PLACE_POINT = np.array([-0.005, -0.25, 0.05], dtype=float)
 
 SAUCE_PICK_POINT = np.array([-0.25, 0.007, 0.035], dtype=float) # 베이스 자체가 이동하기 때문에 소스 3개 pick 위치는 동일하게
-SAUCE_PLACE_POINT = np.array([-0.005, 0.25, 0.05], dtype=float)
+SAUCE_PLACE_POINT = np.array([-0.005, -0.25, 0.05], dtype=float)
 PLACE_POINTS = {
     'noodle': {'position': np.array([0.012, 0.33, 0.07], dtype=float), 'yaw_deg': 90.0,},
     'mushroom': {'position': np.array([-0.058, 0.195, 0.07], dtype=float), 'yaw_deg': 90.0,},
@@ -271,29 +271,29 @@ class PointPoseNode(Node):
 
         # 치즈 접근 전 lift, 치즈 접근
         if class_name == 'cheese':
-            q_cheese_approach_lift = np.deg2rad([-9.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
+            q_cheese_approach_lift = np.deg2rad([9.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
             q_cheese_approach_lift[3] += math.radians(-20) 
             q_cheese_approach_lift[4] += math.radians(20)
-            q_cheese_approach = np.deg2rad([-9.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치(수정)
+            q_cheese_approach = np.deg2rad([9.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
 
         else: 
             q_cheese_approach_lift = np.deg2rad([-5.0, 28.0, 0.0, 63.0, 97.0, 0.0]) # 페퍼론치노 접근 위치
             q_cheese_approach_lift[3] += math.radians(-20)
             q_cheese_approach_lift[4] += math.radians(20)
-            q_cheese_approach = np.deg2rad([-5.0, 28.0, 0.0, 63.0, 97.0, 0.0]) # 페퍼론치노 접근 위치(수정)
+            q_cheese_approach = np.deg2rad([5.0, 28.0, 0.0, 63.0, 97.0, 0.0]) # 페퍼론치노 접근 위치
 
         # 치즈 푸기: 2번, 3번 모터 place 할 때랑 맞추기
         q_cheese_touch_1 = q_cheese_approach.copy()
-        q_cheese_touch_1[0] += math.radians(95)
-        q_cheese_touch_1[2] = math.radians(-90)
+        q_cheese_touch_1[0] += math.radians(-95)
+        q_cheese_touch_1[2] = math.radians(90)
 
         q_cheese_touch_2 = q_cheese_touch_1.copy()
         q_cheese_touch_2[1] = math.radians(-90)
 
         # 치즈 푸고 나서 lift
         q_cheese_lift = q_cheese_touch_2.copy()
-        q_cheese_lift[2] += math.radians(40)
-        q_cheese_lift[5] += math.radians(40)
+        q_cheese_lift[2] += math.radians(-40)
+        q_cheese_lift[5] += math.radians(-40)
 
         # 숟가락 접근
         q_spoon_approach = self.kinematics.solve_cp_path(spoon_approach_position, q_start, SPOON_Q6)
@@ -307,16 +307,16 @@ class PointPoseNode(Node):
 
         # 치즈 / 페페론치노 place 준비
         if class_name == 'cheese':
-            q_cheese_place_ready = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
+            q_cheese_place_ready = np.deg2rad([-130.0, -90.0, 90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
        
-        else: q_cheese_place_ready = np.deg2rad([130.0, -90.0, -90.0, 130.0, 20.0, 0.0,]) # 페퍼론치노 place 위치
+        else: q_cheese_place_ready = np.deg2rad([-130.0, -90.0, 90.0, 130.0, 20.0, 0.0,]) # 페퍼론치노 place 위치
 
         # 치즈, 페퍼론치노 place
         q_cheese_release_1 = q_cheese_place_ready.copy()
-        q_cheese_release_1[5] += math.radians(-110.0)
+        q_cheese_release_1[5] += math.radians(110.0)
 
         q_cheese_release_2 = q_cheese_release_1.copy()
-        q_cheese_release_2[5] += math.radians(110.0)
+        q_cheese_release_2[5] += math.radians(-110.0)
 
         # 숟가락 내려놓고 x축 빠지기
         q_spoon_retreat_path = self.spoon_linear_x(SPOON_PICK_POSITION, spoon_approach_position, q_spoon_pick, SPOON_Q6, step=0.01)
