@@ -41,8 +41,8 @@ GRIPPER_OPEN_DEG = {
     'noodle_thin': -53,
     'mushroom': -15,
     'onion':    -15,
-    'crab':     -40,
-    'sausage':  -40,
+    'crab':     -30,
+    'sausage':  -35,
     'spoon':    -15
 }
 
@@ -51,7 +51,7 @@ GRIPPER_CLOSE_DEG = {
     'noodle_thin': -70,
     'mushroom': -70,
     'onion':    -70,
-    'crab':     -65,
+    'crab':     -68,
     'sausage':  -65,
     'spoon':    -54
 }
@@ -325,17 +325,22 @@ class HardwareMotionControlNode(Node):
             return trajectory
 
         if phase == 'pack_place':
-            approach, place, lift = [q.copy() for q in waypoints]
-            
-            self.build_pack_motion(
-                trajectory,
-                q_start,
-                approach,
-                place,
-                lift,
-                '공압 off'
-            )
+            if len(waypoints) == 4:
+                q_mid, approach, place, lift = [q.copy() for q in waypoints]
 
+                self.move(trajectory, q_start, q_mid, 2.0, True)
+                self.hold(trajectory, q_mid, 0.1, pack_horizontal=True)
+
+                self.build_pack_motion(
+                    trajectory, q_mid, approach, place, lift, '공압 off'
+                )
+                return trajectory
+
+            approach, place, lift = [q.copy() for q in waypoints]
+
+            self.build_pack_motion(
+                trajectory, q_start, approach, place, lift, '공압 off'
+            )
             return trajectory
 
         if phase == 'pack_full':

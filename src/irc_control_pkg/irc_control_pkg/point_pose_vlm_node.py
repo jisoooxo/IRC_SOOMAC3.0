@@ -25,12 +25,12 @@ INITIAL_PACK_PLACE_POINT = np.array([0.000, -0.25, 0.04], dtype=float)
 SAUCE_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float) # 베이스 자체가 이동하기 때문에 소스 3개 pick 위치는 동일하게
 SAUCE_PLACE_POINT = np.array([0.000, -0.25, 0.04], dtype=float)
 PLACE_POINTS = {
-    'noodle': {'position': np.array([0.012, 0.33, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'mushroom': {'position': np.array([-0.058, 0.195, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'onion': {'position': np.array([-0.058, 0.205, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'noodle': {'position': np.array([0.012, 0.20, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'mushroom': {'position': np.array([-0.058, 0.30, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'onion': {'position': np.array([-0.058, 0.305, 0.07], dtype=float), 'yaw_deg': 90.0,},
     'crab': {'position': np.array([-0.058, 0.25, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'sausage': {'position': np.array([0.062, 0.19, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'cover': {'position': np.array([-0.005, 0.25, 0.05], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
+    'sausage': {'position': np.array([0.062, 0.30, 0.07], dtype=float), 'yaw_deg': 90.0,},
+    'cover': {'position': np.array([0.000, -0.25, 0.05], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
 }
 
 LIFT_HEIGHT = 0.15
@@ -551,6 +551,10 @@ class PointPoseNode(Node):
         )
     
     def plan_place(self, position, yaw, mode):
+        self.get_logger().info(
+            f'plan_place 진입: class={self.current_ingredient}, mode={mode}'
+        )
+        
         approach = position.copy()
         approach[2] += LIFT_HEIGHT
 
@@ -559,11 +563,34 @@ class PointPoseNode(Node):
                 approach, self.pick_lift_q, math.pi, 'pack'
             )
 
+            self.get_logger().info(
+                f'pack place q1: '
+                f'pick_lift={math.degrees(self.pick_lift_q[0]):.1f}, '
+                f'approach={math.degrees(q_approach[0]):.1f}'
+            )
+
             q_place = self.kinematics.solve_pose(
                 position, q_approach, math.pi, 'pack'
             )
 
             q_lift = q_approach
+
+            if self.current_ingredient == 'cover':
+                delta_q1 = q_approach[0] - self.pick_lift_q[0]
+
+                if abs(delta_q1) > math.pi:
+                    q_mid = (self.pick_lift_q + q_approach) / 2.0
+                    q_mid[0] = 0.0  # q1 = 0을 거쳤다가 가기
+
+                    self.publish_waypoints(
+                        self.pack_plan_pub,
+                        'pack_place',
+                        q_mid,
+                        q_approach,
+                        q_place,
+                        q_lift
+                    )
+                    return
 
         else:
             q_approach = self.kinematics.solve_grip_place_pose(
@@ -580,7 +607,8 @@ class PointPoseNode(Node):
 
         if mode == 'pack':
             phase = 'pack_place'
-        else: phase = f'grip_place:{self.current_ingredient}'
+        else:
+            phase = f'grip_place:{self.current_ingredient}'
 
         self.publish_waypoints(
             self.pack_plan_pub

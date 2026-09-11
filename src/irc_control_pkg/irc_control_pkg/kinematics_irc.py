@@ -23,12 +23,11 @@ PACK_POSITION_WEIGHT = 100.0
 PACK_Q5_LIMIT_WEIGHT = 100.0
 PACK_CONTINUITY_WEIGHT = 0.02
 
-GRIP_POSITION_WEIGHT = 100.0
-GRIP_AXIS_WEIGHT = 50.0
-GRIP_CONTINUITY_WEIGHT = 0.02
+GRIP_POSITION_WEIGHT = 500.0 ## xyz
+GRIP_AXIS_WEIGHT = 50.0 ## 탑다운
+GRIP_CONTINUITY_WEIGHT = 0.02 ## 이전 자세와의 연속성
 
 GRIP_POSITION_TOLERANCE = 0.005
-GRIP_AXIS_TOLERANCE_DEG = 3.0
 
 GRIP_TARGET_AXIS = np.array([0.0, 0.0, -1.0], dtype=float)
 JOINT_MIN = np.deg2rad([-200.0, -120.0, -170.0, -140.0, -120.0, -360.0])
@@ -613,7 +612,7 @@ class IRCKinematics:
 
         valid_candidates = [
             item for item in candidates
-            if item[0] <= GRIP_POSITION_TOLERANCE and item[1] <= GRIP_AXIS_TOLERANCE_DEG
+            if item[0] <= GRIP_POSITION_TOLERANCE
         ]
 
         if not valid_candidates:
@@ -621,8 +620,12 @@ class IRCKinematics:
 
         selected = min(
             valid_candidates,
-            key=lambda item: item[2]
-        )
+            key=lambda item: (
+                item[0],
+                item[1],
+                item[2],
+            )
+        )  ## 우선순위 xyz -> 탑다운 -> 이전 자세 이동량 //어쨌든 xyz 위치 오차가 최대한 없도록 하기
 
         return selected[3]
 
@@ -647,13 +650,13 @@ class IRCKinematics:
         if not reachable_candidates:
             raise RuntimeError('Grip place IK 위치 조건 만족 실패')
 
-        # 위치가 맞는 해 중 가장 탑다운인 자세 선택
         selected = min(
             reachable_candidates,
             key=lambda item: (
-                item[1],  # 6번 축 -Z와의 각도 오차
-                item[2],  # 같으면 이전 자세에서 이동량이 작은 해
+                item[0],
+                item[1],
+                item[2],
             )
-        )
+        ) ## 얘도 마찬가지ㅣ.. xyz 우선
 
         return selected[3]
