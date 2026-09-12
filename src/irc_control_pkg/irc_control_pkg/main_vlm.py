@@ -109,11 +109,6 @@ class MainNode(Node):
                 self.publish_control_motion('point1')
                 return
 
-            if self.current_class == 'cover':
-                self.state = STATE_WAIT_HOME_DONE
-                self.publish_control_motion('home')
-                return
-
             self.state = STATE_WAIT_VLM_READY
             self.publish_control_motion('vlm_confirm')
             return
