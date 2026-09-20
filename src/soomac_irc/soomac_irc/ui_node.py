@@ -11,15 +11,16 @@ from pathlib import Path
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 
-
 try:
     import rclpy
     from rclpy.executors import ExternalShutdownException
     from rclpy.node import Node
+    from sensor_msgs.msg import CompressedImage
     from std_msgs.msg import Bool, String
 except Exception as error:
     rclpy = None
     Node = object
+    CompressedImage = None
     String = None
     Bool = None
     ExternalShutdownException = type(
@@ -58,6 +59,7 @@ latest_mic_state = 'idle'
 latest_stt_enabled = False
 ros_connected = False
 latest_agent_status = {}
+latest_vlm_snapshot = None
 ui_session_active = False
 cached_dialogue = deque(maxlen=MAX_CACHED_DIALOGUE_COUNT)
 ros_node = None
@@ -124,6 +126,17 @@ def emit_agent_status(status):
         latest_agent_status = status
         socketio.emit('agent_status', status)
 
+def emit_vlm_snapshot(image_bytes):
+    """VLM 입력 3분할 JPEG를 저장하고 현재 브라우저 모두에 보낸다."""
+    global latest_vlm_snapshot
+
+    if not isinstance(image_bytes, bytes) or not image_bytes:
+        return
+
+    with socket_emit_lock:
+        latest_vlm_snapshot = image_bytes
+        socketio.emit('vlm_snapshot', image_bytes)
+
 
 def emit_ros_status(connected):
     """ROS 연결 여부를 저장해 새 브라우저에도 같은 상태를 보낸다."""
@@ -140,11 +153,12 @@ def is_ui_session_active():
 
 
 def activate_ui_session():
-    global latest_agent_status, ui_session_active
+    global latest_agent_status, latest_vlm_snapshot, ui_session_active
 
     with socket_emit_lock:
         cached_dialogue.clear()
         latest_agent_status = {}
+        latest_vlm_snapshot = None
         ui_session_active = True
         socketio.emit('dialogue_snapshot', {'items': []})
         socketio.emit('agent_status', latest_agent_status)
@@ -153,22 +167,23 @@ def activate_ui_session():
 def reset_ui_session(action):
     """영구 Chroma 기록은 보존하고 현재 화면 세션만 비운다."""
     global latest_mic_state, latest_stt_enabled
-    global latest_agent_status, ui_session_active
+    global latest_agent_status, latest_vlm_snapshot, ui_session_active
 
     with socket_emit_lock:
         if action != 'complete':
             cached_dialogue.clear()
+            latest_agent_status = {}
 
         latest_mic_state = 'idle'
         latest_stt_enabled = False
-        latest_agent_status = {}
+        latest_vlm_snapshot = None
         ui_session_active = False
-        socketio.emit('agent_status', latest_agent_status)
         socketio.emit('mic_state', {'state': latest_mic_state})
 
         if action == 'complete':
             socketio.emit('work_complete', {'action': action})
         else:
+            socketio.emit('agent_status', latest_agent_status)
             socketio.emit('dialogue_snapshot', {'items': []})
             socketio.emit('work_reset', {'action': action})
 
@@ -176,6 +191,7 @@ def reset_ui_session(action):
 UI_START_TOPIC = '/ui/start'           # 손님이 시작할 때 다른 ROS 노드가 대화를 열도록 알린다.
 UI_RESET_TOPIC = '/ui/reset'           # 뒤로가기·홈에서 에이전트와 제어기의 현재 작업을 초기화한다.
 AGENT_STATUS_TOPIC = '/agent/status'    # 에이전트의 선택·목표·현재 작업·완료 상태를 한 payload로 받는다.
+VLM_UI_IMAGE_TOPIC = '/agent/vlm_snapshot'  # VLM이 실제 사용한 3분할 UI 이미지
 RESET_ACTIONS = {'back', 'home'}
 
 class UiNode(Node):
@@ -199,12 +215,9 @@ class UiNode(Node):
         # TTS가 재생 직전에 보내므로 마이크를 말하기 상태로 바꾼다.
         self.stt_stop_subscription = self.create_subscription(String, '/stt_stop', self.stt_stop_callback,SUBSCRIPTION_QUEUE_SIZE)
 
-        self.stt_enable_subscription = self.create_subscription(
-            Bool,
-            '/stt/enable',
-            self.stt_enable_callback,
-            SUBSCRIPTION_QUEUE_SIZE,
-        )
+        self.stt_enable_subscription = self.create_subscription(Bool, '/stt/enable',self.stt_enable_callback,SUBSCRIPTION_QUEUE_SIZE)
+
+        self.vlm_snapshot_subscription = self.create_subscription(CompressedImage,VLM_UI_IMAGE_TOPIC,self.vlm_snapshot_callback,1)
 
         # 재생 성공과 실패 모두 다시 들을 수 있다는 신호로 사용한다.
         self.tts_done_subscription = self.create_subscription(String, '/tts_done', self.tts_done_callback, SUBSCRIPTION_QUEUE_SIZE)
@@ -349,6 +362,29 @@ class UiNode(Node):
                 f'에이전트 진행 상태를 화면에 보내다가 터졌어요: '
                 f'{error}\n{traceback.format_exc()}')
 
+    def vlm_snapshot_callback(self, message):
+        try:
+            if not is_ui_session_active():
+                return
+
+            image_bytes = bytes(message.data)
+            if not image_bytes:
+                self.get_logger().warning(
+                    f'{VLM_UI_IMAGE_TOPIC} 이미지가 비어 있어 표시하지 않았어요.'
+                )
+                return
+
+            emit_vlm_snapshot(image_bytes)
+            self.get_logger().info(
+                'VLM 입력 3분할 이미지를 화면에 보냈어요.'
+            )
+
+        except Exception as error:
+            self.get_logger().error(
+                f'VLM UI 이미지를 보내다가 터졌어요: '
+                f'{error}\n{traceback.format_exc()}'
+            )
+
     def destroy_node(self):
         # 발행을 먼저 막고 ROS 자원을 닫아 Flask 스레드가 종료 중인 발행기를 쓰지 않게 한다.
         with self.lifecycle_lock:
@@ -379,6 +415,9 @@ def handle_connect():
                 'ros_status', {'connected': ros_connected}, to=client_id)
             socketio.emit(
                 'agent_status', latest_agent_status, to=client_id)
+
+            if latest_vlm_snapshot is not None:
+                socketio.emit('vlm_snapshot',latest_vlm_snapshot,to=client_id)
         print('브라우저가 붙었어요.')
     except Exception as error:
         print(
@@ -417,6 +456,16 @@ def handle_reset_work(payload=None):
         action = payload.get('action') if isinstance(payload, dict) else None
         if action not in RESET_ACTIONS:
             return {'ok': False, 'message': '지원하지 않는 초기화 요청입니다.'}
+
+        # LLM과 같은 기준을 사용한다. 주문값이 하나라도 생기면 UI만 먼저 지우지 않는다.
+        with socket_emit_lock:
+            reset_allowed = latest_agent_status.get('reset_allowed') is True
+
+        if not reset_allowed:
+            return {
+                'ok': False,
+                'message': '이미 선택한 주문이 있어 전체 초기화할 수 없습니다. 바꾸고 싶은 메뉴를 말씀해 주세요.',
+            }
 
         with ros_node_lock:
             current_ros_node = ros_node

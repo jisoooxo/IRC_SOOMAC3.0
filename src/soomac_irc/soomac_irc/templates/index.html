@@ -163,6 +163,7 @@
     .nav-btn:hover { color: var(--ink); border-color: var(--line-strong); }
     .nav-btn:active { background: var(--surface-2); }
     .nav-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .nav-btn:disabled { color: var(--ink-faint); cursor: not-allowed; opacity: .55; }
     .nav-icon { font-size: 1.3em; line-height: 1; }
 
     .store {
@@ -589,6 +590,49 @@
     .reset-error { color: var(--danger) !important; font-size: 13px !important; }
     .reset-error[hidden] { display: none; }
 
+    /* VLM이 실제 판정에 사용한 3분할 snapshot만 표시한다. */
+    .vlm-dialog {
+      width: min(1240px, calc(100vw - 32px));
+      padding: 0;
+      color: var(--ink);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 70px rgb(0 0 0 / .28);
+    }
+    .vlm-dialog::backdrop { background: rgb(12 15 18 / .58); backdrop-filter: blur(4px); }
+    .vlm-dialog-inner { display: grid; gap: 14px; padding: 20px; }
+    .vlm-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .vlm-dialog-head h2 { margin: 0; font-size: clamp(20px, 2vw, 26px); }
+    .vlm-panel-labels {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .vlm-snapshot-image {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4 / 1;
+      object-fit: contain;
+      background: #1c2026;
+      border-radius: var(--radius-md);
+    }
+    .vlm-close-btn {
+      min-width: 84px;
+      min-height: 42px;
+      color: var(--ink);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .enter, .meter i { animation: none !important; }
       .start-btn { transition: none; }
@@ -607,6 +651,774 @@
       .status-card { min-height: 120px; }
       .nav-btn .nav-label { display: none; }
     }
+
+
+    /* ============================================================
+       2026-09 Dashboard UI
+       - 기존 Socket.IO/주문/초기화 로직은 유지한다.
+       - 화면 표현만: 진행 단계 + 실제 용기 + 우측 채팅 + 작은 마이크 상태로 확장한다.
+       ============================================================ */
+    :root {
+      --dash-red: #ff363b;
+      --dash-red-soft: #fff0f1;
+      --dash-green: #2eb85c;
+      --dash-green-soft: #eefbf3;
+      --dash-bluegray: #7f8da3;
+      --tray: #1f242a;
+      --tray-2: #282e35;
+      --tray-line: #4a525d;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 72% 18%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 28%),
+        #f5f8fb;
+    }
+
+    .shell {
+      width: min(1540px, 100vw);
+      height: 100vh;
+      height: 100dvh;
+      padding: clamp(14px, 1.6vw, 26px);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(12px, 1.3vw, 18px);
+    }
+
+    .top {
+      min-height: 52px;
+      padding: 0 2px 12px;
+    }
+
+    .brand-wrap { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .store { display: flex; align-items: center; gap: 8px; font-size: clamp(22px, 2vw, 30px); font-weight: 800; color: #12213b; }
+    .store::before { content: '◆'; color: var(--dash-green); font-size: .72em; transform: rotate(25deg); }
+    .brand-copy { color: #748197; font-size: clamp(14px, 1.25vw, 20px); font-weight: 560; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top-right { display: flex; align-items: center; gap: 16px; }
+    .clock { text-align: right; color: #748197; font-variant-numeric: tabular-nums; line-height: 1.12; }
+    .clock strong { display: block; color: #12213b; font-size: clamp(18px, 1.75vw, 26px); margin-top: 3px; }
+    .step { font-size: 11px; }
+
+    .dashboard {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 2.12fr) minmax(330px, .92fr);
+      gap: clamp(14px, 1.5vw, 22px);
+    }
+
+    .workspace {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(300px, 1fr) auto;
+      gap: clamp(12px, 1.25vw, 18px);
+    }
+
+    .card {
+      background: rgba(255,255,255,.96);
+      border: 1px solid #e6ebf0;
+      border-radius: 18px;
+      box-shadow: 0 8px 28px rgb(27 39 54 / .055);
+    }
+
+    /* 전체 진행 상황 */
+    .overall-progress { padding: clamp(14px, 1.35vw, 20px) clamp(14px, 1.6vw, 24px) 12px; }
+    .section-title-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .section-title-row h2 { margin: 0; font-size: clamp(17px, 1.45vw, 22px); letter-spacing: -.03em; }
+    .progress-count { color: #17233a; font-size: clamp(15px, 1.2vw, 18px); font-weight: 750; font-variant-numeric: tabular-nums; }
+
+    .stage-track {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .stage-track::before {
+      content: '';
+      position: absolute;
+      top: 23px;
+      left: 6.5%;
+      right: 6.5%;
+      height: 4px;
+      border-radius: 999px;
+      background: #dce2e9;
+    }
+    .stage-progress-line {
+      position: absolute;
+      top: 23px;
+      left: 6.5%;
+      width: 0;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--dash-green);
+      transition: width .35s ease;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .stage {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      text-align: center;
+      color: #8995a7;
+      min-width: 0;
+    }
+    .stage-dot {
+      width: 50px;
+      height: 50px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #f0f3f7;
+      border: 1px solid #e2e7ed;
+      box-shadow: 0 3px 10px rgb(32 43 55 / .04);
+      font-size: 22px;
+      transition: .25s ease;
+    }
+    .stage-name { color: inherit; font-size: clamp(11px, 1vw, 14px); font-weight: 750; white-space: nowrap; }
+    .stage-state { min-height: 16px; color: #a0a9b7; font-size: 11px; font-weight: 650; }
+    .stage.done { color: #233148; }
+    .stage.done .stage-dot { color: white; background: var(--dash-green); border-color: var(--dash-green); }
+    .stage.done .stage-state { color: var(--dash-green); }
+    .stage.active { color: #18243a; }
+    .stage.active .stage-dot {
+      color: var(--dash-red);
+      background: #ffe8e9;
+      border-color: #ffc8cb;
+      box-shadow: 0 0 0 8px rgba(255,54,59,.06);
+    }
+    .stage.active .stage-state { color: var(--dash-red); }
+    .stage.skipped .stage-state { color: #9aa4b2; }
+
+    /* 실제 용기 배치 */
+    .tray-card { min-height: 0; padding: clamp(14px, 1.5vw, 22px); display: grid; place-items: center; overflow: hidden; }
+    .tray {
+      position: relative;
+      width: min(100%, 920px);
+      height: 100%;
+      min-height: 330px;
+      max-height: 570px;
+      border-radius: 58px;
+      padding: 30px;
+      background: linear-gradient(145deg, #101418 0%, #22282e 55%, #0f1317 100%);
+      border: 4px solid #69727c;
+      box-shadow:
+        inset 0 0 0 9px #11161b,
+        inset 0 0 32px rgba(255,255,255,.08),
+        0 16px 30px rgb(21 28 35 / .18);
+    }
+    .tray-grid {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 32% 27% 41%;
+      grid-template-rows: 36% 25% 39%;
+      gap: 7px;
+    }
+    .compartment {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      min-height: 0;
+      background: linear-gradient(145deg, #343b43, #1c2228 70%);
+      border: 2px solid #5c6570;
+      box-shadow: inset 0 0 22px rgba(0,0,0,.46), inset 0 1px 2px rgba(255,255,255,.12);
+      transition: border-color .25s ease, box-shadow .25s ease, background .25s ease;
+    }
+    .compartment::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 48% 40%, rgba(255,255,255,.055), transparent 55%);
+      pointer-events: none;
+    }
+    .slot-sausage { grid-column: 1 / 3; grid-row: 1; border-radius: 28px 12px 8px 8px; }
+    .slot-vegetable { grid-column: 3; grid-row: 1; border-radius: 12px 28px 8px 8px; }
+    .slot-cheese { grid-column: 1; grid-row: 2; border-radius: 8px; }
+    .slot-pepper { grid-column: 2; grid-row: 2; border-radius: 8px; }
+    .slot-crab { grid-column: 3; grid-row: 2; border-radius: 8px; }
+    .slot-noodle { grid-column: 1 / 4; grid-row: 3; border-radius: 8px 8px 30px 30px; }
+
+    .slot-label {
+      position: absolute;
+      z-index: 4;
+      left: 14px;
+      top: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: calc(100% - 28px);
+      padding: 6px 11px;
+      color: #f5f7fa;
+      background: rgba(18,22,27,.7);
+      border: 1px solid rgba(255,255,255,.17);
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+      font-size: clamp(11px, .95vw, 14px);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .slot-content {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+      height: 100%;
+      padding: 34px 18px 10px;
+      font-size: clamp(42px, 5.1vw, 76px);
+      filter: drop-shadow(0 8px 8px rgba(0,0,0,.28));
+    }
+    .slot-content:empty { display: none; }
+
+    .compartment.working {
+      border-color: var(--dash-red);
+      background: linear-gradient(145deg, #493236, #251f24 72%);
+      animation: compartment-working 1.05s ease-in-out infinite;
+    }
+    .compartment.working::before {
+      content: '작업 중 ···';
+      position: absolute;
+      z-index: 6;
+      right: 12px;
+      bottom: 12px;
+      padding: 7px 11px;
+      color: white;
+      background: rgba(238,43,50,.9);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    @keyframes compartment-working {
+      0%,100% { box-shadow: inset 0 0 22px rgba(0,0,0,.46), 0 0 0 2px rgba(255,54,59,.25), 0 0 12px rgba(255,54,59,.18); }
+      50% { box-shadow: inset 0 0 22px rgba(0,0,0,.46), 0 0 0 4px rgba(255,54,59,.72), 0 0 28px rgba(255,54,59,.42); }
+    }
+
+    .compartment.verifying {
+      border-color: var(--dash-green);
+      background: linear-gradient(145deg, #254035, #1c2823 74%);
+      box-shadow: inset 0 0 22px rgba(0,0,0,.38), 0 0 0 3px rgba(46,184,92,.3), 0 0 28px rgba(46,184,92,.24);
+    }
+    .compartment.verifying::before {
+      content: 'VLM 확인 중';
+      position: absolute;
+      z-index: 6;
+      right: 12px;
+      bottom: 12px;
+      padding: 7px 11px;
+      color: white;
+      background: rgba(46,184,92,.92);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    /* 로봇 동작은 끝났지만 아직 VLM 결과가 오지 않은 상태.
+       이때도 아직 확인되지 않은 현재 class는 용기에 그리지 않는다. */
+    .compartment.work-done {
+      border-color: #9ba6b4;
+      box-shadow: inset 0 0 22px rgba(0,0,0,.42), 0 0 0 2px rgba(155,166,180,.20);
+    }
+    .compartment.work-done::before {
+      content: '작업 완료';
+      position: absolute;
+      z-index: 6;
+      right: 12px;
+      bottom: 12px;
+      padding: 7px 11px;
+      color: white;
+      background: rgba(115,127,143,.92);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .compartment.verified {
+      border-color: var(--dash-green);
+      box-shadow: inset 0 0 22px rgba(0,0,0,.35), 0 0 0 2px rgba(46,184,92,.28), 0 0 20px rgba(46,184,92,.18);
+    }
+    .compartment.verified::before {
+      content: '확인 완료';
+      position: absolute;
+      z-index: 6;
+      right: 12px;
+      bottom: 12px;
+      padding: 7px 11px;
+      color: white;
+      background: rgba(46,184,92,.92);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .compartment.vlm-fail {
+      border-color: var(--dash-red);
+      box-shadow: inset 0 0 22px rgba(0,0,0,.42), 0 0 0 2px rgba(255,54,59,.24);
+    }
+    .compartment.vlm-fail::before {
+      content: '확인 실패';
+      position: absolute;
+      z-index: 6;
+      right: 12px;
+      bottom: 12px;
+      padding: 7px 11px;
+      color: white;
+      background: rgba(238,43,50,.92);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .compartment.vlm-retried { border-color: #6594e8; }
+    .compartment.vlm-retried::before,
+    .compartment.vlm-uncertain::before {
+      position: absolute;
+      z-index: 6;
+      right: 12px;
+      bottom: 12px;
+      padding: 7px 11px;
+      color: white;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .compartment.vlm-retried::before { content: '재시도 완료'; background: #447ed8; }
+    .compartment.vlm-uncertain { border-color: #d79700; }
+    .compartment.vlm-uncertain::before { content: '재촬영 대기'; background: #b77c00; }
+
+    .compartment.filled { background: linear-gradient(145deg, #383f47, #20262c 72%); }
+    .compartment.filled .slot-label { border-color: rgba(46,184,92,.45); }
+
+    .tray-knob {
+      position: absolute;
+      z-index: 10;
+      left: 58.9%;
+      top: 36.1%;
+      width: clamp(54px, 5.5vw, 82px);
+      aspect-ratio: 1;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: linear-gradient(145deg, #59616b, #2f353c);
+      border: 2px solid #7c8590;
+      box-shadow: 0 3px 8px rgba(0,0,0,.45), inset 0 1px 4px rgba(255,255,255,.18);
+    }
+    .tray.lid-on::after {
+      content: '뚜껑 장착 완료';
+      position: absolute;
+      inset: 13px;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      color: #1d7f42;
+      background: rgba(232,250,239,.18);
+      border: 3px solid rgba(46,184,92,.65);
+      border-radius: 48px;
+      font-weight: 850;
+      font-size: clamp(20px, 2vw, 28px);
+      backdrop-filter: blur(1px);
+      pointer-events: none;
+    }
+
+    /* 현재 작업 재료 카드 */
+    .current-work-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto minmax(220px, .95fr);
+      align-items: center;
+      gap: 18px;
+      padding: 14px 18px;
+    }
+    .work-heading { grid-column: 1 / -1; margin: 0 0 -4px; font-size: clamp(16px, 1.3vw, 20px); }
+    .current-order-summary {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+      padding: 10px 12px;
+      background: #f3f8f4;
+      border: 1px solid #d8e8dc;
+      border-radius: 10px;
+    }
+    .current-order-label { flex: 0 0 auto; margin-right: 4px; color: #17243b; font-size: 14px; font-weight: 800; }
+    .current-order-summary .selected-chips { flex: 1 1 520px; min-width: 0; }
+    .current-order-summary .empty-state { margin: 0; }
+    .ingredient-photo {
+      width: 92px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: #f4f5f3;
+      font-size: 48px;
+      overflow: hidden;
+    }
+    .ingredient-copy strong { display: block; color: #17243b; font-size: clamp(16px, 1.35vw, 21px); margin-bottom: 5px; }
+    .ingredient-copy span { color: #7d899c; font-size: clamp(12px, 1vw, 15px); }
+    .work-divider { width: 1px; height: 60px; background: #dde3e9; }
+    .work-note { display: flex; align-items: center; gap: 12px; color: #24334a; font-size: clamp(12px, 1vw, 15px); line-height: 1.5; }
+    .work-note .note-icon { font-size: 30px; }
+
+    /* 우측 대화 영역 */
+    .chat-panel {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+    }
+    .chat-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid #edf0f3;
+    }
+    .chat-head h2 { margin: 0; font-size: clamp(18px, 1.55vw, 23px); letter-spacing: -.03em; }
+    .phase-badge {
+      min-height: 30px;
+      padding: 6px 11px;
+      border: 0;
+      font-size: 12px;
+      gap: 7px;
+      background: #f3f5f7;
+    }
+    .phase-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #aab3c0; }
+    .phase-badge[data-tech="working"] { color: #d92831; background: #fff0f1; }
+    .phase-badge[data-tech="working"]::before { background: var(--dash-red); animation: pulse-dot 1s infinite; }
+    .phase-badge[data-tech="workdone"] { color: #247a43; background: #eefaf2; }
+    .phase-badge[data-tech="workdone"]::before { background: var(--dash-green); }
+    .phase-badge[data-tech="verifying"] { color: #247a43; background: #eefaf2; }
+    .phase-badge[data-tech="verifying"]::before { background: var(--dash-green); animation: pulse-dot 1s infinite; }
+    .phase-badge[data-tech="verified"] { color: #247a43; background: #eaf8ef; }
+    .phase-badge[data-tech="verified"]::before { background: var(--dash-green); }
+    .phase-badge[data-tech="error"],
+    .phase-badge[data-tech="vlmfail"] { color: #d92831; background: #fff0f1; }
+    .phase-badge[data-tech="error"]::before,
+    .phase-badge[data-tech="vlmfail"]::before { background: var(--dash-red); }
+    .phase-badge[data-tech="retried"] { color: #2869d8; background: #eef4ff; }
+    .phase-badge[data-tech="retried"]::before { background: #2869d8; }
+    .phase-badge[data-tech="uncertain"] { color: #996800; background: #fff8df; }
+    .phase-badge[data-tech="uncertain"]::before { background: #d79700; animation: pulse-dot 1s infinite; }
+    @keyframes pulse-dot { 50% { opacity: .35; transform: scale(.82); } }
+
+    .talk {
+      min-height: 0;
+      padding: 18px 16px 12px;
+      gap: 14px;
+      background: #fff;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .talk::before { display: none; }
+    .turn { position: relative; display: flex; align-items: flex-start; gap: 9px; flex: 0 0 auto; }
+    .turn.bot { justify-content: flex-start; padding-right: 12%; }
+    .turn.bot::before {
+      content: '🤖';
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #ecfbf1;
+      border: 1px solid #cbeed7;
+      font-size: 22px;
+    }
+    .turn.me { justify-content: flex-end; padding-left: 12%; }
+    .turn.me::after {
+      content: '●';
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: #8fdca6;
+      font-size: 14px;
+    }
+    .say, .bubble {
+      max-width: 100%;
+      margin: 0;
+      padding: 12px 14px;
+      border: 0;
+      border-radius: 6px 16px 16px 16px;
+      background: #f1f4f8;
+      color: #17243a;
+      font-size: clamp(14px, 1.15vw, 18px);
+      font-weight: 560;
+      line-height: 1.5;
+      letter-spacing: -.015em;
+      box-shadow: none;
+      text-wrap: pretty;
+    }
+    .turn.me .bubble { background: #e8f8ed; border-radius: 16px 6px 16px 16px; }
+    .heard-label { margin: 0 4px 5px 0; font-size: 9px; color: #a1aab7; letter-spacing: .08em; }
+    .turn.past .bubble, .turn.past .say { font-size: clamp(13px, 1.05vw, 16px); color: #5c687a; opacity: .88; }
+    .turn.past::before, .turn.past::after { opacity: .72; }
+
+    /* 작고 아래쪽에 붙는 마이크 상태 */
+    .mic {
+      margin: 0 16px 16px;
+      min-height: 72px;
+      padding: 10px 14px;
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr);
+      grid-template-rows: auto auto;
+      column-gap: 12px;
+      row-gap: 2px;
+      align-items: center;
+      background: #fff5f5;
+      border: 1px solid #ffe0e1;
+      border-radius: 16px;
+      box-shadow: none;
+    }
+    .mic::before {
+      content: '🎙';
+      grid-column: 1;
+      grid-row: 1 / 3;
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: var(--dash-red);
+      font-size: 23px;
+      box-shadow: 0 0 0 6px rgba(255,54,59,.08);
+    }
+    .meter { display: none; }
+    .mic-text { grid-column: 2; font-size: clamp(15px, 1.2vw, 18px); font-weight: 800; color: #d62b33; }
+    .mic-hint { grid-column: 2; margin: 0; text-align: left; color: #8c98a9; font-size: 11px; }
+    .mic[data-state="listening"] { background: #effbf3; border-color: #ccefd8; }
+    .mic[data-state="listening"]::before { background: var(--dash-green); box-shadow: 0 0 0 6px rgba(46,184,92,.09); animation: listen-ring 1.2s infinite; }
+    .mic[data-state="listening"] .mic-text { color: #208446; }
+    @keyframes listen-ring { 50% { box-shadow: 0 0 0 10px rgba(46,184,92,.055); } }
+    .mic[data-state="idle"] { background: #f6f7f9; border-color: #eceff2; }
+    .mic[data-state="idle"]::before { background: #a4adba; box-shadow: none; }
+    .mic[data-state="idle"] .mic-text { color: #687587; }
+
+    /* 기존 데이터 노드는 JS 호환성을 위해 유지하되 화면에서는 숨긴다. */
+    .legacy-progress-state { display: none !important; }
+
+    @media (max-width: 1050px) {
+      body { overflow-y: auto; }
+      .shell { height: auto; min-height: 100dvh; }
+      .dashboard { grid-template-columns: 1fr; }
+      .workspace { min-height: 860px; }
+      .chat-panel { min-height: 640px; }
+      .tray { min-height: 430px; }
+    }
+
+    @media (max-width: 720px) {
+      .brand-copy, .clock { display: none; }
+      .stage-dot { width: 42px; height: 42px; font-size: 18px; }
+      .stage-track::before, .stage-progress-line { top: 19px; }
+      .stage-name { font-size: 10px; }
+      .tray { min-height: 360px; border-radius: 38px; padding: 18px; }
+      .current-work-card { grid-template-columns: auto 1fr; }
+      .work-divider, .work-note { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .compartment.working, .phase-badge::before, .mic::before { animation: none !important; }
+    }
+
+
+    /* ============================================================
+       Lid + sauce overlay v2
+       IMPORTANT: original .tray / .tray-grid / .compartment / .tray-knob
+       geometry is untouched. These are visual overlay layers only.
+       ============================================================ */
+    .tray.lid-on::after { content: none; display: none; }
+
+    .lid-overlay {
+      position: absolute;
+      inset: 10px;
+      z-index: 8; /* original tray-knob is z-index:10, so the center detail remains visible */
+      pointer-events: none;
+      border-radius: 48px;
+      opacity: 0;
+      transform-origin: 50% 5%;
+      transform: translateY(-18%) scale(1.025, .82);
+      transition:
+        opacity .18s ease,
+        transform .62s cubic-bezier(.2,.78,.2,1),
+        filter .62s ease;
+      filter: drop-shadow(0 10px 10px rgba(19,27,35,.08));
+    }
+
+    /* Only the rim and highlights are drawn; the tray remains visible through the lid. */
+    .lid-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 4px solid rgba(210,222,232,.78);
+      box-shadow:
+        inset 0 0 0 2px rgba(255,255,255,.72),
+        inset 0 0 0 8px rgba(222,231,238,.12),
+        0 3px 8px rgba(20,30,40,.08);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.13), rgba(225,235,242,.045) 40%, rgba(255,255,255,.08) 70%, rgba(210,220,228,.045));
+      backdrop-filter: brightness(1.02) saturate(.98);
+    }
+
+    .lid-overlay::after {
+      content: '';
+      position: absolute;
+      inset: 10px 16px auto 16px;
+      height: 24%;
+      border-radius: 36px 36px 55% 55%;
+      background: linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,0));
+      opacity: .68;
+    }
+
+    .lid-rim-inner {
+      position: absolute;
+      inset: 13px;
+      border: 2px solid rgba(203,215,225,.50);
+      border-radius: 40px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+    }
+
+    .lid-lock {
+      position: absolute;
+      width: clamp(34px, 4vw, 58px);
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(222,231,238,.66);
+      border: 1px solid rgba(178,193,204,.70);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,.86);
+    }
+    .lid-lock.top-left  { top: 4px; left: 22%; }
+    .lid-lock.top-right { top: 4px; right: 22%; }
+    .lid-lock.bottom-left  { bottom: 4px; left: 22%; }
+    .lid-lock.bottom-right { bottom: 4px; right: 22%; }
+
+    .tray[data-lid-state="ready"] .lid-overlay {
+      opacity: .72;
+      transform: translateY(-16%) scale(1.02, .84);
+      filter: drop-shadow(0 16px 12px rgba(19,27,35,.10));
+    }
+
+    .tray[data-lid-state="closing"] .lid-overlay {
+      opacity: .94;
+      transform: translateY(-4%) scale(1.008, .96);
+      filter: drop-shadow(0 9px 8px rgba(19,27,35,.09));
+    }
+
+    .tray[data-lid-state="closed"] .lid-overlay,
+    .tray.lid-on .lid-overlay {
+      opacity: .96;
+      transform: translateY(0) scale(1);
+      filter: drop-shadow(0 4px 5px rgba(19,27,35,.08));
+    }
+
+    .lid-status-pill {
+      position: absolute;
+      z-index: 12;
+      left: 50%;
+      bottom: 17px;
+      transform: translateX(-50%);
+      display: none;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      color: #246c42;
+      background: rgba(242,252,246,.90);
+      border: 1px solid rgba(46,184,92,.32);
+      box-shadow: 0 5px 16px rgba(20,40,28,.08);
+      backdrop-filter: blur(7px);
+      font-size: clamp(10px,.85vw,13px);
+      font-weight: 800;
+      pointer-events: none;
+    }
+    .tray[data-lid-state="closing"] .lid-status-pill,
+    .tray[data-lid-state="closed"] .lid-status-pill { display: inline-flex; }
+    .tray[data-lid-state="closing"] .lid-status-pill::before {
+      content: '';
+      width: 7px; height: 7px; border-radius: 50%; background: var(--dash-red);
+      animation: pulse-dot 1s infinite;
+    }
+    .tray[data-lid-state="closed"] .lid-status-pill::before {
+      content: '✓';
+      color: var(--dash-green);
+      font-weight: 950;
+    }
+
+    .sauce-overlay {
+      position: absolute;
+      z-index: 14;
+      right: 11%;
+      top: 18%;
+      width: clamp(105px, 13.5vw, 180px);
+      aspect-ratio: .68;
+      transform: rotate(7deg);
+      pointer-events: none;
+    }
+    .sauce-overlay[hidden] { display: none; }
+
+    .sauce-pouch {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 4px;
+      padding: 18% 10% 12%;
+      border-radius: 9px 9px 13px 13px;
+      border: 1px solid rgba(0,0,0,.18);
+      box-shadow: 0 12px 18px rgba(0,0,0,.24), inset 0 1px 1px rgba(255,255,255,.40);
+      overflow: hidden;
+      font-family: var(--kr);
+    }
+    .sauce-pouch::before,
+    .sauce-pouch::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 8%;
+      background: repeating-linear-gradient(90deg, rgba(255,255,255,.24) 0 2px, rgba(0,0,0,.09) 2px 4px);
+      opacity: .72;
+    }
+    .sauce-pouch::before { top: 0; }
+    .sauce-pouch::after { bottom: 0; }
+    .sauce-pouch[data-sauce="tomato"] { color:#fff; background: linear-gradient(150deg,#ff5d5c,#ca2630 78%); }
+    .sauce-pouch[data-sauce="cream"]  { color:#554632; background: linear-gradient(150deg,#fffdf0,#ead6ae 78%); }
+    .sauce-pouch[data-sauce="oil"]    { color:#523f13; background: linear-gradient(150deg,#ffe797,#e8b942 78%); }
+    .sauce-pouch[data-sauce="sauce"]  { color:#1e354d; background: linear-gradient(150deg,#eff7ff,#bfd2e9 78%); }
+    .sauce-pouch-icon { font-size: clamp(30px,4vw,54px); line-height:1; filter: drop-shadow(0 4px 4px rgba(0,0,0,.10)); }
+    .sauce-pouch-name { text-align:center; font-size:clamp(12px,1.1vw,17px); font-weight:900; line-height:1.15; }
+    .sauce-pouch-sub { font-size:clamp(8px,.65vw,10px); font-weight:850; letter-spacing:.12em; opacity:.68; }
+
+    .sauce-overlay.arriving { animation: sauce-arrive .62s cubic-bezier(.18,.82,.2,1) both; }
+    @keyframes sauce-arrive {
+      0%   { opacity:0; transform: translate(25px,-80px) rotate(16deg) scale(.86); }
+      70%  { opacity:1; transform: translate(-3px,4px) rotate(5deg) scale(1.02); }
+      100% { opacity:1; transform: translate(0,0) rotate(7deg) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .lid-overlay { transition: none !important; }
+      .sauce-overlay.arriving { animation: none !important; }
+    }
+
   </style>
 </head>
 <body>
@@ -630,67 +1442,159 @@
     </div>
   </dialog>
 
+  <dialog class="vlm-dialog" id="vlmDialog">
+    <div class="vlm-dialog-inner">
+      <div class="vlm-dialog-head">
+        <h2>VLM 작업 확인 이미지</h2>
+        <button class="vlm-close-btn" id="vlmCloseBtn" type="button">닫기</button>
+      </div>
+      <div class="vlm-panel-labels" aria-hidden="true">
+        <span>REFERENCE</span>
+        <span>PREVIOUS SUCCESS</span>
+        <span>CURRENT OBSERVATION</span>
+      </div>
+      <img class="vlm-snapshot-image" id="vlmSnapshotImage"
+           alt="VLM이 실제 판정에 사용한 reference, previous, current 이미지">
+    </div>
+  </dialog>
+
   <div class="shell">
     <header class="top">
-      <div class="top-main">
+      <div class="top-main brand-wrap">
         <nav class="nav-actions" aria-label="화면 이동">
-          <button class="nav-btn" type="button" data-reset-action="back" aria-label="뒤로가기와 작업 초기화">
+          <button class="nav-btn" type="button" data-reset-action="back" aria-label="뒤로가기와 작업 초기화" disabled>
             <span class="nav-icon" aria-hidden="true">←</span>
             <span class="nav-label">뒤로</span>
           </button>
         </nav>
         <h1 class="store"><span id="storeName"></span><span class="tbd">미정</span></h1>
+        <span class="brand-copy">맛있는 한 끼를, 로봇이 정성껏 담아드려요!</span>
       </div>
-      <div class="step" id="stepLabel">서버 연결 중</div>
+      <div class="top-right">
+        <div class="step" id="stepLabel">서버 연결 중</div>
+        <div class="clock" aria-label="현재 시각">
+          <span id="clockDate"></span>
+          <strong id="clockTime"></strong>
+        </div>
+      </div>
     </header>
 
-    <main class="talk" id="talk" aria-live="polite"></main>
-
-    <section class="progress-panel" aria-label="주문과 작업 진행 상태">
-      <div class="progress-head">
-        <h2 class="progress-title">주문·작업 진행</h2>
-        <span class="phase-badge" id="phaseBadge" data-phase="idle">대기 중</span>
-      </div>
-
-      <div class="progress-grid" aria-live="polite">
-        <section class="status-card">
-          <h2>선택한 항목</h2>
-          <div class="selected-chips" id="selectedItems">
-            <p class="empty-state">아직 선택한 항목이 없어요.</p>
+    <div class="dashboard">
+      <main class="workspace">
+        <section class="overall-progress card" aria-label="전체 진행 상황">
+          <div class="section-title-row">
+            <h2>전체 진행 상황</h2>
+            <span class="progress-count" id="progressCount">0 / 7</span>
           </div>
-        </section>
-
-        <section class="status-card">
-          <h2>목표 목록</h2>
-          <ol class="target-list" id="targetList">
-            <li class="empty-state">대기 중</li>
+          <ol class="stage-track" id="stageTrack">
+            <span class="stage-progress-line" id="stageProgressLine" aria-hidden="true"></span>
+            <li class="stage" data-stage="container">
+              <span class="stage-dot">▣</span><span class="stage-name">용기 준비</span><span class="stage-state">대기</span>
+            </li>
+            <li class="stage" data-stage="noodle">
+              <span class="stage-dot">◎</span><span class="stage-name">면 담기</span><span class="stage-state">대기</span>
+            </li>
+            <li class="stage" data-stage="vegetable">
+              <span class="stage-dot">◒</span><span class="stage-name">야채 담기</span><span class="stage-state">대기</span>
+            </li>
+            <li class="stage" data-stage="meat">
+              <span class="stage-dot">◖</span><span class="stage-name">육류 담기</span><span class="stage-state">대기</span>
+            </li>
+            <li class="stage" data-stage="extra">
+              <span class="stage-dot">＋</span><span class="stage-name">추가 재료</span><span class="stage-state">대기</span>
+            </li>
+            <li class="stage" data-stage="cover">
+              <span class="stage-dot">▤</span><span class="stage-name">뚜껑</span><span class="stage-state">대기</span>
+            </li>
+            <li class="stage" data-stage="sauce">
+              <span class="stage-dot">●</span><span class="stage-name">소스</span><span class="stage-state">대기</span>
+            </li>
           </ol>
         </section>
 
-        <section class="status-card">
-          <h2>현재 상태</h2>
-          <div class="current-focus">
-            <strong id="currentStatus">주문 시작 전</strong>
-            <span id="currentSection">진행 정보 대기 중</span>
+        <section class="tray-card card" aria-label="용기 적재 상태">
+          <div class="tray" id="mealTray">
+            <div class="tray-grid">
+              <div class="compartment slot-sausage" id="slotSausage" data-slot="sausage">
+                <span class="slot-label">소시지</span><div class="slot-content"></div>
+              </div>
+              <div class="compartment slot-vegetable" id="slotVegetable" data-slot="vegetable">
+                <span class="slot-label">야채</span><div class="slot-content"></div>
+              </div>
+              <div class="compartment slot-cheese" id="slotCheese" data-slot="cheese">
+                <span class="slot-label">치즈</span><div class="slot-content"></div>
+              </div>
+              <div class="compartment slot-pepper" id="slotPepper" data-slot="pepperoncino">
+                <span class="slot-label">페퍼론치노</span><div class="slot-content"></div>
+              </div>
+              <div class="compartment slot-crab" id="slotCrab" data-slot="crab">
+                <span class="slot-label">게살</span><div class="slot-content"></div>
+              </div>
+              <div class="compartment slot-noodle" id="slotNoodle" data-slot="noodle">
+                <span class="slot-label">면</span><div class="slot-content"></div>
+              </div>
+            </div>
+            <div class="tray-knob" aria-hidden="true"></div>
+            <div class="lid-overlay" id="lidOverlay" aria-hidden="true">
+              <div class="lid-rim-inner"></div>
+              <span class="lid-lock top-left"></span>
+              <span class="lid-lock top-right"></span>
+              <span class="lid-lock bottom-left"></span>
+              <span class="lid-lock bottom-right"></span>
+            </div>
+            <div class="lid-status-pill" id="lidStatusPill" aria-hidden="true">뚜껑 닫는 중</div>
+            <div class="sauce-overlay" id="sauceOverlay" hidden aria-hidden="true">
+              <div class="sauce-pouch" id="saucePouch" data-sauce="sauce">
+                <span class="sauce-pouch-icon" id="saucePouchIcon">🥫</span>
+                <strong class="sauce-pouch-name" id="saucePouchName">소스</strong>
+                <span class="sauce-pouch-sub">PASTA SAUCE</span>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section class="status-card">
-          <h2>완료한 항목</h2>
-          <div class="completed-chips" id="completedItems">
-            <p class="empty-state">완료한 항목이 없어요.</p>
+        <section class="current-work-card card" aria-label="현재 작업 재료">
+          <h2 class="work-heading">현재 작업 중</h2>
+          <div class="current-order-summary" aria-label="현재 주문">
+            <strong class="current-order-label">현재 주문</strong>
+            <div class="selected-chips" id="currentOrderItems"></div>
+          </div>
+          <div class="ingredient-photo" id="currentIngredientVisual">…</div>
+          <div class="ingredient-copy">
+            <strong id="currentIngredientName">작업 대기 중</strong>
+            <span id="currentIngredientDescription">재료 작업이 시작되면 여기에 표시됩니다.</span>
+          </div>
+          <div class="work-divider" aria-hidden="true"></div>
+          <div class="work-note">
+            <span class="note-icon">♨</span>
+            <span id="workNoteText">주문 내용을 확인하고 있어요.<br>잠시만 기다려주세요.</span>
           </div>
         </section>
-      </div>
-    </section>
+      </main>
 
-    <div class="mic" id="mic" data-state="idle">
-      <div class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-      <div class="mic-text" id="micText">시작 버튼을 눌러주세요</div>
-      <div class="mic-hint" id="micHint"></div>
+      <aside class="chat-panel card" aria-label="로봇과 대화하기">
+        <div class="chat-head">
+          <h2>로봇과 대화하기</h2>
+          <span class="phase-badge" id="phaseBadge" data-phase="idle" data-tech="idle">대기 중</span>
+        </div>
+        <main class="talk" id="talk" aria-live="polite"></main>
+        <div class="mic" id="mic" data-state="idle">
+          <div class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="mic-text" id="micText">시작 버튼을 눌러주세요</div>
+          <div class="mic-hint" id="micHint"></div>
+        </div>
+      </aside>
     </div>
-  </div>
 
+    <!-- 기존 상태 데이터 바인딩 유지: 화면에는 노출하지 않음 -->
+    <section class="legacy-progress-state" aria-hidden="true">
+      <div id="selectedItems"></div>
+      <ol id="targetList"></ol>
+      <strong id="currentStatus"></strong>
+      <span id="currentSection"></span>
+      <div id="completedItems"></div>
+    </section>
+  </div>
   <!-- CDN 이 아니라 static/ 에 받아둔 파일을 쓴다. 대회장 인터넷을 전제로 하면 안 된다.
        flask-socketio 는 서버만 제공하므로 이 파일이 없으면 io() 가 정의되지 않아
        버튼이 눌려도 아무 일도 안 일어난다. -->
@@ -704,6 +1608,7 @@
     const startScreen = document.getElementById('startScreen');
     const phaseBadge = document.getElementById('phaseBadge');
     const selectedItems = document.getElementById('selectedItems');
+    const currentOrderItems = document.getElementById('currentOrderItems');
     const targetList = document.getElementById('targetList');
     const currentStatus = document.getElementById('currentStatus');
     const currentSection = document.getElementById('currentSection');
@@ -713,11 +1618,45 @@
     const resetError = document.getElementById('resetError');
     const resetCancel = document.getElementById('resetCancel');
     const resetConfirm = document.getElementById('resetConfirm');
+    const progressCount = document.getElementById('progressCount');
+    const stageProgressLine = document.getElementById('stageProgressLine');
+    const mealTray = document.getElementById('mealTray');
+    const lidStatusPill = document.getElementById('lidStatusPill');
+    const sauceOverlay = document.getElementById('sauceOverlay');
+    const saucePouch = document.getElementById('saucePouch');
+    const saucePouchIcon = document.getElementById('saucePouchIcon');
+    const saucePouchName = document.getElementById('saucePouchName');
+    const currentIngredientVisual = document.getElementById('currentIngredientVisual');
+    const currentIngredientName = document.getElementById('currentIngredientName');
+    const currentIngredientDescription = document.getElementById('currentIngredientDescription');
+    const workNoteText = document.getElementById('workNoteText');
+    const clockDate = document.getElementById('clockDate');
+    const clockTime = document.getElementById('clockTime');
+    const vlmDialog = document.getElementById('vlmDialog');
+    const vlmCloseBtn = document.getElementById('vlmCloseBtn');
+    const vlmSnapshotImage = document.getElementById('vlmSnapshotImage');
+    const resetActionButtons = Array.from(document.querySelectorAll('[data-reset-action]'));
 
     const 최대화면대화수 = 200;
     let 대기중인초기화동작 = null;
+    // UI_NODE -> HTML agent_status의 마지막 스냅샷. work_complete 때 용기 그림을 유지하는 데 사용한다.
+    let latestAgentStatus = {};
+    let 마지막소스표시키 = '';
+    let vlmSnapshotUrl = '';
+    let vlmPopupCloseTimer = null;
+    const VLM팝업표시시간 = 5000;
 
     document.getElementById('storeName').textContent = 가게이름;
+
+
+    function 시계갱신() {
+      const now = new Date();
+      const 요일 = ['일', '월', '화', '수', '목', '금', '토'][now.getDay()];
+      clockDate.textContent = `${now.getMonth() + 1}월 ${now.getDate()}일 (${요일})`;
+      clockTime.textContent = now.toLocaleTimeString('ko-KR', {hour: 'numeric', minute: '2-digit'});
+    }
+    시계갱신();
+    setInterval(시계갱신, 30000);
 
     const 마이크상태문구 = {
       idle: ['시작 버튼을 눌러주세요', ''],
@@ -876,6 +1815,8 @@
 
       const selectedLabels = 선택문구목록(selected);
       칩그리기(selectedItems, selectedLabels, '아직 선택한 항목이 없어요.');
+      // 숨겨진 기존 상태 노드는 호환용으로 유지하고, 같은 selected를 손님 화면에도 보여준다.
+      칩그리기(currentOrderItems, selectedLabels, '아직 선택한 주문이 없어요.');
 
       const completedLabels = completed.map(작업문구).filter(Boolean);
       const doneSectionLabels = doneSections.map(name => `${name} 섹션`);
@@ -920,17 +1861,549 @@
       currentSection.textContent = section
         ? `${section} · ${(세부상태문구[sectionState] ?? sectionState) || '대기 중'}`
         : '진행 정보 대기 중';
+
+      // 기존 상태 계산은 그대로 유지하고, 새 대시보드 표현만 추가한다.
+      새대시보드그리기(data);
+    }
+
+
+    /* ============================================================
+       UI_NODE ↔ HTML 통신 계약
+
+       이 HTML은 ROS 토픽을 직접 구독하지 않는다.
+       UI_NODE가 ROS/LLM/VLM 쪽 정보를 모아서 Socket.IO 이벤트로 HTML에 전달한다.
+
+       [UI_NODE -> HTML] agent_status  ★ 작업 화면에서 가장 중요
+       권장 payload:
+       {
+         "current_class": "mushroom",       // 현재 실제 작업 class. 예: noodle, mushroom, onion, sausage...
+         "current_group": "야채",            // 용기 / 면 / 야채 / 육류 / 추가 재료 / 뚜껑 / 소스
+         "work_state": "working",           // idle | working | work_done | vlm_checking | vlm_done | vlm_fail | completed
+
+         "selected_classes": ["noodle", "mushroom", "onion", "cheese"],
+         // 사용자가 주문한 class 목록. 야채는 mushroom만, onion만, 둘 다, 또는 둘 다 없음 모두 가능.
+
+         "filled_classes": ["noodle", "mushroom"],
+         // ★ 매우 중요: VLM 확인이 성공한 class만 넣는다.
+         // working / work_done / vlm_checking 단계에서는 현재 class를 절대 여기에 넣지 않는다.
+         // vlm_done이 된 순간 해당 class를 추가한다.
+         // 같은 야채 칸도 mushroom과 onion을 각각 독립적으로 추가한다.
+
+         "completed_groups": ["용기", "면"],
+         // 전체 진행바에서 완료로 표시할 그룹
+
+         "skipped_groups": ["육류"]
+         // 선택하지 않아 건너뛴 그룹. 필요할 때만 보내도 된다.
+       }
+
+       야채 칸 예시:
+         filled_classes=[]                       -> 야채 칸 비어 있음
+         filled_classes=["mushroom"]             -> 버섯만 표시
+         filled_classes=["onion"]                -> 양파만 표시
+         filled_classes=["mushroom", "onion"]   -> 버섯 + 양파 둘 다 표시
+         사용자가 야채를 선택하지 않음            -> 끝까지 비어 있음
+
+       [UI_NODE -> HTML] bot_say
+         {"text":"로봇이 말할 문장"} -> 왼쪽 말풍선
+
+       [UI_NODE -> HTML] user_said
+         {"text":"사용자가 말한 문장"} -> 오른쪽 말풍선
+
+       [UI_NODE -> HTML] dialogue_snapshot
+         {"items":[{"event":"bot_say|user_said", "text":"..."}, ...]}
+         -> 브라우저 재접속 시 이전 대화 복원
+
+       [UI_NODE -> HTML] mic_state
+         {"state":"idle|waiting|listening|thinking|speaking"}
+         waiting   -> "마이크 대기 중"
+         listening -> "듣고 있어요"
+
+       [UI_NODE -> HTML] work_reset / work_complete / ros_status
+         기존 화면 초기화 / 전체 완료 / ROS 연결 상태 용도
+
+       [HTML -> UI_NODE] start
+         시작 버튼을 누르면 socket.emit('start', {})
+
+       [HTML -> UI_NODE] reset_work
+         뒤로/초기화 확인 시 socket.emit('reset_work', {action:'back'|'home'})
+
+       ※ VLM 확인 시작 신호는 현재 시스템에 없다면 UI_NODE 쪽 TODO로 남겨도 된다.
+          나중에 시작 신호를 받을 수 있게 되면 work_state='vlm_checking'을 보내기만 하면
+          HTML은 자동으로 현재 칸을 초록색 "VLM 확인 중" 상태로 바꾼다.
+       ============================================================ */
+
+    const 진행단계 = [
+      {key: 'container', label: '용기 준비'},
+      {key: 'noodle', label: '면 담기'},
+      {key: 'vegetable', label: '야채 담기'},
+      {key: 'meat', label: '육류 담기'},
+      {key: 'extra', label: '추가 재료'},
+      {key: 'cover', label: '뚜껑'},
+      {key: 'sauce', label: '소스'}
+    ];
+
+    /* class -> 화면 정보.
+       tray slot이 같은 mushroom/onion도 class는 절대 합치지 않는다. */
+    const 재료메타 = {
+      noodle:       {name: '면', icon: '🍝', slot: 'noodle', category: 'noodle'},
+      noodles:      {name: '면', icon: '🍝', slot: 'noodle', category: 'noodle'},
+      면:           {name: '면', icon: '🍝', slot: 'noodle', category: 'noodle'},
+
+      mushroom:     {name: '버섯', icon: '🍄', slot: 'vegetable', category: 'vegetable'},
+      onion:        {name: '양파', icon: '🧅', slot: 'vegetable', category: 'vegetable'},
+
+      sausage:      {name: '소시지', icon: '🌭', slot: 'sausage', category: 'meat'},
+      소시지:       {name: '소시지', icon: '🌭', slot: 'sausage', category: 'meat'},
+      crab:         {name: '게살', icon: '🦀', slot: 'crab', category: 'meat'},
+      crabmeat:     {name: '게살', icon: '🦀', slot: 'crab', category: 'meat'},
+      게살:         {name: '게살', icon: '🦀', slot: 'crab', category: 'meat'},
+
+      cheese:       {name: '치즈', icon: '🧀', slot: 'cheese', category: 'extra'},
+      치즈:         {name: '치즈', icon: '🧀', slot: 'cheese', category: 'extra'},
+      pepperoncino: {name: '페퍼론치노', icon: '🌶️', slot: 'pepperoncino', category: 'extra'},
+      peperoncino:  {name: '페퍼론치노', icon: '🌶️', slot: 'pepperoncino', category: 'extra'},
+      페퍼론치노:   {name: '페퍼론치노', icon: '🌶️', slot: 'pepperoncino', category: 'extra'},
+
+      cover:        {name: '뚜껑', icon: '🥡', slot: null, category: 'cover'},
+      lid:          {name: '뚜껑', icon: '🥡', slot: null, category: 'cover'},
+      뚜껑:         {name: '뚜껑', icon: '🥡', slot: null, category: 'cover'},
+
+      cream:        {name: '크림소스', icon: '🥛', slot: null, category: 'sauce'},
+      tomato:       {name: '토마토소스', icon: '🍅', slot: null, category: 'sauce'},
+      oil:          {name: '오일', icon: '🫗', slot: null, category: 'sauce'},
+      sauce:        {name: '소스', icon: '🥫', slot: null, category: 'sauce'},
+      소스:         {name: '소스', icon: '🥫', slot: null, category: 'sauce'},
+
+      container:    {name: '용기', icon: '▣', slot: null, category: 'container'},
+      tray:         {name: '용기', icon: '▣', slot: null, category: 'container'},
+      box:          {name: '용기', icon: '▣', slot: null, category: 'container'},
+      용기:         {name: '용기', icon: '▣', slot: null, category: 'container'}
+    };
+
+    const 그룹키맵 = {
+      container: 'container', 용기: 'container', '용기 준비': 'container',
+      noodle: 'noodle', 면: 'noodle', '면 담기': 'noodle',
+      vegetable: 'vegetable', vegetables: 'vegetable', 야채: 'vegetable', '야채 담기': 'vegetable',
+      meat: 'meat', 육류: 'meat', '육류 담기': 'meat',
+      extra: 'extra', '추가 재료': 'extra', 추가재료: 'extra',
+      cover: 'cover', lid: 'cover', 뚜껑: 'cover',
+      sauce: 'sauce', 소스: 'sauce'
+    };
+
+    function 키정규화(value) {
+      return String(value ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+    }
+
+    function 재료정보(name) {
+      const raw = String(name ?? '').trim();
+      const simple = 키정규화(raw);
+      const exact = 재료메타[raw] ?? 재료메타[raw.toLowerCase()] ?? 재료메타[simple];
+      if (exact) return {...exact, raw};
+
+      const rules = [
+        [/noodle|면/, 'noodle'], [/mushroom|버섯/, 'mushroom'], [/onion|양파/, 'onion'],
+        [/sausage|소시지/, 'sausage'], [/crab|게살/, 'crab'], [/cheese|치즈/, 'cheese'],
+        [/pepper|페퍼/, 'pepperoncino'], [/cover|lid|뚜껑/, 'cover'],
+        [/cream|크림/, 'cream'], [/tomato|토마토/, 'tomato'], [/oil|오일/, 'oil'],
+        [/sauce|소스/, 'sauce'], [/container|tray|box|용기/, 'container']
+      ];
+      for (const [regex, key] of rules) {
+        if (regex.test(raw.toLowerCase())) return {...재료메타[key], raw};
+      }
+      return {name: raw || '작업 대기 중', icon: '•', slot: null, category: null, raw};
+    }
+
+    function 그룹키(value) {
+      const raw = String(value ?? '').trim();
+      if (!raw) return null;
+      return 그룹키맵[raw] ?? 그룹키맵[raw.toLowerCase()] ?? 그룹키맵[키정규화(raw)] ?? null;
+    }
+
+    /* UI_NODE에서 권장 필드가 오면 그것을 최우선으로 사용한다.
+       기존 agent_status 형식도 당장 화면이 깨지지 않도록 일부 fallback을 둔다. */
+    function UI상태정규화(data) {
+      const currentClass = String(
+        data.current_class
+        ?? data.class_name
+        ?? 작업이름(data.current_task)
+        ?? ''
+      ).trim();
+      const currentInfo = 재료정보(currentClass);
+
+      const currentGroup = 그룹키(data.current_group)
+        ?? 그룹키(data.section)
+        ?? currentInfo.category;
+
+      const selectedClasses = Array.isArray(data.selected_classes)
+        ? data.selected_classes.map(v => String(v).trim()).filter(Boolean)
+        : [];
+
+      const sauceChoice = String(
+        data.selected_sauce
+        ?? data.sauce_choice
+        ?? data.sauce
+        ?? data.selected?.sauce
+        ?? data.order?.sauce
+        ?? ''
+      ).trim();
+
+      /* filled_classes만 용기 속 재료 그림의 진실값(source of truth)이다.
+         completed/completed_tasks는 절대로 재료 그림을 채우는 데 사용하지 않는다. */
+      const filledClasses = Array.isArray(data.filled_classes)
+        ? data.filled_classes.map(v => String(v).trim()).filter(Boolean)
+        : (Array.isArray(data.vlm_confirmed_classes)
+            ? data.vlm_confirmed_classes.map(v => String(v).trim()).filter(Boolean)
+            : []);
+
+      const completedGroupsRaw = Array.isArray(data.completed_groups)
+        ? data.completed_groups
+        : (Array.isArray(data.done_sections) ? data.done_sections : []);
+      const completedGroups = new Set(completedGroupsRaw.map(그룹키).filter(Boolean));
+
+      const skippedGroupsRaw = Array.isArray(data.skipped_groups)
+        ? data.skipped_groups
+        : (Array.isArray(data.skipped) ? data.skipped : []);
+      const skippedGroups = new Set(skippedGroupsRaw.map(그룹키).filter(Boolean));
+      const resetAllowed = data.reset_allowed === true;
+
+      let workState = String(data.work_state ?? '').trim().toLowerCase();
+
+      // 이전 형식 fallback. 새 UI_NODE에서는 work_state를 직접 보내는 것을 권장한다.
+      if (!workState) {
+        const phase = String(data.phase ?? '').toLowerCase();
+        const sectionState = String(data.section_status ?? '').toLowerCase();
+        const vlm = String(data.vlm_status ?? data.confirm_status ?? '').toLowerCase();
+        if (sectionState === 'verifying' || phase === 'confirming') workState = 'vlm_checking';
+        else if (/success|verified/.test(vlm) || data.vlm_confirmed === true) workState = 'vlm_done';
+        else if (/fail|error/.test(vlm)) workState = 'vlm_fail';
+        else if (sectionState === 'completed') workState = 'work_done';
+        else if (sectionState === 'executing' || phase === 'running' || phase === 'executing') workState = 'working';
+        else if (phase === 'completed') workState = 'completed';
+        else workState = 'idle';
+      }
+
+      return {
+        currentClass,
+        currentInfo,
+        currentGroup,
+        workState,
+        selectedClasses,
+        sauceChoice,
+        filledClasses,
+        completedGroups,
+        skippedGroups,
+        resetAllowed
+      };
+    }
+
+    function 초기화버튼상태(allowed) {
+      resetActionButtons.forEach(button => {
+        button.disabled = !allowed;
+        button.title = allowed
+          ? '선택 전 주문 화면을 초기화합니다.'
+          : '메뉴를 선택한 뒤에는 전체 초기화할 수 없습니다.';
+      });
+    }
+
+    function 기술상태(workState) {
+      switch (workState) {
+        case 'working':      return {key: 'working',   text: '작업 중'};
+        case 'work_done':    return {key: 'workdone',  text: '작업 완료'};
+        case 'vlm_checking': return {key: 'verifying', text: 'VLM 확인 중'};
+        case 'vlm_done':     return {key: 'verified',  text: 'VLM 확인 완료'};
+        case 'vlm_fail':     return {key: 'vlmfail',   text: 'VLM 확인 실패'};
+        case 'retried':      return {key: 'retried',   text: '재시도 완료'};
+        case 'uncertain_wait': return {key: 'uncertain', text: '재촬영 대기'};
+        case 'completed':    return {key: 'verified',  text: '전체 작업 완료'};
+        case 'error':        return {key: 'error',     text: '오류'};
+        default:             return {key: 'idle',      text: '대기 중'};
+      }
+    }
+
+    function 진행단계그리기(currentCategory, completedCategories, skippedCategories, tech) {
+      const currentIndex = 진행단계.findIndex(s => s.key === currentCategory);
+      let doneCount = 0;
+
+      진행단계.forEach((step) => {
+        const el = document.querySelector(`.stage[data-stage="${step.key}"]`);
+        if (!el) return;
+        el.classList.remove('done', 'active', 'skipped');
+        const stateEl = el.querySelector('.stage-state');
+
+        if (completedCategories.has(step.key)) {
+          el.classList.add('done');
+          stateEl.textContent = '완료';
+          doneCount += 1;
+        } else if (skippedCategories.has(step.key)) {
+          el.classList.add('done', 'skipped');
+          stateEl.textContent = '건너뜀';
+          doneCount += 1;
+        } else if (step.key === currentCategory) {
+          el.classList.add('active');
+          if (tech.key === 'verifying') stateEl.textContent = 'VLM 확인 중';
+          else if (tech.key === 'verified') stateEl.textContent = '확인 완료';
+          else if (tech.key === 'workdone') stateEl.textContent = '작업 완료';
+          else if (tech.key === 'vlmfail') stateEl.textContent = '확인 실패';
+          else if (tech.key === 'retried') stateEl.textContent = '재시도 완료';
+          else if (tech.key === 'uncertain') stateEl.textContent = '재촬영 대기';
+          else stateEl.textContent = '작업 중';
+        } else {
+          stateEl.textContent = '대기';
+        }
+      });
+
+      const shown = currentIndex >= 0 ? currentIndex + 1 : doneCount;
+      progressCount.textContent = `${Math.max(0, Math.min(7, shown))} / 7`;
+      const fraction = currentIndex >= 0
+        ? currentIndex / 6
+        : (doneCount > 0 ? Math.min(6, doneCount - 1) / 6 : 0);
+      stageProgressLine.style.width = `${Math.max(0, Math.min(1, fraction)) * 87}%`;
+    }
+
+    function 용기칸초기화() {
+      document.querySelectorAll('.compartment').forEach(slot => {
+        slot.classList.remove('working', 'work-done', 'verifying', 'verified', 'vlm-fail', 'vlm-retried', 'vlm-uncertain', 'filled');
+        const content = slot.querySelector('.slot-content');
+        if (content) content.textContent = '';
+      });
+      // lid/sauce overlay state is managed separately so the original tray geometry never changes.
+    }
+
+    /* ★ 용기에 재료를 채우는 유일한 함수.
+       UI_NODE의 filled_classes만 사용한다.
+
+       야채칸은 mushroom/onion을 각각 독립적으로 누적한다.
+       예) ['mushroom'] -> 🍄
+           ['onion'] -> 🧅
+           ['mushroom','onion'] -> 🍄 🧅
+           [] -> 빈 칸
+    */
+    function 확인완료재료용기에반영(filledClasses) {
+      const perSlot = new Map();
+
+      filledClasses.forEach(className => {
+        const info = 재료정보(className);
+        if (!info.slot) return;
+        if (!perSlot.has(info.slot)) perSlot.set(info.slot, []);
+
+        const slotClasses = perSlot.get(info.slot);
+        const normalizedClass = 키정규화(className);
+        if (!slotClasses.some(item => item.classKey === normalizedClass)) {
+          slotClasses.push({classKey: normalizedClass, icon: info.icon});
+        }
+      });
+
+      perSlot.forEach((items, slotName) => {
+        const slot = document.querySelector(`.compartment[data-slot="${slotName}"]`);
+        if (!slot) return;
+        slot.classList.add('filled');
+        slot.querySelector('.slot-content').textContent = items.map(item => item.icon).join(' ');
+      });
+    }
+
+    /* 현재 class의 상태 강조만 담당한다.
+       중요: 같은 칸에 이전에 VLM 성공한 다른 class가 있어도 지우지 않는다.
+       예를 들어 mushroom 확인 완료 후 onion 작업 중이면 🍄은 남고 🧅만 아직 안 보인다. */
+    function 현재칸상태(currentInfo, tech) {
+      if (!currentInfo?.slot) return;
+      const slot = document.querySelector(`.compartment[data-slot="${currentInfo.slot}"]`);
+      if (!slot) return;
+
+      if (tech.key === 'working') slot.classList.add('working');
+      else if (tech.key === 'workdone') slot.classList.add('work-done');
+      else if (tech.key === 'verifying') slot.classList.add('verifying');
+      else if (tech.key === 'verified') slot.classList.add('verified');
+      else if (tech.key === 'vlmfail') slot.classList.add('vlm-fail');
+      else if (tech.key === 'retried') slot.classList.add('vlm-retried');
+      else if (tech.key === 'uncertain') slot.classList.add('vlm-uncertain');
+    }
+
+
+    function 뚜껑상태그리기(ui, tech) {
+      const lidVerified = ui.filledClasses.some(className => 재료정보(className).category === 'cover');
+      // sauce PASS는 닫힌 검은 뚜껑과 소스를 함께 확인한 결과이므로 lid 증거로도 쓴다.
+      const sauceVerified = ui.filledClasses.some(className => 재료정보(className).category === 'sauce');
+      let lidState = 'open';
+
+      if (lidVerified || sauceVerified) {
+        lidState = 'closed';
+      } else if (ui.currentGroup === 'cover') {
+        if (tech.key === 'working') lidState = 'closing';
+        else lidState = 'ready';
+      }
+
+      mealTray.dataset.lidState = lidState;
+      mealTray.classList.toggle('lid-on', lidState === 'closed');
+      lidStatusPill.textContent = lidState === 'closed' ? '밀봉 완료' : '뚜껑 닫는 중';
+      return lidState;
+    }
+
+    function 선택소스정보(ui) {
+      const candidates = [ui.currentClass, ui.sauceChoice, ...ui.selectedClasses].filter(Boolean);
+      for (const candidate of candidates) {
+        const info = 재료정보(candidate);
+        if (info.category !== 'sauce') continue;
+        const normalized = 키정규화(candidate);
+        const key = /tomato|토마토/.test(normalized) ? 'tomato'
+          : /cream|크림/.test(normalized) ? 'cream'
+          : /oil|오일/.test(normalized) ? 'oil'
+          : 'sauce';
+        return {...info, key, raw: candidate};
+      }
+      return null;
+    }
+
+    function 소스레이어그리기(ui, lidState) {
+      const sauce = 선택소스정보(ui);
+      const sauceVerified = ui.filledClasses.some(className => 재료정보(className).category === 'sauce');
+      const show = lidState === 'closed' && sauceVerified && Boolean(sauce);
+      if (!show) {
+        sauceOverlay.hidden = true;
+        sauceOverlay.classList.remove('arriving');
+        if (!sauce) 마지막소스표시키 = '';
+        return;
+      }
+
+      saucePouch.dataset.sauce = sauce.key;
+      saucePouchIcon.textContent = sauce.icon;
+      saucePouchName.textContent = sauce.name;
+      sauceOverlay.hidden = false;
+
+      const key = `${sauce.key}:${키정규화(sauce.raw)}`;
+      if (key !== 마지막소스표시키) {
+        마지막소스표시키 = key;
+        sauceOverlay.classList.remove('arriving');
+        void sauceOverlay.offsetWidth;
+        sauceOverlay.classList.add('arriving');
+        window.setTimeout(() => sauceOverlay.classList.remove('arriving'), 700);
+      }
+    }
+
+    function 현재작업카드그리기(ui, tech) {
+      const info = ui.currentInfo;
+      if (!ui.currentClass) {
+        currentIngredientVisual.textContent = '…';
+        currentIngredientName.textContent = '작업 대기 중';
+        currentIngredientDescription.textContent = '재료 작업이 시작되면 여기에 표시됩니다.';
+        workNoteText.innerHTML = '주문 내용을 확인하고 있어요.<br>잠시만 기다려주세요.';
+        return;
+      }
+
+      currentIngredientVisual.textContent = info.icon;
+      currentIngredientName.textContent = info.name;
+
+      if (info.category === 'cover') {
+        if (tech.key === 'working') {
+          currentIngredientDescription.textContent = '로봇이 용기 뚜껑을 닫고 있어요.';
+          workNoteText.innerHTML = '검은 트레이는 그대로 유지하고<br>투명 뚜껑만 닫히는 중이에요.';
+        } else {
+          currentIngredientDescription.textContent = '용기 밀봉이 완료되었습니다.';
+          workNoteText.innerHTML = '이제 선택한 소스를<br>뚜껑 위에 함께 올립니다.';
+        }
+        return;
+      }
+
+      if (info.category === 'sauce') {
+        currentIngredientDescription.textContent = `${info.name}를 함께 포장하고 있어요.`;
+        workNoteText.innerHTML = '선택한 소스가<br>닫힌 뚜껑 위에 표시됩니다.';
+        return;
+      }
+
+      if (tech.key === 'working') {
+        currentIngredientDescription.textContent = `로봇이 ${info.name} 작업을 진행하고 있어요.`;
+        workNoteText.innerHTML = '아직 용기 그림에는 재료를 표시하지 않아요.<br>VLM 확인 완료 후 반영됩니다.';
+      } else if (tech.key === 'workdone') {
+        currentIngredientDescription.textContent = '로봇 동작이 완료되었습니다.';
+        workNoteText.innerHTML = '아직 VLM 확인 전이에요.<br>용기에는 재료를 표시하지 않습니다.';
+      } else if (tech.key === 'verifying') {
+        currentIngredientDescription.textContent = 'VLM이 올바르게 담겼는지 확인하고 있어요.';
+        workNoteText.innerHTML = '확인 중에는 현재 class를 표시하지 않아요.<br>성공 결과를 기다리고 있어요.';
+      } else if (tech.key === 'verified') {
+        currentIngredientDescription.textContent = 'VLM 확인이 완료되었습니다.';
+        workNoteText.innerHTML = '확인 성공한 class만 용기에 반영했어요.<br>다음 작업을 준비하고 있어요.';
+      } else if (tech.key === 'vlmfail') {
+        currentIngredientDescription.textContent = 'VLM 확인에 실패했습니다.';
+        workNoteText.innerHTML = '현재 class는 용기에 표시하지 않아요.<br>재작업 또는 다음 판단을 기다립니다.';
+      } else if (tech.key === 'retried') {
+        currentIngredientDescription.textContent = '로봇 재시도를 마쳤습니다.';
+        workNoteText.innerHTML = '실제 PASS와 구분해 표시하고 있어요.<br>공정은 다음 작업으로 진행합니다.';
+      } else if (tech.key === 'uncertain') {
+        currentIngredientDescription.textContent = '판정할 새 카메라 화면을 기다리고 있습니다.';
+        workNoteText.innerHTML = '로봇을 재시도하지 않고<br>새 화면으로 다시 판정합니다.';
+      } else {
+        currentIngredientDescription.textContent = '작업 상태를 기다리고 있어요.';
+        workNoteText.innerHTML = '잠시만 기다려주세요.';
+      }
+    }
+
+    function 새대시보드그리기(data) {
+      const ui = UI상태정규화(data);
+      const tech = 기술상태(ui.workState);
+
+      초기화버튼상태(ui.resetAllowed);
+
+      // 우측 상단 기술 상태
+      phaseBadge.dataset.tech = tech.key;
+      phaseBadge.textContent = tech.text;
+
+      // 전체 진행 상황
+      진행단계그리기(ui.currentGroup, ui.completedGroups, ui.skippedGroups, tech);
+
+      // 용기: 매 렌더링마다 처음부터 다시 그리고 filled_classes만 채운다.
+      용기칸초기화();
+      확인완료재료용기에반영(ui.filledClasses);
+
+      // 원본 검은 트레이/칸/중앙 노브는 그대로 두고, 투명 뚜껑과 소스만 오버레이한다.
+      const lidState = 뚜껑상태그리기(ui, tech);
+      소스레이어그리기(ui, lidState);
+
+      // 현재 작업 class에 상태 테두리만 표시. 아직 확인 안 된 재료 자체는 추가하지 않는다.
+      현재칸상태(ui.currentInfo, tech);
+      현재작업카드그리기(ui, tech);
+
+      // 작업/VLM 중에는 마이크 대기 중. 실제 사용자 발화를 받아야 할 때는 UI_NODE가 mic_state=listening을 보낸다.
+      if (['working', 'workdone', 'verifying', 'verified', 'vlmfail', 'retried', 'uncertain'].includes(tech.key)
+          && mic.dataset.state !== 'listening') {
+        마이크('waiting');
+      }
     }
 
     function 화면세션초기화() {
+      VLM팝업닫기();
       talk.replaceChildren();
-      진행상태그리기({phase: 'idle'});
+      latestAgentStatus = {};
+      마지막소스표시키 = '';
+      mealTray.dataset.lidState = 'open';
+      mealTray.classList.remove('lid-on');
+      sauceOverlay.hidden = true;
+      sauceOverlay.classList.remove('arriving');
+      진행상태그리기({phase: 'idle', work_state: 'idle'});
+      초기화버튼상태(false);
       마이크('idle');
       startScreen.hidden = false;
     }
 
+    function VLM이미지정리() {
+      if (vlmSnapshotUrl) URL.revokeObjectURL(vlmSnapshotUrl);
+      vlmSnapshotUrl = '';
+      vlmSnapshotImage.removeAttribute('src');
+    }
+
+    function VLM팝업닫기() {
+      if (vlmPopupCloseTimer !== null) {
+        window.clearTimeout(vlmPopupCloseTimer);
+        vlmPopupCloseTimer = null;
+      }
+      if (vlmDialog.open) vlmDialog.close();
+      VLM이미지정리();
+    }
+
+    vlmCloseBtn.addEventListener('click', VLM팝업닫기);
+    vlmDialog.addEventListener('close', VLM이미지정리);
+
     const socket = io({autoConnect: false});
 
+    // UI_NODE -> HTML: 저장해 둔 대화 전체를 브라우저 재접속 시 복원
     socket.on('dialogue_snapshot', data => {
       if (!data || !Array.isArray(data.items)) return;
 
@@ -943,39 +2416,69 @@
       requestAnimationFrame(() => { talk.scrollTop = talk.scrollHeight; });
     });
 
+    // UI_NODE -> HTML: 로봇/LLM 대사. 화면 왼쪽 말풍선
     socket.on('bot_say', data => {
       if (data && typeof data.text === 'string' && data.text.trim()) {
         발화추가('bot', data.text);
       }
     });
 
+    // UI_NODE -> HTML: STT가 확정한 사용자 대사. 화면 오른쪽 말풍선
     socket.on('user_said', data => {
       if (data && typeof data.text === 'string' && data.text.trim()) {
         발화추가('me', data.text);
       }
     });
 
+    // UI_NODE -> HTML: waiting=마이크 대기 중, listening=듣고 있어요
     socket.on('mic_state', data => {
       if (data && typeof data.state === 'string') 마이크(data.state);
     });
 
-    socket.on('agent_status', 진행상태그리기);
+    // UI_NODE -> HTML: current_class/current_group/work_state/filled_classes/... 작업 상태 전체
+    socket.on('agent_status', data => {
+      if (!data || typeof data !== 'object') return;
+      latestAgentStatus = Object.keys(data).length
+        ? {...latestAgentStatus, ...data}
+        : {};
+      진행상태그리기(latestAgentStatus);
+    });
 
+    // UI_NODE가 보낸 실제 VLM 입력 JPEG를 Blob URL로만 잠시 표시한다.
+    socket.on('vlm_snapshot', data => {
+      if (!data) return;
+
+      VLM이미지정리();
+      const imageBlob = data instanceof Blob ? data : new Blob([data], {type: 'image/jpeg'});
+      vlmSnapshotUrl = URL.createObjectURL(imageBlob);
+      vlmSnapshotImage.src = vlmSnapshotUrl;
+
+      if (!vlmDialog.open) vlmDialog.showModal();
+      if (vlmPopupCloseTimer !== null) window.clearTimeout(vlmPopupCloseTimer);
+      vlmPopupCloseTimer = window.setTimeout(VLM팝업닫기, VLM팝업표시시간);
+    });
+
+    // UI_NODE -> HTML: 현재 UI 세션 초기화
     socket.on('work_reset', () => {
       화면세션초기화();
       if (resetDialog.open) resetDialog.close();
     });
+    // UI_NODE -> HTML: 전체 주문/작업 종료. 마지막 filled_classes는 유지한다.
     socket.on('work_complete', () => {
-      진행상태그리기({
+      latestAgentStatus = {
+        ...latestAgentStatus,
         phase: 'completed',
-        section_status: 'completed',
-        status_text: '주문 완료'
-      });
+        work_state: 'completed',
+        status_text: '주문 완료',
+        reset_allowed: false
+      };
+      진행상태그리기(latestAgentStatus);
       마이크('idle');
-      startScreen.hidden = false;
+      startScreen.hidden = true;
       if (resetDialog.open) resetDialog.close();
     });
 
+    // UI_NODE -> HTML: ROS 연결 여부
     socket.on('ros_status', data => {
       const connected = Boolean(data && data.connected);
       stepLabel.textContent = connected ? 'ROS 연결됨' : 'ROS 연결 안 됨';
@@ -989,11 +2492,13 @@
 
     document.getElementById('startBtn').addEventListener('click', () => {
       startScreen.hidden = true;
+      // HTML -> UI_NODE: 사용자가 시작 버튼을 누름
       socket.emit('start', {});
     });
 
-    document.querySelectorAll('[data-reset-action]').forEach(button => {
+    resetActionButtons.forEach(button => {
       button.addEventListener('click', () => {
+        if (button.disabled) return;
         대기중인초기화동작 = button.dataset.resetAction;
         resetDialogTitle.textContent = 대기중인초기화동작 === 'home'
           ? '홈으로 돌아갈까요?'
@@ -1015,6 +2520,7 @@
 
       resetConfirm.disabled = true;
       resetError.hidden = true;
+      // HTML -> UI_NODE: 뒤로/홈에 따른 작업 초기화 요청
       socket.timeout(3000).emit(
         'reset_work',
         {action: 대기중인초기화동작},
@@ -1033,6 +2539,8 @@
           if (resetDialog.open) resetDialog.close();
         });
     });
+
+    진행상태그리기({phase: 'idle', work_state: 'idle'});
 
     // 수신기를 먼저 붙여야 연결 직후 서버가 보내는 마지막 상태를 놓치지 않는다.
     socket.connect();

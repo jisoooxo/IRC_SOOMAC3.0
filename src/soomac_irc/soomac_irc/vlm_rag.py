@@ -58,7 +58,7 @@ class VlmRag:
         elif ingredient == "페퍼론치노":
             name = "pepperoncino"
 
-        elif ingredient in ("얇은면", "넓적면"):
+        elif ingredient in ("얇은면", "넓은면", "넓적면"):
             name = "noodle"
 
         elif ingredient == "크림":
