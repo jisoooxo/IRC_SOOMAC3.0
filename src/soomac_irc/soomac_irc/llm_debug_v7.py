@@ -23,7 +23,7 @@ from soomac_irc.order_v7 import (
     next_section,
     strongest_restriction_for,
 )
-from soomac_irc.reply_v7 import REPLY_GUARD_VERSION, build_turn_reply
+from soomac_irc.llm_node_v7 import REPLY_GUARD_VERSION, build_turn_reply
 
 
 DEFAULT_LOG_DIRECTORY = Path(__file__).resolve().parents[1] / "soomac_runtime_logs"
@@ -614,9 +614,6 @@ class DebugSession:
 
         if any("자유응답의 주문 흐름" in message for message in (warnings or [])):
             risk_flags.append("free_reply_sentence_removed")
-
-        if any("respond Tool이 주문 동작 표현" in message for message in (warnings or [])):
-            risk_flags.append("respond_on_operational_text")
 
         if error is not None:
             risk_flags.append("turn_error")

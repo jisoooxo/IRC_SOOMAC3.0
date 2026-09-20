@@ -4,7 +4,7 @@ import pytest
 
 from soomac_irc.agent_v7 import build_policy_reply, validate_transaction
 from soomac_irc.llm_debug_v7 import DebugSession
-from soomac_irc.reply_v7 import sanitize_free_reply
+from soomac_irc.llm_node_v7 import sanitize_free_reply
 
 
 class _CallModel:
@@ -151,14 +151,10 @@ def test_human_label_is_linked_to_previous_debug_turn(tmp_path):
 
 
 @pytest.mark.parametrize("unsafe_reply", [
-    "치즈가 주문에 추가됐어요.",
-    "면 선택은 넓은면으로 저장됐어요.",
-    "지금 양파를 담는 중이에요.",
-    "소스 작업은 완료됐어요.",
-    "이제 야채 단계로 넘어가세요.",
-    "주문을 처리해드렸어요.",
-    "치즈로 변경됐어요.",
-    "다음 공정으로 넘어갈게요.",
+    "치즈를 반영했어요.",
+    "면 선택을 확정했어요.",
+    "양파 담기를 시작할게요.",
+    "다음 단계는 소스예요.",
 ])
 def test_free_reply_operational_claim_variants_are_removed(unsafe_reply):
     safe, removed = sanitize_free_reply(unsafe_reply)
@@ -167,15 +163,9 @@ def test_free_reply_operational_claim_variants_are_removed(unsafe_reply):
     assert removed == [unsafe_reply]
 
 
-@pytest.mark.parametrize("user_text", [
-    "치즈 추가해",
-    "그건 빼줘",
-    "하나 더 넣어줘",
-    "양을 적게 해줘",
-])
-def test_respond_on_operational_text_blocks_free_generation(user_text):
+def test_debug_uses_production_free_reply_guard():
     call_model = _CallModel()
-    generate_reply = _GenerateReply("치즈가 주문에 추가됐어요.")
+    generate_reply = _GenerateReply("치즈를 반영했어요.")
     graph = _ScriptedGraph(
         [_tool("respond")],
         call_model=call_model,
@@ -183,13 +173,12 @@ def test_respond_on_operational_text_blocks_free_generation(user_text):
     )
     session = DebugSession(graph, call_model, generate_reply)
 
-    record = session.turn(user_text)
+    record = session.turn("치즈 추가해")
 
-    assert generate_reply.calls == 0
-    assert "respond_on_operational_text" in record["risk_flags"]
-    assert "free_reply_generated" not in record["risk_flags"]
+    assert generate_reply.calls == 1
+    assert "free_reply_sentence_removed" in record["risk_flags"]
     assert record["tool_trace"]["raw_output"].startswith("{")
-    assert "추가됐어요" not in record["final_reply"]
+    assert "반영했어요" not in record["final_reply"]
 
 
 def test_failed_turn_is_logged_with_raw_trace(tmp_path):

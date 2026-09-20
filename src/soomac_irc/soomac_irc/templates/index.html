@@ -1093,6 +1093,21 @@
     .current-order-label { flex: 0 0 auto; margin-right: 4px; color: #17243b; font-size: 14px; font-weight: 800; }
     .current-order-summary .selected-chips { flex: 1 1 520px; min-width: 0; }
     .current-order-summary .empty-state { margin: 0; }
+    .recommendation-notice {
+      grid-column: 1 / -1;
+      padding: 9px 12px;
+      border: 1px solid #cfe0ff;
+      border-radius: 10px;
+      color: #2458a6;
+      background: #f2f7ff;
+      font-size: clamp(13px, 1.05vw, 16px);
+      font-weight: 750;
+    }
+    .recommendation-notice[data-status="running"] {
+      border-color: #cce5d3;
+      color: #247a43;
+      background: #eefaf2;
+    }
     .ingredient-photo {
       width: 92px;
       height: 72px;
@@ -1609,6 +1624,7 @@
             <strong class="current-order-label">현재 주문</strong>
             <div class="selected-chips" id="currentOrderItems"></div>
           </div>
+          <div class="recommendation-notice" id="recommendationNotice" hidden></div>
           <div class="ingredient-photo" id="currentIngredientVisual">…</div>
           <div class="ingredient-copy">
             <strong id="currentIngredientName">작업 대기 중</strong>
@@ -1659,6 +1675,7 @@
     const phaseBadge = document.getElementById('phaseBadge');
     const selectedItems = document.getElementById('selectedItems');
     const currentOrderItems = document.getElementById('currentOrderItems');
+    const recommendationNotice = document.getElementById('recommendationNotice');
     const targetList = document.getElementById('targetList');
     const currentStatus = document.getElementById('currentStatus');
     const currentSection = document.getElementById('currentSection');
@@ -1859,6 +1876,12 @@
       const autoRunning = data.auto_running === true;
       const skipped = Array.isArray(data.skipped) ? data.skipped : [];
       const selected = data.selected ?? data.selected_items ?? data.order ?? [];
+      const recommendationStatus = typeof data.recommendation_status === 'string'
+        ? data.recommendation_status
+        : 'none';
+      const recommendationSections = Array.isArray(data.recommendation_sections)
+        ? data.recommendation_sections.map(value => String(value).trim()).filter(Boolean)
+        : [];
 
       phaseBadge.dataset.phase = phase;
       phaseBadge.textContent = autoRunning ? '자동 추천 실행 중' : (단계문구[phase] ?? phase);
@@ -1867,6 +1890,21 @@
       칩그리기(selectedItems, selectedLabels, '아직 선택한 항목이 없어요.');
       // 숨겨진 기존 상태 노드는 호환용으로 유지하고, 같은 selected를 손님 화면에도 보여준다.
       칩그리기(currentOrderItems, selectedLabels, '아직 선택한 주문이 없어요.');
+
+      const recommendationSectionText = recommendationSections.length
+        ? ` · ${recommendationSections.join(', ')}`
+        : '';
+      const recommendationMessages = {
+        await_scope: '추천할 범위를 확인하고 있어요',
+        confirming: `추천 조합 확인 대기${recommendationSectionText}`,
+        confirmed: `추천 확정 · 자동 진행 예정${recommendationSectionText}`,
+        running: `추천 재료 자동 투입 중${recommendationSectionText}`,
+      };
+      const recommendationMessage = recommendationMessages[recommendationStatus] ?? '';
+
+      recommendationNotice.hidden = !recommendationMessage;
+      recommendationNotice.dataset.status = recommendationStatus;
+      recommendationNotice.textContent = recommendationMessage;
 
       const completedLabels = completed.map(작업문구).filter(Boolean);
       const doneSectionLabels = doneSections.map(name => `${name} 섹션`);

@@ -94,6 +94,22 @@ def classify_confirmation_intent(user_text: str, context: str) -> bool | None:
             "진행해",
         ),
     }
+    ambiguous_markers = (
+        "진행해도될까",
+        "시작해도될까",
+        "진행할까",
+        "시작할까",
+        "진행해야하나",
+        "시작해야하나",
+        "해도될까",
+        "하는게맞",
+        "괜찮을까",
+        "생각해볼",
+        "고민중",
+    )
+
+    if any(marker in normalized for marker in ambiguous_markers):
+        return None
 
     if normalized in short_affirmatives:
         return True
@@ -112,6 +128,166 @@ def _confirmation_block_reason(intent: bool | None) -> str:
         if intent is False
         else "explicit_confirmation_required"
     )
+
+def revise_pending_recommendation( # 추천 수정용 함수
+    order: dict,
+    recommendation: dict,
+    menu_changes: dict,
+) -> dict:
+    if recommendation.get("phase") != "confirming":
+        return {
+            "applied": False,
+            "reason": "no_pending_proposal",
+        }
+
+    request = recommendation.get("request")
+    recommended_changes = recommendation.get("recommended_changes")
+    confirmed_sections = recommendation.get("confirmed_sections", [])
+
+    if not isinstance(request, dict):
+        return {
+            "applied": False,
+            "reason": "invalid_pending_request",
+        }
+
+    if not isinstance(recommended_changes, dict):
+        return {
+            "applied": False,
+            "reason": "invalid_pending_changes",
+        }
+
+    if not isinstance(confirmed_sections, list):
+        return {
+            "applied": False,
+            "reason": "invalid_confirmed_sections",
+        }
+
+    clean_changes, invalid = validate_menu_changes(menu_changes)
+
+    if invalid or not clean_changes:
+        return {
+            "applied": False,
+            "reason": "invalid_revision",
+            "invalid": invalid,
+        }
+
+    proposal_keys = {
+        field
+        for field in ("sauce", "noodle_type", "noodle_portion")
+        if field in recommended_changes
+    }
+    proposal_keys.update(
+        f"toppings.{item}"
+        for item in recommended_changes.get("toppings", {})
+    )
+
+    requested_keys = {
+        field
+        for field in ("sauce", "noodle_type", "noodle_portion")
+        if field in clean_changes
+    }
+    requested_keys.update(
+        f"toppings.{item}"
+        for item in clean_changes.get("toppings", {})
+    )
+
+    # 현재 추천안에 없는 재료는 실제 주문 변경인지
+    # 추천안 수정인지 알 수 없으므로 자동 처리하지 않는다.
+    if not requested_keys or not requested_keys.issubset(proposal_keys):
+        return {
+            "applied": False,
+            "reason": "target_not_in_proposal",
+            "requested_keys": sorted(requested_keys),
+        }
+
+    revised_changes = copy.deepcopy(recommended_changes)
+
+    for field in ("sauce", "noodle_type", "noodle_portion"):
+        if field in clean_changes:
+            revised_changes[field] = clean_changes[field]
+
+    if "toppings" in clean_changes:
+        revised_toppings = revised_changes.setdefault("toppings", {})
+
+        for item, amount in clean_changes["toppings"].items():
+            if amount == "none":
+                revised_toppings.pop(item, None)
+            else:
+                revised_toppings[item] = amount
+
+        if not revised_toppings:
+            revised_changes.pop("toppings", None)
+
+    if not revised_changes:
+        return {
+            "applied": False,
+            "reason": "proposal_became_empty",
+        }
+
+    recommendation_input = copy.deepcopy(request)
+    recommendation_input["recommended_order"] = copy.deepcopy(
+        revised_changes
+    )
+
+    clean, dropped, blocked = validate_recommended_order(
+        order,
+        recommendation_input,
+    )
+
+    # 일부 항목만 통과하면 의도하지 않은 추천안이 될 수 있으므로
+    # 자동으로 부분 반영하지 않는다.
+    if dropped or blocked or not clean:
+        return {
+            "applied": False,
+            "reason": "revision_blocked",
+            "clean": clean,
+            "dropped": dropped,
+            "blocked": blocked,
+        }
+
+    # 실제 주문이 아니라 복사한 proposal만 변경한다.
+    proposal = copy.deepcopy(order)
+    applied, unchanged = apply_menu_changes(proposal, clean)
+
+    if not applied:
+        return {
+            "applied": False,
+            "reason": "revision_has_no_new_value",
+            "unchanged": unchanged,
+        }
+
+    covered_sections = []
+
+    for key in applied:
+        if key in ("sauce", "noodle_type", "noodle_portion"):
+            covered_section = "noodle"
+        else:
+            item = key.split(".", 1)[1]
+            covered_section = physical_section_for(
+                "toppings",
+                item,
+            )
+
+        if covered_section not in covered_sections:
+            covered_sections.append(covered_section)
+
+    return {
+        "applied": True,
+        "reason": "revised",
+        "clean": clean,
+        "dropped": [],
+        "blocked": [],
+        "recommendation": {
+            "phase": "confirming",
+            "request": copy.deepcopy(request),
+            "proposal": proposal,
+            "recommended_changes": copy.deepcopy(clean),
+            "covered_sections": covered_sections,
+            "confirmed_sections": copy.deepcopy(
+                confirmed_sections
+            ),
+        },
+    }
 
 
 def _section_items(section: str) -> list[str] | None:
@@ -311,7 +487,9 @@ def validate_transaction(state: AgentState) -> dict:
             "dropped": [],
             "blocked": [],
             "proposal_created": False,
-            "proposal_confirmed": False, # 추천안을 실제 주문에 반영했는지
+            "proposal_confirmed": False,
+            "proposal_revised": False,
+            "revision_reason": None,
             "needs_scope": False,
         },
     }
@@ -536,7 +714,82 @@ def validate_transaction(state: AgentState) -> dict:
             "recommendation": recommendation_after,
             "transaction": transaction,
         }
+    # 추천 확인 중의 메뉴 변경은 실제 주문이 아니라
+    # 대기 중인 추천안에만 적용한다.
+    if (
+        action in ("set_order", "set_order_and_confirm")
+        and recommendation_after.get("phase") == "confirming"
+    ):
+        changes = copy.deepcopy(tool_call["changes"])
 
+        menu_changes = {
+            field: changes[field]
+            for field in (
+                "sauce",
+                "noodle_type",
+                "noodle_portion",
+                "toppings",
+            )
+            if field in changes
+        }
+
+        restriction_changes = changes.get(
+            "restriction_changes",
+            [],
+        )
+
+        # 알레르기·식이 조건만 말한 경우에는
+        # 기존 restriction 안전 처리로 내려보낸다.
+        if restriction_changes and not menu_changes:
+            pass
+
+        # 메뉴 수정과 안전 조건을 한 번에 요청하면
+        # 어느 한쪽도 부분 반영하지 않는다.
+        elif restriction_changes:
+            transaction["recommendation_validation"][
+                "revision_reason"
+            ] = "mixed_menu_and_restriction"
+
+            return {
+                "order": order_after,
+                "execution": execution_after,
+                "recommendation": recommendation_after,
+                "transaction": transaction,
+            }
+
+        elif menu_changes:
+            revision = revise_pending_recommendation(
+                order_after,
+                recommendation_after,
+                menu_changes,
+            )
+
+            transaction["recommendation_validation"].update({
+                "clean": copy.deepcopy(
+                    revision.get("clean", {})
+                ),
+                "dropped": copy.deepcopy(
+                    revision.get("dropped", [])
+                ),
+                "blocked": copy.deepcopy(
+                    revision.get("blocked", [])
+                ),
+                "proposal_revised": revision["applied"],
+                "revision_reason": revision["reason"],
+            })
+
+            if revision["applied"]:
+                recommendation_after = revision["recommendation"]
+
+            # set_order_and_confirm으로 오분류되어도
+            # 이 턴에는 실행하지 않는다.
+            # 수정된 추천안을 보여주고 다음 턴에 다시 확인한다.
+            return {
+                "order": order_after,
+                "execution": execution_after,
+                "recommendation": recommendation_after,
+                "transaction": transaction,
+            }
     # 추천 확인 중 confirm_section이 들어와도 원문 동의가 있을 때만 반영한다.
     if action == "confirm_section" and recommendation_after.get("phase") == "confirming":
         confirmation_intent = classify_confirmation_intent(
@@ -1279,9 +1532,69 @@ def build_policy_reply(state: AgentState) -> dict:
             messages.append("이미 같은 내용으로 선택되어 있어요.")
 
     # 추천 범위 질문·추천안 생성·추천 확정 결과를 검증값으로 안내한다.
+    # 추천 범위 질문·추천안 생성·추천 확정 결과를 검증값으로 안내한다.
     recommendation = transaction["recommendation_validation"]
 
-    if action == "recommend_order":
+    if (
+        action in ("set_order", "set_order_and_confirm")
+        and recommendation.get("proposal_revised")
+    ):
+        clean = recommendation["clean"]
+
+        amount_labels = {
+            "low": "적게",
+            "normal": "보통",
+            "high": "많이",
+        }
+        revised_parts = []
+
+        if clean.get("sauce"):
+            revised_parts.append(
+                f"{clean['sauce']} 소스"
+            )
+
+        if clean.get("noodle_type"):
+            revised_parts.append(
+                clean["noodle_type"]
+            )
+
+        if clean.get("noodle_portion"):
+            revised_parts.append(
+                f"면 양 {amount_labels[clean['noodle_portion']]}"
+            )
+
+        for item, amount in clean.get("toppings", {}).items():
+            revised_parts.append(
+                f"{item} {amount_labels[amount]}"
+            )
+
+        messages.append(
+            f"추천안을 {', '.join(revised_parts)} 조합으로 수정했어요. "
+            "이대로 할까요?"
+        )
+
+    elif (
+        action in ("set_order", "set_order_and_confirm")
+        and recommendation.get("revision_reason")
+    ):
+        if (
+            recommendation["revision_reason"]
+            == "mixed_menu_and_restriction"
+        ):
+            messages.append(
+                "추천안 수정과 식이·알레르기 조건을 "
+                "한 번에 처리하지 않았어요. "
+                "안전 조건을 먼저 따로 말씀해 주세요."
+            )
+        else:
+            messages.append(
+                "현재 추천안에서 어떤 항목을 바꿀지 "
+                "정확히 확인하지 못했어요. "
+                "추천안에 있는 재료와 변경 내용을 "
+                "다시 말씀해 주세요."
+            )
+
+    elif action == "recommend_order":
         if recommendation["needs_scope"]:
             messages.append("현재 단계만 추천할까요, 아니면 남은 주문 전체를 추천할까요?")
 

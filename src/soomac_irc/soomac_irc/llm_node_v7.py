@@ -4,6 +4,7 @@ import os
 import queue
 import re
 import threading
+from collections.abc import Callable
 from collections import deque
 from datetime import datetime
 from io import BytesIO
@@ -20,7 +21,6 @@ from std_msgs.msg import Bool, Int16, String
 from soomac_irc.agent_v7 import build_graph, build_selection_next_step, classify_confirmation_intent, commit_section_skip
 from soomac_irc.call_model_v7 import load_model, make_call_model, make_call_vlm, make_generate_reply
 from soomac_irc.order_v7 import SECTION_LABELS, SECTION_ORDER, build_section_plan, new_order, next_section, strongest_restriction_for
-from soomac_irc.vlm_rag import VlmRag
 
 ENABLE_VLM = True
 ENABLE_VLM_UI_IMAGES = True  # 실제 VLM 입력 3분할 UI 발행
@@ -46,6 +46,30 @@ ENABLE_UNCERTAIN_RETAKE = False
 BY_VLM_NUM = 3
 
 VLM_JUDGE_REASON_SPEAK = False
+VLM_JUDGE_REASON_MAX_CHARS = 300
+REPLY_GUARD_VERSION = "production_v7.20260920"
+
+OPERATIONAL_CLAIMS = (
+    "반영했",
+    "확정했",
+    "제외했",
+    "제외할게",
+    "제외하고",
+    "넣어드릴게",
+    "담기를 시작",
+    "담기가 끝",
+    "담기가 완료",
+    "작업을 시작",
+    "작업을 마쳤",
+    "다음은",
+    "다음 단계",
+    "차례입니다",
+    "진행할게",
+    "진행하겠",
+    "선택해 주",
+    "말씀해 주",
+    "골라 주",
+)
 
 # Python 내부는 한글, /llm/plan 발행 직전에만 영문 class로 변환
 TOPIC_CLASS_NAMES = {
@@ -62,6 +86,146 @@ TOPIC_CLASS_NAMES = {
     "토마토": "sauce_tomato",
     "크림": "sauce_cream",
 }
+
+
+def sanitize_free_reply(reply: str) -> tuple[str, list[str]]:
+    """실운영 V7 기준으로 자유응답의 주문·진행 주장을 제거한다."""
+    if not isinstance(reply, str):
+        raise TypeError("자유응답은 문자열이어야 함")
+
+    sentences = re.split(r"(?<=[.!?])\s+", reply.strip())
+    safe_sentences = []
+    removed_sentences = []
+
+    for sentence in sentences:
+        if not sentence:
+            continue
+
+        if "?" in sentence or any(
+            claim in sentence
+            for claim in OPERATIONAL_CLAIMS
+        ):
+            removed_sentences.append(sentence)
+        else:
+            safe_sentences.append(sentence)
+
+    return " ".join(safe_sentences).strip(), removed_sentences
+
+
+def build_turn_reply(
+    user_text: str,
+    state_before: dict,
+    result: dict,
+    generate_reply: Callable[[dict, str], str],
+    *,
+    warning: Callable[[str], None] | None = None,
+    scene_reply: Callable[[], str] | None = None,
+) -> str | None:
+    """실운영과 Debug가 함께 쓰는 V7 최종 응답 함수이다."""
+    transaction = result.get("transaction")
+    policy_reply = result.get("policy_reply")
+
+    if not isinstance(transaction, dict):
+        raise ValueError("Reply를 만들 transaction이 없음")
+
+    order_after = result.get("order")
+    execution_after = result.get("execution")
+    recommendation_after = result.get("recommendation")
+
+    if not isinstance(order_after, dict) or not isinstance(execution_after, dict):
+        raise ValueError("Reply를 만들 order 또는 execution이 없음")
+
+    if not isinstance(recommendation_after, dict):
+        raise ValueError("Reply를 만들 recommendation이 없음")
+
+    reply_state = copy.deepcopy(state_before)
+    reply_state["order"] = copy.deepcopy(order_after)
+    reply_state["execution"] = copy.deepcopy(execution_after)
+    reply_state["recommendation"] = copy.deepcopy(recommendation_after)
+    next_step = build_selection_next_step(order_after, execution_after)
+
+    def append_next_step(reply: str) -> str:
+        return f"{reply} {next_step}" if next_step else reply
+
+    if policy_reply is not None:
+        if not isinstance(policy_reply, str) or not policy_reply.strip():
+            raise ValueError("policy_reply 형식이 잘못됨")
+
+        policy_reply = policy_reply.strip()
+        action = transaction.get("action")
+        confirm = transaction.get("confirm_validation", {})
+        recommendation = transaction.get("recommendation_validation", {})
+        section_skip = transaction.get("section_skip")
+        policy_already_asks_user = (
+            action == "recommend_order"
+            and (
+                recommendation.get("needs_scope")
+                or recommendation.get("proposal_created")
+            )
+        ) or (
+            action == "refuse_section"
+            and isinstance(section_skip, dict)
+            and section_skip.get("needs_confirmation")
+        )
+        work_will_start = (
+            confirm.get("requested")
+            and confirm.get("allowed")
+        ) or recommendation.get("proposal_confirmed")
+        section_will_advance = (
+            isinstance(section_skip, dict)
+            and section_skip.get("applied")
+        )
+
+        if policy_already_asks_user or work_will_start or section_will_advance:
+            return policy_reply
+
+        policy_already_guides_user = any(
+            marker in policy_reply
+            for marker in (
+                "?",
+                "말씀해 주세요",
+                "다시 말씀해 주세요",
+            )
+        )
+
+        if policy_already_guides_user:
+            return policy_reply
+
+        return append_next_step(policy_reply)
+
+    action = transaction.get("action")
+
+    if action == "respond":
+        free_reply = generate_reply(reply_state, user_text).strip()
+        safe_reply, removed = sanitize_free_reply(free_reply)
+
+        if removed and warning is not None:
+            warning(f"자유응답의 주문 흐름 문장을 제거함 : {free_reply}")
+
+        if not safe_reply:
+            return next_step or "현재 주문에서 원하시는 내용을 말씀해 주세요."
+
+        return append_next_step(safe_reply)
+
+    if action == "describe_scene":
+        if scene_reply is None:
+            return append_next_step(
+                "LLM 디버깅 모드에는 카메라가 연결되어 있지 않아요."
+            )
+
+        return append_next_step(scene_reply())
+
+    confirm = transaction.get("confirm_validation", {})
+
+    if confirm.get("requested") and confirm.get("allowed"):
+        section = execution_after.get("section")
+
+        if section not in SECTION_LABELS:
+            raise ValueError(f"Reply section 이상함 : {section}")
+
+        return f"{SECTION_LABELS[section]} 선택을 확정했어요."
+
+    return None
 
 
 class LLMNode(Node):
@@ -143,6 +307,9 @@ class LLMNode(Node):
         self.camera_sub = None
 
         if ENABLE_VLM:
+            # Debug는 Node를 생성하지 않으므로 VLM·RAG 의존성을 불러오지 않는다.
+            from soomac_irc.vlm_rag import VlmRag
+
             self.call_vlm = make_call_vlm(
                 self.model,
                 self.processor,
@@ -328,29 +495,60 @@ class LLMNode(Node):
         
         last_line = raw_text.strip().splitlines()[-1].strip()
 
-        judge_reason_text = raw_text - last_line
-
         if last_line in ("판정: PASS", "VERDICT: PASS"):
 
-            if VLM
-
-            return judge_reason_text, "pass"
+            return "pass"
 
         if last_line in (
             "판정: FAIL",
             "VERDICT: FAIL",
             "판정: WRONG_INGREDIENT",
         ):
-            return judge_reason_text, "fail"
+            return "fail"
 
         if last_line in (
             "판정: UNCERTAIN",
             "VERDICT: UNCERTAIN",
             "판정: UNKNOWN_RETAKE",
         ):
-            return judge_reason_text, "uncertain"
+            return"uncertain"
 
-        return judge_reason_text, "uncertain"
+        return "uncertain"
+
+    def _build_vlm_spoken_reply(self, raw_text: str, policy_reply: str) -> str:
+        if not VLM_JUDGE_REASON_SPEAK:
+            return policy_reply
+
+        if not isinstance(raw_text, str) or not raw_text.strip():
+            return policy_reply
+
+        lines = [line.strip()
+                 for line in raw_text.strip().splitlines() if line.strip()]
+
+        if raw_text.lstrip().startswith("ERROR:"):
+            return policy_reply
+
+        verdict_lines = {
+                "판정: PASS",
+                "VERDICT: PASS",
+                "판정: FAIL",
+                "VERDICT: FAIL",
+                "판정: WRONG_INGREDIENT",
+                "판정: UNCERTAIN",
+                "VERDICT: UNCERTAIN",
+                "판정: UNKNOWN_RETAKE",
+            }
+
+        if lines and lines[-1] in verdict_lines:
+            lines.pop()
+
+        reason = " ".join(lines)[:VLM_JUDGE_REASON_MAX_CHARS].rstrip()
+
+        if not reason:
+            return policy_reply
+
+        return f"판단 근거를 말씀드리면, {reason} {policy_reply}"
+
 
     def _build_vlm_request(self, expected: str, camera_images: list) -> dict | None: # expected : 현재 로봇이 실제로 작업한 재료 이름.
         # 현재 observation이 없으면 모델을 호출하지 않고 UNCERTAIN으로 처리한다.
@@ -673,144 +871,43 @@ class LLMNode(Node):
 
         return result
 
-    def _build_turn_reply(self, user_text: str, state_before: dict, result: dict) -> str | None:
-        # 정책 사실과 다음 행동은 Python이 고정하고, 자유 Reply는 설명·공감만 담당한다.
-        transaction = result.get("transaction")
-        policy_reply = result.get("policy_reply")
-
-        if not isinstance(transaction, dict):
-            raise ValueError("Reply를 만들 transaction이 없음")
-
-        reply_state = copy.deepcopy(state_before)
-        reply_state["order"] = copy.deepcopy(result["order"])
-        reply_state["execution"] = copy.deepcopy(result["execution"])
-        reply_state["recommendation"] = copy.deepcopy(result["recommendation"])
-        next_step = build_selection_next_step(
-            result["order"],
-            result["execution"],
+    def _build_turn_reply(
+        self,
+        user_text: str,
+        state_before: dict,
+        result: dict,
+    ) -> str | None:
+        # 실운영과 Debug의 응답 판단은 위 공용 함수 하나에서만 수행한다.
+        return build_turn_reply(
+            user_text,
+            state_before,
+            result,
+            self.generate_reply,
+            warning=self.get_logger().warning,
+            scene_reply=lambda: self._describe_scene_reply(user_text),
         )
 
-        def append_next_step(reply: str) -> str:
-            return f"{reply} {next_step}" if next_step else reply
+    def _describe_scene_reply(self, user_text: str) -> str:
+        # 카메라가 필요한 부분만 실운영 Node에 남기고 응답 조립은 공용 함수를 쓴다.
+        if not ENABLE_VLM:
+            return "현재 카메라 화면 확인 기능을 준비하고 있어요."
 
-        if policy_reply is not None:
-            if not isinstance(policy_reply, str) or not policy_reply.strip():
-                raise ValueError("policy_reply 형식이 잘못됨")
+        camera_images = self._snapshot_camera_images()
 
-            policy_reply = policy_reply.strip()
-            action = transaction.get("action")
-            confirm = transaction.get("confirm_validation", {})
-            recommendation = transaction.get("recommendation_validation", {})
-            section_skip = transaction.get("section_skip")
-            policy_already_asks_user = (
-                action == "recommend_order"
-                and (
-                    recommendation.get("needs_scope")
-                    or recommendation.get("proposal_created")
-                )
-            ) or (
-                action == "refuse_section"
-                and isinstance(section_skip, dict)
-                and section_skip.get("needs_confirmation")
-            )
-            work_will_start = (
-                confirm.get("requested")
-                and confirm.get("allowed")
-            ) or recommendation.get("proposal_confirmed")
-            section_will_advance = (
-                isinstance(section_skip, dict)
-                and section_skip.get("applied")
-            )
+        if self.call_vlm is None or not camera_images:
+            return "아직 확인할 카메라 화면이 없어요. 화면이 들어오면 다시 확인할게요."
 
-            if policy_already_asks_user or work_will_start or section_will_advance:
-                return policy_reply
+        scene_reply = self.call_vlm(
+            [camera_images[-1]],
+            (
+                "너는 로봇 카메라의 현재 장면을 손님에게 설명한다. "
+                "보이는 내용만 한국어 한두 문장으로 답하고 추측하지 않는다. "
+                "PASS, FAIL 같은 판정 문장은 출력하지 않는다."
+            ),
+            user_text,
+        )
 
-            policy_already_guides_user = any(marker in policy_reply for marker in (
-                "?",
-                "말씀해 주세요",
-                "다시 말씀해 주세요",
-            ))
-
-            if policy_already_guides_user:
-                return policy_reply
-
-            return append_next_step(policy_reply)
-
-        action = transaction.get("action")
-
-        # 질문·설명·공감은 자유롭게 답하되 주문 흐름 안내는 Python 문장만 사용한다.
-        if action == "respond":
-            free_reply = self.generate_reply(reply_state, user_text).strip()
-            operational_claims = (
-                "반영했",
-                "확정했",
-                "제외했",
-                "제외할게",
-                "제외하고",
-                "넣어드릴게",
-                "담기를 시작",
-                "담기가 끝",
-                "담기가 완료",
-                "작업을 시작",
-                "작업을 마쳤",
-                "다음은",
-                "다음 단계",
-                "차례입니다",
-                "진행할게",
-                "진행하겠",
-                "선택해 주",
-                "말씀해 주",
-                "골라 주",
-            )
-            reply_sentences = re.split(r"(?<=[.!?])\s+", free_reply)
-            safe_sentences = [
-                sentence for sentence in reply_sentences
-                if "?" not in sentence
-                and not any(claim in sentence for claim in operational_claims)
-            ]
-
-            if len(safe_sentences) != len(reply_sentences):
-                self.get_logger().warning(
-                    f"자유응답의 주문 흐름 문장을 제거함 : {free_reply}"
-                )
-
-            safe_reply = " ".join(safe_sentences).strip()
-
-            if not safe_reply:
-                return next_step or "현재 주문에서 원하시는 내용을 말씀해 주세요."
-
-            return append_next_step(safe_reply)
-
-        # VLM은 LLM MVP 완료 뒤 연결한다.
-        if action == "describe_scene":
-            if not ENABLE_VLM:
-                return append_next_step("현재 카메라 화면 확인 기능을 준비하고 있어요.")
-
-            camera_images = self._snapshot_camera_images()
-
-            if self.call_vlm is None or not camera_images:
-                return append_next_step("아직 확인할 카메라 화면이 없어요. 화면이 들어오면 다시 확인할게요.")
-
-            scene_reply = self.call_vlm(
-                [camera_images[-1]],
-                (
-                    "너는 로봇 카메라의 현재 장면을 손님에게 설명한다. "
-                    "보이는 내용만 한국어 한두 문장으로 답하고 추측하지 않는다. "
-                    "PASS, FAIL 같은 판정 문장은 출력하지 않는다."
-                ),
-                user_text,
-            )
-
-            scene_reply = scene_reply or "카메라 화면을 정확히 설명하지 못했어요."
-            return append_next_step(scene_reply)
-
-        # 정상 확정은 다음 단계에서 plan 발행 문장과 합친다.
-        confirm = transaction.get("confirm_validation", {})
-
-        if confirm.get("requested") and confirm.get("allowed"):
-            return f"{SECTION_LABELS[self.section]} 선택을 확정했어요."
-
-        return None
+        return scene_reply or "카메라 화면을 정확히 설명하지 못했어요."
 
 
     def _process_pending_confirmation(self, user_text: str) -> bool:
@@ -1128,10 +1225,55 @@ class LLMNode(Node):
         )
 
         confirmed_sections = self.recommendation_state.get("confirmed_sections", [])
+
+        if not isinstance(confirmed_sections, list):
+            confirmed_sections = []
+
         auto_running = bool(
             self.section in confirmed_sections
             and (self.active_task is not None or self.task_queue)
         )
+
+        # Agent·멀티턴 상태는 바꾸지 않고 손님 화면용 추천 상태만 파생한다.
+        recommendation_phase = self.recommendation_state.get("phase", "idle")
+        covered_sections = self.recommendation_state.get("covered_sections", [])
+
+        if not isinstance(covered_sections, list):
+            covered_sections = []
+
+        visible_confirmed_sections = [
+            name
+            for name in confirmed_sections
+            if name in SECTION_ORDER
+            and SECTION_ORDER.index(name) >= section_index
+            and name not in self.skipped_sections
+        ]
+
+        if self.order_finished:
+            recommendation_status = "none"
+            recommendation_sections = []
+        elif recommendation_phase == "await_scope":
+            recommendation_status = "await_scope"
+            recommendation_sections = []
+        elif recommendation_phase == "confirming":
+            recommendation_status = "confirming"
+            recommendation_sections = [
+                SECTION_LABELS[name]
+                for name in covered_sections
+                if name in SECTION_LABELS
+            ]
+        elif auto_running:
+            recommendation_status = "running"
+            recommendation_sections = [section_label]
+        elif visible_confirmed_sections:
+            recommendation_status = "confirmed"
+            recommendation_sections = [
+                SECTION_LABELS[name]
+                for name in visible_confirmed_sections
+            ]
+        else:
+            recommendation_status = "none"
+            recommendation_sections = []
 
         # 새 작업 화면은 주문 선택값과 실제 VLM PASS 결과를 따로 표시한다.
         ui_group_names = {
@@ -1194,6 +1336,8 @@ class LLMNode(Node):
             "completed": [],
             "selected": selected,
             "auto_running": auto_running,
+            "recommendation_status": recommendation_status,
+            "recommendation_sections": recommendation_sections,
             "skipped": [
                 SECTION_LABELS[name]
                 for name in SECTION_ORDER
@@ -1352,6 +1496,11 @@ class LLMNode(Node):
             return
 
         expected = self.active_task["class"]
+        expected_label = (
+            f"{expected} 소스"
+            if expected in ("오일", "토마토", "크림")
+            else expected
+        )
         self.vlm_confirmed = False
 
         # VLM OFF에서는 기존 제어 사이클을 그대로 통과시킨다.
@@ -1424,7 +1573,12 @@ class LLMNode(Node):
                 "current_frame_count": len(camera_images),
                 "raw_text": raw_text[-1000:],
             })
-            self._publish_reply("카메라 화면이 불확실해 새 화면을 기다릴게요.")
+            self._publish_reply(
+                self._build_vlm_spoken_reply(
+                    raw_text,
+                    "카메라 화면이 불확실해 새 화면을 기다릴게요.",
+                )
+            )
             return
 
         # PASS에서만 신뢰 가능한 previous_success_image를 갱신한다.
@@ -1455,7 +1609,10 @@ class LLMNode(Node):
                 "raw_text": raw_text[-1000:],
             })
             self._publish_reply(
-                f"{expected} 작업을 확인했어요. 로봇 작업을 마무리할게요."
+                self._build_vlm_spoken_reply(
+                    raw_text,
+                    f"{expected_label} 작업을 확인했어요. 현재 작업을 마무리할게요.",
+                )
             )
             return
 
@@ -1491,7 +1648,10 @@ class LLMNode(Node):
                 "raw_text": raw_text[-1000:],
             })
             self._publish_reply(
-                f"{expected} 위치를 확인하지 못했어요. 해당 작업을 한 번 다시 시도할게요."
+                self._build_vlm_spoken_reply(
+                    raw_text,
+                    f"{expected_label} 위치를 확인하지 못했어요. 해당 작업을 한 번 다시 시도할게요.",
+                )
             )
             return
 
@@ -1525,7 +1685,10 @@ class LLMNode(Node):
             "raw_text": raw_text[-1000:],
         })
         self._publish_reply(
-            f"{expected} 재시도를 마쳤어요. 다음 단계로 진행할게요."
+            self._build_vlm_spoken_reply(
+                raw_text,
+                f"{expected_label} 재시도를 마쳤어요. 다음 단계로 진행할게요.",
+            )
         )
 
 
