@@ -80,11 +80,16 @@ def motion_q_delta(q_goal, q_start):
     q_goal = np.asarray(q_goal, dtype=float)
     q_start = np.asarray(q_start, dtype=float)
 
+    raw_delta = q_goal - q_start
     delta = wrapped_q_delta(q_goal, q_start)
 
-    # q1이 200도를 넘어갈 때 multi-turn 사용
+    # q1이 정확히 +180° 이동이면 +방향 유지
+    if np.isclose(delta[0], -math.pi, atol=1e-9) and raw_delta[0] > 0.0:
+        delta[0] = math.pi
+
+    # extended branch는 실제 multi-turn 값 유지
     if q_start[0] > math.radians(200.0) or q_goal[0] > math.radians(200.0):
-        delta[0] = q_goal[0] - q_start[0]
+        delta[0] = raw_delta[0]
 
     return delta
 
@@ -481,28 +486,12 @@ class HardwareMotionControlNode(Node):
                 pack_horizontal=True
             )
 
-            # PLACE -> CONTROL_READY2
             self.move(
                 trajectory,
                 place,
-                q_home2,
-                4.0
-            )
-
-            self.hold(
-                trajectory,
-                q_home2,
-                0.3
-            )
-
-            # HOME2 -> 원래 HOME
-            # q2~q6은 이미 CONTROL_READY와 같으므로
-            # 여기서는 실제로 q1만 360 -> 0
-            self.move(
-                trajectory,
-                q_home2,
-                CONTROL_READY,
-                4.0
+                place_lift,
+                1.0,
+                True
             )
 
             return trajectory

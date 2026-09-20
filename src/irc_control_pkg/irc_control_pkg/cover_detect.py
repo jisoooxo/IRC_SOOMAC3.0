@@ -14,19 +14,51 @@ import pyrealsense2 as rs
 
 # ---------------- 설정값 ----------------
 
-TARGET_W_CM = 17.0
-TARGET_H_CM = 25
+MODE = "real"  # "real" 또는 "bag"
+BAG_FILE_PATH = "/home/leejunmi/realsense_bag/cover2.bag"
 
-SIZE_TOLERANCE_CM = 2
+TARGET_W_CM = 16.8
+TARGET_H_CM = 24.5
 
-HSV_V_MAX = 60
-HSV_S_MAX = 100
+SIZE_TOLERANCE_CM = 2.5
+
+# H(색상): hue, S: Saturation(채도, 0이면 무채색 높을수록 선명한 색), V: Value(명도, 밝기)
+HSV_V_MAX =  60 #25 # 밝기 제한
+HSV_S_MAX =  145 # 채도 제한
+
+# 25 130으로 -> 145까지 괜찮은듯
+DEPTH_MAX_M = 0.5                # 1차 필터: 이 거리(m)보다 먼 픽셀은 배경으로 간주해 색 마스크와 합칠 때 제외
+
+# ROI (원본 해상도 640x480 기준 좌상단/우하단 좌표). 이 영역 밖은 마스크에서 0으로 지움 (크롭 아님, 좌표계 그대로 유지)
+ROI_X_MIN = 0
+ROI_Y_MIN = 50
+ROI_X_MAX = 640
+ROI_Y_MAX = 480
+
+#  (350, 171)  BGR=[6, 14, 2]  HSV=[70, 219, 14]  @
+#  (382, 172)  BGR=[10, 16, 15]  HSV=[35, 96, 16]
+# (268, 129)  BGR=[10, 16, 15]  HSV=[35, 96, 16]
+# (289, 210)  BGR=[8, 14, 13]  HSV=[35, 109, 14]
+# (430, 273)  BGR=[17, 23, 22]  HSV=[35, 67, 23
+# (384, 227)  BGR=[11, 17, 16]  HSV=[35, 90, 17]
+# (384, 227)  BGR=[7, 15, 3]  HSV=[70, 204, 15] @ 
+# (384, 227)  BGR=[11, 17, 16]  HSV=[35, 90, 17]
+# (384, 227)  BGR=[11, 17, 16]  HSV=[35, 90, 17]
+# (384, 227)  BGR=[8, 13, 0]  HSV=[78, 255, 13] @ 
+# (384, 227)  BGR=[9, 16, 7]  HSV=[67, 143, 16] @ 
+# (384, 227)  BGR=[10, 18, 11]  HSV=[56, 113, 18]
+# (384, 227)  BGR=[10, 17, 13]  HSV=[47, 105, 17]
+# (384, 227)  BGR=[10, 16, 15]  HSV=[35, 96, 16]
+# (384, 227)  BGR=[8, 13, 0]  HSV=[78, 255, 13]
+# (384, 227)  BGR=[9, 16, 7]  HSV=[67, 143, 16]
+# (384, 227)  BGR=[10, 18, 11]  HSV=[56, 113, 18]
 
 DOWNSCALE = 0.5                  # 0.5 = 가로세로 절반 해상도로 처리 (연산량 1/4)
 NOISE_OPEN_KERNEL = 3            # 다운스케일된 해상도 기준, 소금-후추 노이즈 제거용
 CLOSE_KERNEL = 3                 # 미세한 끊김(1~2px) 보정용 안전장치
 
 MIN_CONTOUR_AREA_PX = 150        # 다운스케일 해상도 기준, 이보다 작은 컨투어는 노이즈로 버림
+
 
 
 def make_black_mask_small(color_small: np.ndarray) -> np.ndarray:
@@ -38,6 +70,26 @@ def make_black_mask_small(color_small: np.ndarray) -> np.ndarray:
     close_kernel = np.ones((CLOSE_KERNEL, CLOSE_KERNEL), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_kernel)
     return mask
+
+
+def make_depth_mask_small(depth_small: np.ndarray, depth_scale: float) -> np.ndarray:
+    """다운스케일된 depth 이미지에서 DEPTH_MAX_M 이내의 유효 픽셀만 통과시키는 1차 필터 마스크.
+    카메라가 완전 수직이 아니라 평면이 기울어질 수 있으므로, 물체를 잘라내지 않도록 여유 있게 잡은
+    거리 상한으로 먼 배경만 우선 제거한다 (정교한 평면 연속성 검증은 plane_obb에서 별도로 수행)."""
+    depth_m = depth_small.astype(np.float32) * depth_scale
+    return np.where((depth_m > 0) & (depth_m <= DEPTH_MAX_M), 255, 0).astype(np.uint8)
+
+
+def apply_roi_small(mask_small: np.ndarray) -> np.ndarray:
+    """ROI(원본 해상도 좌표계) 밖의 영역을 0으로 지운 마스크를 반환한다.
+    이미지 자체를 크롭하지 않고 마스크만 지우므로, 좌표계는 그대로 유지된다."""
+    x0 = int(ROI_X_MIN * DOWNSCALE)
+    y0 = int(ROI_Y_MIN * DOWNSCALE)
+    x1 = int(ROI_X_MAX * DOWNSCALE)
+    y1 = int(ROI_Y_MAX * DOWNSCALE)
+    roi_masked = np.zeros_like(mask_small)
+    roi_masked[y0:y1, x0:x1] = mask_small[y0:y1, x0:x1]
+    return roi_masked
 
 
 def contour_depth_z(contour, depth_small: np.ndarray, depth_scale: float):
@@ -173,6 +225,9 @@ def detect_lid(color_image: np.ndarray, depth_image: np.ndarray,
     depth_small = cv2.resize(depth_image, small_size, interpolation=cv2.INTER_NEAREST)  # depth는 보간 금지
 
     mask = make_black_mask_small(color_small)
+    depth_mask = make_depth_mask_small(depth_small, depth_scale)
+    mask = cv2.bitwise_and(mask, depth_mask)
+    mask = apply_roi_small(mask)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     candidates = []
@@ -253,13 +308,36 @@ def draw_candidates(color_image: np.ndarray, candidates: list) -> np.ndarray:
     return vis
 
 
+def draw_roi_overlay(vis: np.ndarray) -> np.ndarray:
+    """ROI 밖 영역(마스크에서 잘려나가는 부분)을 어둡게 반투명 처리하고, ROI 경계선을 그려서 보여준다."""
+    h, w = vis.shape[:2]
+    dim = vis.copy()
+    cv2.rectangle(dim, (0, 0), (w, ROI_Y_MIN), (0, 0, 0), -1)
+    cv2.rectangle(dim, (0, ROI_Y_MAX), (w, h), (0, 0, 0), -1)
+    cv2.rectangle(dim, (0, 0), (ROI_X_MIN, h), (0, 0, 0), -1)
+    cv2.rectangle(dim, (ROI_X_MAX, 0), (w, h), (0, 0, 0), -1)
+    vis = cv2.addWeighted(dim, 0.5, vis, 0.5, 0)
+    cv2.rectangle(vis, (ROI_X_MIN, ROI_Y_MIN), (ROI_X_MAX, ROI_Y_MAX), (0, 255, 255), 2)
+    return vis
+
+
 def main():
     pipeline = rs.pipeline()
     config = rs.config()
-    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 
-    profile = pipeline.start(config)
+    if MODE == "real":
+        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        profile = pipeline.start(config)
+    elif MODE == "bag":
+        config.enable_device_from_file(BAG_FILE_PATH)
+        profile = pipeline.start(config)
+        device = profile.get_device()
+        playback = device.as_playback()
+        playback.set_real_time(True)
+    else:
+        raise ValueError(f"알 수 없는 MODE: {MODE}")
+
     depth_sensor = profile.get_device().first_depth_sensor()
     depth_scale = depth_sensor.get_depth_scale()
     align = rs.align(rs.stream.color)
@@ -280,6 +358,7 @@ def main():
 
             candidates, mask = detect_lid(color_image, depth_image, depth_scale, intr)
             vis = draw_candidates(color_image, candidates)
+            vis = draw_roi_overlay(vis)
 
             cv2.imshow("lid detection", vis)
             cv2.imshow("black mask (small)", mask)
@@ -293,3 +372,93 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+''' HSV 확인용 코드 '''
+# """
+# HSV 값 확인용 디버그 툴
+
+# 영상(realsense 라이브 또는 bag 재생) 위에서 마우스 좌클릭하면
+# 그 픽셀의 HSV 값을 콘솔에 출력하고 화면에도 표시한다.
+# HSV_V_MAX, HSV_S_MAX 같은 임계값 튜닝할 때 씀.
+# """
+
+# import cv2
+# import numpy as np
+# import pyrealsense2 as rs
+
+# MODE = "real"  # "real" 또는 "bag"
+# BAG_FILE_PATH = "/home/leejunmi/realsense_bag/cover4.bag"
+
+# WINDOW_NAME = "HSV picker"
+
+# # 클릭한 지점 정보를 콜백과 메인 루프 사이에서 공유
+# _clicked = {"x": None, "y": None, "hsv": None, "bgr": None}
+
+
+# def on_mouse(event, x, y, flags, param):
+#     if event == cv2.EVENT_LBUTTONDOWN:
+#         frame_bgr = param
+#         if 0 <= y < frame_bgr.shape[0] and 0 <= x < frame_bgr.shape[1]:
+#             bgr = frame_bgr[y, x].tolist()
+#             hsv = cv2.cvtColor(
+#                 np.uint8([[bgr]]), cv2.COLOR_BGR2HSV
+#             )[0][0].tolist()
+#             _clicked["x"], _clicked["y"] = x, y
+#             _clicked["bgr"], _clicked["hsv"] = bgr, hsv
+#             print(f"({x}, {y})  BGR={bgr}  HSV={hsv}")
+
+
+# def draw_overlay(vis: np.ndarray) -> np.ndarray:
+#     if _clicked["x"] is None:
+#         return vis
+#     x, y = _clicked["x"], _clicked["y"]
+#     h, s, v = _clicked["hsv"]
+#     cv2.drawMarker(vis, (x, y), (0, 0, 255), cv2.MARKER_CROSS, 12, 2)
+#     label = f"H={h} S={s} V={v}"
+#     cv2.putText(vis, label, (x + 10, y - 10),
+#                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+#     return vis
+
+
+# def main():
+#     pipeline = rs.pipeline()
+#     config = rs.config()
+
+#     if MODE == "real":
+#         config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+#         config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+#         pipeline.start(config)
+#     elif MODE == "bag":
+#         config.enable_device_from_file(BAG_FILE_PATH)
+#         profile = pipeline.start(config)
+#         device = profile.get_device()
+#         playback = device.as_playback()
+#         playback.set_real_time(True)
+#     else:
+#         raise ValueError(f"알 수 없는 MODE: {MODE}")
+
+#     cv2.namedWindow(WINDOW_NAME)
+
+#     try:
+#         while True:
+#             frames = pipeline.wait_for_frames()
+#             color_frame = frames.get_color_frame()
+#             if not color_frame:
+#                 continue
+
+#             color_image = np.asanyarray(color_frame.get_data())
+#             cv2.setMouseCallback(WINDOW_NAME, on_mouse, color_image)
+
+#             vis = draw_overlay(color_image.copy())
+#             cv2.imshow(WINDOW_NAME, vis)
+
+#             if cv2.waitKey(1) & 0xFF == ord('q'):
+#                 break
+#     finally:
+#         pipeline.stop()
+#         cv2.destroyAllWindows()
+
+
+# if __name__ == "__main__":
+#     main()

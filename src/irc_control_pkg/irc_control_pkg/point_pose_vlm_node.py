@@ -19,6 +19,7 @@ SPOON_Q6 = math.radians(-90.0)
 POINT1 = np.deg2rad([0.0, -5.8, 0.0, 70.0, 111.0, 0.0]) ## 카메라가 수직으로 바라보는 위치
 POINT2 = np.deg2rad([85.0, -5.8, 0.0, 70.0, 87.0, -7.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
 VLM_CONFIRM_POINT = np.deg2rad([-102.0, -5.8, 0.0, 70.0, 114.0, -11.0])
+VLM_CONFIRM_POINT2 = np.deg2rad([258.0, -5.8, 0.0, 70.0, 114.0, -11.0])
 
 INITIAL_PACK_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float) # 용기 실제 좌표 x = 0.23.5
 INITIAL_PACK_PLACE_POINT = np.array([-0.01, -0.25, 0.04], dtype=float)
@@ -147,6 +148,11 @@ class PointPoseNode(Node):
             )
             return
 
+        if self.confirm_retry_phase == 'sauce':
+            self.confirm_retry_phase = None
+            self.move_vlm_confirm()
+            return
+
         if self.home_pending:
             self.home_pending = False
 
@@ -188,6 +194,12 @@ class PointPoseNode(Node):
         data = json.loads(msg.data)
         self.current_ingredient = str(data['class']).strip()
         self.pick_mode = self.select_mode(self.current_ingredient)
+
+        if self.pick_mode == 'sauce':
+            self.confirm_retry_phase = 'sauce'
+            self.plan_sauce()
+            self.home_pending = False
+            return
 
         if self.pick_mode == 'cp':
             self.confirm_retry_phase = 'cp'
@@ -437,7 +449,10 @@ class PointPoseNode(Node):
         self.joint_target_pub.publish(msg)
 
     def move_vlm_confirm(self):
-        q_target = VLM_CONFIRM_POINT.copy()
+        if self.current_ingredient in {'cover', 'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
+            q_target = VLM_CONFIRM_POINT2.copy()
+        else:
+            q_target = VLM_CONFIRM_POINT.copy()
 
         self.vlm_confirm_pending = True
 
@@ -449,12 +464,19 @@ class PointPoseNode(Node):
         self.home_pending = True
 
         if self.current_ingredient == 'cover':
-            q_target = CONTROL_READY2.copy()
+            waypoints = [CONTROL_READY2.copy()]
+
+        elif self.current_ingredient in {'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
+            waypoints = [
+                CONTROL_READY2.copy(),
+                CONTROL_READY.copy()
+            ]
+
         else:
-            q_target = CONTROL_READY.copy()
+            waypoints = [CONTROL_READY.copy()]
 
         msg = Float64MultiArray()
-        msg.data = q_target.tolist()
+        msg.data = np.asarray(waypoints).reshape(-1).tolist()
         self.joint_target_pub.publish(msg)
 
     @staticmethod
@@ -465,6 +487,8 @@ class PointPoseNode(Node):
             return 'grip'
         if class_name in {'cover'}:
             return 'pack'
+        if class_name in {'sauce_tomato', 'sauce_cream', 'sauce_oil'}:
+            return 'sauce'
         raise ValueError(f'클래스 안맞음: {class_name}')
 
     def move_place_pose(self):
@@ -732,9 +756,6 @@ class PointPoseNode(Node):
 
         q_place_lift = self.extended_base(q_place_lift)
         q_place = self.extended_base(q_place)
-
-        # sauce_full 자체에서 최종 HOME까지 가므로 완료 후 /control/home을 보내게 한다.
-        self.home_pending = True
 
         self.publish_waypoints(
             self.pack_plan_pub,

@@ -21,16 +21,16 @@ from sam2.sam2_image_predictor import SAM2ImagePredictor
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, String
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge
 from rclpy.qos import qos_profile_sensor_data
 from collections import deque
 
-pc = "JUNMI"
+pc = "JISU"
 
 if pc == "JISU":
     from irc_control_pkg.cover_detect import get_best_cover 
-    YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_11renamed.pt'
+    YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_13.pt'
 
     # SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
     # SAM2_CKPT   = '/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt'
@@ -681,11 +681,23 @@ def draw_last_published(overlay, last_published):
                 (lcx-30, lcy+5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
 
 
+# def publish_and_show(overlay, img_pub, bridge, node):
+
+#     img_msg = bridge.cv2_to_imgmsg(overlay, encoding="bgr8")
+#     img_msg.header.stamp = node.get_clock().now().to_msg()
+#     img_pub.publish(img_msg)
+#     cv2.imshow("frame", overlay)
+
 def publish_and_show(overlay, img_pub, bridge, node):
 
-    img_msg = bridge.cv2_to_imgmsg(overlay, encoding="bgr8")
+    img_msg = bridge.cv2_to_compressed_imgmsg(
+        overlay,
+        dst_format="jpg"
+    )
     img_msg.header.stamp = node.get_clock().now().to_msg()
+
     img_pub.publish(img_msg)
+
     cv2.imshow("frame", overlay)
 
 # =====================
@@ -699,7 +711,12 @@ def main(args=None):
     pub = node.create_publisher(String, '/vision/raw_pick_pose', 10)
     sub = node.create_subscription(String, '/control/motion_done', vision_start_callback, 10) 
 
-    img_pub = node.create_publisher(Image, '/vision/overlay_image', qos_profile_sensor_data)
+    # img_pub = node.create_publisher(Image, '/vision/overlay_image', qos_profile_sensor_data)
+    img_pub = node.create_publisher(
+    CompressedImage,
+    '/vision/overlay_image',
+    qos_profile_sensor_data
+)
     bridge = CvBridge()
 
     print("node init")
