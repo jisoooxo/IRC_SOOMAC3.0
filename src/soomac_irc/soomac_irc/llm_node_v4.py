@@ -21,9 +21,8 @@ from soomac_irc.call_model_v4 import load_model, make_call_model, make_call_vlm,
 from soomac_irc.order_v4 import SECTION_LABELS, SECTION_ORDER, build_section_plan, new_order, next_section
 from soomac_irc.vlm_rag import VlmRag
 
-
-ENABLE_VLM = os.environ.get("SOOMAC_ENABLE_VLM") == "1"  # 기본 OFF, VLM 통합 실행에서만 환경변수로 ON
-ENABLE_VLM_UI_IMAGES = os.environ.get("SOOMAC_ENABLE_VLM_UI_IMAGES") == "1"  # 실제 VLM 입력 3분할 UI 발행
+ENABLE_VLM = True
+ENABLE_VLM_UI_IMAGES = True  # 실제 VLM 입력 3분할 UI 발행
 # 실물 없는 전체 사이클에서만 VLM OFF 우회를 UI 표시용 PASS로 기록
 ENABLE_DUMMY_VLM_PASS = os.environ.get("SOOMAC_DUMMY_VLM_PASS") == "1"
 ENABLE_TOOL_LORA = True

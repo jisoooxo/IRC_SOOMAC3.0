@@ -810,6 +810,56 @@ def validate_transaction(state: AgentState) -> dict:
         "transaction": transaction,
     }
 
+def _build_selection_next_step(order: dict, execution: dict) -> str | None:
+    # 주문 변경 응답이 확인 문장으로 끝나지 않도록 현재 section의 바로 다음 행동을 안내한다.
+    # 로봇 작업 중에는 사용자 입력을 받지 않으므로 선택 질문을 덧붙이지 않는다.
+    if execution.get("active_task") is not None or execution.get("task_queue"):
+        return None
+
+    section = execution.get("section")
+
+    if section == "noodle":
+        missing = missing_requirements(order, ["noodle"]).get("noodle", [])
+        field_labels = {
+            "sauce": "소스",
+            "noodle_type": "면 종류",
+            "noodle_portion": "면 양",
+        }
+
+        if missing:
+            missing_text = ", ".join(field_labels[field] for field in missing)
+            return f"다음으로 선택할 항목은 {missing_text}예요. 원하는 내용을 말씀해 주세요."
+
+        return "면 선택이 끝났어요. 이대로 면 담기를 시작하려면 진행해 달라고 말씀해 주세요."
+
+    section_options = {
+        "veggie": ("야채", VEGGIES),
+        "meat": ("육류", MEATS),
+        "extra": ("추가 재료", EXTRAS),
+    }
+
+    if section in section_options:
+        section_label, options = section_options[section]
+        selected_items = [item for item in options if item in order["toppings"]]
+
+        if not selected_items:
+            options_text = "나 ".join(options)
+            return f"다음은 {section_label} 선택이에요. {options_text} 중 원하는 재료와 양을 말씀해 주세요."
+
+        return f"{section_label}를 더 고르거나, 이대로 {section_label} 담기를 시작하려면 진행해 달라고 말씀해 주세요."
+
+    if section == "lid":
+        return "다음은 뚜껑 닫기예요. 진행해 달라고 말씀해 주세요."
+
+    if section == "sauce":
+        if order.get("sauce") is None:
+            return "다음으로 소스를 선택해 주세요."
+
+        return "이대로 소스 담기를 시작하려면 진행해 달라고 말씀해 주세요."
+
+    return None
+
+
 def build_policy_reply(state: AgentState) -> dict:
     # 같은 transaction에서 동일한 재료·이유를 여러 번 안내하지 않는다.
     # 입력: validate_transaction이 확정한 사실 / 반환: Python 고정 문장 또는 None
@@ -933,6 +983,15 @@ def build_policy_reply(state: AgentState) -> dict:
 
         if not messages and transaction["ignored_same_value"]:
             messages.append("이미 같은 내용으로 선택되어 있어요.")
+
+        if action == "set_order":
+            next_step = _build_selection_next_step(
+                transaction["order_after"],
+                state["execution"],
+            )
+
+            if next_step:
+                messages.append(next_step)
 
     # 추천 범위 질문·추천안 생성·추천 확정 결과를 검증값으로 안내한다.
     recommendation = transaction["recommendation_validation"]
