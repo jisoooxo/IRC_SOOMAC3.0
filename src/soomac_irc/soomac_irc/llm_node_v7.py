@@ -17,9 +17,9 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, Int16, String
 
-from soomac_irc.agent_v6 import build_graph, build_selection_next_step, commit_section_skip
-from soomac_irc.call_model_v6 import load_model, make_call_model, make_call_vlm, make_generate_reply
-from soomac_irc.order_v6 import SECTION_LABELS, SECTION_ORDER, build_section_plan, new_order, next_section, strongest_restriction_for
+from soomac_irc.agent_v7 import build_graph, build_selection_next_step, classify_confirmation_intent, commit_section_skip
+from soomac_irc.call_model_v7 import load_model, make_call_model, make_call_vlm, make_generate_reply
+from soomac_irc.order_v7 import SECTION_LABELS, SECTION_ORDER, build_section_plan, new_order, next_section, strongest_restriction_for
 from soomac_irc.vlm_rag import VlmRag
 
 ENABLE_VLM = True
@@ -64,7 +64,7 @@ TOPIC_CLASS_NAMES = {
 
 class LLMNode(Node):
     def __init__(self):
-        super().__init__("soomac_llm_node_v6")
+        super().__init__("soomac_llm_node_v7")
 
         # 주문 상태: 사용자가 선택한 메뉴와 restriction
         self.order = new_order()
@@ -593,9 +593,8 @@ class LLMNode(Node):
             "action_history": copy.deepcopy(self.action_history),
         }
 
-    def _commit_agent_result(self, result: dict):
-        # graph 결과의 형식을 전부 확인한 다음에만 실제 node 상태에 반영함
-        # 검증 중간값이 아니라 transaction이 끝난 최종 상태만 commit하는 자리임
+    def _validate_agent_result(self, result: dict):
+        # 응답 생성 전에 graph 결과 전체를 검사하되 실제 node 상태는 바꾸지 않는다.
         order_after = result.get("order")
         execution_after = result.get("execution")
         recommendation_after = result.get("recommendation")
@@ -638,6 +637,13 @@ class LLMNode(Node):
         if type(execution_after.get("robot_started")) is not bool:
             raise ValueError("agent 결과 robot_started가 bool이 아님")
 
+    def _commit_agent_result(self, result: dict):
+        # 결과 검증과 응답 생성이 모두 성공한 뒤 최종 상태만 원자적으로 반영한다.
+        self._validate_agent_result(result)
+        order_after = result["order"]
+        execution_after = result["execution"]
+        recommendation_after = result["recommendation"]
+
         # 여기부터 실제 상태 commit. 이 함수는 worker 하나만 호출.
         self.order = copy.deepcopy(order_after)
         self.section = execution_after["section"]
@@ -656,7 +662,7 @@ class LLMNode(Node):
             raise ValueError("빈 사용자 발화는 처리할 수 없음")
 
         result = self.graph.invoke(self._build_agent_state(user_text))
-        self._commit_agent_result(result)
+        self._validate_agent_result(result)
 
         return result
 
@@ -806,17 +812,12 @@ class LLMNode(Node):
             return False
 
         self._set_stt_enabled(False)
-        normalized = "".join(user_text.lower().split())
+        confirmation_intent = classify_confirmation_intent(
+            user_text,
+            "section_skip",
+        )
 
-        negative = any(word in normalized for word in (
-            "아니", "하지마", "취소하지마", "안할게", "계속고를",
-        ))
-        affirmative = not negative and any(word in normalized for word in (
-            "네", "예", "응", "그래", "맞아", "좋아",
-            "진행", "넘어가", "취소해", "빼줘", "제외해",
-        ))
-
-        if not affirmative and not negative:
+        if confirmation_intent is None:
             self._set_stt_enabled(True)
             self.history.append({"role": "user", "content": user_text})
             self._publish_reply("네 또는 아니요로 말씀해 주세요.")
@@ -827,7 +828,7 @@ class LLMNode(Node):
         self.runtime_turn_index += 1
         self.history.append({"role": "user", "content": user_text})
 
-        action = f"{pending['type']}_{'accept' if affirmative else 'reject'}"
+        action = f"{pending['type']}_{'accept' if confirmation_intent else 'reject'}"
         self.action_history.append({"turn": self.runtime_turn_index, "action": action})
         self.action_history = self.action_history[-12:]
 
@@ -839,7 +840,7 @@ class LLMNode(Node):
                     f"재확인 section이 현재 section과 다름 : {section} != {self.section}"
                 )
 
-            if negative:
+            if confirmation_intent is False:
                 self._set_stt_enabled(True)
                 if pending.get("source") == "all_options_restricted":
                     dislike_items = [
@@ -910,12 +911,9 @@ class LLMNode(Node):
         transaction = result["transaction"]
         action = transaction["action"]
 
-        self.runtime_turn_index += 1
-        self.history.append({"role": "user", "content": user_text})
-
         # 모델이 말한 내용이 아니라 Python이 확정한 결과만 다음 턴에 전달함
         action_event = {
-            "turn": self.runtime_turn_index,
+            "turn": self.runtime_turn_index + 1,
             "action": action,
         }
 
@@ -934,17 +932,20 @@ class LLMNode(Node):
         if action == "confirm_section":
             action_event["section"] = self.section
 
-        self.action_history.append(action_event)
-        self.action_history = self.action_history[-12:]
-
         # dislike가 포함된 section 제외만 다음 사용자 발화를 기다림
         section_skip = transaction["section_skip"]
+        reply = self._build_turn_reply(user_text, state_before, result)
+
+        # 결과 검증과 응답 생성이 모두 성공한 뒤에만 실제 주문 상태를 commit한다.
+        self._commit_agent_result(result)
+        self.runtime_turn_index += 1
+        self.history.append({"role": "user", "content": user_text})
+        self.action_history.append(action_event)
+        self.action_history = self.action_history[-12:]
 
         if section_skip is not None and section_skip["needs_confirmation"]:
             self.awaiting_confirm = copy.deepcopy(section_skip)
             self.awaiting_confirm["type"] = "refuse_section"
-
-        reply = self._build_turn_reply(user_text, state_before, result)
 
         # allergy·cannot_eat 전체 제외는 Python에서 바로 적용되므로 재확인 없이 다음 단계로 간다.
         if section_skip is not None and section_skip["applied"]:

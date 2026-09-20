@@ -881,6 +881,46 @@
     }
     .slot-content:empty { display: none; }
 
+    /* Fontana 목업의 재료 사진을 트레이 형상 위에 표시한다. */
+    .slot-content.has-photo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(3px, .55vw, 8px);
+      padding: 30px 8px 7px;
+      overflow: hidden;
+    }
+    .slot-content.has-photo.multi-photo { gap: 2px; }
+    .ingredient-asset {
+      display: block;
+      max-width: 92%;
+      max-height: 86%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 7px 7px rgba(0,0,0,.28));
+      pointer-events: none;
+      user-select: none;
+    }
+    .multi-photo .ingredient-asset { max-width: 49%; max-height: 78%; }
+    .slot-noodle .ingredient-asset { max-width: 97%; max-height: 92%; }
+    .slot-sausage .ingredient-asset { max-width: 94%; max-height: 88%; }
+    .slot-cheese .ingredient-asset,
+    .slot-pepper .ingredient-asset,
+    .slot-crab .ingredient-asset { max-width: 88%; max-height: 82%; }
+    .ingredient-asset.ingredient-vegetable-combo { max-width: 96%; max-height: 90%; }
+
+    .ingredient-photo.has-image { padding: 4px; background: #f4f5f3; }
+    .current-ingredient-asset {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 5px rgba(0,0,0,.10));
+      pointer-events: none;
+      user-select: none;
+    }
+
     .compartment.working {
       border-color: var(--dash-red);
       background: linear-gradient(145deg, #493236, #251f24 72%);
@@ -1403,9 +1443,16 @@
     .sauce-pouch[data-sauce="cream"]  { color:#554632; background: linear-gradient(150deg,#fffdf0,#ead6ae 78%); }
     .sauce-pouch[data-sauce="oil"]    { color:#523f13; background: linear-gradient(150deg,#ffe797,#e8b942 78%); }
     .sauce-pouch[data-sauce="sauce"]  { color:#1e354d; background: linear-gradient(150deg,#eff7ff,#bfd2e9 78%); }
-    .sauce-pouch-icon { font-size: clamp(30px,4vw,54px); line-height:1; filter: drop-shadow(0 4px 4px rgba(0,0,0,.10)); }
+    .sauce-pouch-icon { width:clamp(38px,4.5vw,64px); height:clamp(46px,5.5vw,78px); display:grid; place-items:center; font-size:clamp(30px,4vw,54px); line-height:1; filter:drop-shadow(0 4px 4px rgba(0,0,0,.10)); }
     .sauce-pouch-name { text-align:center; font-size:clamp(12px,1.1vw,17px); font-weight:900; line-height:1.15; }
     .sauce-pouch-sub { font-size:clamp(8px,.65vw,10px); font-weight:850; letter-spacing:.12em; opacity:.68; }
+    .sauce-pouch.has-photo { padding:0; border:none; background:transparent !important; box-shadow:drop-shadow(0 12px 18px rgba(0,0,0,.24)); overflow:visible; }
+    .sauce-pouch.has-photo::before,
+    .sauce-pouch.has-photo::after { display:none; }
+    .sauce-pouch.has-photo .sauce-pouch-icon { width:100%; height:100%; filter:drop-shadow(0 10px 12px rgba(0,0,0,.22)); }
+    .sauce-pouch.has-photo .sauce-pouch-icon img { width:100%; height:100%; object-fit:contain; display:block; }
+    .sauce-pouch.has-photo .sauce-pouch-name,
+    .sauce-pouch.has-photo .sauce-pouch-sub { display:none; }
 
     .sauce-overlay.arriving { animation: sauce-arrive .62s cubic-bezier(.18,.82,.2,1) both; }
     @keyframes sauce-arrive {
@@ -1418,6 +1465,9 @@
       .lid-overlay { transition: none !important; }
       .sauce-overlay.arriving { animation: none !important; }
     }
+
+    /* 트레이·뚜껑·소스 레이어보다 시작 화면을 항상 위에 둔다. */
+    .start { z-index: 10000; }
 
   </style>
 </head>
@@ -1944,33 +1994,48 @@
 
     /* class -> 화면 정보.
        tray slot이 같은 mushroom/onion도 class는 절대 합치지 않는다. */
+    const 재료이미지 = {
+      sausage: '/static/fontana/sausage.png',
+      mushroom: '/static/fontana/mushroom.png',
+      onion: '/static/fontana/onion.png',
+      vegetable_combo: '/static/fontana/vegetable_combo.png',
+      cheese: '/static/fontana/cheese.png',
+      noodle: '/static/fontana/noodle.png',
+      pepperoncino: '/static/fontana/pepperoncino.png',
+      crab: '/static/fontana/crab.webp',
+      cover: '/static/fontana/cover.webp',
+      tomato: '/static/fontana/tomato.png',
+      cream: '/static/fontana/cream.png',
+      oil: '/static/fontana/oil.png'
+    };
+
     const 재료메타 = {
-      noodle:       {name: '면', icon: '🍝', slot: 'noodle', category: 'noodle'},
-      noodles:      {name: '면', icon: '🍝', slot: 'noodle', category: 'noodle'},
-      면:           {name: '면', icon: '🍝', slot: 'noodle', category: 'noodle'},
+      noodle:       {name: '면', icon: '🍝', asset: 재료이미지.noodle, slot: 'noodle', category: 'noodle'},
+      noodles:      {name: '면', icon: '🍝', asset: 재료이미지.noodle, slot: 'noodle', category: 'noodle'},
+      면:           {name: '면', icon: '🍝', asset: 재료이미지.noodle, slot: 'noodle', category: 'noodle'},
 
-      mushroom:     {name: '버섯', icon: '🍄', slot: 'vegetable', category: 'vegetable'},
-      onion:        {name: '양파', icon: '🧅', slot: 'vegetable', category: 'vegetable'},
+      mushroom:     {name: '버섯', icon: '🍄', asset: 재료이미지.mushroom, slot: 'vegetable', category: 'vegetable'},
+      onion:        {name: '양파', icon: '🧅', asset: 재료이미지.onion, slot: 'vegetable', category: 'vegetable'},
 
-      sausage:      {name: '소시지', icon: '🌭', slot: 'sausage', category: 'meat'},
-      소시지:       {name: '소시지', icon: '🌭', slot: 'sausage', category: 'meat'},
-      crab:         {name: '게살', icon: '🦀', slot: 'crab', category: 'meat'},
-      crabmeat:     {name: '게살', icon: '🦀', slot: 'crab', category: 'meat'},
-      게살:         {name: '게살', icon: '🦀', slot: 'crab', category: 'meat'},
+      sausage:      {name: '소시지', icon: '🌭', asset: 재료이미지.sausage, slot: 'sausage', category: 'meat'},
+      소시지:       {name: '소시지', icon: '🌭', asset: 재료이미지.sausage, slot: 'sausage', category: 'meat'},
+      crab:         {name: '게살', icon: '🦀', asset: 재료이미지.crab, slot: 'crab', category: 'meat'},
+      crabmeat:     {name: '게살', icon: '🦀', asset: 재료이미지.crab, slot: 'crab', category: 'meat'},
+      게살:         {name: '게살', icon: '🦀', asset: 재료이미지.crab, slot: 'crab', category: 'meat'},
 
-      cheese:       {name: '치즈', icon: '🧀', slot: 'cheese', category: 'extra'},
-      치즈:         {name: '치즈', icon: '🧀', slot: 'cheese', category: 'extra'},
-      pepperoncino: {name: '페퍼론치노', icon: '🌶️', slot: 'pepperoncino', category: 'extra'},
-      peperoncino:  {name: '페퍼론치노', icon: '🌶️', slot: 'pepperoncino', category: 'extra'},
-      페퍼론치노:   {name: '페퍼론치노', icon: '🌶️', slot: 'pepperoncino', category: 'extra'},
+      cheese:       {name: '치즈', icon: '🧀', asset: 재료이미지.cheese, slot: 'cheese', category: 'extra'},
+      치즈:         {name: '치즈', icon: '🧀', asset: 재료이미지.cheese, slot: 'cheese', category: 'extra'},
+      pepperoncino: {name: '페퍼론치노', icon: '🌶️', asset: 재료이미지.pepperoncino, slot: 'pepperoncino', category: 'extra'},
+      peperoncino:  {name: '페퍼론치노', icon: '🌶️', asset: 재료이미지.pepperoncino, slot: 'pepperoncino', category: 'extra'},
+      페퍼론치노:   {name: '페퍼론치노', icon: '🌶️', asset: 재료이미지.pepperoncino, slot: 'pepperoncino', category: 'extra'},
 
-      cover:        {name: '뚜껑', icon: '🥡', slot: null, category: 'cover'},
-      lid:          {name: '뚜껑', icon: '🥡', slot: null, category: 'cover'},
-      뚜껑:         {name: '뚜껑', icon: '🥡', slot: null, category: 'cover'},
+      cover:        {name: '뚜껑', icon: '🥡', asset: 재료이미지.cover, slot: null, category: 'cover'},
+      lid:          {name: '뚜껑', icon: '🥡', asset: 재료이미지.cover, slot: null, category: 'cover'},
+      뚜껑:         {name: '뚜껑', icon: '🥡', asset: 재료이미지.cover, slot: null, category: 'cover'},
 
-      cream:        {name: '크림소스', icon: '🥛', slot: null, category: 'sauce'},
-      tomato:       {name: '토마토소스', icon: '🍅', slot: null, category: 'sauce'},
-      oil:          {name: '오일', icon: '🫗', slot: null, category: 'sauce'},
+      cream:        {name: '크림소스', icon: '🥛', asset: 재료이미지.cream, slot: null, category: 'sauce'},
+      tomato:       {name: '토마토소스', icon: '🍅', asset: 재료이미지.tomato, slot: null, category: 'sauce'},
+      oil:          {name: '오일', icon: '🫗', asset: 재료이미지.oil, slot: null, category: 'sauce'},
       sauce:        {name: '소스', icon: '🥫', slot: null, category: 'sauce'},
       소스:         {name: '소스', icon: '🥫', slot: null, category: 'sauce'},
 
@@ -2160,11 +2225,45 @@
       stageProgressLine.style.width = `${Math.max(0, Math.min(1, fraction)) * 87}%`;
     }
 
+    function 재료이미지노드(info, classKey = '') {
+      if (info?.asset) {
+        const img = document.createElement('img');
+        img.className = `ingredient-asset ingredient-${classKey || 키정규화(info.raw || info.name)}`;
+        img.src = info.asset;
+        img.alt = info.name || '';
+        img.draggable = false;
+        return img;
+      }
+      const span = document.createElement('span');
+      span.textContent = info?.icon ?? '•';
+      span.setAttribute('aria-hidden', 'true');
+      return span;
+    }
+
+    function 현재작업비주얼그리기(info, fallback = '…') {
+      currentIngredientVisual.replaceChildren();
+      currentIngredientVisual.classList.remove('has-image');
+      if (info?.asset) {
+        const img = document.createElement('img');
+        img.className = 'current-ingredient-asset';
+        img.src = info.asset;
+        img.alt = info.name || '';
+        img.draggable = false;
+        currentIngredientVisual.appendChild(img);
+        currentIngredientVisual.classList.add('has-image');
+      } else {
+        currentIngredientVisual.textContent = info?.icon || fallback;
+      }
+    }
+
     function 용기칸초기화() {
       document.querySelectorAll('.compartment').forEach(slot => {
         slot.classList.remove('working', 'work-done', 'verifying', 'verified', 'vlm-fail', 'vlm-retried', 'vlm-uncertain', 'filled');
         const content = slot.querySelector('.slot-content');
-        if (content) content.textContent = '';
+        if (content) {
+          content.replaceChildren();
+          content.classList.remove('has-photo', 'multi-photo');
+        }
       });
       // lid/sauce overlay state is managed separately so the original tray geometry never changes.
     }
@@ -2189,7 +2288,7 @@
         const slotClasses = perSlot.get(info.slot);
         const normalizedClass = 키정규화(className);
         if (!slotClasses.some(item => item.classKey === normalizedClass)) {
-          slotClasses.push({classKey: normalizedClass, icon: info.icon});
+          slotClasses.push({classKey: normalizedClass, info});
         }
       });
 
@@ -2197,7 +2296,28 @@
         const slot = document.querySelector(`.compartment[data-slot="${slotName}"]`);
         if (!slot) return;
         slot.classList.add('filled');
-        slot.querySelector('.slot-content').textContent = items.map(item => item.icon).join(' ');
+
+        const content = slot.querySelector('.slot-content');
+        content.replaceChildren();
+
+        const vegetableKeys = new Set(items.map(item => item.classKey));
+        if (slotName === 'vegetable' && vegetableKeys.has('mushroom') && vegetableKeys.has('onion')) {
+          const img = document.createElement('img');
+          img.className = 'ingredient-asset ingredient-vegetable-combo';
+          img.src = 재료이미지.vegetable_combo;
+          img.alt = '버섯과 양파';
+          img.draggable = false;
+          content.appendChild(img);
+          content.classList.add('has-photo');
+          content.classList.remove('multi-photo');
+          return;
+        }
+
+        content.classList.add('has-photo');
+        content.classList.toggle('multi-photo', items.length > 1);
+        items.forEach(({classKey, info}) => {
+          content.appendChild(재료이미지노드(info, classKey));
+        });
       });
     }
 
@@ -2265,7 +2385,17 @@
       }
 
       saucePouch.dataset.sauce = sauce.key;
-      saucePouchIcon.textContent = sauce.icon;
+      saucePouch.classList.toggle('has-photo', Boolean(sauce.asset));
+      saucePouchIcon.replaceChildren();
+      if (sauce.asset) {
+        const img = document.createElement('img');
+        img.src = sauce.asset;
+        img.alt = sauce.name;
+        img.draggable = false;
+        saucePouchIcon.appendChild(img);
+      } else {
+        saucePouchIcon.textContent = sauce.icon;
+      }
       saucePouchName.textContent = sauce.name;
       sauceOverlay.hidden = false;
 
@@ -2282,14 +2412,14 @@
     function 현재작업카드그리기(ui, tech) {
       const info = ui.currentInfo;
       if (!ui.currentClass) {
-        currentIngredientVisual.textContent = '…';
+        현재작업비주얼그리기(null, '…');
         currentIngredientName.textContent = '작업 대기 중';
         currentIngredientDescription.textContent = '재료 작업이 시작되면 여기에 표시됩니다.';
         workNoteText.innerHTML = '주문 내용을 확인하고 있어요.<br>잠시만 기다려주세요.';
         return;
       }
 
-      currentIngredientVisual.textContent = info.icon;
+      현재작업비주얼그리기(info);
       currentIngredientName.textContent = info.name;
 
       if (info.category === 'cover') {
