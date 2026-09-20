@@ -31,7 +31,7 @@ GRIP_POSITION_TOLERANCE = 0.005
 
 GRIP_TARGET_AXIS = np.array([0.0, 0.0, -1.0], dtype=float)
 JOINT_MIN = np.deg2rad([-200.0, -120.0, -170.0, -140.0, -120.0, -360.0])
-JOINT_MAX = np.deg2rad([200.0, 120.0, 170.0, 140.0, 120.0, 360.0])
+JOINT_MAX = np.deg2rad([550.0, 120.0, 170.0, 140.0, 120.0, 360.0])
 
 
 def wrap_to_pi(angle):

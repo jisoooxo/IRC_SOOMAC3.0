@@ -10,27 +10,30 @@ from std_msgs.msg import Empty, Bool, Float64MultiArray, MultiArrayDimension, St
 
 DOF = 6
 CONTROL_READY = np.deg2rad([0.0, -90.0, 0.0, 113.0, 67.0, 0.0])
+CONTROL_READY2 = np.deg2rad([180.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 
-SPOON_PICK_POSITION = np.array([0.4, 0.01, 0.265], dtype=float)
+SPOON_PICK_POSITION = np.array([0.249, 0.275, 0.3], dtype=float)
 SPOON_Q6 = math.radians(-90.0)
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
-POINT1 = np.deg2rad([0.0, -7.0, 0.0, 78.5, 101.0, 0.0]) ## 카메라가 수직으로 바라보는 위치
-POINT2 = np.deg2rad([90.0, 37.0, 0.0, 20.0, 106.0, 0.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
-VLM_CONFIRM_POINT = np.deg2rad([83.0, -3.0, 0.0, 87.0, 90.0, 0.0])
+POINT1 = np.deg2rad([0.0, -5.8, 0.0, 70.0, 111.0, 0.0]) ## 카메라가 수직으로 바라보는 위치
+POINT2 = np.deg2rad([85.0, -5.8, 0.0, 70.0, 87.0, -7.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
+VLM_CONFIRM_POINT = np.deg2rad([-102.0, -5.8, 0.0, 70.0, 114.0, -11.0])
 
 INITIAL_PACK_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float) # 용기 실제 좌표 x = 0.23.5
-INITIAL_PACK_PLACE_POINT = np.array([0.000, -0.25, 0.04], dtype=float)
+INITIAL_PACK_PLACE_POINT = np.array([-0.01, -0.25, 0.04], dtype=float)
 
-SAUCE_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float) # 베이스 자체가 이동하기 때문에 소스 3개 pick 위치는 동일하게
-SAUCE_PLACE_POINT = np.array([0.000, -0.25, 0.04], dtype=float)
+TOMATO_PICK_POINT = np.array([-0.25, 0.14, 0.04], dtype=float)
+CREAM_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float)
+OIL_PICK_POINT = np.array([-0.25, -0.14, 0.04], dtype=float)
+SAUCE_PLACE_POINT = np.array([0.000, -0.25, 0.07], dtype=float)
 PLACE_POINTS = {
-    'noodle': {'position': np.array([0.012, 0.20, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'mushroom': {'position': np.array([-0.058, 0.30, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'onion': {'position': np.array([-0.058, 0.305, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'crab': {'position': np.array([-0.058, 0.25, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'sausage': {'position': np.array([0.062, 0.30, 0.07], dtype=float), 'yaw_deg': 90.0,},
-    'cover': {'position': np.array([0.000, -0.25, 0.05], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
+    'noodle': {'position': np.array([-0.012, -0.19, 0.07], dtype=float), 'yaw_deg': 180.0,},
+    'mushroom': {'position': np.array([-0.06, -0.30, 0.07], dtype=float), 'yaw_deg': 180.0,},
+    'onion': {'position': np.array([-0.06, -0.305, 0.07], dtype=float), 'yaw_deg': 180.0,},
+    'crab': {'position': np.array([-0.065, -0.24, 0.07], dtype=float), 'yaw_deg': 180.0,},
+    'sausage': {'position': np.array([0.062, -0.30, 0.07], dtype=float), 'yaw_deg': 180.0,},
+    'cover': {'position': np.array([-0.01, -0.25, 0.06], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
 }
 
 LIFT_HEIGHT = 0.15
@@ -271,16 +274,12 @@ class PointPoseNode(Node):
 
         # 치즈 접근 전 lift, 치즈 접근
         if class_name == 'cheese':
-            q_cheese_approach_lift = np.deg2rad([9.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
-            q_cheese_approach_lift[3] += math.radians(-20) 
-            q_cheese_approach_lift[4] += math.radians(20)
-            q_cheese_approach = np.deg2rad([9.0, 5.0, 0.0, 108.0, 70.0, 0.0]) # 치즈 접근 위치
+            q_cheese_approach_lift = np.deg2rad([3.5, -1.4, 0.0, 85.0, 91.5, 0.0]) # 치즈 접근 위치
+            q_cheese_approach = np.deg2rad([3.5, 1.2, 0.0, 101.0, 73.0, 0.0]) # 치즈 접근 위치
 
         else: 
-            q_cheese_approach_lift = np.deg2rad([-5.0, 28.0, 0.0, 63.0, 97.0, 0.0]) # 페퍼론치노 접근 위치
-            q_cheese_approach_lift[3] += math.radians(-20)
-            q_cheese_approach_lift[4] += math.radians(20)
-            q_cheese_approach = np.deg2rad([5.0, 28.0, 0.0, 63.0, 97.0, 0.0]) # 페퍼론치노 접근 위치
+            q_cheese_approach_lift = np.deg2rad([1.5, 2.6, 0.0, 85.0, 66.0, 0.0]) # 페퍼론치노 접근 위치
+            q_cheese_approach = np.deg2rad([1.5, 15.4, 0.0, 85.0, 62.7, 0.0]) # 페퍼론치노 접근 위치
 
         # 치즈 푸기: 2번, 3번 모터 place 할 때랑 맞추기
         q_cheese_touch_1 = q_cheese_approach.copy()
@@ -307,9 +306,9 @@ class PointPoseNode(Node):
 
         # 치즈 / 페페론치노 place 준비
         if class_name == 'cheese':
-            q_cheese_place_ready = np.deg2rad([-130.0, -90.0, 90.0, 130.0, 20.0, 0.0,]) # 치즈 place 위치
+            q_cheese_place_ready = np.deg2rad([-119.0, -80.0, 90.0, 130.0, 42.8, 0.0,]) # 치즈 place 위치
        
-        else: q_cheese_place_ready = np.deg2rad([-130.0, -90.0, 90.0, 130.0, 20.0, 0.0,]) # 페퍼론치노 place 위치
+        else: q_cheese_place_ready = np.deg2rad([-131.7, -80.0, 90.0, 131.2, 46.7, 0.0,]) # 페퍼론치노 place 위치
 
         # 치즈, 페퍼론치노 place
         q_cheese_release_1 = q_cheese_place_ready.copy()
@@ -449,8 +448,13 @@ class PointPoseNode(Node):
     def move_home(self):
         self.home_pending = True
 
+        if self.current_ingredient == 'cover':
+            q_target = CONTROL_READY2.copy()
+        else:
+            q_target = CONTROL_READY.copy()
+
         msg = Float64MultiArray()
-        msg.data = CONTROL_READY.tolist()
+        msg.data = q_target.tolist()
         self.joint_target_pub.publish(msg)
 
     @staticmethod
@@ -515,24 +519,40 @@ class PointPoseNode(Node):
 
         if self.point1_q is not None:
             q_motion_start = self.point1_q
-        else: q_motion_start = np.zeros(DOF, dtype=float)
+        else:
+            q_motion_start = np.zeros(DOF, dtype=float)
 
         if mode == 'pack':
-            q_pick, q_lift = self.solve_pack_pick_lift(position, q_motion_start)
+            q_pick, q_lift = self.solve_pack_pick_lift(
+                position,
+                q_motion_start
+            )
             q_approach = q_lift
+
         else:
+            corrected_yaw = self.base_target(position, yaw)
+
             q_approach = self.kinematics.solve_pose(
-                approach, q_motion_start, yaw, 'grip'
+                approach,
+                q_motion_start,
+                corrected_yaw,
+                'grip'
             )
 
             q_pick = self.kinematics.solve_pose(
-                position, q_approach, yaw, 'grip'
+                position,
+                q_approach,
+                corrected_yaw,
+                'grip'
             )
 
             q_lift = self.kinematics.solve_pose(
-                approach, q_pick, yaw, 'grip'
+                approach,
+                q_pick,
+                corrected_yaw,
+                'grip'
             )
-        # lift 된 지점에서 바로 place 시작
+
         self.pick_lift_q = q_lift
 
         if mode == 'pack':
@@ -549,60 +569,90 @@ class PointPoseNode(Node):
             q_pick,
             q_lift
         )
+
+    @staticmethod
+    def base_target(position, target_yaw):
+        base_yaw = math.atan2(position[1], position[0])
+
+        desired_raw = base_yaw - float(target_yaw)
+
+        desired_yaw = (desired_raw + math.pi) % (2.0 * math.pi) - math.pi
+
+        return desired_yaw
+
+    @staticmethod
+    def extended_base(q):
+        q = q.copy()
+
+        if q[0] < 0.0:
+            q[0] += 2.0 * math.pi
+
+        return q
     
     def plan_place(self, position, yaw, mode):
-        self.get_logger().info(
-            f'plan_place 진입: class={self.current_ingredient}, mode={mode}'
-        )
         
         approach = position.copy()
         approach[2] += LIFT_HEIGHT
 
         if mode == 'pack':
-            q_approach = self.kinematics.solve_pose(
-                approach, self.pick_lift_q, math.pi, 'pack'
-            )
 
-            self.get_logger().info(
-                f'pack place q1: '
-                f'pick_lift={math.degrees(self.pick_lift_q[0]):.1f}, '
-                f'approach={math.degrees(q_approach[0]):.1f}'
+            if self.current_ingredient == 'cover':
+                q_previous = CONTROL_READY2.copy()
+            else:
+                q_previous = self.pick_lift_q
+
+            q_approach = self.kinematics.solve_pose(
+                approach,
+                q_previous,
+                math.pi,
+                'pack'
             )
 
             q_place = self.kinematics.solve_pose(
-                position, q_approach, math.pi, 'pack'
+                position,
+                q_approach,
+                math.pi,
+                'pack'
             )
 
-            q_lift = q_approach
+            q_lift = q_approach.copy()
 
             if self.current_ingredient == 'cover':
-                delta_q1 = q_approach[0] - self.pick_lift_q[0]
 
-                if abs(delta_q1) > math.pi:
-                    q_mid = (self.pick_lift_q + q_approach) / 2.0
-                    q_mid[0] = 0.0  # q1 = 0을 거쳤다가 가기
+                q_approach = self.extended_base(q_approach)
+                q_place = self.extended_base(q_place)
+                q_lift = q_approach.copy()
 
-                    self.publish_waypoints(
-                        self.pack_plan_pub,
-                        'pack_place',
-                        q_mid,
-                        q_approach,
-                        q_place,
-                        q_lift
-                    )
-                    return
+                self.publish_waypoints(
+                    self.pack_plan_pub,
+                    'pack_place',
+                    CONTROL_READY2,
+                    q_approach,
+                    q_place,
+                    q_lift
+                )
+
+                return
 
         else:
+            corrected_yaw = self.base_target(position, yaw)
+
             q_approach = self.kinematics.solve_grip_place_pose(
-                approach, self.pick_lift_q, yaw
+                approach,
+                self.pick_lift_q,
+                corrected_yaw
             )
 
             q_place = self.kinematics.solve_grip_place_pose(
-                position, q_approach, yaw
+                position,
+                q_approach,
+                corrected_yaw
             )
 
             q_lift = self.kinematics.solve_grip_place_pose(
-                approach, q_place, yaw
+                approach,
+                q_place,
+                corrected_yaw
             )
 
         if mode == 'pack':
@@ -646,8 +696,15 @@ class PointPoseNode(Node):
         )
 
     def plan_sauce(self):
-        q_start = CONTROL_READY.copy()
-        pick = SAUCE_PICK_POINT.copy()
+        q_start = CONTROL_READY2.copy()
+        if self.current_ingredient == 'sauce_tomato':
+            pick = TOMATO_PICK_POINT.copy()
+
+        elif self.current_ingredient == 'sauce_cream':
+            pick = CREAM_PICK_POINT.copy()
+
+        elif self.current_ingredient == 'sauce_oil':
+            pick = OIL_PICK_POINT.copy()
 
         pick_lift = pick.copy()
         pick_lift[2] += LIFT_HEIGHT
@@ -673,9 +730,15 @@ class PointPoseNode(Node):
             place, q_place_lift, math.pi, 'pack'
         )
 
+        q_place_lift = self.extended_base(q_place_lift)
+        q_place = self.extended_base(q_place)
+
+        # sauce_full 자체에서 최종 HOME까지 가므로 완료 후 /control/home을 보내게 한다.
+        self.home_pending = True
+
         self.publish_waypoints(
             self.pack_plan_pub,
-            'pack_full',
+            'sauce_full',
             q_pick,
             q_pick_lift,
             q_place_lift,

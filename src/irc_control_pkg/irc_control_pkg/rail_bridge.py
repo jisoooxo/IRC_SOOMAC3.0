@@ -14,15 +14,15 @@ RAIL_ROTATIONS = {
     'noodle_thick': 0,
     'noodle_thin': 0,
     'sausage': 208,
-    'crab': 280,
+    'crab': 290,
     'onion': 60,
     'mushroom': 135,
-    'pepperoncino': 360,
-    'cheese': 360,
-    'sauce_cream': 275,
-    'sauce_oil': 360,
-    'sauce_tomato': 198,
-    'cover': 360,
+    'pepperoncino': 371,
+    'cheese': 371,
+    'sauce_cream': 371,
+    'sauce_oil': 371,
+    'sauce_tomato': 371,
+    'cover': 371,
 }
 
 

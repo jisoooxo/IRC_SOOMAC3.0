@@ -82,6 +82,12 @@ class MainNode(Node):
 
     ## 순서 
     def arm_motion_done_callback(self, _msg):
+        # 소스 동작 완료
+        if self.state == STATE_WAIT_CP_DONE and self.current_class in SAUCE_CLASSES:
+            self.state = STATE_WAIT_VLM_READY
+            self.publish_control_motion('vlm_confirm')
+            return
+        
         # 초기 용기 이동 완료
         if self.state == STATE_WAIT_FIRST_SYNC:
             self.initial_motion_done = True
@@ -287,6 +293,11 @@ class MainNode(Node):
 
     def rail_motion_done_callback(self, _msg):
         if self.state != STATE_WAIT_RAIL_DONE:
+            return
+
+        if self.current_class in SAUCE_CLASSES:
+            self.state = STATE_WAIT_CP_DONE
+            self.publish_control_plan()
             return
 
         self.publish_control_plan()

@@ -32,8 +32,10 @@ ADDR_GOAL_POSITION = 116
 ADDR_PRESENT_POSITION = 132
 
 POSITION_MODE = 3
+EXTENDED_POSITION_MODE = 4
 
 HOME_RAW = np.full(DOF, 2048, dtype=int)
+CONTROL_READY2 = np.deg2rad([180.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 GRIPPER_HOME_RAW = 2048
 
 GRIPPER_OPEN_DEG = {
@@ -64,21 +66,41 @@ PROFILE_VELOCITY = 30
 PROFILE_ACCELERATION = 20
 
 JOINT_MIN = np.deg2rad([-200.0, -120.0, -170.0, -140.0, -120.0, -360.0])
-JOINT_MAX = np.deg2rad([200.0, 120.0, 170.0, 140.0, 120.0, 360.0])
+JOINT_MAX = np.deg2rad([550.0, 120.0, 170.0, 140.0, 120.0, 360.0])
 MAX_Q_STEP = math.radians(2.0)
 
 GRIP_PHASES = {'grip_pick', 'grip_place', 'spoon_pick', 'spoon_place'}
-PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full'}
+PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full', 'sauce_full'}
 
 
 def wrapped_q_delta(q_goal, q_start):
     return (q_goal - q_start + np.pi) % (2.0 * np.pi) - np.pi
+
+def motion_q_delta(q_goal, q_start):
+    q_goal = np.asarray(q_goal, dtype=float)
+    q_start = np.asarray(q_start, dtype=float)
+
+    delta = wrapped_q_delta(q_goal, q_start)
+
+    # q1이 200도를 넘어갈 때 multi-turn 사용
+    if q_start[0] > math.radians(200.0) or q_goal[0] > math.radians(200.0):
+        delta[0] = q_goal[0] - q_start[0]
+
+    return delta
 
 def signed_delta_tick(raw_now, raw_home):
     return (int(raw_now) - int(raw_home) + 2048) % 4096 - 2048
 
 def to_u32(value):
     return int(value) & 0xFFFFFFFF
+
+def to_s32(value):
+    value = int(value) & 0xFFFFFFFF
+
+    if value & 0x80000000:
+        value -= 0x100000000
+
+    return value
 
 
 class HardwareMotionControlNode(Node):
@@ -252,7 +274,7 @@ class HardwareMotionControlNode(Node):
         elif phase == 'pack_pick':
             self.command_pneumatic(enabled=False)
 
-        elif phase == 'pack_full':
+        elif phase in {'pack_full', 'sauce_full'}:
             self.command_pneumatic(enabled=False)
 
     def build_phase_trajectory(self, phase, q_start, waypoints, class_name):
@@ -379,6 +401,112 @@ class HardwareMotionControlNode(Node):
 
             return trajectory
 
+        if phase == 'sauce_full':
+            pick, pick_lift, place_lift, place = [
+                q.copy() for q in waypoints
+            ]
+
+            q_home2 = CONTROL_READY2.copy()
+
+            # 현재 위치 -> CONTROL_READY2
+            self.move(
+                trajectory,
+                q_start,
+                q_home2,
+                2.0
+            )
+            self.hold(
+                trajectory,
+                q_home2,
+                0.5
+            )
+
+            # HOME2 -> 소스 pick
+            self.move(
+                trajectory,
+                q_home2,
+                pick_lift,
+                2.0,
+                True
+            )
+
+            self.move(
+                trajectory,
+                pick_lift,
+                pick,
+                2.0,
+                True
+            )
+
+            self.hold(
+                trajectory,
+                pick,
+                1.0,
+                action='공압 on',
+                action_delay=0.1,
+                pack_horizontal=True
+            )
+
+            self.move(
+                trajectory,
+                pick,
+                pick_lift,
+                2.0,
+                True
+            )
+
+            # 소스 pick -> 450도 branch place
+            self.move(
+                trajectory,
+                pick_lift,
+                place_lift,
+                6.0,
+                True
+            )
+
+            self.move(
+                trajectory,
+                place_lift,
+                place,
+                2.0,
+                True
+            )
+
+            self.hold(
+                trajectory,
+                place,
+                1.0,
+                action='공압 off',
+                action_delay=0.1,
+                pack_horizontal=True
+            )
+
+            # PLACE -> CONTROL_READY2
+            self.move(
+                trajectory,
+                place,
+                q_home2,
+                4.0
+            )
+
+            self.hold(
+                trajectory,
+                q_home2,
+                0.3
+            )
+
+            # HOME2 -> 원래 HOME
+            # q2~q6은 이미 CONTROL_READY와 같으므로
+            # 여기서는 실제로 q1만 360 -> 0
+            self.move(
+                trajectory,
+                q_home2,
+                CONTROL_READY,
+                4.0
+            )
+
+            return trajectory
+
         return
 
     def build_grip_motion(self, trajectory, q_start, approach, target, lift, action):
@@ -475,7 +603,7 @@ class HardwareMotionControlNode(Node):
 
     def _safe_move_duration(self, q_start, q_goal, minimum_duration):
         max_delta_deg = float(np.max(np.abs(np.rad2deg(
-            wrapped_q_delta(q_goal, q_start)
+            motion_q_delta(q_goal, q_start)
         ))))
         max_speed_deg_s = math.degrees(MAX_Q_STEP) / 0.05
         required_time = 1.875 * max_delta_deg / max_speed_deg_s
@@ -495,8 +623,8 @@ class HardwareMotionControlNode(Node):
             q_middle = previous_segment['goal']
             q_next = next_segment['goal']
 
-            previous_delta = wrapped_q_delta(q_middle, q_previous)
-            next_delta = wrapped_q_delta(q_next, q_middle)
+            previous_delta = motion_q_delta(q_middle, q_previous)
+            next_delta = motion_q_delta(q_next, q_middle)
 
             # 앞 구간과 뒤 구간의 진행 방향이 같은 관절만 중간 속도를 유지한다.
             same_direction = (
@@ -505,7 +633,7 @@ class HardwareMotionControlNode(Node):
 
             v_middle = (
                 velocity_scale
-                * wrapped_q_delta(
+                * motion_q_delta(
                     q_next,
                     q_previous
                 )/ (previous_segment['duration'] + next_segment['duration'])
@@ -537,7 +665,7 @@ class HardwareMotionControlNode(Node):
         duration
     ):
         q_start = np.asarray(q_start, dtype=float)
-        q_goal = q_start + wrapped_q_delta(q_goal, q_start)
+        q_goal = q_start + motion_q_delta(q_goal, q_start)
 
         v_start = np.asarray(v_start, dtype=float)
         v_goal = np.asarray(v_goal, dtype=float)
@@ -637,7 +765,7 @@ class HardwareMotionControlNode(Node):
             JOINT_MIN, JOINT_MAX
         )
         q_step = np.clip(
-            wrapped_q_delta(q_ref, self.q_cmd_prev),
+            motion_q_delta(q_ref, self.q_cmd_prev),
             -MAX_Q_STEP, MAX_Q_STEP
         )
         q_cmd = np.clip(
@@ -653,7 +781,7 @@ class HardwareMotionControlNode(Node):
             return
 
         finish_error_deg = float(np.max(np.abs(np.rad2deg(
-            wrapped_q_delta(q_ref, q_cmd)
+            motion_q_delta(q_ref, q_cmd)
         ))))
 
         if finish_error_deg <= FINISH_TOLERANCE_DEG:
@@ -798,7 +926,15 @@ class HardwareMotionControlNode(Node):
         q = np.zeros(DOF, dtype=float)
 
         for i in range(DOF):
-            delta_tick = signed_delta_tick(raw_list[i], HOME_RAW[i])
+
+            if i == 0:
+                delta_tick = int(raw_list[i]) - int(HOME_RAW[i])
+
+            else:
+                delta_tick = signed_delta_tick(
+                    raw_list[i], HOME_RAW[i]
+                )
+
             motor_deg = delta_tick * 360.0 / 4096
             q[i] = math.radians(motor_deg)
 
@@ -810,9 +946,14 @@ class HardwareMotionControlNode(Node):
 
         for i in range(DOF):
             joint_deg = math.degrees(q[i])
-            motor_deg = joint_deg
-            delta_tick = round(motor_deg * 4096 / 360.0)
-            raw_list.append((int(HOME_RAW[i]) + int(delta_tick)) % 4096)
+            delta_tick = round(joint_deg * 4096 / 360.0)
+
+            raw = int(HOME_RAW[i]) + int(delta_tick)
+
+            if i != 0:
+                raw %= 4096
+
+            raw_list.append(raw)
 
         return raw_list
 
@@ -866,16 +1007,25 @@ class HardwareMotionControlNode(Node):
         time.sleep(0.05)
 
         for dxl_id in ALL_IDS:
+
+            operating_mode = (
+                EXTENDED_POSITION_MODE
+                if dxl_id == 1
+                else POSITION_MODE
+            )
+
             self._write1(
                 dxl_id,
                 ADDR_OPERATING_MODE,
-                POSITION_MODE
+                operating_mode
             )
+
             self._write4(
                 dxl_id,
                 ADDR_PROFILE_ACCELERATION,
                 PROFILE_ACCELERATION
             )
+
             self._write4(
                 dxl_id,
                 ADDR_PROFILE_VELOCITY,
@@ -893,20 +1043,33 @@ class HardwareMotionControlNode(Node):
             )
 
     def read_arm_positions(self):
-        return [
-            self._read4(
+        raw_list = []
+
+        for dxl_id in ARM_IDS:
+            raw = self._read4(
                 dxl_id,
                 ADDR_PRESENT_POSITION
-            ) % 4096
-            for dxl_id in ARM_IDS
-        ]
+            )
+
+            if dxl_id == 1:
+                raw = to_s32(raw)
+            else:
+                raw %= 4096
+
+            raw_list.append(raw)
+
+        return raw_list
 
     def write_arm_positions(self, raw_list):
         for dxl_id, raw in zip(ARM_IDS, raw_list):
+
+            if dxl_id != 1:
+                raw = int(raw) % 4096
+
             self._write4(
                 dxl_id,
                 ADDR_GOAL_POSITION,
-                int(raw) % 4096
+                int(raw)
             )
 
     def shutdown(self):
