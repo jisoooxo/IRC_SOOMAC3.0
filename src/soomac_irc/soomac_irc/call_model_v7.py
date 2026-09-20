@@ -1,5 +1,6 @@
 import copy
 import json
+import time
 import uuid
 
 import torch
@@ -17,7 +18,10 @@ except ImportError:
     from transformers import AutoModelForImageTextToText as _AutoVLM
 
 MODEL_PATH = "/home/roma/Desktop/sLLM/gemma-4-12B-it"
+DEFAULT_TOOL_ADAPTER_PATH = "/home/roma/ros2_ws/src/soomac_irc/finetune/v5_1/runs/gemma4_tool_lora_int8_v5_1_deterministic"
 MODEL_QUANTIZATION = "int8"  # int8 / nf4 / bf16
+TOOL_PROMPT_VERSION = "v7.20260920"
+FREE_REPLY_PROMPT_VERSION = "v7.20260920"
 TOOL_INPUT_MAX_TOKENS = 3328  # 입력 3328 + 합법 Tool JSON 최대 512 + 여유 256 = 학습 4096
 TOOL_MAX_TOKENS = 1024        # 복합 추천·다중 restriction 출력 잘림 방지
 VLM_MAX_TOKENS = 1024  # VLM 설명과 마지막 판정 문장이 잘리지 않게 유지
@@ -632,6 +636,7 @@ def make_call_model(model, processor, logger=None):
         # 호출마다 processor를 새로 만들어 이전 생성 상태를 공유하지 않는다.
         json_processor = XGrammarLogitsProcessor(compiled_grammar)
 
+        started_at = time.perf_counter()
         output = model.generate(
             **inputs,
             max_new_tokens=TOOL_MAX_TOKENS,
@@ -647,6 +652,13 @@ def make_call_model(model, processor, logger=None):
         ).strip()
 
         parsed = parse_tool_call(raw)
+        call_model.last_trace = {
+            "raw_output": raw,
+            "parsed_output": copy.deepcopy(parsed),
+            "prompt_tokens": prompt_length,
+            "generated_tokens": int(output[0].shape[0] - prompt_length),
+            "latency_ms": round((time.perf_counter() - started_at) * 1000, 3),
+        }
 
         if parsed is None:
             if logger is not None:
@@ -663,6 +675,7 @@ def make_call_model(model, processor, logger=None):
             "changes": parsed["changes"],
         }
 
+    call_model.last_trace = None
     return call_model
 
 def make_generate_reply(model, processor):
@@ -721,6 +734,8 @@ def make_generate_reply(model, processor):
 
         # 일단 Tool과 같은 1024 출력 한도를 유지한다.
         # 실제 runtime 로그를 본 뒤 Reply 전용 한도를 따로 결정한다.
+        started_at = time.perf_counter()
+
         if isinstance(model, PeftModel):
             with model.disable_adapter():
                 output = model.generate(
@@ -747,8 +762,17 @@ def make_generate_reply(model, processor):
         ).strip()
         reply = parse_free_reply(raw)
 
+        generate_reply.last_trace = {
+            "raw_output": raw,
+            "parsed_reply": reply,
+            "prompt_tokens": prompt_length,
+            "generated_tokens": int(output[0].shape[0] - prompt_length),
+            "latency_ms": round((time.perf_counter() - started_at) * 1000, 3),
+        }
+
         return reply or "질문을 정확히 이해하지 못했어요."
 
+    generate_reply.last_trace = None
     return generate_reply
 
 def make_call_vlm(model, processor, logger=None):

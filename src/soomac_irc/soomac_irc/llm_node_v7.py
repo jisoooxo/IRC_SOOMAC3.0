@@ -45,6 +45,8 @@ ENABLE_UNCERTAIN_RETAKE = False
 
 BY_VLM_NUM = 3
 
+VLM_JUDGE_REASON_SPEAK = False
+
 # Python 내부는 한글, /llm/plan 발행 직전에만 영문 class로 변환
 TOPIC_CLASS_NAMES = {
     "얇은면": "noodle_thin",
@@ -323,27 +325,32 @@ class LLMNode(Node):
         # 설명 본문은 무시하고 마지막 한 줄의 고정 판정만 사용한다.
         if not isinstance(raw_text, str) or not raw_text.strip():
             return "uncertain"
-
+        
         last_line = raw_text.strip().splitlines()[-1].strip()
 
+        judge_reason_text = raw_text - last_line
+
         if last_line in ("판정: PASS", "VERDICT: PASS"):
-            return "pass"
+
+            if VLM
+
+            return judge_reason_text, "pass"
 
         if last_line in (
             "판정: FAIL",
             "VERDICT: FAIL",
             "판정: WRONG_INGREDIENT",
         ):
-            return "fail"
+            return judge_reason_text, "fail"
 
         if last_line in (
             "판정: UNCERTAIN",
             "VERDICT: UNCERTAIN",
             "판정: UNKNOWN_RETAKE",
         ):
-            return "uncertain"
+            return judge_reason_text, "uncertain"
 
-        return "uncertain"
+        return judge_reason_text, "uncertain"
 
     def _build_vlm_request(self, expected: str, camera_images: list) -> dict | None: # expected : 현재 로봇이 실제로 작업한 재료 이름.
         # 현재 observation이 없으면 모델을 호출하지 않고 UNCERTAIN으로 처리한다.

@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'stt_node = soomac_irc.stt_node:main',
             'tts_node = soomac_irc.tts_node:main',
+            'llm_debug_v7 = soomac_irc.llm_debug_v7:main',
         ],
     },
 )
