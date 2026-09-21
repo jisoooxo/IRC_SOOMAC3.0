@@ -1706,7 +1706,7 @@
 
     const 최대화면대화수 = 200;
     let 대기중인초기화동작 = null;
-    // UI_NODE -> HTML agent_status의 마지막 스냅샷. work_complete 때 용기 그림을 유지하는 데 사용한다.
+    // UI_NODE -> HTML agent_status의 마지막 스냅샷. work_complete 때는 다음 주문을 위해 비운다.
     let latestAgentStatus = {};
     let 마지막소스표시키 = '';
     let vlmSnapshotUrl = '';
@@ -2636,18 +2636,9 @@
       화면세션초기화();
       if (resetDialog.open) resetDialog.close();
     });
-    // UI_NODE -> HTML: 전체 주문/작업 종료. 마지막 filled_classes는 유지한다.
+    // UI_NODE -> HTML: 마지막 안내 종료와 LLM 초기화가 확인되면 시작 화면으로 자동 복귀한다.
     socket.on('work_complete', () => {
-      latestAgentStatus = {
-        ...latestAgentStatus,
-        phase: 'completed',
-        work_state: 'completed',
-        status_text: '주문 완료',
-        reset_allowed: false
-      };
-      진행상태그리기(latestAgentStatus);
-      마이크('idle');
-      startScreen.hidden = true;
+      화면세션초기화();
       if (resetDialog.open) resetDialog.close();
     });
 

@@ -38,6 +38,9 @@ ENABLE_RUNTIME_LOG = True
 VLM_JUDGE_REASON_SPEAK = False
 VLM_JUDGE_REASON_MAX_CHARS = 300
 
+# UI가 마지막 TTS 종료를 대조할 문장. 실제 발행문과 상태 JSON에 같은 값을 쓴다.
+ORDER_COMPLETE_REPLY = "소스까지 모두 담았어요. 이용해 주셔서 감사합니다."
+
 # 모델과 로그 경로
 TOOL_ADAPTER_PATH = "/home/roma/ros2_ws/src/soomac_irc/finetune/v5_1/runs/gemma4_tool_lora_int8_v5_1_deterministic"
 RUNTIME_LOG_DIRECTORY = Path(__file__).resolve().parents[1] / "soomac_runtime_logs"
@@ -835,6 +838,7 @@ class LLMNode(Node):
             "recommendation_sections": recommendation_sections,
             "skipped": [SECTION_LABELS[name] for name in SECTION_ORDER if name in self.skipped_sections],
             "status_text": status_text,
+            "completion_reply": ORDER_COMPLETE_REPLY if self.order_finished else None,
             **work_ui_state,
         }
 
@@ -1073,7 +1077,7 @@ class LLMNode(Node):
         self.conversation_started = False
         self.order_finished = True
         self._set_stt_enabled(False)
-        self._publish_reply("소스까지 모두 담았어요. 이용해 주셔서 감사합니다.")
+        self._publish_reply(ORDER_COMPLETE_REPLY)
         self.done_pub.publish(Bool(data=True))
         self.get_logger().info("총 주문 완료")
 

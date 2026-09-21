@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import sys
 import time # 시간 체크 용
+import json
 
 import numpy as np
 import sounddevice as sd
@@ -228,14 +229,32 @@ class TTSNode(Node):
 
         self.stt_stop_pub = self.create_publisher(String, '/stt_stop', 1) # tts 음성이 stt안에 들어갈 수 있어서 이동안의 쌓인 큐를 없애기 위함
         self.stt_retrigger_pub = self.create_publisher(String, '/tts_done', 1) # 이거 도착하면 큐 내부 싹다 버려버리고 다시 음성 받음
+        self.utterance_done_pub = self.create_publisher(String, '/tts/utterance_done', 10) # UI가 마지막 안내와 이전 발화를 구별하도록 원문도 보낸다.
 
         self.create_subscription(String, '/llm_response', self.llm_callback, 1)
 
 
     def llm_callback(self, message):
-
         raw = message.data.strip()
+        if not raw:
+            return
+        status = 'failed'
+        try:
+            status = self._speak_reply(raw)
+        except Exception as error:
+            self.get_logger().error(f'TTS 발화 처리 실패: {error}\n{traceback.format_exc()}')
+        finally:
+            try:
+                # write 반환만으로는 재생 종료가 아니다. stop은 남은 출력 버퍼 재생을 기다린다.
+                self.speaker.stop()
+                self.speaker.start()
+            except Exception as error:
+                status = 'failed'
+                self.get_logger().error(f'TTS 출력 종료 처리 실패: {error}')
+            self.stt_retrigger_pub.publish(String(data=status))
+            self.utterance_done_pub.publish(String(data=json.dumps({'text': raw, 'status': status}, ensure_ascii=False)))
 
+    def _speak_reply(self, raw):
         llm_response = self.text_norm.normalize(raw)
 
         # text normalize 디버깅용
@@ -245,7 +264,7 @@ class TTSNode(Node):
 
         if not llm_response:
             self.get_logger().info("llm 응답 X")
-            return
+            return 'failed'
 
         self.cosyvoice_tts.model.token_hop_len=25
 
@@ -260,13 +279,16 @@ class TTSNode(Node):
 
 
         q = queue.Queue() # 큐에 청크 담아서 계속 넣어야함
+        synthesis_failed = False
        
         def producer():
+            nonlocal synthesis_failed
             try:
                 for packet in tts_generator:
                     q.put(packet['tts_speech'].squeeze(0).numpy().astype(np.float32)) # 큐에다가 생성한 청크 쌓음
 
             except Exception as e:
+                synthesis_failed = True
                 self.get_logger().error(f"합성 스레드가 터졌어용 : {e}\n{traceback.format_exc()}")
 
             finally:
@@ -292,18 +314,16 @@ class TTSNode(Node):
 
         except Exception as error:
             self.get_logger().error(f"에러 터짐 샤갈! {error}")
-            self.stt_retrigger_pub.publish(String(data='failed'))
-            return
+            return 'failed'
 
         finally:
             producer_thread.join()
 
         
 
-        if not chunks:
-            self.get_logger().error("합성된 청크가 없어요 샤갈!")
-            self.stt_retrigger_pub.publish(String(data='failed')) # 
-            return
+        if synthesis_failed or not chunks:
+            self.get_logger().error('합성 실패 또는 빈 오디오로 발화를 종료합니다.')
+            return 'failed'
 
         audio = np.concatenate(chunks) # 생성된 청크들 통합해버려 그냥
 
@@ -313,7 +333,7 @@ class TTSNode(Node):
 
         self.get_logger().info(stats.summary(len(chunks), total_time, LAST_WAV))
 
-        self.stt_retrigger_pub.publish(String(data='finished'))
+        return 'finished'
 
     def destroy_node(self):
         try:

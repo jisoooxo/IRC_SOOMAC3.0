@@ -174,26 +174,25 @@ def reset_ui_session(action):
     global latest_agent_status, latest_vlm_snapshot, ui_session_active
 
     with socket_emit_lock:
-        if action != 'complete':
-            cached_dialogue.clear()
-            latest_agent_status = {}
+        cached_dialogue.clear()
+        latest_agent_status = {}
 
         latest_mic_state = 'idle'
         latest_stt_enabled = False
         latest_vlm_snapshot = None
         ui_session_active = False
         socketio.emit('mic_state', {'state': latest_mic_state})
+        socketio.emit('agent_status', latest_agent_status)
+        socketio.emit('dialogue_snapshot', {'items': []})
 
         if action == 'complete':
             socketio.emit('work_complete', {'action': action})
         else:
-            socketio.emit('agent_status', latest_agent_status)
-            socketio.emit('dialogue_snapshot', {'items': []})
             socketio.emit('work_reset', {'action': action})
 
 
 UI_START_TOPIC = '/ui/start'           # 손님이 시작할 때 다른 ROS 노드가 대화를 열도록 알린다.
-UI_RESET_TOPIC = '/ui/reset'           # 뒤로가기·홈에서 에이전트와 제어기의 현재 작업을 초기화한다.
+UI_RESET_TOPIC = '/ui/reset'           # UI가 LLM에 현재 주문 초기화를 요청한다. MAIN의 /reset과 구분한다.
 AGENT_STATUS_TOPIC = '/agent/status'    # 에이전트의 선택·목표·현재 작업·완료 상태를 한 payload로 받는다.
 VLM_UI_IMAGE_TOPIC = '/agent/vlm_snapshot'  # VLM이 실제 사용한 3분할 UI 이미지
 RESET_ACTIONS = {'back', 'home'}
@@ -202,13 +201,16 @@ class UiNode(Node):
     def __init__(self):
         super().__init__('soomac_ui_node')
 
-        self.lifecycle_lock = threading.Lock()
+        self.lifecycle_lock = threading.RLock()
         self.destroying = False
-        self.complete_reset_pending = False
+        self.main_reset_received = False
+        self.completion_reply = None
+        self.last_tts_text = None
+        self.order_reset_requested = False
 
         self.start_publisher = self.create_publisher(String, UI_START_TOPIC, PUBLISH_QUEUE_SIZE)
         self.reset_publisher = self.create_publisher(String, UI_RESET_TOPIC, PUBLISH_QUEUE_SIZE)
-        self.complete_reset_subscription = self.create_subscription(String, UI_RESET_TOPIC, self.ui_reset_callback, SUBSCRIPTION_QUEUE_SIZE)
+        self.complete_reset_subscription = self.create_subscription(String, '/reset', self.main_reset_callback, SUBSCRIPTION_QUEUE_SIZE)
 
         # STT가 손님의 최종 문장을 확정했을 때 화면에 보여준다.
         self.question_subscription = self.create_subscription(String, '/stt_question', self.stt_question_callback, SUBSCRIPTION_QUEUE_SIZE)
@@ -225,6 +227,7 @@ class UiNode(Node):
 
         # 재생 성공과 실패 모두 다시 들을 수 있다는 신호로 사용한다.
         self.tts_done_subscription = self.create_subscription(String, '/tts_done', self.tts_done_callback, SUBSCRIPTION_QUEUE_SIZE)
+        self.utterance_done_subscription = self.create_subscription(String, '/tts/utterance_done', self.utterance_done_callback, SUBSCRIPTION_QUEUE_SIZE)
         self.agent_status_subscription = self.create_subscription(String, AGENT_STATUS_TOPIC, self.agent_status_callback,SUBSCRIPTION_QUEUE_SIZE)
 
         self.get_logger().info('손님용 UI ROS 노드가 준비됐어요.')
@@ -234,13 +237,17 @@ class UiNode(Node):
         with self.lifecycle_lock:
             if self.destroying:
                 return False
+            self.main_reset_received = False
+            self.completion_reply = None
+            self.last_tts_text = None
+            self.order_reset_requested = False
             self.start_publisher.publish(String(data=UI_START_MESSAGE))
 
         self.get_logger().info('손님이 시작 버튼을 눌러 /ui/start를 보냈어요.')
         return True
 
     def publish_reset(self, action):
-        if action not in RESET_ACTIONS:
+        if action not in RESET_ACTIONS | {'complete'}:
             return False
 
         with self.lifecycle_lock:
@@ -249,20 +256,47 @@ class UiNode(Node):
             payload = json.dumps({'action': action}, ensure_ascii=False)
             self.reset_publisher.publish(String(data=payload))
 
-        self.get_logger().warning(
-            f'손님이 {action} 버튼을 눌러 {UI_RESET_TOPIC}을 보냈어요.')
+        self.get_logger().info(f'주문 초기화 요청: {UI_RESET_TOPIC}, action={action}')
         return True
 
-    def ui_reset_callback(self, message):
+    def main_reset_callback(self, message):
+        # MAIN은 전체 작업 완료 후 JSON이 아닌 문자열 reset을 보낸다.
+        with self.lifecycle_lock:
+            if message.data != 'reset' or not is_ui_session_active():
+                return
+            self.main_reset_received = True
+            self.request_completed_order_reset()
+
+    def utterance_done_callback(self, message):
         try:
             payload = json.loads(message.data)
-
-            if isinstance(payload, dict) and payload.get("action") == "complete":
-                self.complete_reset_pending = True
-                self.get_logger().info("최종 TTS 종료 후 UI를 초기화할 예정입니다.")
-
+            if not isinstance(payload, dict) or payload.get('status') not in ('finished', 'failed'):
+                return
+            text = payload.get('text')
+            if not isinstance(text, str) or not text.strip():
+                return
+            with self.lifecycle_lock:
+                if not is_ui_session_active():
+                    return
+                self.last_tts_text = text.strip()
+                if payload['status'] == 'failed':
+                    self.get_logger().warning('TTS 실패로 발화 처리가 종료됐어요. 재생 성공과 구분합니다.')
+                self.request_completed_order_reset()
         except (json.JSONDecodeError, TypeError):
-            self.get_logger().warning("형식이 잘못된 /ui/reset 메시지를 무시했어요.")
+            self.get_logger().warning('형식이 잘못된 /tts/utterance_done 메시지를 무시했어요.')
+
+    def request_completed_order_reset(self):
+        # 서로 다른 토픽의 도착 순서와 무관하게 세 조건을 모두 기다린다.
+        with self.lifecycle_lock:
+            if not is_ui_session_active() or self.order_reset_requested:
+                return
+            if not self.main_reset_received or not self.completion_reply or self.last_tts_text != self.completion_reply:
+                return
+            self.order_reset_requested = True
+            if not self.publish_reset('complete'):
+                self.order_reset_requested = False
+                return
+            self.get_logger().info('MAIN 완료·마지막 TTS 종료 확인. LLM 초기화 응답을 기다립니다.')
 
     def stt_question_callback(self, message):
         try:
@@ -322,12 +356,6 @@ class UiNode(Node):
 
     def tts_done_callback(self, _message):
         try:
-            if self.complete_reset_pending:
-                self.complete_reset_pending = False
-                reset_ui_session("complete")
-                self.get_logger().info("최종 TTS 종료 후 UI 완료 화면으로 전환했어요.")
-                return
-
             if not is_ui_session_active():
                 return
 
@@ -345,7 +373,20 @@ class UiNode(Node):
             if not isinstance(status, dict):
                 raise ValueError('최상위 JSON은 객체여야 합니다.')
 
-            emit_agent_status(status)
+            with self.lifecycle_lock:
+                if self.order_reset_requested and status.get('work_state') == 'idle' and status.get('reset_allowed') is True:
+                    self.main_reset_received = False
+                    self.completion_reply = None
+                    self.last_tts_text = None
+                    self.order_reset_requested = False
+                    reset_ui_session('complete')
+                    self.get_logger().info('LLM 초기화 확인 후 시작 화면으로 복귀했어요.')
+                    return
+                completion_reply = status.get('completion_reply')
+                if status.get('work_state') == 'completed' and isinstance(completion_reply, str) and completion_reply.strip():
+                    self.completion_reply = completion_reply.strip()
+                emit_agent_status(status)
+                self.request_completed_order_reset()
             self.get_logger().info('에이전트 진행 상태를 화면에 보냈어요.')
         except (json.JSONDecodeError, ValueError) as error:
             self.get_logger().warning(
@@ -415,15 +456,21 @@ def handle_disconnect():
 def handle_start(_payload=None):
     try:
         with ros_node_lock:
+            # Socket.IO의 동시 시작 요청도 확인·세션 열기·발행을 한 번만 수행한다.
+            if is_ui_session_active():
+                return
             current_ros_node = ros_node
 
-        if current_ros_node is None:
-            print('ROS가 연결되지 않아 /ui/start는 보내지 못했어요.')
-        else:
-            current_ros_node.publish_start()
+            # 빠른 ROS 응답도 놓치지 않게 발행 전에 화면 세션을 연다.
+            # ROS가 없어도 디자인을 확인할 수 있어야 하므로 화면 상태는 독립적으로 전환한다.
+            activate_ui_session()
+            if current_ros_node is None:
+                print('ROS가 연결되지 않아 /ui/start는 보내지 못했어요.')
+            else:
+                if not current_ros_node.publish_start():
+                    reset_ui_session('home')
+                    return
 
-        # ROS가 없어도 디자인을 확인할 수 있어야 하므로 화면 상태는 독립적으로 전환한다.
-        activate_ui_session()
         sync_mic_with_stt()
     except Exception as error:
         print(f'시작 요청을 처리하다가 터졌어요: ' f'{error}\n{traceback.format_exc()}')
