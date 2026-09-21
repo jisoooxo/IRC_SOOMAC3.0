@@ -34,6 +34,7 @@ class RailBridge(Node):
         # MAIN -> RAIL
         self.create_subscription(Empty, '/rail/home', self.home_callback, 10)
         self.create_subscription(String, '/rail/motion', self.motion_callback, 10)
+        self.create_subscription(String, '/reset', self.reset_callback, 10)
 
         # RAIL -> MAIN
         self.home_done_pub = self.create_publisher(String, '/rail/home_done', 10)
@@ -80,6 +81,14 @@ class RailBridge(Node):
         self.get_logger().info(f'Rail 이동: {class_name}')
 
         self.send_serial(f'R{rotations:.2f}')
+
+    def reset_callback(self, _msg):
+            self.pending_class = None
+            self.move_home = True
+    
+            self.get_logger().info('레일 초기화 시작')
+    
+            self.send_serial('H')
 
     # ==================== SERIAL ====================
 
