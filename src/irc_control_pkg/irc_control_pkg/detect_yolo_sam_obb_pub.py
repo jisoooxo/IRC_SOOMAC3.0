@@ -39,7 +39,7 @@ pc = "JISU"  # "JUNMI" or "JISU"
 
 if pc == "JISU":
     from irc_control_pkg.cover_detect import get_best_cover 
-    YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_13.pt'
+    YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_15.pt'
 
     # SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
     # SAM2_CKPT   = '/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt'

@@ -13,7 +13,7 @@ from irc_control_pkg.motion_trajectory import (MotionTrajectory, motion_q_delta,
 
 PORT_XH = '/dev/dynamixel_0'
 PORT_XM = '/dev/dynamixel_1'
-ARDUINO_PORT = '/dev/ttyUSB3'
+ARDUINO_PORT = '/dev/ttyUSB2'
 
 XH_IDS = [1, 2, 3, 4]
 ARM_IDS = [1, 2, 3, 4, 5, 6]
@@ -61,8 +61,8 @@ FINISH_TOLERANCE_DEG = 0.2
 
 ENABLE_MOTION = True
 
-PROFILE_VELOCITY = 30
-PROFILE_ACCELERATION = 20
+PROFILE_VELOCITY = 40
+PROFILE_ACCELERATION = 30
 
 JOINT_MIN = np.deg2rad([-200.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([550.0, 120.0, 170.0, 140.0, 120.0, 360.0])

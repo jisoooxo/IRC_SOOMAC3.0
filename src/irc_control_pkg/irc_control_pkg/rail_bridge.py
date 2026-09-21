@@ -6,7 +6,7 @@ from std_msgs.msg import Empty, String
 import serial
 
 # ==================== 레일 설정 ====================
-SERIAL_PORT = '/dev/ttyACM0'
+SERIAL_PORT = '/dev/ttyACM1'
 SERIAL_BAUD = 115200
 
 # 원점 센서 = 0 rev 기준 절대 회전수

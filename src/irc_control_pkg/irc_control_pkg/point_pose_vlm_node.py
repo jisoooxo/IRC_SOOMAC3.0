@@ -28,8 +28,8 @@ OIL_PICK_POINT = np.array([-0.25, -0.14, 0.04], dtype=float)
 SAUCE_PLACE_POINT = np.array([0.000, -0.25, 0.07], dtype=float)
 PLACE_POINTS = {
     'noodle': {'position': np.array([-0.012, -0.19, 0.06], dtype=float), 'yaw_deg': 180.0,},
-    'mushroom': {'position': np.array([-0.06, -0.30, 0.06], dtype=float), 'yaw_deg': 180.0,},
-    'onion': {'position': np.array([-0.06, -0.305, 0.06], dtype=float), 'yaw_deg': 180.0,},
+    'mushroom': {'position': np.array([-0.065, -0.305, 0.06], dtype=float), 'yaw_deg': 180.0,},
+    'onion': {'position': np.array([-0.055, -0.305, 0.06], dtype=float), 'yaw_deg': 180.0,},
     'crab': {'position': np.array([-0.065, -0.24, 0.06], dtype=float), 'yaw_deg': 180.0,},
     'sausage': {'position': np.array([0.062, -0.30, 0.06], dtype=float), 'yaw_deg': 180.0,},
     'cover': {'position': np.array([-0.01, -0.25, 0.06], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
@@ -75,6 +75,7 @@ class PointPoseNode(Node):
         self.cp_repeat_count = 1
         self.vlm_hold_timer = None
 
+        self.cover_vision_delay = None
         self.confirm_retry_phase = None
         self.vlm_confirm_pending = False
         self.home_pending = False
@@ -159,7 +160,15 @@ class PointPoseNode(Node):
 
         if self.confirm_retry_phase == 'point1':
             self.confirm_retry_phase = 'pick'
-            self.request_vision()
+
+            if self.current_ingredient == 'cover':
+                self.cover_vision_delay = self.create_timer(
+                    2.0,
+                    self.cover_vision_delay_done
+                )
+            else:
+                self.request_vision()
+
             return
 
         if self.confirm_retry_phase == 'pick':
@@ -173,6 +182,13 @@ class PointPoseNode(Node):
             self.move_vlm_confirm()
             return
 
+    def cover_vision_delay_done(self):
+        self.cover_vision_delay.cancel()
+        self.destroy_timer(self.cover_vision_delay)
+        self.cover_vision_delay = None
+
+        self.request_vision()
+
     def vlm_confirm_delay_done(self):
         self.vlm_confirm_delay.cancel()
         self.destroy_timer(self.vlm_confirm_delay)
@@ -181,7 +197,6 @@ class PointPoseNode(Node):
         msg = Bool()
         msg.data = True
         self.vlm_confirm_ready_pub.publish(msg)
-
 
     def main_confirm_callback(self, msg):
         if msg.data.strip() == 'success':
@@ -216,10 +231,24 @@ class PointPoseNode(Node):
         self.plan_pick(position, yaw, mode)
 
     def vision_request_callback(self, _msg):
+        if self.current_ingredient == 'cover':
+            self.cover_vision_delay = self.create_timer(
+                2.0,
+                self.cover_vision_delay_done
+            )
+            return
+
         self.request_vision()
 
     def reset_callback(self, _msg):
         self.get_logger().info('POINT reset 시작')
+
+        cover_delay = self.cover_vision_delay
+        self.cover_vision_delay = None
+
+        if cover_delay is not None:
+            cover_delay.cancel()
+            self.destroy_timer(cover_delay)
 
         hold_timer = self.vlm_hold_timer
         self.vlm_hold_timer = None

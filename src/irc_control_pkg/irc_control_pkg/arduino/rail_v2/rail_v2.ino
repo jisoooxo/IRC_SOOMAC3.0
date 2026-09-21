@@ -47,7 +47,7 @@ const float STEPS_PER_REV = -800.0;
 
 /* ==================== 일반 이동 설정 ==================== */
 
-const float MAX_SPEED_REV = 8.0;      // rev/s
+const float MAX_SPEED_REV = 10.0;      // rev/s
 const float ACCEL_REV     = 12.75;    // rev/s^2
 
 
