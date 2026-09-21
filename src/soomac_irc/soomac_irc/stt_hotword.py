@@ -11,6 +11,9 @@ MENU_WORD_REPLACEMENTS = {
     '넓적면': '넓은면',
     '얇은 면': '얇은면',
     '넓적 면': '넓은면',
+    '소세질': '소세지를',
+    '소셀질': '소세지',
+    '벗엉': '버섯',
 }
 
 MENU_WORDS = (
@@ -21,7 +24,7 @@ MENU_WORDS = (
 MENU_ONLY_PATTERN = re.compile(
     rf'({"|".join(MENU_WORDS)})\s*만조(?=$|[\s.!?])')
 FINAL_GIVE_PATTERN = re.compile(
-    r'(적게|조금|보통으로|보통|적당히|많이|넉넉히|담아|넣어)\s*저(?=$|[.!?])')
+    r'(적게|조금|보통으로|보통|적당히|많이|넉넉히|담아|넣어)\s*[저져쟈](?=$|[.!?])') # 매칭되면 앞의 표현은 유지하고 저만 줘로 바꿈.
 
 
 def normalize_stt_text(text):
