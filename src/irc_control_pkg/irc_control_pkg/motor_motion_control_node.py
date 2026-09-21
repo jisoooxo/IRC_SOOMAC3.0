@@ -9,17 +9,17 @@ from dynamixel_sdk import PacketHandler, PortHandler
 from rclpy.node import Node
 from std_msgs.msg import Empty, Float64MultiArray
 from sensor_msgs.msg import JointState
+from irc_control_pkg.motion_trajectory import (MotionTrajectory, motion_q_delta, CONTROL_READY)
 
 PORT_XH = '/dev/dynamixel_0'
-PORT_XM = '/dev/ttyUSB1'
-ARDUINO_PORT = '/dev/ttyUSB0'
+PORT_XM = '/dev/dynamixel_1'
+ARDUINO_PORT = '/dev/ttyUSB3'
 
 XH_IDS = [1, 2, 3, 4]
 ARM_IDS = [1, 2, 3, 4, 5, 6]
 GRIPPER_ID = 7
 ALL_IDS = ARM_IDS + [GRIPPER_ID]
 DOF = 6
-CONTROL_READY = np.deg2rad([0.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 
 BAUDRATE = 1000000
 PROTOCOL_VERSION = 2.0
@@ -35,7 +35,6 @@ POSITION_MODE = 3
 EXTENDED_POSITION_MODE = 4
 
 HOME_RAW = np.full(DOF, 2048, dtype=int)
-CONTROL_READY2 = np.deg2rad([180.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 GRIPPER_HOME_RAW = 2048
 
 GRIPPER_OPEN_DEG = {
@@ -45,7 +44,7 @@ GRIPPER_OPEN_DEG = {
     'onion':    -15,
     'crab':     -30,
     'sausage':  -35,
-    'spoon':    -15
+    'spoon':    0
 }
 
 GRIPPER_CLOSE_DEG = {
@@ -73,26 +72,6 @@ GRIP_PHASES = {'grip_pick', 'grip_place', 'spoon_pick', 'spoon_place'}
 PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full', 'sauce_full'}
 
 
-def wrapped_q_delta(q_goal, q_start):
-    return (q_goal - q_start + np.pi) % (2.0 * np.pi) - np.pi
-
-def motion_q_delta(q_goal, q_start):
-    q_goal = np.asarray(q_goal, dtype=float)
-    q_start = np.asarray(q_start, dtype=float)
-
-    raw_delta = q_goal - q_start
-    delta = wrapped_q_delta(q_goal, q_start)
-
-    # q1이 정확히 +180° 이동이면 +방향 유지
-    if np.isclose(delta[0], -math.pi, atol=1e-9) and raw_delta[0] > 0.0:
-        delta[0] = math.pi
-
-    # extended branch는 실제 multi-turn 값 유지
-    if q_start[0] > math.radians(200.0) or q_goal[0] > math.radians(200.0):
-        delta[0] = raw_delta[0]
-
-    return delta
-
 def signed_delta_tick(raw_now, raw_home):
     return (int(raw_now) - int(raw_home) + 2048) % 4096 - 2048
 
@@ -112,6 +91,8 @@ class HardwareMotionControlNode(Node):
 
     def __init__(self):
         super().__init__('hardware_motion_control_node')
+
+        self.motion = MotionTrajectory()
 
         self.q_home = np.zeros(DOF, dtype=float)
         self.q_cmd_prev = self.q_home.copy()
@@ -147,6 +128,11 @@ class HardwareMotionControlNode(Node):
         self.joint_state_request_sub = self.create_subscription(Empty, '/arm/request_joint_state', self.joint_state_request_callback, 10) # POINT1에서 실제 관절각을 요청받았을 때만 사용 -> 변환행렬 계산에 필요
         # 모션 제어 주기
         self.timer = self.create_timer(0.05, self.control_loop)
+        # 시작 자세
+        q_start = self.read_current_q()
+        trajectory = []
+        self.motion.move(trajectory, q_start, CONTROL_READY, 2.0)
+        self.start_trajectory('joint_target', q_start, trajectory)
 
     def setup_arduino(self):
         try:
@@ -208,7 +194,7 @@ class HardwareMotionControlNode(Node):
         q_start = self.read_current_q()
 
         try:
-            trajectory = self.build_phase_trajectory(
+            trajectory = self.motion.build_phase_trajectory(
                 phase,
                 q_start,
                 waypoints,
@@ -248,7 +234,7 @@ class HardwareMotionControlNode(Node):
         ## waypoint가 따로 없을 때 이동 시간
         minimum_duration = 2.0 if len(waypoints) == 1 else 0.3
         for q_target in waypoints:
-            self.move(
+            self.motion.move(
                 trajectory,
                 q_previous,
                 q_target,
@@ -261,7 +247,7 @@ class HardwareMotionControlNode(Node):
 
     def start_trajectory(self, phase, q_start, trajectory, class_name=None):
 
-        self._connect_move_velocities(
+        self.motion.connect_move_velocities(
             trajectory,
             velocity_scale=0.5
         )
@@ -281,422 +267,6 @@ class HardwareMotionControlNode(Node):
 
         elif phase in {'pack_full', 'sauce_full'}:
             self.command_pneumatic(enabled=False)
-
-    def build_phase_trajectory(self, phase, q_start, waypoints, class_name):
-        trajectory = []
-
-        if phase == 'spoon_pick':
-            self.hold(
-                trajectory,
-                q_start,
-                2.0,
-                action='grip_close:spoon',
-                action_delay=0.3
-            )
-            return trajectory
-
-        if phase == 'spoon_place':
-            self.hold(
-                trajectory,
-                q_start,
-                2.0,
-                action='grip_open:spoon',
-                action_delay=0.3
-            )
-            return trajectory
-
-        if phase == 'grip_pick':
-            approach, pick, lift = [q.copy() for q in waypoints]
-
-            self.build_grip_motion(
-                trajectory,
-                q_start,
-                approach,
-                pick,
-                lift,
-                f'grip_close:{class_name}'
-            )
-
-            self.hold(trajectory, lift, 0.5)
-
-            return trajectory
-
-        if phase == 'grip_place':
-            approach, place, lift = [q.copy() for q in waypoints]
-
-            self.build_grip_motion(
-                trajectory,
-                q_start,
-                approach,
-                place,
-                lift,
-                f'grip_open:{class_name}'
-            )
-
-            return trajectory
-
-        if phase == 'pack_pick':
-            approach, pick, lift = [q.copy() for q in waypoints]
-
-            self.build_pack_motion(
-                trajectory,
-                q_start,
-                approach,
-                pick,
-                lift,
-                '공압 on'
-            )
-
-            self.hold(trajectory, lift, 0.5, pack_horizontal=True)
-
-            return trajectory
-
-        if phase == 'pack_place':
-            if len(waypoints) == 4:
-                q_mid, approach, place, lift = [q.copy() for q in waypoints]
-
-                self.move(trajectory, q_start, q_mid, 2.0, True)
-                self.hold(trajectory, q_mid, 0.1, pack_horizontal=True)
-
-                self.build_pack_motion(
-                    trajectory, q_mid, approach, place, lift, '공압 off'
-                )
-                return trajectory
-
-            approach, place, lift = [q.copy() for q in waypoints]
-
-            self.build_pack_motion(
-                trajectory, q_start, approach, place, lift, '공압 off'
-            )
-            return trajectory
-
-        if phase == 'pack_full':
-            pick, pick_lift, place_lift, place = [q.copy() for q in waypoints]
-            self.move(trajectory, q_start, CONTROL_READY, 2.0)
-            self.hold(trajectory, CONTROL_READY, 1.0)
-
-            self.move(trajectory, CONTROL_READY, pick_lift, 2.0, True)
-            self.move(trajectory, pick_lift, pick, 2.0, True)
-
-            self.hold(
-                trajectory,
-                pick,
-                1.0,
-                action='공압 on',
-                action_delay=0.1,
-                pack_horizontal=True
-            )
-
-            self.move(trajectory, pick, pick_lift, 2.0, True)
-            self.hold(trajectory, pick_lift, 0.5, pack_horizontal=True)
-
-            self.move(trajectory, pick_lift, place_lift, 6.0, True)
-            self.move(trajectory, place_lift, place, 2.0, True)
-
-            self.hold(
-                trajectory,
-                place,
-                1.0,
-                action='공압 off',
-                action_delay=0.1,
-                pack_horizontal=True
-            )
-
-            self.move(trajectory, place, CONTROL_READY, 4.0)
-
-            return trajectory
-
-        if phase == 'sauce_full':
-            pick, pick_lift, place_lift, place = [
-                q.copy() for q in waypoints
-            ]
-
-            q_home2 = CONTROL_READY2.copy()
-
-            # 현재 위치 -> CONTROL_READY2
-            self.move(
-                trajectory,
-                q_start,
-                q_home2,
-                2.0
-            )
-            self.hold(
-                trajectory,
-                q_home2,
-                0.5
-            )
-
-            # HOME2 -> 소스 pick
-            self.move(
-                trajectory,
-                q_home2,
-                pick_lift,
-                2.0,
-                True
-            )
-
-            self.move(
-                trajectory,
-                pick_lift,
-                pick,
-                2.0,
-                True
-            )
-
-            self.hold(
-                trajectory,
-                pick,
-                1.0,
-                action='공압 on',
-                action_delay=0.1,
-                pack_horizontal=True
-            )
-
-            self.move(
-                trajectory,
-                pick,
-                pick_lift,
-                2.0,
-                True
-            )
-
-            # 소스 pick -> 450도 branch place
-            self.move(
-                trajectory,
-                pick_lift,
-                place_lift,
-                6.0,
-                True
-            )
-
-            self.move(
-                trajectory,
-                place_lift,
-                place,
-                2.0,
-                True
-            )
-
-            self.hold(
-                trajectory,
-                place,
-                1.0,
-                action='공압 off',
-                action_delay=0.1,
-                pack_horizontal=True
-            )
-
-            self.move(
-                trajectory,
-                place,
-                place_lift,
-                1.0,
-                True
-            )
-
-            return trajectory
-
-        return
-
-    def build_grip_motion(self, trajectory, q_start, approach, target, lift, action):
-        self.move(trajectory, q_start, approach, 2.0)
-        self.hold(trajectory, approach, 0.5)
-
-        self.move(trajectory, approach, target, 2.0)
-        self.hold(
-            trajectory,
-            target,
-            1.5,
-            action=action,
-            action_delay=0.3
-        )
-
-        self.move(trajectory, target, lift, 1.0)
-
-    def build_pack_motion(self, trajectory, q_start, approach, target, lift, action):
-        self.move(trajectory, q_start, approach, 2.0, True)
-        self.hold(trajectory, approach, 0.5, pack_horizontal=True)
-    
-        self.move(trajectory, approach, target, 2.0, True)
-        self.hold(
-            trajectory,
-            target,
-            1.5,
-            action=action,
-            action_delay=0.3,
-            pack_horizontal=True
-        )
-    
-        self.move(trajectory, target, lift, 1.0, True)
-
-    def move(
-        self,
-        trajectory,
-        q_start,
-        q_goal,
-        minimum_duration,
-        pack_horizontal=False
-    ):
-        duration = self._safe_move_duration(q_start, q_goal, minimum_duration)
-        start_time = (
-            trajectory[-1]['end_time']
-            if trajectory
-            else 0.0
-        )
-
-        trajectory.append({
-            'kind': 'move',
-            'start': np.asarray(q_start, dtype=float).copy(),
-            'goal': np.asarray(q_goal, dtype=float).copy(),
-
-            'start_velocity': np.zeros(DOF, dtype=float),
-            'goal_velocity': np.zeros(DOF, dtype=float),
-
-            'start_acceleration': np.zeros(DOF, dtype=float),
-            'goal_acceleration': np.zeros(DOF, dtype=float),
-
-            'duration': duration,
-            'start_time': start_time,
-            'end_time': start_time + duration,
-            'pack_horizontal': bool(pack_horizontal),
-        })
-
-    @staticmethod
-    def hold(
-        trajectory,
-        q_hold,
-        duration,
-        action=None,
-        action_delay=0.0,
-        pack_horizontal=False
-    ):
-        start_time = (
-            trajectory[-1]['end_time']
-            if trajectory
-            else 0.0
-        )
-        segment = {
-            'kind': 'hold',
-            'goal': np.asarray(q_hold, dtype=float).copy(),
-            'start_time': start_time,
-            'end_time': start_time + float(duration),
-            'pack_horizontal': bool(pack_horizontal),
-        }
-
-        if action is not None:
-            segment['action'] = action
-            segment['action_time'] = (start_time + float(action_delay))
-            segment['action_done'] = False
-
-        trajectory.append(segment)
-
-    def _safe_move_duration(self, q_start, q_goal, minimum_duration):
-        max_delta_deg = float(np.max(np.abs(np.rad2deg(
-            motion_q_delta(q_goal, q_start)
-        ))))
-        max_speed_deg_s = math.degrees(MAX_Q_STEP) / 0.05
-        required_time = 1.875 * max_delta_deg / max_speed_deg_s
-
-        return max(float(minimum_duration), required_time * 1.2)
-
-    def _connect_move_velocities(self, trajectory, velocity_scale=0.5):
-        # 바로 이어지는 move → move 구간만 속도를 연결한다.
-        for index in range(len(trajectory) - 1):
-            previous_segment = trajectory[index]
-            next_segment = trajectory[index + 1]
-
-            if (previous_segment['kind'] != 'move' or next_segment['kind'] != 'move'):
-                continue
-
-            q_previous = previous_segment['start']
-            q_middle = previous_segment['goal']
-            q_next = next_segment['goal']
-
-            previous_delta = motion_q_delta(q_middle, q_previous)
-            next_delta = motion_q_delta(q_next, q_middle)
-
-            # 앞 구간과 뒤 구간의 진행 방향이 같은 관절만 중간 속도를 유지한다.
-            same_direction = (
-                previous_delta * next_delta > 0.0
-            )
-
-            v_middle = (
-                velocity_scale
-                * motion_q_delta(
-                    q_next,
-                    q_previous
-                )/ (previous_segment['duration'] + next_segment['duration'])
-            )
-
-            v_middle = np.where(same_direction, v_middle, 0.0)
-
-            # 기존 max_q_step 기준 속도보다 커지지 않도록 제한
-            max_velocity = MAX_Q_STEP / 0.05
-
-            v_middle = np.clip(
-                v_middle,
-                -max_velocity,
-                max_velocity
-            )
-
-            previous_segment['goal_velocity'] = v_middle.copy()
-            next_segment['start_velocity'] = v_middle.copy()
-
-    @staticmethod
-    def quintic_joint(
-        q_start,
-        q_goal,
-        v_start,
-        v_goal,
-        a_start,
-        a_goal,
-        elapsed,
-        duration
-    ):
-        q_start = np.asarray(q_start, dtype=float)
-        q_goal = q_start + motion_q_delta(q_goal, q_start)
-
-        v_start = np.asarray(v_start, dtype=float)
-        v_goal = np.asarray(v_goal, dtype=float)
-        a_start = np.asarray(a_start, dtype=float)
-        a_goal = np.asarray(a_goal, dtype=float)
-
-        if duration <= 0.0:
-            return q_goal.copy()
-
-        T = float(duration)
-        t = float(np.clip(elapsed, 0.0, T))
-
-        c0 = q_start
-        c1 = v_start
-        c2 = 0.5 * a_start
-
-        c3 = (
-            20.0 * (q_goal - q_start)
-            - (12.0 * v_start + 8.0 * v_goal) * T
-            - (3.0 * a_start - a_goal) * T**2
-        ) / (2.0 * T**3)
-
-        c4 = (
-            30.0 * (q_start - q_goal)
-            + (16.0 * v_start + 14.0 * v_goal) * T
-            + (3.0 * a_start - 2.0 * a_goal) * T**2
-        ) / (2.0 * T**4)
-
-        c5 = (
-            12.0 * (q_goal - q_start)
-            - (6.0 * v_start + 6.0 * v_goal) * T
-            - (a_start - a_goal) * T**2
-        ) / (2.0 * T**5)
-
-        return (
-            c0
-            + c1 * t
-            + c2 * t**2
-            + c3 * t**3
-            + c4 * t**4
-            + c5 * t**5
-        )
 
     def control_loop(self):
         if not self.motion_active:
@@ -726,7 +296,7 @@ class HardwareMotionControlNode(Node):
             q_ref = self.final_target.copy()
             pack_horizontal = bool(self.trajectory[-1]['pack_horizontal'])
         elif current_segment['kind'] == 'move':
-            q_ref = self.quintic_joint(
+            q_ref = self.motion.quintic_joint(
                 current_segment['start'],
                 current_segment['goal'],
                 current_segment['start_velocity'],
@@ -742,7 +312,7 @@ class HardwareMotionControlNode(Node):
             pack_horizontal = bool(current_segment['pack_horizontal'])
 
         if pack_horizontal:
-            q_ref[4] = self.horizontal_q5(
+            q_ref[4] = self.motion.horizontal_q5(
                 q_ref[1],
                 q_ref[2],
                 q_ref[3],
@@ -777,35 +347,6 @@ class HardwareMotionControlNode(Node):
             self.motion_active = False
             self.start_time = None
             self.motion_done_pub.publish(Empty())
-
-    def horizontal_q5(self, q2, q3, q4, reference_q5):
-        base_q5 = (
-            math.atan2(
-                math.cos(q2),
-                math.sin(q2) * math.cos(q3)
-            )- q4
-        )
-
-        candidates = []
-        for branch in (0.0, math.pi):
-            for turn in (
-                -2.0 * math.pi, 0.0, 2.0 * math.pi
-            ):
-                candidate = base_q5 + branch + turn
-                if (JOINT_MIN[4] <= candidate <= JOINT_MAX[4]):
-                    candidates.append(candidate)
-
-        if not candidates:
-            return float(np.clip(
-                base_q5,
-                JOINT_MIN[4],
-                JOINT_MAX[4]
-            ))
-
-        return float(min(
-            candidates,
-            key=lambda value: abs(value - reference_q5)
-        ))
 
     def execute_action(self, action):
         if action.startswith('grip_open:'):

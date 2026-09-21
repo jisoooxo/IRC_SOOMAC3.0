@@ -6,14 +6,12 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from irc_control_pkg.kinematics_irc import IRCKinematics
+from irc_control_pkg.cp_motion import CPMotion
 from std_msgs.msg import Empty, Bool, Float64MultiArray, MultiArrayDimension, String, Int16
 
 DOF = 6
 CONTROL_READY = np.deg2rad([0.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 CONTROL_READY2 = np.deg2rad([180.0, -90.0, 0.0, 113.0, 67.0, 0.0])
-
-SPOON_PICK_POSITION = np.array([0.249, 0.275, 0.3], dtype=float)
-SPOON_Q6 = math.radians(-90.0)
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 POINT1 = np.deg2rad([0.0, -5.8, 0.0, 70.0, 111.0, 0.0]) ## 카메라가 수직으로 바라보는 위치
@@ -29,11 +27,11 @@ CREAM_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float)
 OIL_PICK_POINT = np.array([-0.25, -0.14, 0.04], dtype=float)
 SAUCE_PLACE_POINT = np.array([0.000, -0.25, 0.07], dtype=float)
 PLACE_POINTS = {
-    'noodle': {'position': np.array([-0.012, -0.19, 0.07], dtype=float), 'yaw_deg': 180.0,},
-    'mushroom': {'position': np.array([-0.06, -0.30, 0.07], dtype=float), 'yaw_deg': 180.0,},
-    'onion': {'position': np.array([-0.06, -0.305, 0.07], dtype=float), 'yaw_deg': 180.0,},
-    'crab': {'position': np.array([-0.065, -0.24, 0.07], dtype=float), 'yaw_deg': 180.0,},
-    'sausage': {'position': np.array([0.062, -0.30, 0.07], dtype=float), 'yaw_deg': 180.0,},
+    'noodle': {'position': np.array([-0.012, -0.19, 0.06], dtype=float), 'yaw_deg': 180.0,},
+    'mushroom': {'position': np.array([-0.06, -0.30, 0.06], dtype=float), 'yaw_deg': 180.0,},
+    'onion': {'position': np.array([-0.06, -0.305, 0.06], dtype=float), 'yaw_deg': 180.0,},
+    'crab': {'position': np.array([-0.065, -0.24, 0.06], dtype=float), 'yaw_deg': 180.0,},
+    'sausage': {'position': np.array([0.062, -0.30, 0.06], dtype=float), 'yaw_deg': 180.0,},
     'cover': {'position': np.array([-0.01, -0.25, 0.06], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
 }
 
@@ -46,6 +44,7 @@ class PointPoseNode(Node):
         super().__init__('point_pose_node')
 
         self.kinematics = IRCKinematics(self.get_logger())
+        self.cp_motion = CPMotion(self.kinematics)
 
         self.grip_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints', 10)
         self.pack_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints_pack', 10)
@@ -119,10 +118,7 @@ class PointPoseNode(Node):
             if self.current_ingredient is None:
                 return
 
-            self.cp_commands = self.cp_path(
-                self.current_ingredient,
-                self.cp_repeat_count
-            )
+            self.cp_commands = self.cp_motion.build_path(self.current_ingredient, self.cp_repeat_count)
             self.cp_command_index = 0
             self.after_cp_path()
             return
@@ -180,6 +176,7 @@ class PointPoseNode(Node):
     def vlm_confirm_delay_done(self):
         self.vlm_confirm_delay.cancel()
         self.destroy_timer(self.vlm_confirm_delay)
+        self.vlm_confirm_delay = None
 
         msg = Bool()
         msg.data = True
@@ -203,7 +200,7 @@ class PointPoseNode(Node):
 
         if self.pick_mode == 'cp':
             self.confirm_retry_phase = 'cp'
-            self.cp_commands = self.cp_path(self.current_ingredient, 1)
+            self.cp_commands = self.cp_motion.build_path(self.current_ingredient, 1)
             self.cp_command_index = 0
             self.after_cp_path()
             return
@@ -222,6 +219,22 @@ class PointPoseNode(Node):
         self.request_vision()
 
     def reset_callback(self, _msg):
+        self.get_logger().info('POINT reset 시작')
+
+        hold_timer = self.vlm_hold_timer
+        self.vlm_hold_timer = None
+
+        if hold_timer is not None:
+            hold_timer.cancel()
+            self.destroy_timer(hold_timer)
+
+        confirm_delay = self.vlm_confirm_delay
+        self.vlm_confirm_delay = None
+
+        if confirm_delay is not None:
+            confirm_delay.cancel()
+            self.destroy_timer(confirm_delay)
+
         self.current_ingredient = None
         self.pick_mode = None
         self.point1_q = None
@@ -231,157 +244,16 @@ class PointPoseNode(Node):
         self.cp_command_index = 0
         self.cp_repeat_count = 1
 
-        if self.vlm_hold_timer is not None:
-            self.vlm_hold_timer.cancel()
-            self.destroy_timer(self.vlm_hold_timer)
-            self.vlm_hold_timer = None
-
         self.confirm_retry_phase = None
         self.vlm_confirm_pending = False
         self.home_pending = False
 
-        if self.vlm_confirm_delay is not None:
-            self.vlm_confirm_delay.cancel()
-            self.destroy_timer(self.vlm_confirm_delay)
-            self.vlm_confirm_delay = None
-
-        self.get_logger().info('초기화 완료')
+        self.get_logger().info('POINT 초기화 완료')
 
     def request_vision(self):
         msg = String()
         msg.data = self.current_ingredient
         self.control_motion_done.publish(msg)
-
-    ## 숟가락 잡을 때 x축으로 평행하게 접근 계산
-    def spoon_linear_x(self, start_position, end_position, previous_q, q6, step=0.01):
-        distance = abs(end_position[0] - start_position[0])
-        count = max(1, int(math.ceil(distance / step)))
-
-        waypoints = []
-        q_previous = previous_q.copy()
-
-        for i in range(1, count + 1):
-            ratio = i / count
-
-            position = start_position.copy()
-            position[0] = start_position[0] + ratio * (end_position[0] - start_position[0])
-
-            q = self.kinematics.solve_cp_path(position, q_previous, q6)
-
-            waypoints.append(q)
-            q_previous = q.copy()
-
-        return waypoints
-
-    def cp_path(self, class_name, repeat_count=1):
-        q_start = np.zeros(DOF)
-
-        # 숟가락 접근
-        spoon_approach_position = SPOON_PICK_POSITION.copy()
-        spoon_approach_position[0] -= 0.08
-
-        # 숟가락 lift
-        spoon_lift_position = SPOON_PICK_POSITION.copy()
-        spoon_lift_position[2] += 0.10
-
-        # 치즈 접근 전 lift, 치즈 접근
-        if class_name == 'cheese':
-            q_cheese_approach_lift = np.deg2rad([3.5, -1.4, 0.0, 85.0, 91.5, 0.0]) # 치즈 접근 위치
-            q_cheese_approach = np.deg2rad([3.5, 1.2, 0.0, 101.0, 73.0, 0.0]) # 치즈 접근 위치
-
-        else: 
-            q_cheese_approach_lift = np.deg2rad([1.5, 2.6, 0.0, 85.0, 66.0, 0.0]) # 페퍼론치노 접근 위치
-            q_cheese_approach = np.deg2rad([1.5, 15.4, 0.0, 85.0, 62.7, 0.0]) # 페퍼론치노 접근 위치
-
-        # 치즈 푸기: 2번, 3번 모터 place 할 때랑 맞추기
-        q_cheese_touch_1 = q_cheese_approach.copy()
-        q_cheese_touch_1[0] += math.radians(-95)
-        q_cheese_touch_1[2] = math.radians(90)
-
-        q_cheese_touch_2 = q_cheese_touch_1.copy()
-        q_cheese_touch_2[1] = math.radians(-90)
-
-        # 치즈 푸고 나서 lift
-        q_cheese_lift = q_cheese_touch_2.copy()
-        q_cheese_lift[2] += math.radians(-40)
-        q_cheese_lift[5] += math.radians(-40)
-
-        # 숟가락 접근
-        q_spoon_approach = self.kinematics.solve_cp_path(spoon_approach_position, q_start, SPOON_Q6)
-
-        q_spoon_pick_path = self.spoon_linear_x(spoon_approach_position, SPOON_PICK_POSITION, q_spoon_approach, SPOON_Q6, step=0.01)
-
-        q_spoon_pick = q_spoon_pick_path[-1]
-
-        # 숟가락 잡은 후 lift
-        q_spoon_lift = self.kinematics.solve_cp_path(spoon_lift_position, q_spoon_pick, SPOON_Q6) 
-
-        # 치즈 / 페페론치노 place 준비
-        if class_name == 'cheese':
-            q_cheese_place_ready = np.deg2rad([-119.0, -80.0, 90.0, 130.0, 42.8, 0.0,]) # 치즈 place 위치
-       
-        else: q_cheese_place_ready = np.deg2rad([-131.7, -80.0, 90.0, 131.2, 46.7, 0.0,]) # 페퍼론치노 place 위치
-
-        # 치즈, 페퍼론치노 place
-        q_cheese_release_1 = q_cheese_place_ready.copy()
-        q_cheese_release_1[5] += math.radians(110.0)
-
-        q_cheese_release_2 = q_cheese_release_1.copy()
-        q_cheese_release_2[5] += math.radians(-110.0)
-
-        # 숟가락 내려놓고 x축 빠지기
-        q_spoon_retreat_path = self.spoon_linear_x(SPOON_PICK_POSITION, spoon_approach_position, q_spoon_pick, SPOON_Q6, step=0.01)
-
-        commands_1 = [
-            # POINT1 -> 숟가락 접근 -> 숟가락 위치
-            ('motion', [q_spoon_approach, *q_spoon_pick_path]),
-
-            # 숟가락 잡기
-            ('gripper', 'spoon_pick:spoon', q_spoon_pick),
-
-            # 숟가락 lift -> 첫 번째 치즈/페퍼론치노 푸고 놓기
-            ('motion', [
-                q_spoon_lift,
-                q_cheese_approach_lift,
-                q_cheese_approach,
-                q_cheese_touch_1,
-                q_cheese_touch_2,
-                q_cheese_lift,
-                q_cheese_place_ready,
-                q_cheese_release_1,
-                q_cheese_release_2
-            ]),
-            ('delay', 0.5)
-        ]
-
-        # 숟가락은 이미 잡고 있으므로 다시 푸기, 놓기만 수행
-        commands_2 = [
-            ('motion', [
-                q_cheese_approach_lift,
-                q_cheese_approach,
-                q_cheese_touch_1,
-                q_cheese_touch_2,
-                q_cheese_lift,
-                q_cheese_place_ready,
-                q_cheese_release_1,
-                q_cheese_release_2
-            ]),
-            ('delay', 0.5)
-        ]
-
-        commands = commands_1.copy()
-
-        for i in range(repeat_count - 1):
-            commands.extend(commands_2)
-
-        # 모든 반복이 끝난 뒤에만 숟가락 반납
-        commands.extend([
-            ('motion', [q_spoon_lift, q_spoon_pick]),
-            ('gripper', 'spoon_place:spoon', q_spoon_pick),
-            ('motion', q_spoon_retreat_path)
-        ])
-
-        return commands
 
     def after_cp_path(self):
         if self.cp_command_index >= len(self.cp_commands):
@@ -527,13 +399,9 @@ class PointPoseNode(Node):
         lift_position = position.copy()
         lift_position[2] += LIFT_HEIGHT
 
-        q_pick = self.kinematics.solve_pose(
-            position, previous_q, math.pi, 'pack'
-        )
+        q_pick = self.kinematics.solve_pose(position, previous_q, math.pi, 'pack')
 
-        q_lift = self.kinematics.solve_pose(
-            lift_position, q_pick, math.pi, 'pack'
-        )
+        q_lift = self.kinematics.solve_pose(lift_position, q_pick, math.pi, 'pack')
 
         return q_pick, q_lift
 
@@ -547,35 +415,17 @@ class PointPoseNode(Node):
             q_motion_start = np.zeros(DOF, dtype=float)
 
         if mode == 'pack':
-            q_pick, q_lift = self.solve_pack_pick_lift(
-                position,
-                q_motion_start
-            )
+            q_pick, q_lift = self.solve_pack_pick_lift(position, q_motion_start)
             q_approach = q_lift
 
         else:
             corrected_yaw = self.base_target(position, yaw)
 
-            q_approach = self.kinematics.solve_pose(
-                approach,
-                q_motion_start,
-                corrected_yaw,
-                'grip'
-            )
+            q_approach = self.kinematics.solve_pose(approach, q_motion_start, corrected_yaw, 'grip')
 
-            q_pick = self.kinematics.solve_pose(
-                position,
-                q_approach,
-                corrected_yaw,
-                'grip'
-            )
+            q_pick = self.kinematics.solve_pose(position, q_approach, corrected_yaw, 'grip')
 
-            q_lift = self.kinematics.solve_pose(
-                approach,
-                q_pick,
-                corrected_yaw,
-                'grip'
-            )
+            q_lift = self.kinematics.solve_pose(approach, q_pick, corrected_yaw, 'grip')
 
         self.pick_lift_q = q_lift
 
@@ -625,19 +475,9 @@ class PointPoseNode(Node):
             else:
                 q_previous = self.pick_lift_q
 
-            q_approach = self.kinematics.solve_pose(
-                approach,
-                q_previous,
-                math.pi,
-                'pack'
-            )
+            q_approach = self.kinematics.solve_pose(approach, q_previous, math.pi, 'pack')
 
-            q_place = self.kinematics.solve_pose(
-                position,
-                q_approach,
-                math.pi,
-                'pack'
-            )
+            q_place = self.kinematics.solve_pose(position, q_approach, math.pi, 'pack')
 
             q_lift = q_approach.copy()
 
@@ -662,21 +502,15 @@ class PointPoseNode(Node):
             corrected_yaw = self.base_target(position, yaw)
 
             q_approach = self.kinematics.solve_grip_place_pose(
-                approach,
-                self.pick_lift_q,
-                corrected_yaw
+                approach, self.pick_lift_q, corrected_yaw
             )
 
             q_place = self.kinematics.solve_grip_place_pose(
-                position,
-                q_approach,
-                corrected_yaw
+                position, q_approach, corrected_yaw
             )
 
             q_lift = self.kinematics.solve_grip_place_pose(
-                approach,
-                q_place,
-                corrected_yaw
+                approach, q_place, corrected_yaw
             )
 
         if mode == 'pack':
@@ -703,12 +537,8 @@ class PointPoseNode(Node):
 
         q_home = np.zeros(DOF, dtype=float)
         q_p1, q_p1_lift = self.solve_pack_pick_lift(p1, q_home)
-        q_p2_lift = self.kinematics.solve_pose(
-            p2_lift, q_p1_lift, math.pi, 'pack'
-        )
-        q_p2 = self.kinematics.solve_pose(
-            p2, q_p2_lift, math.pi, 'pack'
-        )
+        q_p2_lift = self.kinematics.solve_pose(p2_lift, q_p1_lift, math.pi, 'pack')
+        q_p2 = self.kinematics.solve_pose(p2, q_p2_lift, math.pi, 'pack')
 
         self.publish_waypoints(
             self.pack_plan_pub,
@@ -738,21 +568,13 @@ class PointPoseNode(Node):
         place_lift = place.copy()
         place_lift[2] = pick[2] + LIFT_HEIGHT
 
-        q_pick_lift = self.kinematics.solve_pose(
-            pick_lift, q_start, math.pi, 'pack'
-        )
+        q_pick_lift = self.kinematics.solve_pose(pick_lift, q_start, math.pi, 'pack')
 
-        q_pick = self.kinematics.solve_pose(
-            pick, q_pick_lift, math.pi, 'pack'
-        )
+        q_pick = self.kinematics.solve_pose(pick, q_pick_lift, math.pi, 'pack')
 
-        q_place_lift = self.kinematics.solve_pose(
-            place_lift, q_pick_lift, math.pi, 'pack'
-        )
+        q_place_lift = self.kinematics.solve_pose(place_lift, q_pick_lift, math.pi, 'pack')
 
-        q_place = self.kinematics.solve_pose(
-            place, q_place_lift, math.pi, 'pack'
-        )
+        q_place = self.kinematics.solve_pose(place, q_place_lift, math.pi, 'pack')
 
         q_place_lift = self.extended_base(q_place_lift)
         q_place = self.extended_base(q_place)
