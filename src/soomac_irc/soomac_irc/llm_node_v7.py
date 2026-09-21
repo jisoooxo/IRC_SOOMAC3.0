@@ -87,6 +87,9 @@ TOPIC_CLASS_NAMES = {
     "크림": "sauce_cream",
 }
 
+RULE_OF_VLM = "판단 근거는 TTS 음성으로 보낼 것 이기에 영어도 한글로 치환해서 보낸다. 또한, 이미지1, 이미지 2등의" \
+"표현이 아닌, 참조 이미지와 이전 이미지, 현재 이미지라는 말을 사용하라."
+
 
 def sanitize_free_reply(reply: str) -> tuple[str, list[str]]:
     """실운영 V7 기준으로 자유응답의 주문·진행 주장을 제거한다."""
@@ -573,6 +576,7 @@ class LLMNode(Node):
                     "작업 후 음식이 검은 뚜껑으로 정상적으로 덮였으면 PASS이다. "
                     "뚜껑이 열렸거나 일부만 덮였거나 음식이 계속 노출되면 FAIL이다. "
                     f"가림, 흔들림, 반사 때문에 확신할 수 없으면 UNCERTAIN이다. {verdict_rule}"
+                    f"{RULE_OF_VLM}"
                 ),
                 "user_text": (
                     f"작업 후 이미지 {len(camera_images)}장에서 "
@@ -619,6 +623,7 @@ class LLMNode(Node):
                     "선명한 모든 작업 후 이미지에 포장지가 없거나, 명확히 다른 종류의 소스이거나, "
                     "검은 뚜껑이 실제로 열려 있으면 FAIL이다. "
                     f"가림, 흔들림, 반사 때문에 포장지 종류를 확인할 수 없으면 UNCERTAIN이다. {verdict_rule}"
+                    f"{RULE_OF_VLM}"
                 ),
                 "user_text": (
                     f"작업 후 이미지 {len(camera_images)}장에서 "
@@ -637,6 +642,7 @@ class LLMNode(Node):
                     f"작업 후 장면에 {expected} 재료가 명확하게 보이면 PASS이다. "
                     "재료가 없거나 다른 재료이면 FAIL이고 확신할 수 없으면 UNCERTAIN이다. "
                     f"{verdict_rule}"
+                    f"{RULE_OF_VLM}"
                 ),
                 "user_text": (
                     f"작업 후 이미지 {len(camera_images)}장에서 "
@@ -654,6 +660,7 @@ class LLMNode(Node):
                 f"작업 전과 비교해 {expected} 재료가 새로 보이거나 해당 재료 영역이 증가했으면 PASS이다. "
                 "기대 변화가 없거나 다른 재료가 추가됐으면 FAIL이다. "
                 f"가림이나 흔들림 때문에 비교할 수 없으면 UNCERTAIN이다. {verdict_rule}"
+                f"{RULE_OF_VLM}"
             ),
             "user_text": (
                 f"비교 이미지 출처는 {self.comparison_source}이다. "
