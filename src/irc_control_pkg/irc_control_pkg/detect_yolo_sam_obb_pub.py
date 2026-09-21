@@ -6,6 +6,10 @@
 ----- 0829
 뚜껑 수정(cover_detect) -> 직사각형 피팅 말고 평면피팅
 버섯,양파 -> 박스 중앙점 말고 번갈아가면서 보내도록 수정  
+-----
+이미지 퍼블리시 raw로 변경(이름그대로)
+욜로 디텍 안 됐을 때 이전 걸로. 
++ 
 '''
 
 import cv2
@@ -26,7 +30,12 @@ from cv_bridge import CvBridge
 from rclpy.qos import qos_profile_sensor_data
 from collections import deque
 
-pc = "JISU"
+try:  # 한글 라벨용 (없으면 영문 cv2.putText로 대체). Image는 sensor_msgs.msg.Image와 겹치므로 별칭 사용
+    from PIL import Image as PILImage, ImageDraw, ImageFont
+except ImportError:
+    PILImage = ImageDraw = ImageFont = None
+
+pc = "JISU"  # "JUNMI" or "JISU"
 
 if pc == "JISU":
     from irc_control_pkg.cover_detect import get_best_cover 
@@ -42,7 +51,7 @@ elif pc == "JUNMI":
     from cover_detect import get_best_cover  # 뚜껑
     # ros2 run으로 실행할거라면 
     #from vision.cover_detect import get_best_cover 
-    YOLO_PT_PATH = "/home/leejunmi/ros2_ws/src/vision/vision/best_11renamed.pt"  
+    YOLO_PT_PATH = "/home/leejunmi/IRC_SOOMAC3.0/src/irc_control_pkg/irc_control_pkg/best_14.pt"  
     SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
     SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_base_plus.pt"
 
@@ -60,6 +69,9 @@ NUM_HISTORY_FRAMES = 6
 
 current_target = None
 detection_history = {cls: deque(maxlen=NUM_HISTORY_FRAMES) for cls in TARGET_CLASSES}
+
+# YOLO가 가끔 못 잡을 때 재사용할 직전 OBB (cx, cy, w, h, r). 토픽 받을 때마다 None으로 리셋
+last_obb = None
 
 # SIMPLE_DEPTH_CLASSES용: OBB 장축 1/3, 2/3 지점 중 이번 활성화에 쓸 쪽 (0 또는 1), 활성화마다 번갈아 바뀜
 current_pick_side = 0
@@ -93,22 +105,7 @@ NOODLE_THIN_HSV = {
 # mushroom/cheese/onion: OBB 중심 근방 min depth 패치 한 변 길이(px)
 CENTER_PATCH_SIZE = 15
 
-# YOLO_PT_PATH = "/home/leejunmi/ros2_ws/src/vision/vision/best_11.pt"  
-#YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_11.pt'
 yolo_model = YOLO(YOLO_PT_PATH)
-
-# =====================
-# SAM2
-# =====================
-#SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
-#SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_base_plus.pt"
-# SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_s.yaml"            # 두번째로 작은 모델
-# SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_small.pt"
-# SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_t.yaml"          # 가장 작은 모델
-# SAM2_CKPT   = "/home/leejunmi/sam2/checkpoints/sam2.1_hiera_tiny.pt" 
-
-#SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
-#SAM2_CKPT   = '/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt'
 
 DEVICE      = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {DEVICE}")
@@ -117,12 +114,10 @@ sam2_model = build_sam2(SAM2_CONFIG, SAM2_CKPT, device=DEVICE)
 predictor  = SAM2ImagePredictor(sam2_model)
 print(f"SAM2 로딩 성공")
 
-# 첫 추론 콜드스타트(CUDA 커널 컴파일 / cuDNN autotune, 1~3초)를 시작 시 미리 치른다.
-# 이후엔 모델이 상주하므로 매 프레임 돌리지 않아도 per-call 지연은 동일.
+
 _warm = np.zeros((480, 640, 3), dtype=np.uint8)
 yolo_model(_warm, verbose=False)
 predictor.set_image(_warm)
-print("warm-up 완료")
 
 # =====================
 # 초기 설정
@@ -512,11 +507,10 @@ def shrink_obb(cx, cy, w, h, r, top=0.0, bottom=0.0, left=0.0, right=0.0):
     R = np.array([[cos_r, -sin_r], [sin_r, cos_r]])
     return (corners @ R.T) + np.array([new_cx, new_cy])
 
-def get_obb_masked_depth(yolo_result, class_names, target_class, depth_full, cls_name):
-    ''' 특정 클래스 OBB에서 가장 큰 박스 찾고 박스 안의 depth 마스크 return
-    depth_mask: 바운딩박스 내부 뎁스, shrunk_poly: 줄어든 박스 꼭짓점 '''
+def find_best_obb(yolo_result, class_names, target_class):
+    '''YOLO 결과에서 target_class OBB 중 면적이 가장 큰 것의 (cx, cy, w, h, r) 반환. 없으면 None'''
     if yolo_result.obb is None or len(yolo_result.obb) == 0:
-        return None, None
+        return None
 
     cls_ids = yolo_result.obb.cls.cpu().numpy()
     xywhr = yolo_result.obb.xywhr.cpu().numpy()
@@ -531,6 +525,12 @@ def get_obb_masked_depth(yolo_result, class_names, target_class, depth_full, cls
             best_area = w * h
             best = (cx, cy, w, h, r)
 
+    return best
+
+
+def get_obb_masked_depth(best, depth_full, cls_name):
+    ''' OBB(best=(cx,cy,w,h,r)) 안의 depth 마스크 return
+    depth_mask: 바운딩박스 내부 뎁스, shrunk_poly: 줄어든 박스 꼭짓점 '''
     if best is None:
         return None, None
 
@@ -549,25 +549,9 @@ def get_obb_masked_depth(yolo_result, class_names, target_class, depth_full, cls
 
     return depth_masked, shrunk_poly
 
-def get_obb_center(yolo_result, class_names, target_class):
-    '''특정 클래스 OBB 중 가장 큰 박스의 중심(cx, cy)과 각도(r), box_points 반환
+def get_obb_center(best):
+    '''OBB(best=(cx,cy,w,h,r))의 중심(cx, cy)과 각도(r), box_points 반환
     mushroom/cheese/onion처럼 depth mask 없이 OBB 중심점만 필요한 클래스용'''
-    if yolo_result.obb is None or len(yolo_result.obb) == 0:
-        return None
-
-    cls_ids = yolo_result.obb.cls.cpu().numpy()
-    xywhr = yolo_result.obb.xywhr.cpu().numpy()
-
-    best_area = -1
-    best = None
-    for i, cid in enumerate(cls_ids):
-        if class_names[int(cid)] != target_class:
-            continue
-        cx, cy, w, h, r = xywhr[i]
-        if w * h > best_area:
-            best_area = w * h
-            best = (cx, cy, w, h, r)
-
     if best is None:
         return None
 
@@ -599,8 +583,9 @@ def get_third_points_along_long_axis(cx, cy, w, h, r):
     return p1, p2
 
 def vision_start_callback(msg): # 수정
-    global current_target, frame_toggle, current_pick_side
+    global current_target, frame_toggle, current_pick_side, last_obb
     data = msg.data.strip()
+    last_obb = None  # 새 토픽마다 이전 OBB 캐시 리셋 (첫 누적 프레임은 항상 실시간 YOLO 결과)
     if data in TARGET_CLASSES:
         current_target = data
         detection_history[data].clear() # 새 신호마다 10frame 새로 연산
@@ -664,6 +649,22 @@ def get_most_frequent_detection(history, pixel_threshold=20, min_count=0): ## �
         "total": len(items),
     }
 
+OBB_REUSE_COLOR = (0, 165, 255)   # BGR 주황 (재사용 중인 OBB / 라벨 색)
+
+# 한글 폰트는 한 번만 로드. 폰트/PIL이 없는 PC에서는 None -> 영문 라벨로 대체
+_KO_FONT = None
+if ImageFont is not None:
+    for _font_path in ("/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+                       "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+                       "/usr/share/fonts/truetype/nanum/NanumSquareRoundB.ttf",
+                       "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"):
+        try:
+            _KO_FONT = ImageFont.truetype(_font_path, 24)
+            break
+        except Exception:
+            continue
+
+
 def draw_last_published(overlay, last_published):
     if last_published is None:
         return
@@ -681,30 +682,20 @@ def draw_last_published(overlay, last_published):
                 (lcx-30, lcy+5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
 
 
-# def publish_and_show(overlay, img_pub, bridge, node):
-
-#     img_msg = bridge.cv2_to_imgmsg(overlay, encoding="bgr8")
-#     img_msg.header.stamp = node.get_clock().now().to_msg()
-#     img_pub.publish(img_msg)
-#     cv2.imshow("frame", overlay)
-
-def publish_and_show(overlay, img_pub, bridge, node):
-
+def publish_raw_image(image, img_pub, bridge, node):
     img_msg = bridge.cv2_to_compressed_imgmsg(
-        overlay,
+        image,
         dst_format="jpg"
     )
     img_msg.header.stamp = node.get_clock().now().to_msg()
-
     img_pub.publish(img_msg)
 
-    cv2.imshow("frame", overlay)
 
 # =====================
 # main
 # =====================
 def main(args=None):
-    global current_target, detection_history, frame_toggle, current_pick_side
+    global current_target, detection_history, frame_toggle, current_pick_side, last_obb
 
     rclpy.init()
     node = Node("mealkit_pub")
@@ -747,13 +738,14 @@ def main(args=None):
                 intrinsics = color_frame.profile.as_video_stream_profile().intrinsics
 
                 overlay = frame_full.copy()
+                publish_raw_image(frame_full, img_pub, bridge, node)
 
                 # cover
                 if current_target == "cover":
                     cover = get_best_cover(frame_full, depth_full, depth_scale, intrinsics)
                     if cover is None:
                         draw_last_published(overlay, last_published)
-                        publish_and_show(overlay, img_pub, bridge, node)
+                        cv2.imshow("frame", overlay)
                         if cv2.waitKey(1) == 27:
                             break
                         continue
@@ -797,7 +789,7 @@ def main(args=None):
                             current_target = None
 
                     draw_last_published(overlay, last_published)
-                    publish_and_show(overlay, img_pub, bridge, node)
+                    cv2.imshow("frame", overlay)
                     if cv2.waitKey(1) == 27:
                         break
                     continue
@@ -805,7 +797,7 @@ def main(args=None):
                 # 대기 중(요청 없음)에는 YOLO 추론을 돌리지 않는다 (idle GPU 부하 제거)
                 if current_target is None:
                     draw_last_published(overlay, last_published) # 결정된 퍼블리시 객체 표시
-                    publish_and_show(overlay, img_pub, bridge, node)
+                    cv2.imshow("frame", overlay)
                     if cv2.waitKey(1) == 27:
                         break
                     continue
@@ -813,19 +805,34 @@ def main(args=None):
                 rgb_full = cv2.cvtColor(frame_full, cv2.COLOR_BGR2RGB)
                 yolo_result = yolo_model(frame_full, verbose=False)[0]
 
+                # YOLO가 이번 프레임에 못 잡으면 직전 OBB 재사용 (토픽 직후엔 캐시가 비어 있어
+                # 첫 누적 프레임은 항상 실시간 YOLO 결과). 카메라 고정이라 한도 없이 다음 토픽까지 유지.
+                # 클래스 매칭은 noodle로, 나머지 조회는 cls_name(thick/thin)으로
+                yolo_target = "noodle" if current_target in ("noodle_thick", "noodle_thin") else current_target
+                best_obb = find_best_obb(yolo_result, yolo_model.names, yolo_target)
+                obb_reused = False
+                if best_obb is not None:
+                    last_obb = best_obb
+                elif last_obb is not None:
+                    best_obb = last_obb
+                    obb_reused = True
+                    cv2.putText(overlay, "OBB REUSE", (10,10 + 24),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, OBB_REUSE_COLOR, 2, cv2.LINE_AA)
+                obb_color = OBB_REUSE_COLOR if obb_reused else (255, 255, 0)
+
                 # mushroom / cheese / onion
                 if current_target in SIMPLE_DEPTH_CLASSES:
                     cls_name = current_target
-                    obb_info = get_obb_center(yolo_result, yolo_model.names, cls_name)
+                    obb_info = get_obb_center(best_obb)
                     if obb_info is None:
                         draw_last_published(overlay, last_published)
-                        publish_and_show(overlay, img_pub, bridge, node)
+                        cv2.imshow("frame", overlay)
                         if cv2.waitKey(1) == 27:
                             break
                         continue
 
                     cx_obb, cy_obb = obb_info["center"]
-                    cv2.drawContours(overlay, [obb_info["box_points"]], 0, (255, 255, 0), 1)
+                    cv2.drawContours(overlay, [obb_info["box_points"]], 0, obb_color, 1)
 
                     # 중앙 대신 장축 1/3, 2/3 지점을 번갈아 픽업점으로 사용 (뭉친 더미가 중앙에 없어도 매번 같은 양이 잡히도록)
                     p1, p2 = get_third_points_along_long_axis(
@@ -845,7 +852,7 @@ def main(args=None):
 
                     if min_pt is None:
                         draw_last_published(overlay, last_published)
-                        publish_and_show(overlay, img_pub, bridge, node)
+                        cv2.imshow("frame", overlay)
                         if cv2.waitKey(1) == 27:
                             break
                         continue
@@ -886,7 +893,7 @@ def main(args=None):
                             current_target = None
 
                     draw_last_published(overlay, last_published)
-                    publish_and_show(overlay, img_pub, bridge, node)
+                    cv2.imshow("frame", overlay)
                     if cv2.waitKey(1) == 27:
                         break
                     continue
@@ -897,16 +904,14 @@ def main(args=None):
                     if cls_name != current_target:   # current_target만 처리
                         continue
 
-                    # 클래스 매칭은 noodle로, CROP_RATIOS 등 나머지 조회는 cls_name(thick/thin)으로
-                    yolo_target = "noodle" if cls_name in ("noodle_thick", "noodle_thin") else cls_name
-                    depth_masked, shrunk_poly = get_obb_masked_depth(
-                        yolo_result, yolo_model.names, yolo_target, depth_full, cls_name)
+                    # best_obb: 위에서 실시간 YOLO 결과 또는 직전 OBB(재사용)로 이미 결정됨
+                    depth_masked, shrunk_poly = get_obb_masked_depth(best_obb, depth_full, cls_name)
                     if depth_masked is None:
                         prev_centers[cls_name] = []
                         continue
 
-                    # OBB 시각화(줄인것)
-                    cv2.polylines(overlay, [shrunk_poly.astype(np.int32)], True, (255, 255, 0), 1)
+                    # OBB 시각화(줄인것). 재사용 중이면 주황색
+                    cv2.polylines(overlay, [shrunk_poly.astype(np.int32)], True, obb_color, 1)
 
                     # 후보점 생성
                     if cls_name not in ("noodle_thick", "noodle_thin"):
@@ -1026,7 +1031,7 @@ def main(args=None):
                                 current_target = None
 
                 draw_last_published(overlay, last_published)  
-                publish_and_show(overlay, img_pub, bridge, node)
+                cv2.imshow("frame", overlay)
                 if cv2.waitKey(1) == 27:
                     break
             except Exception as _e:
