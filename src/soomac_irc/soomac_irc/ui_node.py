@@ -1,7 +1,12 @@
 #!/home/roma/miniconda3/envs/cosyvoice3/bin/python
 
 import json
-import signal
+import mimetypes
+import signal # 운영체제로부터(Ubuntu) 비동기 신호를 받고 처리 가능한 표준 라이브러리
+
+# signal.SIGINT: 키보드 인터럽트 (Ctrl+C)
+# signal.SIGTERM: 프로그램 종료 요청 (kill 명령어 등)
+
 import socket
 import threading
 import traceback
@@ -45,6 +50,10 @@ TEMPLATE_DIRECTORY = Path(__file__).resolve().parent / 'templates'
 #   클라이언트 라이브러리는 안 준다. CDN 을 걸면 대회장에 인터넷이 없을 때 화면이 통째로 죽는다.
 STATIC_DIRECTORY = Path(__file__).resolve().parent / 'static'
 
+# 일부 Ubuntu/Python 조합은 .webp를 application/octet-stream으로 보내므로
+# 브라우저가 재료 사진을 이미지로 안정적으로 해석하도록 MIME을 명시한다.
+mimetypes.add_type('image/webp', '.webp')
+
 app = Flask(__name__,
             template_folder=str(TEMPLATE_DIRECTORY),
             static_folder=str(STATIC_DIRECTORY))
@@ -87,9 +96,7 @@ def sync_mic_with_stt(enabled=None, *, tts_done=False):
             return
 
         if tts_done:
-            next_state = (
-                'listening' if latest_stt_enabled else 'waiting'
-            )
+            next_state = ('listening' if latest_stt_enabled else 'waiting')
 
         elif enabled is True:
             if previous_enabled:
@@ -104,10 +111,7 @@ def sync_mic_with_stt(enabled=None, *, tts_done=False):
             next_state = 'waiting'
 
         latest_mic_state = next_state
-        socketio.emit(
-            'mic_state',
-            {'state': latest_mic_state},
-        )
+        socketio.emit('mic_state',{'state': latest_mic_state})
 
 
 def emit_dialogue(event_name, text):
@@ -265,6 +269,7 @@ class UiNode(Node):
             if not is_ui_session_active():
                 self.get_logger().info('비활성 UI 세션의 손님 문장을 표시하지 않았어요.')
                 return
+
             question_text = message.data.strip()
             if not question_text:
                 self.get_logger().info('빈 손님 문장은 화면에 보내지 않았어요.')
@@ -293,9 +298,7 @@ class UiNode(Node):
             emit_dialogue('bot_say', response_text)
             self.get_logger().info(f'로봇 대사를 화면에 보냈어요: {response_text}')
         except Exception as error:
-            self.get_logger().error(
-                f'로봇 대사를 화면에 보내다가 터졌어요: '
-                f'{error}\n{traceback.format_exc()}')
+            self.get_logger().error(f'로봇 대사를 화면에 보내다가 터졌어요: ' f'{error}\n{traceback.format_exc()}')
 
     def stt_stop_callback(self, _message):
         try:
@@ -313,14 +316,9 @@ class UiNode(Node):
         try:
             enabled = bool(message.data)
             sync_mic_with_stt(enabled)
-            self.get_logger().info(
-                f'/stt/enable={enabled}를 화면 상태로 저장했어요.'
-            )
+            self.get_logger().info(f'/stt/enable={enabled}를 화면 상태로 저장했어요.')
         except Exception as error:
-            self.get_logger().error(
-                f'STT 허용 상태를 화면에 보내다가 터졌어요: '
-                f'{error}\n{traceback.format_exc()}'
-            )
+            self.get_logger().error(f'STT 허용 상태를 화면에 보내다가 터졌어요: 'f'{error}\n{traceback.format_exc()}')
 
     def tts_done_callback(self, _message):
         try:
@@ -334,15 +332,10 @@ class UiNode(Node):
                 return
 
             sync_mic_with_stt(tts_done=True)
-            self.get_logger().info(
-                'TTS 종료 후 마지막 /stt/enable 상태를 화면에 반영했어요.'
-            )
+            self.get_logger().info('TTS 종료 후 마지막 /stt/enable 상태를 화면에 반영했어요.')
 
         except Exception as error:
-            self.get_logger().error(
-                f'TTS 종료 상태를 화면에 보내다가 터졌어요: '
-                f'{error}\n{traceback.format_exc()}'
-            )
+            self.get_logger().error(f'TTS 종료 상태를 화면에 보내다가 터졌어요: 'f'{error}\n{traceback.format_exc()}')
 
     def agent_status_callback(self, message):
         try:
@@ -370,20 +363,14 @@ class UiNode(Node):
             image_bytes = bytes(message.data)
             if not image_bytes:
                 self.get_logger().warning(
-                    f'{VLM_UI_IMAGE_TOPIC} 이미지가 비어 있어 표시하지 않았어요.'
-                )
+                    f'{VLM_UI_IMAGE_TOPIC} 이미지가 비어 있어 표시하지 않았어요.')
                 return
 
             emit_vlm_snapshot(image_bytes)
-            self.get_logger().info(
-                'VLM 입력 3분할 이미지를 화면에 보냈어요.'
-            )
+            self.get_logger().info('VLM 입력 3분할 이미지를 화면에 보냈어요.')
 
         except Exception as error:
-            self.get_logger().error(
-                f'VLM UI 이미지를 보내다가 터졌어요: '
-                f'{error}\n{traceback.format_exc()}'
-            )
+            self.get_logger().error(f'VLM UI 이미지를 보내다가 터졌어요: 'f'{error}\n{traceback.format_exc()}')
 
     def destroy_node(self):
         # 발행을 먼저 막고 ROS 자원을 닫아 Flask 스레드가 종료 중인 발행기를 쓰지 않게 한다.
@@ -407,22 +394,16 @@ def handle_connect():
                 {'event': event_name, 'text': payload['text']}
                 for event_name, payload in cached_dialogue
             ]
-            socketio.emit(
-                'dialogue_snapshot', {'items': dialogue_items}, to=client_id)
-            socketio.emit(
-                'mic_state', {'state': latest_mic_state}, to=client_id)
-            socketio.emit(
-                'ros_status', {'connected': ros_connected}, to=client_id)
-            socketio.emit(
-                'agent_status', latest_agent_status, to=client_id)
+            socketio.emit('dialogue_snapshot', {'items': dialogue_items}, to=client_id)
+            socketio.emit('mic_state', {'state': latest_mic_state}, to=client_id)
+            socketio.emit('ros_status', {'connected': ros_connected}, to=client_id)
+            socketio.emit('agent_status', latest_agent_status, to=client_id)
 
             if latest_vlm_snapshot is not None:
                 socketio.emit('vlm_snapshot',latest_vlm_snapshot,to=client_id)
         print('브라우저가 붙었어요.')
     except Exception as error:
-        print(
-            f'브라우저 초기 상태를 보내다가 터졌어요: '
-            f'{error}\n{traceback.format_exc()}')
+        print(f'브라우저 초기 상태를 보내다가 터졌어요: ' f'{error}\n{traceback.format_exc()}')
 
 
 @socketio.on('disconnect')
@@ -445,9 +426,7 @@ def handle_start(_payload=None):
         activate_ui_session()
         sync_mic_with_stt()
     except Exception as error:
-        print(
-            f'시작 요청을 처리하다가 터졌어요: '
-            f'{error}\n{traceback.format_exc()}')
+        print(f'시작 요청을 처리하다가 터졌어요: ' f'{error}\n{traceback.format_exc()}')
 
 
 @socketio.on('reset_work')
@@ -561,7 +540,7 @@ def install_termination_handler():
         print('종료 신호를 받았어요. 정리하고 내려갑니다.')
         raise KeyboardInterrupt
 
-    signal.signal(signal.SIGTERM, 종료요청)
+    signal.signal(signal.SIGTERM, 종료요청) # 강제 종료
 
 
 def main(args=None):
@@ -573,21 +552,11 @@ def main(args=None):
         return 1
 
     ros_stop_event.clear()
-    ros_thread = threading.Thread(
-        target=run_ros,
-        args=(args,),
-        name='ui-ros-spin',
-        daemon=True)
+    ros_thread = threading.Thread(target=run_ros, args=(args,), name='ui-ros-spin',daemon=True)
     ros_thread.start()
 
     try:
-        socketio.run(
-            app,
-            host=WEB_HOST,
-            port=WEB_PORT,
-            debug=False,
-            use_reloader=False,
-            allow_unsafe_werkzeug=True)
+        socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
     except KeyboardInterrupt:
         pass
     except Exception as error:
@@ -597,9 +566,7 @@ def main(args=None):
         ros_stop_event.set()
         ros_thread.join(timeout=ROS_THREAD_JOIN_TIMEOUT_SECONDS)
         if ros_thread.is_alive():
-            print(
-                f'ROS 스레드가 {ROS_THREAD_JOIN_TIMEOUT_SECONDS:.0f}초 안에 '
-                '끝나지 않았어요.')
+            print(f'ROS 스레드가 {ROS_THREAD_JOIN_TIMEOUT_SECONDS:.0f}초 안에 끝나지 않았어요.')
     return 0
 
 

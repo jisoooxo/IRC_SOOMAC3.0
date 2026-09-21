@@ -39,6 +39,7 @@ env/
 # 런타임 디버깅 기록
 debug_logs/
 runtime_logs/
+soomac_runtime_logs/
 *.log
 
 # 편집기·운영체제 임시 파일

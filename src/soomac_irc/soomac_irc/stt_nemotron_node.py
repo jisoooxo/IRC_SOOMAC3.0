@@ -18,6 +18,11 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
 
+if __package__:
+    from .stt_hotword import normalize_stt_text
+else:
+    from stt_hotword import normalize_stt_text
+
 # 이 노드는 conda 환경을 지키려고 파일로 직접 실행한다.
 #   토픽은 publisher·subscription 생성 위치에서 직접 확인할 수 있게 문자열로 적는다.
 
@@ -659,9 +664,12 @@ class NemotronSttNode(Node):
 
             decoded = processor.decode(
                 output.sequences, skip_special_tokens=True)
-            final_text = decoded[0] if isinstance(decoded, list) else decoded
-            final_text = ' '.join(final_text.split())
+            raw_text = decoded[0] if isinstance(decoded, list) else decoded
+            final_text = normalize_stt_text(raw_text)
             stats.mark_inference_finished()
+
+            if final_text != raw_text:
+                self.get_logger().info(f'STT 문장을 보정했어요: {raw_text} -> {final_text}')
 
             if not final_text:
                 self.get_logger().info('말은 끝났는데 알아들은 글자가 없어요.')

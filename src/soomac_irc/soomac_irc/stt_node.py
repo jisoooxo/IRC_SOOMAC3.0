@@ -22,8 +22,17 @@ from std_msgs.msg import Bool, String
 #   토픽은 publisher·subscription 생성 위치에서 직접 확인할 수 있게 문자열로 적는다.
 #   아래 nest_pb2 도 protoc 생성 코드라 절대 import 다.
 
-import nest_pb2
-import nest_pb2_grpc
+# 직접 실행과 패키지 실행(-m/console script)을 모두 지원한다.
+if __package__:
+    from . import nest_pb2, nest_pb2_grpc
+else:
+    import nest_pb2
+    import nest_pb2_grpc
+
+if __package__:
+    from .stt_hotword import normalize_stt_text
+else:
+    from stt_hotword import normalize_stt_text
 
 
 CLOVA_HOST = 'clovaspeech-gw.ncloud.com:50051'
@@ -439,7 +448,11 @@ class ClovaSttNode(Node):
                 self.get_logger().warning('서버 epFlag 없이 무음 백스톱으로 닫혔어요. 그래도 인식된 건 발행합니다.')
                 stats.mark_endpoint()
 
-            final_text = ''.join(text_pieces).strip()
+            raw_text = ''.join(text_pieces).strip()
+            final_text = normalize_stt_text(raw_text)
+
+            if final_text != raw_text:
+                self.get_logger().info(f'STT 문장을 보정했어요: {raw_text} -> {final_text}')
 
             if not final_text:
                 self.get_logger().info('발화 끝은 받았는데 알아들은 글자가 없어요.')

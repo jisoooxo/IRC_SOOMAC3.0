@@ -37,7 +37,7 @@
       --radius-lg: 14px;
       --shadow-raised: 0 1px 2px rgb(18 22 26 / .06), 0 12px 32px rgb(18 22 26 / .07);
 
-      --shell: min(1400px, 100vw);
+      --shell: 100vw;
       --pad: clamp(16px, 2.4vw, 32px);
 
       /* 손님은 팔 길이에서 흘끗 본다. 본문이 데스크톱 기준보다 훨씬 커야 한다 */
@@ -145,7 +145,7 @@
     }
 
     .nav-btn {
-      min-height: 40px;
+      min-height: 48px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -621,6 +621,18 @@
       background: #1c2026;
       border-radius: var(--radius-md);
     }
+    .vlm-snapshot-fallback {
+      min-height: 180px;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      color: var(--ink-soft);
+      background: var(--surface-2);
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius-md);
+      font-weight: 700;
+    }
+    .vlm-snapshot-fallback[hidden] { display: none; }
     .vlm-close-btn {
       min-width: 84px;
       min-height: 42px;
@@ -676,7 +688,8 @@
     }
 
     .shell {
-      width: min(1540px, 100vw);
+      width: 100vw;
+      max-width: none;
       height: 100vh;
       height: 100dvh;
       padding: clamp(14px, 1.6vw, 26px);
@@ -881,7 +894,8 @@
     }
     .slot-content:empty { display: none; }
 
-    /* Fontana 목업의 재료 사진을 트레이 형상 위에 표시한다. */
+    /* 원본 목업의 재료 사진 느낌을 유지한다.
+       슬롯 형상/경계/중앙 노브는 그대로 두고, 내용물 레이어만 사진 asset으로 바꾼다. */
     .slot-content.has-photo {
       display: flex;
       align-items: center;
@@ -910,7 +924,10 @@
     .slot-crab .ingredient-asset { max-width: 88%; max-height: 82%; }
     .ingredient-asset.ingredient-vegetable-combo { max-width: 96%; max-height: 90%; }
 
-    .ingredient-photo.has-image { padding: 4px; background: #f4f5f3; }
+    .ingredient-photo.has-image {
+      padding: 4px;
+      background: #f4f5f3;
+    }
     .current-ingredient-asset {
       display: block;
       width: 100%;
@@ -1093,21 +1110,6 @@
     .current-order-label { flex: 0 0 auto; margin-right: 4px; color: #17243b; font-size: 14px; font-weight: 800; }
     .current-order-summary .selected-chips { flex: 1 1 520px; min-width: 0; }
     .current-order-summary .empty-state { margin: 0; }
-    .recommendation-notice {
-      grid-column: 1 / -1;
-      padding: 9px 12px;
-      border: 1px solid #cfe0ff;
-      border-radius: 10px;
-      color: #2458a6;
-      background: #f2f7ff;
-      font-size: clamp(13px, 1.05vw, 16px);
-      font-weight: 750;
-    }
-    .recommendation-notice[data-status="running"] {
-      border-color: #cce5d3;
-      color: #247a43;
-      background: #eefaf2;
-    }
     .ingredient-photo {
       width: 92px;
       height: 72px;
@@ -1461,13 +1463,11 @@
     .sauce-pouch-icon { width:clamp(38px,4.5vw,64px); height:clamp(46px,5.5vw,78px); display:grid; place-items:center; font-size:clamp(30px,4vw,54px); line-height:1; filter:drop-shadow(0 4px 4px rgba(0,0,0,.10)); }
     .sauce-pouch-name { text-align:center; font-size:clamp(12px,1.1vw,17px); font-weight:900; line-height:1.15; }
     .sauce-pouch-sub { font-size:clamp(8px,.65vw,10px); font-weight:850; letter-spacing:.12em; opacity:.68; }
-    .sauce-pouch.has-photo { padding:0; border:none; background:transparent !important; box-shadow:drop-shadow(0 12px 18px rgba(0,0,0,.24)); overflow:visible; }
-    .sauce-pouch.has-photo::before,
-    .sauce-pouch.has-photo::after { display:none; }
-    .sauce-pouch.has-photo .sauce-pouch-icon { width:100%; height:100%; filter:drop-shadow(0 10px 12px rgba(0,0,0,.22)); }
-    .sauce-pouch.has-photo .sauce-pouch-icon img { width:100%; height:100%; object-fit:contain; display:block; }
-    .sauce-pouch.has-photo .sauce-pouch-name,
-    .sauce-pouch.has-photo .sauce-pouch-sub { display:none; }
+    .sauce-pouch.has-photo { padding: 0; border: none; background: transparent !important; box-shadow: drop-shadow(0 12px 18px rgba(0,0,0,.24)); overflow: visible; }
+    .sauce-pouch.has-photo::before, .sauce-pouch.has-photo::after { display: none; }
+    .sauce-pouch.has-photo .sauce-pouch-icon { width: 100%; height: 100%; filter: drop-shadow(0 10px 12px rgba(0,0,0,.22)); }
+    .sauce-pouch.has-photo .sauce-pouch-icon img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .sauce-pouch.has-photo .sauce-pouch-name, .sauce-pouch.has-photo .sauce-pouch-sub { display: none; }
 
     .sauce-overlay.arriving { animation: sauce-arrive .62s cubic-bezier(.18,.82,.2,1) both; }
     @keyframes sauce-arrive {
@@ -1481,8 +1481,8 @@
       .sauce-overlay.arriving { animation: none !important; }
     }
 
-    /* 트레이·뚜껑·소스 레이어보다 시작 화면을 항상 위에 둔다. */
-    .start { z-index: 10000; }
+    /* 시작 화면은 tray knob, 뚜껑, 소스보다 항상 위에 있어야 한다. */
+    .start { z-index: 10000 !important; }
 
   </style>
 </head>
@@ -1520,6 +1520,7 @@
       </div>
       <img class="vlm-snapshot-image" id="vlmSnapshotImage"
            alt="VLM이 실제 판정에 사용한 reference, previous, current 이미지">
+      <p class="vlm-snapshot-fallback" id="vlmSnapshotFallback" hidden>확인 이미지를 표시할 수 없습니다.</p>
     </div>
   </dialog>
 
@@ -1624,7 +1625,6 @@
             <strong class="current-order-label">현재 주문</strong>
             <div class="selected-chips" id="currentOrderItems"></div>
           </div>
-          <div class="recommendation-notice" id="recommendationNotice" hidden></div>
           <div class="ingredient-photo" id="currentIngredientVisual">…</div>
           <div class="ingredient-copy">
             <strong id="currentIngredientName">작업 대기 중</strong>
@@ -1675,7 +1675,6 @@
     const phaseBadge = document.getElementById('phaseBadge');
     const selectedItems = document.getElementById('selectedItems');
     const currentOrderItems = document.getElementById('currentOrderItems');
-    const recommendationNotice = document.getElementById('recommendationNotice');
     const targetList = document.getElementById('targetList');
     const currentStatus = document.getElementById('currentStatus');
     const currentSection = document.getElementById('currentSection');
@@ -1702,6 +1701,7 @@
     const vlmDialog = document.getElementById('vlmDialog');
     const vlmCloseBtn = document.getElementById('vlmCloseBtn');
     const vlmSnapshotImage = document.getElementById('vlmSnapshotImage');
+    const vlmSnapshotFallback = document.getElementById('vlmSnapshotFallback');
     const resetActionButtons = Array.from(document.querySelectorAll('[data-reset-action]'));
 
     const 최대화면대화수 = 200;
@@ -1876,12 +1876,6 @@
       const autoRunning = data.auto_running === true;
       const skipped = Array.isArray(data.skipped) ? data.skipped : [];
       const selected = data.selected ?? data.selected_items ?? data.order ?? [];
-      const recommendationStatus = typeof data.recommendation_status === 'string'
-        ? data.recommendation_status
-        : 'none';
-      const recommendationSections = Array.isArray(data.recommendation_sections)
-        ? data.recommendation_sections.map(value => String(value).trim()).filter(Boolean)
-        : [];
 
       phaseBadge.dataset.phase = phase;
       phaseBadge.textContent = autoRunning ? '자동 추천 실행 중' : (단계문구[phase] ?? phase);
@@ -1890,21 +1884,6 @@
       칩그리기(selectedItems, selectedLabels, '아직 선택한 항목이 없어요.');
       // 숨겨진 기존 상태 노드는 호환용으로 유지하고, 같은 selected를 손님 화면에도 보여준다.
       칩그리기(currentOrderItems, selectedLabels, '아직 선택한 주문이 없어요.');
-
-      const recommendationSectionText = recommendationSections.length
-        ? ` · ${recommendationSections.join(', ')}`
-        : '';
-      const recommendationMessages = {
-        await_scope: '추천할 범위를 확인하고 있어요',
-        confirming: `추천 조합 확인 대기${recommendationSectionText}`,
-        confirmed: `추천 확정 · 자동 진행 예정${recommendationSectionText}`,
-        running: `추천 재료 자동 투입 중${recommendationSectionText}`,
-      };
-      const recommendationMessage = recommendationMessages[recommendationStatus] ?? '';
-
-      recommendationNotice.hidden = !recommendationMessage;
-      recommendationNotice.dataset.status = recommendationStatus;
-      recommendationNotice.textContent = recommendationMessage;
 
       const completedLabels = completed.map(작업문구).filter(Boolean);
       const doneSectionLabels = doneSections.map(name => `${name} 섹션`);
@@ -2033,18 +2012,18 @@
     /* class -> 화면 정보.
        tray slot이 같은 mushroom/onion도 class는 절대 합치지 않는다. */
     const 재료이미지 = {
-      sausage: '/static/fontana/sausage.png',
-      mushroom: '/static/fontana/mushroom.png',
-      onion: '/static/fontana/onion.png',
-      vegetable_combo: '/static/fontana/vegetable_combo.png',
-      cheese: '/static/fontana/cheese.png',
-      noodle: '/static/fontana/noodle.png',
-      pepperoncino: '/static/fontana/pepperoncino.png',
-      crab: '/static/fontana/crab.webp',
-      cover: '/static/fontana/cover.webp',
-      tomato: '/static/fontana/tomato.png',
-      cream: '/static/fontana/cream.png',
-      oil: '/static/fontana/oil.png'
+      sausage: '/static/ingredients/sausage.webp',
+      mushroom: '/static/ingredients/mushroom.webp',
+      onion: '/static/ingredients/onion.webp',
+      vegetableCombo: '/static/ingredients/vegetable_combo.webp',
+      cheese: '/static/ingredients/cheese.webp',
+      noodle: '/static/ingredients/noodle.webp',
+      pepperoncino: '/static/ingredients/pepperoncino.webp',
+      crab: '/static/ingredients/crab.webp',
+      cover: '/static/ingredients/cover.webp',
+      tomato: '/static/ingredients/tomato.webp',
+      cream: '/static/ingredients/cream.webp',
+      oil: '/static/ingredients/oil.webp'
     };
 
     const 재료메타 = {
@@ -2264,34 +2243,41 @@
     }
 
     function 재료이미지노드(info, classKey = '') {
-      if (info?.asset) {
-        const img = document.createElement('img');
-        img.className = `ingredient-asset ingredient-${classKey || 키정규화(info.raw || info.name)}`;
-        img.src = info.asset;
-        img.alt = info.name || '';
-        img.draggable = false;
-        return img;
-      }
-      const span = document.createElement('span');
-      span.textContent = info?.icon ?? '•';
-      span.setAttribute('aria-hidden', 'true');
-      return span;
+      const fallbackIcon = document.createElement('span');
+      fallbackIcon.textContent = info?.icon ?? '•';
+      fallbackIcon.setAttribute('aria-hidden', 'true');
+
+      if (!info?.asset) return fallbackIcon;
+
+      const ingredientImage = document.createElement('img');
+      ingredientImage.className = `ingredient-asset ingredient-${classKey || 키정규화(info.raw || info.name)}`;
+      ingredientImage.src = info.asset;
+      ingredientImage.alt = info.name || '';
+      ingredientImage.draggable = false;
+      ingredientImage.addEventListener('error', () => ingredientImage.replaceWith(fallbackIcon), {once: true});
+      return ingredientImage;
     }
 
-    function 현재작업비주얼그리기(info, fallback = '…') {
+    function 현재작업비주얼그리기(info, fallbackText = '…') {
       currentIngredientVisual.replaceChildren();
       currentIngredientVisual.classList.remove('has-image');
-      if (info?.asset) {
-        const img = document.createElement('img');
-        img.className = 'current-ingredient-asset';
-        img.src = info.asset;
-        img.alt = info.name || '';
-        img.draggable = false;
-        currentIngredientVisual.appendChild(img);
-        currentIngredientVisual.classList.add('has-image');
-      } else {
-        currentIngredientVisual.textContent = info?.icon || fallback;
+
+      if (!info?.asset) {
+        currentIngredientVisual.textContent = info?.icon || fallbackText;
+        return;
       }
+
+      const ingredientImage = document.createElement('img');
+      ingredientImage.className = 'current-ingredient-asset';
+      ingredientImage.src = info.asset;
+      ingredientImage.alt = info.name || '';
+      ingredientImage.draggable = false;
+      ingredientImage.addEventListener('error', () => {
+        currentIngredientVisual.classList.remove('has-image');
+        currentIngredientVisual.textContent = info.icon || fallbackText;
+      }, {once: true});
+      currentIngredientVisual.appendChild(ingredientImage);
+      currentIngredientVisual.classList.add('has-image');
     }
 
     function 용기칸초기화() {
@@ -2340,12 +2326,17 @@
 
         const vegetableKeys = new Set(items.map(item => item.classKey));
         if (slotName === 'vegetable' && vegetableKeys.has('mushroom') && vegetableKeys.has('onion')) {
-          const img = document.createElement('img');
-          img.className = 'ingredient-asset ingredient-vegetable-combo';
-          img.src = 재료이미지.vegetable_combo;
-          img.alt = '버섯과 양파';
-          img.draggable = false;
-          content.appendChild(img);
+          const combinedVegetableImage = document.createElement('img');
+          combinedVegetableImage.className = 'ingredient-asset ingredient-vegetable-combo';
+          combinedVegetableImage.src = 재료이미지.vegetableCombo;
+          combinedVegetableImage.alt = '버섯과 양파';
+          combinedVegetableImage.draggable = false;
+          combinedVegetableImage.addEventListener('error', () => {
+            content.replaceChildren();
+            content.classList.add('multi-photo');
+            items.forEach(({classKey, info}) => content.appendChild(재료이미지노드(info, classKey)));
+          }, {once: true});
+          content.appendChild(combinedVegetableImage);
           content.classList.add('has-photo');
           content.classList.remove('multi-photo');
           return;
@@ -2353,9 +2344,7 @@
 
         content.classList.add('has-photo');
         content.classList.toggle('multi-photo', items.length > 1);
-        items.forEach(({classKey, info}) => {
-          content.appendChild(재료이미지노드(info, classKey));
-        });
+        items.forEach(({classKey, info}) => content.appendChild(재료이미지노드(info, classKey)));
       });
     }
 
@@ -2425,15 +2414,21 @@
       saucePouch.dataset.sauce = sauce.key;
       saucePouch.classList.toggle('has-photo', Boolean(sauce.asset));
       saucePouchIcon.replaceChildren();
+
       if (sauce.asset) {
-        const img = document.createElement('img');
-        img.src = sauce.asset;
-        img.alt = sauce.name;
-        img.draggable = false;
-        saucePouchIcon.appendChild(img);
+        const sauceImage = document.createElement('img');
+        sauceImage.src = sauce.asset;
+        sauceImage.alt = sauce.name;
+        sauceImage.draggable = false;
+        sauceImage.addEventListener('error', () => {
+          saucePouch.classList.remove('has-photo');
+          saucePouchIcon.textContent = sauce.icon;
+        }, {once: true});
+        saucePouchIcon.appendChild(sauceImage);
       } else {
         saucePouchIcon.textContent = sauce.icon;
       }
+
       saucePouchName.textContent = sauce.name;
       sauceOverlay.hidden = false;
 
@@ -2555,6 +2550,8 @@
       if (vlmSnapshotUrl) URL.revokeObjectURL(vlmSnapshotUrl);
       vlmSnapshotUrl = '';
       vlmSnapshotImage.removeAttribute('src');
+      vlmSnapshotImage.hidden = false;
+      vlmSnapshotFallback.hidden = true;
     }
 
     function VLM팝업닫기() {
@@ -2568,6 +2565,14 @@
 
     vlmCloseBtn.addEventListener('click', VLM팝업닫기);
     vlmDialog.addEventListener('close', VLM이미지정리);
+    vlmSnapshotImage.addEventListener('load', () => {
+      vlmSnapshotImage.hidden = false;
+      vlmSnapshotFallback.hidden = true;
+    });
+    vlmSnapshotImage.addEventListener('error', () => {
+      vlmSnapshotImage.hidden = true;
+      vlmSnapshotFallback.hidden = false;
+    });
 
     const socket = io({autoConnect: false});
 
