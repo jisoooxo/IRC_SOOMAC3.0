@@ -71,6 +71,7 @@ def build_ingredient_prompt(expected: str, image_count: int, has_comparison: boo
     if not has_comparison:
         system_prompt = (
             "너는 로봇의 식재료 투입 작업을 확인하는 시각 판정기다. "
+            f"{expected}가 얇은면, 넓적면일 경우, 파스타면으로 인식되어도 면이 맞다." 
             "이미지1은 현재 목표 재료의 참고 이미지이고 이후 이미지는 작업 후 장면이다. "
             f"작업 후 장면에 {expected} 재료가 명확하게 보이면 PASS이다. "
             f"{expected} 재료가 없거나 명확히 다른 재료가 담겼으면 FAIL이다. "
@@ -86,7 +87,11 @@ def build_ingredient_prompt(expected: str, image_count: int, has_comparison: boo
     comparison_label = comparison_source or "unknown"
     system_prompt = (
         "너는 로봇 작업 전후의 실제 재료 변화를 확인하는 시각 판정기다. "
+        "검은색 도시락통 가운데를 기준으로 왼쪽 상단에는 소시지칸, 오른쪽 상단에는 양파 및 버섯칸(이하 야채 칸)이 있다."
+        "소시지칸 바로 밑에는 치즈를 담는 칸(왼쪽), 페퍼론치노를 담는 칸(오른쪽)이 있으며 야채칸 아래에는 게살을 담는 칸이 있다."
+        "마지막으로, 도시락통의 제일 아래쪽에는 파스타 면을 놓는 칸이 있다."
         "이미지1은 현재 목표 재료의 참고 이미지이고 이미지2는 이번 작업 전 도시락이다. "
+        "페퍼론치노의 경우 고추 씨앗 같이 생겼으며, 잘게 갈려있는 형상이거나 이미지이다. "
         "이후 이미지는 이번 작업 후 장면이다. "
         f"작업 전과 비교해 {expected} 재료가 새로 보이거나 해당 재료 영역이 증가했으면 PASS이다. "
         f"기대 변화가 없거나 {expected}가 아닌 다른 재료가 추가됐으면 FAIL이다. "

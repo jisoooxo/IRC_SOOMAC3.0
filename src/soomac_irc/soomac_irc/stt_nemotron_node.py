@@ -1,6 +1,7 @@
 #!/home/roma/miniconda3/envs/gemma4_env/bin/python
 
 import math
+import os
 import queue
 import shutil
 import subprocess
@@ -41,11 +42,13 @@ MAX_NEW_TOKENS = 1024
 #   2026-07-31 실측에서 bfloat16 가중치 1,217MiB / 추론 피크 1,290MiB 로 정확도가 같았다.
 MODEL_DTYPE = torch.bfloat16
 
-# PulseAudio 가 USB 마이크를 잡고 있으므로 'default' 로 두는 게 맞다.
-#   plughw:CARD=... 처럼 하드웨어 경로를 직접 지정하면 "Device or resource busy" 로 못 연다.
-#   ⚠ USB 마이크를 안 꽂은 상태에서는 기본 소스가 S/PDIF 출력의 모니터로 떨어져
-#   전부 0인 무음이 잡힌다. 레벨이 -120데시벨로 고정되면 마이크가 안 꽂힌 것이다.
-AUDIO_DEVICE = 'default'
+# C10은 PulseAudio가 점유하므로 하드웨어를 직접 열지 않고 pulse 플러그인을 사용한다.
+#   PULSE_SOURCE를 arecord 자식 프로세스에 전달해 시스템 기본 소스와 무관하게 고정한다.
+AUDIO_DEVICE = os.environ.get('STT_DEVICE') or 'pulse'
+AUDIO_SOURCE = (
+    os.environ.get('STT_SOURCE')
+    or 'alsa_input.usb-MATA_MATA_STUDIO_C10-00.analog-stereo'
+)
 # Nemotron processor 와 Silero VAD 모두 16킬로헤르츠 단일 채널 입력을 기준으로 한다.
 SAMPLE_RATE = 16000
 SAMPLE_WIDTH_BYTES = 2
@@ -319,12 +322,15 @@ class NemotronSttNode(Node):
             '-r',
             str(SAMPLE_RATE),
         ]
+        recording_env = os.environ.copy()
+        recording_env['PULSE_SOURCE'] = AUDIO_SOURCE
 
         try:
             self.arecord_process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                env=recording_env,
                 bufsize=CHUNK_BYTES * 4)
 
             if (self.arecord_process.stdout is None

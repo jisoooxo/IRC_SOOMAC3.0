@@ -50,12 +50,9 @@ PROMPT_TEXT = (
 )
 
 OUT_SR = 48000 # resampleing Hz
-# 'sysdefault' 는 card 0(ALC897 아날로그 = 헤드폰)에 고정이다.
-#   None 으로 두면 PortAudio 가 켤 때의 상태에 따라 조용히 HDMI 로 폴백한다.
-#   sysdefault 는 아날로그가 안 잡히면 에러를 내고 죽는다. 무음보다 그게 낫다.
-#   HDMI 로 내보내려면 TTS_DEVICE='hw:1,3' 처럼 덮어쓸 것
-OUT_DEVICE = os.environ.get('TTS_DEVICE') or 'sysdefault'
-
+# PulseAudio의 기본 출력 sink를 사용한다.
+# 실제 스피커 선택은 soomac_tts()의 pactl에서 처리한다.
+OUT_DEVICE = os.environ.get('TTS_DEVICE') or 'soomac_speaker'
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
