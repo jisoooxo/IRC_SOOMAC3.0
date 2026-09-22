@@ -46,7 +46,7 @@ class CPMotion:
             q_touch_1[0] -= math.radians(95.0)
             q_touch_1[2] = math.radians(90.0)
         else:
-            q_touch_1 = np.deg2rad([-90.5, 2.3, 90.0, 107.5, 36.5, -20.0])
+            q_touch_1 = np.deg2rad([-90.5, 2.3, 90.0, 108.5, 45.5, -30.0])
 
         q_touch_2 = q_touch_1.copy()
         q_touch_2[1] = math.radians(-90.0)

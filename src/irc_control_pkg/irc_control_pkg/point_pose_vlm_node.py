@@ -500,7 +500,8 @@ class PointPoseNode(Node):
         if mode == 'pack':
 
             if self.current_ingredient == 'cover':
-                q_previous = CONTROL_READY2.copy()
+                q_previous = self.pick_lift_q.copy()
+                q_previous[0] = np.deg2rad(360.0)
             else:
                 q_previous = self.pick_lift_q
 
@@ -519,7 +520,7 @@ class PointPoseNode(Node):
                 self.publish_waypoints(
                     self.pack_plan_pub,
                     'pack_place',
-                    CONTROL_READY2,
+                    q_previous,
                     q_approach,
                     q_place,
                     q_lift
