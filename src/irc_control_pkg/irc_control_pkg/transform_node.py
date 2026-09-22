@@ -241,6 +241,16 @@ class TransformNode(Node):
             'frame_id': 'base',
         }
 
+        if class_name == 'cover':
+            output = {
+                'class_name': class_name,
+                'x': float(p_base[0]) - 0.02,
+                'y': float(p_base[1]),
+                'z': float(p_base[2]) - 0.01,
+                'yaw': -yaw_camera_deg,
+                'frame_id': 'base',
+            }
+
         output_msg = String()
         output_msg.data = json.dumps(
             output,

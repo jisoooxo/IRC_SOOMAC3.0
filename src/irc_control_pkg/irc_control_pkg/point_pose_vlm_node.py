@@ -15,7 +15,7 @@ CONTROL_READY2 = np.deg2rad([180.0, -90.0, 0.0, 113.0, 67.0, 0.0])
 
 ## 공압으로 최대한 가까이, 낮게 잡을 수 있는 위치: [0.23, 0.0, 0.065], *base x = 7
 POINT1 = np.deg2rad([0.0, -5.8, 0.0, 70.0, 111.0, 0.0]) ## 카메라가 수직으로 바라보는 위치
-POINT2 = np.deg2rad([85.0, -5.8, 0.0, 70.0, 87.0, -7.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
+POINT2 = np.deg2rad([90.0, -5.8, 0.0, 70.0, 87.0, 0.0]) ## 카메라를 수직으로 바라보는 위치_뚜껑
 VLM_CONFIRM_POINT = np.deg2rad([-102.0, -5.8, 0.0, 70.0, 114.0, -11.0])
 VLM_CONFIRM_POINT2 = np.deg2rad([258.0, -5.8, 0.0, 70.0, 114.0, -11.0])
 
@@ -32,7 +32,7 @@ PLACE_POINTS = {
     'onion': {'position': np.array([-0.055, -0.305, 0.06], dtype=float), 'yaw_deg': 180.0,},
     'crab': {'position': np.array([-0.065, -0.24, 0.06], dtype=float), 'yaw_deg': 180.0,},
     'sausage': {'position': np.array([0.062, -0.30, 0.06], dtype=float), 'yaw_deg': 180.0,},
-    'cover': {'position': np.array([-0.01, -0.25, 0.06], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
+    'cover': {'position': np.array([0.01, -0.26, 0.06], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
 }
 
 LIFT_HEIGHT = 0.15
