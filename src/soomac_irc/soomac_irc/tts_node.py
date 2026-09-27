@@ -6,7 +6,6 @@ from __future__ import annotations
 import os
 import sys
 import time # 시간 체크 용
-import json
 
 import numpy as np
 import sounddevice as sd
@@ -18,8 +17,8 @@ import re
 
 import traceback
 # 에러가 어디서 났는지 알려주는 호출 경로 ㅇㅇ 이거 붙이면 왜 에러 터졌는지 알 수 있음.
-#   쌓이지는 않는다. format_exc() 는 터진 그 순간의 스택을 문자열로 떠서 돌려주고 끝.
-#   except 안에서만 부르니 정상 동작에는 영향 0 이고, 로그 몇 줄 길어질 뿐이다.
+# 쌓이지는 않는다. format_exc() 는 터진 그 순간의 스택을 문자열로 떠서 돌려주고 끝.
+# except 안에서만 부르니 정상 동작에는 영향 0 이고, 로그 몇 줄 길어질 뿐이다.
 
 from contextlib import contextmanager
 
@@ -50,9 +49,12 @@ PROMPT_TEXT = (
 )
 
 OUT_SR = 48000 # resampleing Hz
-# PulseAudio의 기본 출력 sink를 사용한다.
-# 실제 스피커 선택은 soomac_tts()의 pactl에서 처리한다.
-OUT_DEVICE = os.environ.get('TTS_DEVICE') or 'soomac_speaker'
+# 'sysdefault' 는 card 0(ALC897 아날로그 = 헤드폰)에 고정이다.
+#   None 으로 두면 PortAudio 가 켤 때의 상태에 따라 조용히 HDMI 로 폴백한다.
+#   sysdefault 는 아날로그가 안 잡히면 에러를 내고 죽는다. 무음보다 그게 낫다.
+#   HDMI 로 내보내려면 TTS_DEVICE='hw:1,3' 처럼 덮어쓸 것
+OUT_DEVICE = os.environ.get('TTS_DEVICE') or 'sysdefault'
+
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -226,32 +228,14 @@ class TTSNode(Node):
 
         self.stt_stop_pub = self.create_publisher(String, '/stt_stop', 1) # tts 음성이 stt안에 들어갈 수 있어서 이동안의 쌓인 큐를 없애기 위함
         self.stt_retrigger_pub = self.create_publisher(String, '/tts_done', 1) # 이거 도착하면 큐 내부 싹다 버려버리고 다시 음성 받음
-        self.utterance_done_pub = self.create_publisher(String, '/tts/utterance_done', 10) # UI가 마지막 안내와 이전 발화를 구별하도록 원문도 보낸다.
 
         self.create_subscription(String, '/llm_response', self.llm_callback, 1)
 
 
     def llm_callback(self, message):
-        raw = message.data.strip()
-        if not raw:
-            return
-        status = 'failed'
-        try:
-            status = self._speak_reply(raw)
-        except Exception as error:
-            self.get_logger().error(f'TTS 발화 처리 실패: {error}\n{traceback.format_exc()}')
-        finally:
-            try:
-                # write 반환만으로는 재생 종료가 아니다. stop은 남은 출력 버퍼 재생을 기다린다.
-                self.speaker.stop()
-                self.speaker.start()
-            except Exception as error:
-                status = 'failed'
-                self.get_logger().error(f'TTS 출력 종료 처리 실패: {error}')
-            self.stt_retrigger_pub.publish(String(data=status))
-            self.utterance_done_pub.publish(String(data=json.dumps({'text': raw, 'status': status}, ensure_ascii=False)))
 
-    def _speak_reply(self, raw):
+        raw = message.data.strip()
+
         llm_response = self.text_norm.normalize(raw)
 
         # text normalize 디버깅용
@@ -261,7 +245,7 @@ class TTSNode(Node):
 
         if not llm_response:
             self.get_logger().info("llm 응답 X")
-            return 'failed'
+            return
 
         self.cosyvoice_tts.model.token_hop_len=25
 
@@ -276,16 +260,13 @@ class TTSNode(Node):
 
 
         q = queue.Queue() # 큐에 청크 담아서 계속 넣어야함
-        synthesis_failed = False
        
         def producer():
-            nonlocal synthesis_failed
             try:
                 for packet in tts_generator:
                     q.put(packet['tts_speech'].squeeze(0).numpy().astype(np.float32)) # 큐에다가 생성한 청크 쌓음
 
             except Exception as e:
-                synthesis_failed = True
                 self.get_logger().error(f"합성 스레드가 터졌어용 : {e}\n{traceback.format_exc()}")
 
             finally:
@@ -311,16 +292,18 @@ class TTSNode(Node):
 
         except Exception as error:
             self.get_logger().error(f"에러 터짐 샤갈! {error}")
-            return 'failed'
+            self.stt_retrigger_pub.publish(String(data='failed'))
+            return
 
         finally:
             producer_thread.join()
 
         
 
-        if synthesis_failed or not chunks:
-            self.get_logger().error('합성 실패 또는 빈 오디오로 발화를 종료합니다.')
-            return 'failed'
+        if not chunks:
+            self.get_logger().error("합성된 청크가 없어요 샤갈!")
+            self.stt_retrigger_pub.publish(String(data='failed')) # 
+            return
 
         audio = np.concatenate(chunks) # 생성된 청크들 통합해버려 그냥
 
@@ -330,7 +313,7 @@ class TTSNode(Node):
 
         self.get_logger().info(stats.summary(len(chunks), total_time, LAST_WAV))
 
-        return 'finished'
+        self.stt_retrigger_pub.publish(String(data='finished'))
 
     def destroy_node(self):
         try:

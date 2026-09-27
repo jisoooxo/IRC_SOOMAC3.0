@@ -22,12 +22,8 @@ from std_msgs.msg import Bool, String
 #   토픽은 publisher·subscription 생성 위치에서 직접 확인할 수 있게 문자열로 적는다.
 #   아래 nest_pb2 도 protoc 생성 코드라 절대 import 다.
 
-# 직접 실행과 패키지 실행(-m/console script)을 모두 지원한다.
-if __package__:
-    from . import nest_pb2, nest_pb2_grpc
-else:
-    import nest_pb2
-    import nest_pb2_grpc
+import nest_pb2
+import nest_pb2_grpc
 
 if __package__:
     from .stt_hotword import normalize_stt_text

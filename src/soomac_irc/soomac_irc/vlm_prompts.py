@@ -1,6 +1,9 @@
 # VLM 작업 판정 프롬프트 정본. 문자열 생성만 하고 이미지·로봇 상태는 변경하지 않는다.
 
-SAUCE_NAMES = ("토마토", "오일", "크림")
+from soomac_irc.domain import SAUCES
+
+
+SAUCE_NAMES = SAUCES
 
 VERDICT_RULE = (
     "먼저 한두 문장으로 실제로 확인한 시각 근거를 설명한다. "
@@ -10,7 +13,8 @@ VERDICT_RULE = (
 
 
 def build_lid_prompt(image_count: int) -> tuple[str, str]:
-    # 입력: 작업 후 이미지 수. 반환: system_prompt, user_text.
+    # 작업 후 이미지 개수. 
+    # system_prompt, user_text.
     # 호출자: vlm.build_vlm_request.
     system_prompt = (
         "너는 도시락의 검은 뚜껑 닫기 작업만 확인하는 시각 판정기다. "
@@ -29,14 +33,15 @@ def build_lid_prompt(image_count: int) -> tuple[str, str]:
 
 
 def build_sauce_prompt(expected: str, image_count: int) -> tuple[str, str]:
-    # 입력: 소스 class, 작업 후 이미지 수. 반환: system_prompt, user_text.
-    # 호출자: vlm.build_vlm_request. 소스 종류 검사는 호출자가 수행한다.
+    # input : 소스 class, 작업 후 이미지 수. 
+    # return : system_prompt, user_text.
+
     sauce_label_hints = {
         "토마토": "tomato, pomodoro, Napoli, 나폴리, 토마토",
         "오일": "oil, olio, aglio, 오일",
         "크림": "cream, panna, 크림",
-    }
-    expected_hints = sauce_label_hints[expected]
+    } # 동일하게 처리할 라벨
+    expected_hints = sauce_label_hints[expected] # expected는 우리가 대상으로 해야할 소스 이름 ㅇㅇ
     other_sauces = [sauce for sauce in SAUCE_NAMES if sauce != expected]
     other_hints = "; ".join(f"{sauce} 소스={sauce_label_hints[sauce]}" for sauce in other_sauces)
     system_prompt = (
@@ -57,6 +62,7 @@ def build_sauce_prompt(expected: str, image_count: int) -> tuple[str, str]:
         f"{' 또는 '.join(other_sauces)} 소스로 명확히 확인되면 FAIL이다. "
         f"뚜껑 상태나 포장지 종류를 확실히 확인할 수 없으면 UNCERTAIN이다. {VERDICT_RULE}"
     )
+
     user_text = (
         f"작업 후 이미지 {image_count}장에서 검은 뚜껑이 닫혀 있고, "
         f"그 위에 밀봉된 {expected} 소스 포장지가 실제로 놓였는지 판정해. "
@@ -66,8 +72,8 @@ def build_sauce_prompt(expected: str, image_count: int) -> tuple[str, str]:
 
 
 def build_ingredient_prompt(expected: str, image_count: int, has_comparison: bool, comparison_source: str | None = None) -> tuple[str, str]:
-    # 입력: 재료 class, 작업 후 이미지 수, 비교 이미지 유무·출처.
-    # 반환: system_prompt, user_text. 호출자: vlm.build_vlm_request.
+    # input: 재료 class, 작업 후 이미지 수, 비교 이미지 유무·출처.
+    # output: system_prompt, user_text. 
     if not has_comparison:
         system_prompt = (
             "너는 로봇의 식재료 투입 작업을 확인하는 시각 판정기다. "

@@ -16,27 +16,24 @@ VERDICT_LINES = {
 
 
 def expected_label_for(expected: str) -> str:
-    # TTS에서 토마토를 단독 재료처럼 말하지 않고 토마토 소스로 안내한다.
-    # 입력: 로봇 작업의 내부 class 이름
-    # 상태 변경: 없음
-    # 반환: 사용자에게 말할 작업 이름
+    # TTS에서 토마토를 단독 재료처럼 말하지 않고 토마토 소스로 안내
     if expected in SAUCE_NAMES:
         return f"{expected} 소스"
 
     return expected
 
 def parse_vlm_verdict(raw_text: str) -> str:
-    # 설명 본문은 판정에 사용하지 않고 마지막 한 줄의 고정 verdict만 사용한다.
-    # 형식이 없거나 마지막 줄이 잘렸으면 안전하게 uncertain으로 처리한다.
+    # 설명 본문은 판정에 사용하지 않고 마지막 한 줄의 고정 verdict만 사용
+    
     if not isinstance(raw_text, str) or not raw_text.strip():
         return "uncertain"
 
     last_line = raw_text.strip().splitlines()[-1].strip()
 
-    return VERDICT_LINES.get(last_line, "uncertain")
+    return VERDICT_LINES.get(last_line, "uncertain") # 형식이 없거나 마지막 줄이 잘렸으면 안전하게 uncertain으로 처리한다.
 
 def build_vlm_spoken_reply(raw_text: str, policy_reply: str, speak_reason: bool, allow_reason: bool, max_reason_chars: int = 300) -> str:
-    # VLM 판단 근거와 Python 고정 안내를 한 번의 TTS 문장으로 합친다.
+    # VLM 판단 근거와 Python 고정 안내를 한 번의 TTS 문장으로 합침
     # 재시도 상황에서는 allow_reason=False로 판단 근거를 말하지 않고 고정 답변으로 ㄱㄱㄱㄱ
 
     if not isinstance(policy_reply, str) or not policy_reply.strip():
@@ -78,7 +75,7 @@ def build_vlm_request(expected: str, camera_images: list, reference_image=None, 
 
     image_count = len(camera_images)
 
-    # 뚜껑은 참고 재료 이미지 없이 작업 전후 도시락 상태를 비교한다.
+    # 뚜껑은 참고 재료 이미지 없이 작업 전후 도시락 상태를 비교
     if expected == "뚜껑":
         if comparison_image is None:
             return None
@@ -86,11 +83,11 @@ def build_vlm_request(expected: str, camera_images: list, reference_image=None, 
         system_prompt, user_text = build_lid_prompt(image_count)
         return {"images": images, "system_prompt": system_prompt, "user_text": user_text}
 
-    # 소스와 일반 재료는 목표 class 참고 이미지가 필요하다.
+    # 나머지는 참고 이미지 ㅇㅇ
     if reference_image is None:
         return None
 
-    # 토마토·오일·크림은 모두 포장지 종류와 뚜껑 상태를 함께 확인한다.
+    # 토마토·오일·크림은 모두 포장지 종류와 뚜껑 상태를 함께 확인
     if expected in SAUCE_NAMES:
         if comparison_image is None:
             return None
@@ -98,17 +95,15 @@ def build_vlm_request(expected: str, camera_images: list, reference_image=None, 
         system_prompt, user_text = build_sauce_prompt(expected, image_count)
         return {"images": images, "system_prompt": system_prompt, "user_text": user_text}
 
-    # 첫 재료 작업에는 비교할 직전 도시락이 없으므로 reference와 현재 장면을 본다.
+    # 첫 재료 작업에는 래퍼런스랑 현재 장면 확인.
     if comparison_image is None:
         images = [reference_image, *camera_images]
     else:
-        # 두 번째 작업부터는 직전 물리 장면과 현재 장면의 변화를 함께 본다.
+        # 두 번째 작업부터는 직전 장면과 현재 장면의 변화를 함께 비교
         images = [reference_image, comparison_image, *camera_images]
 
     system_prompt, user_text = build_ingredient_prompt(expected, image_count, comparison_image is not None, comparison_source)
     return {"images": images, "system_prompt": system_prompt, "user_text": user_text}
-
-
 
 
 def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enable_uncertain_retake: bool)-> dict:
@@ -126,13 +121,13 @@ def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enab
     attempt = previous_failures + 1
     expected_label = expected_label_for(expected)
 
-    if verdict == "uncertain" and enable_uncertain_retake:
+    if verdict == "uncertain" and enable_uncertain_retake: # 판정 결과가 uncertain일 때
         return {
-            "attempt": attempt,
-            "history_result": "uncertain",
-            "policy_result": "retake_wait",
-            "publish_result": None,
-            "confirmed": False,
+            "attempt": attempt, # 재시도 횟수
+            "history_result": "uncertain", # 판정 결과
+            "policy_result": "retake_wait", #
+            "publish_result": None, # 판정 결과
+            "confirmed": False, 
             "clear_camera_images": True,
             "use_current_as_comparison": False,
             "trusted_pass": False,
@@ -146,12 +141,12 @@ def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enab
             "history_result": "pass",
             "policy_result": "success",
             "publish_result": "success",
-            "confirmed": True,
+            "confirmed": True, # 확정
             "clear_camera_images": False,
             "use_current_as_comparison": True,
             "trusted_pass": True,
             "allow_spoken_reason": True,
-            "policy_reply": (
+            "policy_reply": ( # 판정 답변
                 f"{expected_label} 작업을 확인했어요. "
                 "현재 작업을 마무리할게요."
             ),
@@ -176,7 +171,7 @@ def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enab
             ),
         }
 
-    # 재시도도 실패하면 외부 규약대로 success를 보내되 실제 PASS로 기록하지 않는다.
+    # 재시도도 실패하면 success를 보내되 실제 PASS로 기록은 X
     return {
         "attempt": attempt,
         "history_result": "policy_success",
