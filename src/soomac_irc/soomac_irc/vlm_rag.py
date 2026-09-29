@@ -4,9 +4,11 @@ import numpy as np
 from PIL import Image
 
 
-DATA_ROOT = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v13"
-CHROMA_PATH = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v13"
+# DATA_ROOT = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v13"
+# CHROMA_PATH = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v13"
 
+DATA_ROOT = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v15"
+CHROMA_PATH = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v15"
 
 class VlmRag:
     def __init__(self):
@@ -121,3 +123,40 @@ class VlmRag:
             image = image.convert("RGB")
 
             return image.crop((x, y, x+width, y+height))
+
+
+
+"""
+사전에 라벨링된 BBOX를 기준으로 이미지를 crop, 
+이를 siglip2가 숫자 벡터로 바꾸어 벡터와 재료 이름을 chroma db에 저장한다.
+
+그리고 여러 이미지 중(200개 기준으로 함) 평균 벡터를 계산하여 평균에 가장 가까운 이미지를 가져와서 
+그 이미지의 bbox를 crop
+
+즉 래퍼런스로 사용하는 이미지는 crop된 이미지이다 ㅇㅇ
+
+참고로 DB에 들어가는건 이미지가 아닌, 임베딩 벡터와 annotation 정보가 들어간다.
+
+ChromaDB
+├─ id: "train_1234"
+├─ embedding: SigLIP2 숫자 벡터
+└─ metadata
+   ├─ ingredient: "onion"
+   ├─ annotation_id: 1234
+   └─ image_id: 567
+
+이런식으로 ㅇㅇ
+
+1. ChromaDB에서 대표 임베딩 선택
+2. Chroma ID "train_1234"에서 annotation_id=1234 추출
+3. COCO JSON에서 annotation 1234 검색
+4. filename과 bbox 확인
+5. 실제 JPG 파일 열기
+6. bbox 부분을 crop해서 reference 이미지 반환
+
+이런 느낌 ㅇㅇ
+
+annotation은 어떤 사진(image_id)의 어떤 재료(category_id)가 어디에 있는지(bbox) 기록한 객체 라벨 하나라고 보면 된다.
+
+
+"""

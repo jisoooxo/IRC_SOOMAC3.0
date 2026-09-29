@@ -14,36 +14,36 @@ from soomac_irc.llm_policy import (
 
 class SessionState(TypedDict):
     # 여러 사용자 턴 동안 유지하는 대화, 주문 상태
-    order: dict  # [여러 턴 유지] 현재까지 누적된 주문
-    preferences: list[dict]  # [여러 턴 유지] 맛·식감처럼 주문 필드 밖의 사용자 기호
-    recommendation: dict  # [여러 턴 유지] 추천 단계, 최근 추천안, 추천 이력
-    pending_confirmation: dict | None  # [여러 턴 유지] 다음 턴 답변을 기다리는 확인 건
-    history: list[dict]  # [여러 턴 유지] 저장 제한 없음; Decision 입력은 8192 token 안의 최근 대화만 사용
-    action_history: list[dict]  # [여러 턴 유지] 저장 제한 없음; 실제 주문 변경과 로봇/VLM 사건 이력
+    order: dict  # 여러 턴 유지 현재까지 누적된 주문
+    preferences: list[dict]  # 여러 턴 유지 맛·식감처럼 주문 필드 밖의 사용자 기호
+    recommendation: dict  # 여러 턴 유지 추천 단계, 최근 추천안, 추천 이력
+    pending_confirmation: dict | None  # 여러 턴 유지 다음 턴 답변을 기다리는 확인 건
+    history: list[dict]  # 여러 턴 유지 저장 제한 없음; Decision 입력은 8192 token 안의 최근 대화만 사용
+    action_history: list[dict]  # 여러 턴 유지 저장 제한 없음; 실제 주문 변경과 로봇/VLM 사건 이력
 
 
 class Decision(TypedDict):
-    understanding: str  # [한 턴만 사용] ok면 처리 계속, clarify면 재질문
-    order_patch: dict  # [한 턴만 사용] 현재 발화에서 바꿀 주문 필드만 담음
-    restriction_options: list[dict]  # [한 턴만 사용] 알레르기·금지 재료 추가/해제 목록
-    preference_options: list[dict]  # [한 턴만 사용] 자유형 취향 추가/해제 목록
-    recommendation: dict  # [한 턴만 사용] 추천 생성·수정·선택·취소 요청
+    understanding: str  # 한 턴만 사용 ok면 처리 계속, clarify면 재질문
+    order_patch: dict  # 한 턴만 사용 현재 발화에서 바꿀 주문 필드만 담음
+    restriction_options: list[dict]  # 한 턴만 사용 알레르기·금지 재료 추가/해제 목록
+    preference_options: list[dict]  # 한 턴만 사용 자유형 취향 추가/해제 목록
+    recommendation: dict  # 한 턴만 사용 추천 생성·수정·선택·취소 요청
     commit: bool  # [한 턴만 사용] 지금 물리 실행까지 요청했는지
     confirmation: str  # [한 턴만 사용] 대기 중인 확인에 대한 accept/reject/none
     queries: list[dict]  # [한 턴만 사용] 주문 변경이 아닌 상태·설명 질문
 
 # 한 번의 graph.invoke 동안 stage 사이에서만 쓰는 턴 state
 class TurnState(TypedDict):
-    session: SessionState  # [여러 턴 유지] 이번 턴 결과를 담아 다음 턴으로 넘김
-    previous_session: SessionState  # [한 턴만 사용] 턴 시작 상태; 변경 전후 비교용
-    user_text: str  # [한 턴만 사용] 이번 사용자 발화
-    robot_state: dict  # [한 턴만 사용] 턴 시작 시점의 section·step·VLM 상태
-    decision: Decision | None  # [한 턴만 사용] Decision Agent의 이번 발화 해석
-    working_session: SessionState | None  # [한 턴만 사용] 확인 답변까지 반영한 임시 상태
-    candidate_session: SessionState | None  # [한 턴만 사용] 이번 변경과 추천을 반영한 임시 상태
-    recommendation_result: dict | None  # [한 턴만 사용] 허용 필드 검사까지 끝난 추천 결과
-    policy: dict | None  # [한 턴만 사용] pass/warning/clarify/hitl/blocked 판정
-    reply: str | None  # [한 턴만 사용] 사용자에게 보낼 최종 응답
+    session: SessionState  # 여러 턴 유지 이번 턴 결과를 담아 다음 턴으로 넘김
+    previous_session: SessionState  # 한 턴만 사용 턴 시작 상태; 변경 전후 비교용
+    user_text: str  # 한 턴만 사용 이번 사용자 발화
+    robot_state: dict  # 한 턴만 사용 턴 시작 시점의 section·step·VLM 상태
+    decision: Decision | None  # 한 턴만 사용 Decision Agent의 이번 발화 해석
+    working_session: SessionState | None  # 한 턴만 사용 확인 답변까지 반영한 임시 상태
+    candidate_session: SessionState | None  # 한 턴만 사용 이번 변경과 추천을 반영한 임시 상태
+    recommendation_result: dict | None  # 한 턴만 사용 허용 필드 검사까지 끝난 추천 결과
+    policy: dict | None  # 한 턴만 사용 pass/warning/clarify/hitl/blocked 판정
+    reply: str | None  # 한 턴만 사용 사용자에게 보낼 최종 응답
 
 
 # 초기 state
@@ -516,13 +516,13 @@ def build_graph(
 
     # graph wiring: 위 stage를 선언 순서 그대로 직렬 실행
     graph = StateGraph(TurnState)  # 한 턴 동안 공유할 state schema
-    graph.add_node("interpret_decision", interpret_decision)  # 1. 발화 구조화
-    graph.add_node("validate_and_repair", validate_and_repair)  # 2. invalid 출력 1회 repair
-    graph.add_node("resolve_confirmation", resolve_confirmation)  # 3. 지난 확인 답변 처리
-    graph.add_node("apply_workers", apply_workers)  # 4. 주문·제한·취향 후보 반영
-    graph.add_node("run_recommendation", run_recommendation)  # 5. 추천 생성·선택·취소
-    graph.add_node("check_policy", check_policy)  # 6. 물리·안전 정책 판정
-    graph.add_node("generate_response", generate_response)  # 7. 응답 생성과 history 누적
+    graph.add_node("interpret_decision", interpret_decision)  # 발화 구조화
+    graph.add_node("validate_and_repair", validate_and_repair)  # invalid 출력 1회 repair
+    graph.add_node("resolve_confirmation", resolve_confirmation)  # 지난 확인 답변 처리
+    graph.add_node("apply_workers", apply_workers)  # 주문·제한·취향 후보 반영
+    graph.add_node("run_recommendation", run_recommendation)  # 추천 생성·선택·취소
+    graph.add_node("check_policy", check_policy)  # 물리·안전 정책 판정
+    graph.add_node("generate_response", generate_response)  # 응답 생성과 history 누적
 
     graph.add_edge(START, "interpret_decision")
     graph.add_edge("interpret_decision", "validate_and_repair")

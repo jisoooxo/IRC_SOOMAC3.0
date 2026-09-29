@@ -11,10 +11,10 @@ from PIL import Image
 from transformers import AutoModel, AutoProcessor
 
 
-# 기존 v11 데이터와 Chroma DB는 덮어쓰지 않고 v13을 별도 경로에 만든다.
-DATA_ROOT = Path("/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v13")
-CHROMA_PATH = Path("/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v13")
-MANIFEST_PATH = Path("/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v13_manifest.json")
+# 기존 DB를 보존하고 v15 DB를 별도 생성한다.
+DATA_ROOT = Path("/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v15")
+CHROMA_PATH = Path("/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v15")
+MANIFEST_PATH = Path("/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v15_manifest.json")
 
 COLLECTION_NAME = "mealkit_refs"
 EMBED_MODEL = "google/siglip2-so400m-patch14-384"
@@ -126,14 +126,14 @@ def build_collection(model, processor, images, selected):
     client = chromadb.PersistentClient(path=str(CHROMA_PATH))
     collection = client.get_or_create_collection(
         COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine", "embedding_model": EMBED_MODEL, "dataset": "Meal kit.v13i.coco"},
+        metadata={"hnsw:space": "cosine", "embedding_model": EMBED_MODEL, "dataset": "Meal kit.v15i.coco"},
     )
 
     expected_count = len(selected)
 
     if collection.count() > expected_count:
         raise ValueError(
-            f"기존 v13 Chroma가 현재 설정과 다름 : count={collection.count()}, expected={expected_count}. "
+            f"기존 v15 Chroma가 현재 설정과 다름 : count={collection.count()}, expected={expected_count}. "
             "기존 DB를 지우지 말고 새 버전 경로를 사용해야 함"
         )
 
@@ -225,7 +225,7 @@ def main():
     passed, total, accuracy, failures = validate_collection(model, processor, collection)
 
     manifest = {
-        "dataset": "Meal kit.v13i.coco",
+        "dataset": "Meal kit.v15i.coco",
         "data_root": str(DATA_ROOT),
         "chroma_path": str(CHROMA_PATH),
         "collection": COLLECTION_NAME,
@@ -250,10 +250,10 @@ def main():
     print(f"manifest : {MANIFEST_PATH}")
 
     if accuracy < MIN_TOP3_ACCURACY:
-        print(f"FAIL: v13 검색 검증 / {accuracy:.1%} < {MIN_TOP3_ACCURACY:.0%} / 실패 crop 확인")
+        print(f"FAIL: v15 검색 검증 / {accuracy:.1%} < {MIN_TOP3_ACCURACY:.0%} / 실패 crop 확인")
         raise SystemExit(1)
 
-    print("PASS: Meal kit v13 crop 임베딩 Chroma 생성")
+    print("PASS: Meal kit v15 crop 임베딩 Chroma 생성")
 
 
 if __name__ == "__main__":
