@@ -6,7 +6,7 @@ import torch
 import xgrammar as xgr
 from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
-from soomac_irc.agent_contracts import RESPONSE_SCHEMA
+from soomac_irc.agent_contract import RESPONSE_SCHEMA
 from soomac_irc.agent_prompts import RESPONSE_SYSTEM
 from soomac_irc.llm_langgraph import SessionState
 

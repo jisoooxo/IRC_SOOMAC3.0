@@ -1,6 +1,6 @@
 import re
 
-from soomac_irc.agent_contracts import new_decision
+from soomac_irc.agent_contract import new_decision
 from soomac_irc.llm_langgraph import Decision, SessionState
 
 
