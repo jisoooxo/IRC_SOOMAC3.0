@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+import json
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Empty, String
 import serial
 
 # ==================== 레일 설정 ====================
-SERIAL_PORT = '/dev/ttyACM1'
+SERIAL_PORT = '/dev/ttyACM0'
 SERIAL_BAUD = 115200
 
 # 원점 센서 = 0 rev 기준 절대 회전수
@@ -33,6 +34,7 @@ class RailBridge(Node):
 
         # MAIN -> RAIL
         self.create_subscription(Empty, '/rail/home', self.home_callback, 10)
+        self.create_subscription(String, '/rail/motion_ahead', self.motion_ahead_callback, 10)
         self.create_subscription(String, '/rail/motion', self.motion_callback, 10)
         self.create_subscription(String, '/reset', self.reset_callback, 10)
 
@@ -46,6 +48,7 @@ class RailBridge(Node):
         self.rxbuf = b''
         self.move_home = False
         self.pending_class = None
+        self.pending_ahead = False
 
         self.create_timer(0.02, self.poll_serial)
 
@@ -64,6 +67,26 @@ class RailBridge(Node):
 
         self.send_serial('H')
 
+    def motion_ahead_callback(self, msg):
+        data = json.loads(msg.data)
+        class_name = str(data['class']).strip()
+
+        if self.move_home:
+            self.get_logger().warning('레일 이동 중')
+            return
+
+        if self.pending_class is not None:
+            self.get_logger().warning('레일 이동 중')
+            return
+
+        rotations = RAIL_ROTATIONS[class_name]
+        self.pending_class = class_name
+        self.pending_ahead = True
+
+        self.get_logger().info(f'Rail 이동: {class_name}')
+
+        self.send_serial(f'R{rotations:.2f}')
+
     def motion_callback(self, msg):
         class_name = msg.data.strip()
 
@@ -77,6 +100,7 @@ class RailBridge(Node):
 
         rotations = RAIL_ROTATIONS[class_name]
         self.pending_class = class_name
+        self.pending_ahead = False
 
         self.get_logger().info(f'Rail 이동: {class_name}')
 
@@ -84,6 +108,7 @@ class RailBridge(Node):
 
     def reset_callback(self, _msg):
             self.pending_class = None
+            self.pending_ahead = False
             self.move_home = True
     
             self.get_logger().info('레일 초기화 시작')
@@ -145,6 +170,7 @@ class RailBridge(Node):
             self.get_logger().error(f'Arduino error: {line}')
             self.move_home = False
             self.pending_class = None
+            self.pending_ahead = False
             return
 
         # ==================== 원점 센서 ====================
@@ -152,6 +178,7 @@ class RailBridge(Node):
         if 'KILL HIT' in line:
             self.move_home = False
             self.pending_class = None
+            self.pending_ahead = False
             return
 
         # ==================== 일반 이동 완료 ====================
@@ -160,8 +187,18 @@ class RailBridge(Node):
             if self.pending_class is None:
                 return
 
-            self.pending_class = None
+            class_name = self.pending_class
+            ahead = self.pending_ahead
 
+            self.pending_class = None
+            self.pending_ahead = False
+
+            if ahead:
+                self.get_logger().info(
+                    f'Rail 단계별 미리 이동 완료: {class_name}'
+                )
+                return
+            
             msg = String()
             msg.data = '완료'
             self.motion_done_pub.publish(msg)
