@@ -1,0 +1,21 @@
+{
+  "source": "/home/roma/IRC_SOOMAC3.0/decision_adapter_v225_root_cause_review_20260930/results_any_order_false/hard_v222/predictions.jsonl",
+  "total": 24,
+  "correct": 23,
+  "accuracy": 0.9583333333333334,
+  "family": {
+    "hard_clarify": {
+      "correct": 11,
+      "total": 12,
+      "accuracy": 0.9166666666666666
+    },
+    "hard_multiturn": {
+      "correct": 12,
+      "total": 12,
+      "accuracy": 1.0
+    }
+  },
+  "failed_ids": [
+    "v222h20010_01"
+  ]
+}

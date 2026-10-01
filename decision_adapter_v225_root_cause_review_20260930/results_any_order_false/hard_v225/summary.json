@@ -1,0 +1,72 @@
+{
+  "source": "/home/roma/IRC_SOOMAC3.0/decision_adapter_v225_root_cause_review_20260930/results_any_order_false/hard_v225/predictions.jsonl",
+  "total": 96,
+  "correct": 74,
+  "accuracy": 0.7708333333333334,
+  "family": {
+    "hard_compound_confirmation": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "hard_compound_mixed": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "hard_compound_order": {
+      "correct": 10,
+      "total": 16,
+      "accuracy": 0.625
+    },
+    "hard_positional_semantics": {
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0
+    },
+    "hard_scope_preservation": {
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0
+    },
+    "hard_semantic_boundary": {
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0
+    },
+    "hard_state_cancel": {
+      "correct": 24,
+      "total": 24,
+      "accuracy": 1.0
+    },
+    "hard_stt_surface": {
+      "correct": 14,
+      "total": 16,
+      "accuracy": 0.875
+    }
+  },
+  "failed_ids": [
+    "v225h0001_01",
+    "v225h0004_01",
+    "v225h0006_01",
+    "v225h0009_01",
+    "v225h0012_01",
+    "v225h0014_01",
+    "v225h0017_01",
+    "v225h0018_01",
+    "v225h0019_01",
+    "v225h0020_01",
+    "v225h0021_01",
+    "v225h0022_01",
+    "v225h0023_01",
+    "v225h0024_01",
+    "v225h0025_01",
+    "v225h0026_01",
+    "v225h0028_01",
+    "v225h0029_01",
+    "v225h0030_01",
+    "v225h0031_01",
+    "v225h0062_01",
+    "v225h0068_01"
+  ]
+}

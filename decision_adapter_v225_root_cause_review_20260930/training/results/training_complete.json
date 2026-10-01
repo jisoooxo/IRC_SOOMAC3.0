@@ -1,0 +1,15 @@
+{
+  "global_step": 396,
+  "reported_global_step": 396,
+  "train_loss": 0.04175410531818422,
+  "samples_seen": 6333,
+  "tokens_seen": 9675363,
+  "peak_allocated_gib": 18.659,
+  "peak_reserved_gib": 28.078,
+  "gradient_check": {
+    "seen": 104960,
+    "finite": true,
+    "nonzero": true
+  },
+  "safety_gate_passed": true
+}

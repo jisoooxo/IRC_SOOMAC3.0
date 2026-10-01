@@ -1,0 +1,31 @@
+{
+  "training_image_spec": "2.7",
+  "task": "decision_adapter",
+  "mode": "full",
+  "quantization": "int4",
+  "model_config_sha256": "478c46e8d2c52d5c2d85bf67e3b3e8c90e7c9d91086cee27e3c267907e936bd9",
+  "contract_sha256": "1ff2810296110506ebec73202f1e7c2758cd6edeca1f5a7d9828675d1c41dd2a",
+  "train_rows": 2111,
+  "validation_rows": 159,
+  "planned_optimizer_steps": 396,
+  "reported_start_step": 0,
+  "reported_target_step": 396,
+  "final_stage": true,
+  "safety_gate_steps": 10,
+  "max_length": 4096,
+  "train_batch_size": 1,
+  "gradient_accumulation_steps": 16,
+  "learning_rate": 0.0001,
+  "epochs": 3,
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "target_modules": "model\\.language_model\\.layers\\.\\d+\\.(self_attn\\.(q_proj|k_proj|v_proj|o_proj)|mlp\\.(gate_proj|up_proj|down_proj))",
+  "packages": {
+    "torch": "2.12.1+cu130",
+    "transformers": "5.13.1",
+    "peft": "0.19.1",
+    "accelerate": "1.14.0",
+    "bitsandbytes": "0.49.2"
+  }
+}

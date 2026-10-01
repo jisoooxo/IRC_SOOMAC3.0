@@ -1,0 +1,21 @@
+{
+  "source": "/home/roma/IRC_SOOMAC3.0/decision_adapter_v225_root_cause_review_20260930/results_any_order_false/hard_v224/predictions.jsonl",
+  "total": 36,
+  "correct": 35,
+  "accuracy": 0.9722222222222222,
+  "family": {
+    "hard_near_neighbor_unsupported": {
+      "correct": 11,
+      "total": 12,
+      "accuracy": 0.9166666666666666
+    },
+    "hard_positional_reference": {
+      "correct": 24,
+      "total": 24,
+      "accuracy": 1.0
+    }
+  },
+  "failed_ids": [
+    "v224h2004_01"
+  ]
+}

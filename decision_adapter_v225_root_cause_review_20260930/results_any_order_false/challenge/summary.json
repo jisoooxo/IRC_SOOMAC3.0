@@ -1,0 +1,72 @@
+{
+  "source": "/home/roma/IRC_SOOMAC3.0/decision_adapter_v225_root_cause_review_20260930/results_any_order_false/challenge/predictions.jsonl",
+  "total": 64,
+  "correct": 42,
+  "accuracy": 0.65625,
+  "family": {
+    "clarify": {
+      "correct": 3,
+      "total": 3,
+      "accuracy": 1.0
+    },
+    "confirmation_compound": {
+      "correct": 0,
+      "total": 16,
+      "accuracy": 0.0
+    },
+    "multi_intent": {
+      "correct": 3,
+      "total": 4,
+      "accuracy": 0.75
+    },
+    "reference": {
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0
+    },
+    "reference_ambiguous": {
+      "correct": 4,
+      "total": 4,
+      "accuracy": 1.0
+    },
+    "restriction_add": {
+      "correct": 0,
+      "total": 5,
+      "accuracy": 0.0
+    },
+    "restriction_replace": {
+      "correct": 20,
+      "total": 20,
+      "accuracy": 1.0
+    },
+    "timing": {
+      "correct": 4,
+      "total": 4,
+      "accuracy": 1.0
+    }
+  },
+  "failed_ids": [
+    "g00217_01",
+    "g00217_02",
+    "g00217_03",
+    "g00217_04",
+    "g00217_05",
+    "g00282_01",
+    "g00282_02",
+    "g00282_03",
+    "g00282_04",
+    "g00284_01",
+    "g00284_02",
+    "g00284_03",
+    "g00284_04",
+    "g00285_01",
+    "g00285_02",
+    "g00285_03",
+    "g00285_04",
+    "g00287_01",
+    "g00287_02",
+    "g00287_03",
+    "g00287_04",
+    "g00358_02"
+  ]
+}

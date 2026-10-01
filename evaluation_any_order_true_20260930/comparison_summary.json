@@ -1,0 +1,190 @@
+{
+  "checkpoint": "/home/roma/Downloads/SOOMAC_DECISION_LOCAL_INT4/checkpoints/gemma4_decision_nf4_qlora_v2_2_5_semantic_rebalance",
+  "suites": {
+    "latest_contract": {
+      "total": 48,
+      "before_correct": 45,
+      "after_correct": 46,
+      "before_accuracy": 0.9375,
+      "after_accuracy": 0.9583333333333334,
+      "improved_count": 1,
+      "regressed_count": 0,
+      "remaining_failure_count": 2,
+      "improved_ids": [
+        "v22g9045_01"
+      ],
+      "regressed_ids": [],
+      "remaining_failure_ids": [
+        "v22g9038_01",
+        "v22g9039_01"
+      ]
+    },
+    "hard_v221": {
+      "total": 16,
+      "before_correct": 14,
+      "after_correct": 16,
+      "before_accuracy": 0.875,
+      "after_accuracy": 1.0,
+      "improved_count": 2,
+      "regressed_count": 0,
+      "remaining_failure_count": 0,
+      "improved_ids": [
+        "v221h91005_01",
+        "v221h91006_01"
+      ],
+      "regressed_ids": [],
+      "remaining_failure_ids": []
+    },
+    "hard_v222": {
+      "total": 24,
+      "before_correct": 23,
+      "after_correct": 23,
+      "before_accuracy": 0.9583333333333334,
+      "after_accuracy": 0.9583333333333334,
+      "improved_count": 0,
+      "regressed_count": 0,
+      "remaining_failure_count": 1,
+      "improved_ids": [],
+      "regressed_ids": [],
+      "remaining_failure_ids": [
+        "v222h20010_01"
+      ]
+    },
+    "hard_v223": {
+      "total": 48,
+      "before_correct": 44,
+      "after_correct": 45,
+      "before_accuracy": 0.9166666666666666,
+      "after_accuracy": 0.9375,
+      "improved_count": 1,
+      "regressed_count": 0,
+      "remaining_failure_count": 3,
+      "improved_ids": [
+        "v223h2009_01"
+      ],
+      "regressed_ids": [],
+      "remaining_failure_ids": [
+        "v223h3001_01",
+        "v223h3002_01",
+        "v223h3006_01"
+      ]
+    },
+    "hard_v224": {
+      "total": 36,
+      "before_correct": 35,
+      "after_correct": 35,
+      "before_accuracy": 0.9722222222222222,
+      "after_accuracy": 0.9722222222222222,
+      "improved_count": 0,
+      "regressed_count": 0,
+      "remaining_failure_count": 1,
+      "improved_ids": [],
+      "regressed_ids": [],
+      "remaining_failure_ids": [
+        "v224h2004_01"
+      ]
+    },
+    "hard_v225": {
+      "total": 96,
+      "before_correct": 74,
+      "after_correct": 95,
+      "before_accuracy": 0.7708333333333334,
+      "after_accuracy": 0.9895833333333334,
+      "improved_count": 21,
+      "regressed_count": 0,
+      "remaining_failure_count": 1,
+      "improved_ids": [
+        "v225h0001_01",
+        "v225h0004_01",
+        "v225h0006_01",
+        "v225h0009_01",
+        "v225h0012_01",
+        "v225h0014_01",
+        "v225h0017_01",
+        "v225h0018_01",
+        "v225h0019_01",
+        "v225h0020_01",
+        "v225h0021_01",
+        "v225h0022_01",
+        "v225h0023_01",
+        "v225h0024_01",
+        "v225h0025_01",
+        "v225h0026_01",
+        "v225h0028_01",
+        "v225h0029_01",
+        "v225h0030_01",
+        "v225h0031_01",
+        "v225h0062_01"
+      ],
+      "regressed_ids": [],
+      "remaining_failure_ids": [
+        "v225h0068_01"
+      ]
+    },
+    "challenge": {
+      "total": 64,
+      "before_correct": 42,
+      "after_correct": 64,
+      "before_accuracy": 0.65625,
+      "after_accuracy": 1.0,
+      "improved_count": 22,
+      "regressed_count": 0,
+      "remaining_failure_count": 0,
+      "improved_ids": [
+        "g00217_01",
+        "g00217_02",
+        "g00217_03",
+        "g00217_04",
+        "g00217_05",
+        "g00282_01",
+        "g00282_02",
+        "g00282_03",
+        "g00282_04",
+        "g00284_01",
+        "g00284_02",
+        "g00284_03",
+        "g00284_04",
+        "g00285_01",
+        "g00285_02",
+        "g00285_03",
+        "g00285_04",
+        "g00287_01",
+        "g00287_02",
+        "g00287_03",
+        "g00287_04",
+        "g00358_02"
+      ],
+      "regressed_ids": [],
+      "remaining_failure_ids": []
+    },
+    "runtime_holdout": {
+      "total": 45,
+      "before_correct": 41,
+      "after_correct": 44,
+      "before_accuracy": 0.9111111111111111,
+      "after_accuracy": 0.9777777777777777,
+      "improved_count": 3,
+      "regressed_count": 0,
+      "remaining_failure_count": 1,
+      "improved_ids": [
+        "real_runtime_015",
+        "real_runtime_016",
+        "real_runtime_017"
+      ],
+      "regressed_ids": [],
+      "remaining_failure_ids": [
+        "real_runtime_040"
+      ]
+    }
+  },
+  "overall": {
+    "total": 377,
+    "before_correct": 318,
+    "after_correct": 368,
+    "improved_count": 50,
+    "regressed_count": 0,
+    "remaining_failure_count": 9,
+    "before_accuracy": 0.843501326259947,
+    "after_accuracy": 0.9761273209549072
+  }
+}

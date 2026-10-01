@@ -1,0 +1,52 @@
+{
+  "source": "/home/roma/IRC_SOOMAC3.0/decision_adapter_v225_root_cause_review_20260930/temporary_any_order_eval/latest_contract/predictions.jsonl",
+  "total": 48,
+  "correct": 46,
+  "accuracy": 0.9583333333333334,
+  "family": {
+    "confirmation_partial": {
+      "correct": 4,
+      "total": 6,
+      "accuracy": 0.6666666666666666
+    },
+    "query_order_compound": {
+      "correct": 6,
+      "total": 6,
+      "accuracy": 1.0
+    },
+    "recommendation_runtime_edges": {
+      "correct": 6,
+      "total": 6,
+      "accuracy": 1.0
+    },
+    "recommendation_select_commit": {
+      "correct": 6,
+      "total": 6,
+      "accuracy": 1.0
+    },
+    "robot_completed": {
+      "correct": 6,
+      "total": 6,
+      "accuracy": 1.0
+    },
+    "robot_failure": {
+      "correct": 6,
+      "total": 6,
+      "accuracy": 1.0
+    },
+    "robot_status": {
+      "correct": 6,
+      "total": 6,
+      "accuracy": 1.0
+    },
+    "unsupported_clarify": {
+      "correct": 6,
+      "total": 6,
+      "accuracy": 1.0
+    }
+  },
+  "failed_ids": [
+    "v22g9038_01",
+    "v22g9039_01"
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "type": "object",
+  "properties": {
+    "order": {
+      "type": "object",
+      "properties": {
+        "sauce": {
+          "type": "string",
+          "enum": [
+            "오일",
+            "토마토",
+            "크림"
+          ]
+        },
+        "noodle_type": {
+          "type": "string",
+          "enum": [
+            "얇은면",
+            "넓은면"
+          ]
+        },
+        "noodle_portion": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high"
+          ]
+        },
+        "toppings": {
+          "type": "object",
+          "properties": {
+            "양파": {
+              "type": "string",
+              "enum": [
+                "low",
+                "normal",
+                "high",
+                "none"
+              ]
+            },
+            "버섯": {
+              "type": "string",
+              "enum": [
+                "low",
+                "normal",
+                "high",
+                "none"
+              ]
+            },
+            "소시지": {
+              "type": "string",
+              "enum": [
+                "low",
+                "normal",
+                "high",
+                "none"
+              ]
+            },
+            "게살": {
+              "type": "string",
+              "enum": [
+                "low",
+                "normal",
+                "high",
+                "none"
+              ]
+            },
+            "치즈": {
+              "type": "string",
+              "enum": [
+                "low",
+                "normal",
+                "high",
+                "none"
+              ]
+            },
+            "페퍼론치노": {
+              "type": "string",
+              "enum": [
+                "low",
+                "normal",
+                "high",
+                "none"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "restrictions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "오일",
+              "토마토",
+              "크림",
+              "얇은면",
+              "넓은면",
+              "양파",
+              "버섯",
+              "소시지",
+              "게살",
+              "치즈",
+              "페퍼론치노",
+              "유제품",
+              "갑각류",
+              "육류",
+              "비건"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "dislike",
+              "cannot_eat",
+              "allergy",
+              "dietary_rule"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "reason",
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "preferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ]
+          }
+        },
+        "required": [
+          "value",
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "request",
+            "revise",
+            "cancel",
+            "select"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "current",
+            "remaining",
+            "all"
+          ]
+        },
+        "criteria": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "commit": {
+      "type": "boolean"
+    },
+    "confirmation": {
+      "type": "string",
+      "enum": [
+        "accept",
+        "reject"
+      ]
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "order_status",
+              "order_field",
+              "order_item",
+              "restriction_status",
+              "recommendation_status",
+              "robot_status",
+              "robot_completed",
+              "robot_failure"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "sauce",
+              "noodle_type",
+              "noodle_portion",
+              "오일",
+              "토마토",
+              "크림",
+              "얇은면",
+              "넓은면",
+              "양파",
+              "버섯",
+              "소시지",
+              "게살",
+              "치즈",
+              "페퍼론치노",
+              "유제품",
+              "갑각류",
+              "육류",
+              "비건"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "clarify": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

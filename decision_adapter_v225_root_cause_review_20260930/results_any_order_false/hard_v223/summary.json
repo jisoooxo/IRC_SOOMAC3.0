@@ -1,0 +1,24 @@
+{
+  "source": "/home/roma/IRC_SOOMAC3.0/decision_adapter_v225_root_cause_review_20260930/results_any_order_false/hard_v223/predictions.jsonl",
+  "total": 48,
+  "correct": 44,
+  "accuracy": 0.9166666666666666,
+  "family": {
+    "hard_clarify_dense": {
+      "correct": 21,
+      "total": 24,
+      "accuracy": 0.875
+    },
+    "hard_multiturn_dense": {
+      "correct": 23,
+      "total": 24,
+      "accuracy": 0.9583333333333334
+    }
+  },
+  "failed_ids": [
+    "v223h2009_01",
+    "v223h3001_01",
+    "v223h3002_01",
+    "v223h3006_01"
+  ]
+}

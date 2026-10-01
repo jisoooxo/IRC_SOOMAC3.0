@@ -1,0 +1,282 @@
+{
+  "name": "soomac_decision_adapter_v2_2_5_semantic_rebalance",
+  "version": "2.2.5-semantic-rebalance",
+  "base": "2.2.4-boundary-fix",
+  "purpose": "Decision Adapter only. No Recommendation/Response adapter data.",
+  "counts": {
+    "train": 2111,
+    "validation": 159,
+    "test": 156,
+    "challenge": 64,
+    "latest_contract_eval": 48,
+    "real_runtime_holdout": 45,
+    "v2_2_train_supplement": 96,
+    "v2_2_1_train_supplement": 32,
+    "hard_eval_v221": 16,
+    "v2_2_2_train_supplement": 56,
+    "hard_eval_v222": 24,
+    "v2_2_3_train_supplement": 144,
+    "hard_eval_v223": 48,
+    "v2_2_4_train_supplement": 88,
+    "hard_eval_v224": 36,
+    "v2_2_5_train_supplement": 384,
+    "hard_eval_v225": 96
+  },
+  "latest_contract_additions": [
+    "robot_status",
+    "robot_completed",
+    "robot_failure",
+    "recommendation select+commit",
+    "request+commit",
+    "revise scope inheritance",
+    "unsupported->clarify",
+    "partial pending confirmation",
+    "query+order compound"
+  ],
+  "notes": [
+    "v2.1 validation/test/challenge raw records are preserved.",
+    "All SFT files use the latest production DECISION_SYSTEM snapshot from the session-logging runtime ZIP.",
+    "Exact real-runtime holdout is never added to train.",
+    "No Recommendation or Response adapter dataset is included.",
+    "v2.2.1 adds only 32 targeted train examples and a separate 16-example hard eval; frozen latest_contract_eval remains unchanged.",
+    "v2.2.2 adds 32 genuine multi-turn rows and 24 clarify-boundary rows; no frozen evaluation surface is copied into train.",
+    "v2.2.4 adds 88 targeted train rows for positional reference resolution and unsupported-neighbor boundaries.",
+    "v2.2.5 is a semantic rebalance dataset, not a single-regression patch. Train from base model with the same hyperparameters before changing architecture/prompt."
+  ],
+  "supplement_family_counts": {
+    "robot_status": 12,
+    "robot_completed": 12,
+    "robot_failure": 12,
+    "recommendation_select_commit": 12,
+    "recommendation_runtime_edges": 12,
+    "unsupported_clarify": 12,
+    "confirmation_partial": 12,
+    "query_order_compound": 12
+  },
+  "train_family_counts": {
+    "order_scalar": 100,
+    "order_topping": 280,
+    "order_remove": 85,
+    "order_compound": 35,
+    "restriction_add": 240,
+    "restriction_replace": 24,
+    "restriction_remove": 28,
+    "preference": 20,
+    "recommendation": 48,
+    "commit": 24,
+    "commit_hard_negative": 9,
+    "confirmation_compound": 32,
+    "query": 28,
+    "query_compound": 4,
+    "reference": 44,
+    "reference_ambiguous": 8,
+    "timing": 24,
+    "self_correction": 15,
+    "clarify": 19,
+    "multi_intent": 36,
+    "spoken_robustness": 8,
+    "runtime_order_surface": 105,
+    "runtime_restriction_surface": 23,
+    "runtime_preference_surface": 8,
+    "runtime_recommend_surface": 21,
+    "runtime_commit_surface": 5,
+    "runtime_query_surface": 9,
+    "runtime_reference_surface": 9,
+    "runtime_self_correction_surface": 11,
+    "runtime_noise_surface": 9,
+    "robot_status": 12,
+    "robot_completed": 12,
+    "robot_failure": 28,
+    "recommendation_select_commit": 12,
+    "recommendation_runtime_edges": 12,
+    "unsupported_clarify": 12,
+    "confirmation_partial": 28,
+    "query_order_compound": 12,
+    "multiturn_reference": 8,
+    "multiturn_recommendation": 6,
+    "multiturn_restriction": 6,
+    "multiturn_query_followup": 4,
+    "multiturn_confirmation": 4,
+    "multiturn_long_reference": 4,
+    "clarify_multiturn_reference": 8,
+    "clarify_cancel_boundary": 4,
+    "clarify_unsupported_multiturn": 4,
+    "clarify_noncanonical_amount": 4,
+    "clarify_vague_multiturn": 4,
+    "multiturn_reference_dense": 24,
+    "multiturn_recommendation_dense": 16,
+    "multiturn_restriction_dense": 16,
+    "multiturn_confirmation_dense": 16,
+    "multiturn_query_dense": 12,
+    "multiturn_mixed_intent": 12,
+    "contrast_resolve_reference": 12,
+    "contrast_clarify_reference": 12,
+    "contrast_resolve_cancel": 6,
+    "contrast_clarify_cancel": 6,
+    "contrast_resolve_supported": 6,
+    "contrast_clarify_unsupported": 6,
+    "positional_reference_resolve": 48,
+    "near_neighbor_unsupported_clarify": 24,
+    "supported_exact_contrast": 16,
+    "compound_order_order": 72,
+    "compound_confirmation_order": 36,
+    "compound_order_restriction": 12,
+    "compound_query_order": 8,
+    "compound_recommendation": 8,
+    "compound_preference_order": 8,
+    "semantic_cancel_state": 24,
+    "semantic_reference_state": 24,
+    "semantic_recommendation_state": 16,
+    "semantic_confirmation_partial": 16,
+    "stt_surface_augmentation": 56,
+    "positional_semantics_dense": 32,
+    "recommendation_scope_preservation": 18,
+    "recommendation_criteria_preservation": 10,
+    "query_specificity_preservation": 12,
+    "restriction_state_semantics": 16,
+    "commit_semantic_boundary": 8,
+    "clarify_semantic_boundary": 8
+  },
+  "production_zip": "soomac_llm_slim_patch_robot_query_session_logging_20260926_full.zip",
+  "targeted_reinforcement": {
+    "reason": "INT4 generated evaluation was 46/48; only robot_failure and confirmation_partial missed.",
+    "frozen_eval_preserved": [
+      "v22g9015_01",
+      "v22g9038_01"
+    ],
+    "train_additions": {
+      "robot_failure": 16,
+      "confirmation_partial": 16
+    },
+    "hard_eval_v221": {
+      "robot_failure": 8,
+      "confirmation_partial": 8
+    },
+    "policy": [
+      "Do not copy the two failed frozen evaluation examples into train.",
+      "Reinforce semantic siblings and contrastive boundaries only.",
+      "Do not change Decision schema or Decision system prompt in this dataset revision."
+    ]
+  },
+  "v2_2_2_reinforcement": {
+    "train_additions": {
+      "true_multiturn": 32,
+      "clarify_boundary": 24
+    },
+    "hard_eval_v222": {
+      "multiturn_resolution": 12,
+      "clarify_boundary": 12
+    },
+    "coverage": [
+      "2-turn contextual reference",
+      "3-turn contextual reference",
+      "recommendation follow-up",
+      "restriction correction/removal across turns",
+      "robot query follow-up",
+      "pending confirmation after prior dialogue",
+      "ambiguous multi-turn reference -> clarify",
+      "ambiguous cancellation -> clarify",
+      "unsupported ingredient in valid context -> clarify",
+      "noncanonical amount -> clarify",
+      "vague/conflicting reference -> clarify"
+    ],
+    "frozen_eval_policy": [
+      "latest_contract_eval 48 unchanged",
+      "hard_eval_v221 16 unchanged",
+      "challenge 64 unchanged",
+      "runtime holdout 45 unchanged",
+      "v22g9015_01 and v22g9038_01 remain evaluation-only"
+    ],
+    "training_policy": "Keep v2.2 hyperparameters unchanged and retrain from the base model."
+  },
+  "v2_2_3_reinforcement": {
+    "train_additions": {
+      "true_multiturn": 96,
+      "clarify_resolve_contrastive": 48,
+      "contrastive_resolve": 24,
+      "contrastive_clarify": 24
+    },
+    "hard_eval_v223": {
+      "multiturn_resolution": 24,
+      "clarify_boundary": 24
+    },
+    "frozen_eval_policy": [
+      "latest_contract_eval 48 unchanged",
+      "hard_eval_v221 16 unchanged",
+      "hard_eval_v222 24 unchanged",
+      "challenge 64 unchanged",
+      "runtime_holdout 45 unchanged",
+      "v22g9015_01 and v22g9038_01 remain evaluation-only"
+    ],
+    "training_policy": "Retrain from base with unchanged hyperparameters."
+  },
+  "v2_2_4_reinforcement": {
+    "observed_regressions": {
+      "frozen_latest_contract": {
+        "score": "47/48",
+        "fixed_previous_failures": [
+          "v22g9015_01",
+          "v22g9038_01"
+        ],
+        "new_failure": "v22g9035_01: unsupported 햄 incorrectly mapped to 소시지:none"
+      },
+      "hard_eval_v223": {
+        "score": "44/48",
+        "failures": [
+          "v223h1007_01",
+          "v223h1008_01",
+          "v223h1009_01",
+          "v223h1010_01"
+        ],
+        "pattern": "resolvable positional references fell back to clarify"
+      }
+    },
+    "train_additions": {
+      "positional_reference_resolve": 48,
+      "near_neighbor_unsupported_clarify": 24,
+      "supported_exact_contrast": 16,
+      "total": 88
+    },
+    "hard_eval_v224": {
+      "positional_reference": 24,
+      "near_neighbor_unsupported": 12,
+      "total": 36
+    },
+    "evaluation_only_ids": [
+      "v223h1007_01",
+      "v223h1008_01",
+      "v223h1009_01",
+      "v223h1010_01",
+      "v22g9015_01",
+      "v22g9035_01",
+      "v22g9038_01"
+    ],
+    "policy": [
+      "Exact failed frozen surfaces are never copied into train.",
+      "Do not globally increase generic clarify data.",
+      "Unsupported near-neighbor clarify is paired with supported exact contrasts.",
+      "Uniquely resolvable positional references must resolve from history.",
+      "Keep schema, Decision prompt, and hyperparameters unchanged for the first retrain."
+    ]
+  },
+  "v2_2_5_semantic_rebalance": {
+    "trigger_eval": "v2.2.4 final 250/281 = 88.97%; challenge 43/64, runtime holdout 38/45; compound second-intent completeness reported 0/21",
+    "train_additions": {
+      "compound_multi_intent": 144,
+      "state_conditioned_semantics": 80,
+      "stt_surface_augmentation": 56,
+      "positional_semantics": 32,
+      "recommendation_query_scope": 40,
+      "restriction_commit_clarify_boundaries": 32,
+      "total": 384
+    },
+    "hard_eval_v225": 96,
+    "principles": [
+      "preserve every explicit atomic intent in compound commands",
+      "same surface + different state may intentionally have different target",
+      "augment ASR-like surfaces without copying frozen holdout strings",
+      "preserve recommendation scope and criteria verbatim enough to avoid semantic narrowing",
+      "clarify only when state and context cannot uniquely resolve intent"
+    ]
+  }
+}

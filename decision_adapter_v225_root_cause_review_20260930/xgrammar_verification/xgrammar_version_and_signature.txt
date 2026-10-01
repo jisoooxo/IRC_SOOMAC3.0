@@ -1,0 +1,2 @@
+xgrammar_version=0.2.5
+compile_json_schema_signature=(self, schema: Union[str, Type[pydantic.main.BaseModel], Dict[str, Any]], *, any_whitespace: bool = True, indent: Optional[int] = None, separators: Optional[Tuple[str, str]] = None, strict_mode: bool = True, max_whitespace_cnt: Optional[int] = None, any_order: bool = False) -> xgrammar.compiler.CompiledGrammar

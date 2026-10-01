@@ -93,7 +93,7 @@ def make_call_decision(model, processor, logger=None):
         vocab_size=len(tokenizer),
         stop_token_ids=stop_ids,
     )
-    compiled_grammar = xgr.GrammarCompiler(tokenizer_info).compile_json_schema(DECISION_SCHEMA, any_order=True)
+    compiled_grammar = xgr.GrammarCompiler(tokenizer_info).compile_json_schema(DECISION_SCHEMA)
 
     @torch.inference_mode()
     def call_decision(session: SessionState, user_text: str, robot_state: dict, repair: dict | None = None) -> Decision:

@@ -1,0 +1,1110 @@
+{
+  "generated_at": "2026-09-30T16:19:35.220988+09:00",
+  "train": {
+    "source": "/home/roma/Downloads/SOOMAC_DECISION_LOCAL_INT4/dataset/soomac_decision_adapter_v2_2_5_semantic_rebalance/records/decision_train.jsonl",
+    "rows": 2111,
+    "family_counts": {
+      "clarify": 19,
+      "clarify_cancel_boundary": 4,
+      "clarify_multiturn_reference": 8,
+      "clarify_noncanonical_amount": 4,
+      "clarify_semantic_boundary": 8,
+      "clarify_unsupported_multiturn": 4,
+      "clarify_vague_multiturn": 4,
+      "commit": 24,
+      "commit_hard_negative": 9,
+      "commit_semantic_boundary": 8,
+      "compound_confirmation_order": 36,
+      "compound_order_order": 72,
+      "compound_order_restriction": 12,
+      "compound_preference_order": 8,
+      "compound_query_order": 8,
+      "compound_recommendation": 8,
+      "confirmation_compound": 32,
+      "confirmation_partial": 28,
+      "contrast_clarify_cancel": 6,
+      "contrast_clarify_reference": 12,
+      "contrast_clarify_unsupported": 6,
+      "contrast_resolve_cancel": 6,
+      "contrast_resolve_reference": 12,
+      "contrast_resolve_supported": 6,
+      "multi_intent": 36,
+      "multiturn_confirmation": 4,
+      "multiturn_confirmation_dense": 16,
+      "multiturn_long_reference": 4,
+      "multiturn_mixed_intent": 12,
+      "multiturn_query_dense": 12,
+      "multiturn_query_followup": 4,
+      "multiturn_recommendation": 6,
+      "multiturn_recommendation_dense": 16,
+      "multiturn_reference": 8,
+      "multiturn_reference_dense": 24,
+      "multiturn_restriction": 6,
+      "multiturn_restriction_dense": 16,
+      "near_neighbor_unsupported_clarify": 24,
+      "order_compound": 35,
+      "order_remove": 85,
+      "order_scalar": 100,
+      "order_topping": 280,
+      "positional_reference_resolve": 48,
+      "positional_semantics_dense": 32,
+      "preference": 20,
+      "query": 28,
+      "query_compound": 4,
+      "query_order_compound": 12,
+      "query_specificity_preservation": 12,
+      "recommendation": 48,
+      "recommendation_criteria_preservation": 10,
+      "recommendation_runtime_edges": 12,
+      "recommendation_scope_preservation": 18,
+      "recommendation_select_commit": 12,
+      "reference": 44,
+      "reference_ambiguous": 8,
+      "restriction_add": 240,
+      "restriction_remove": 28,
+      "restriction_replace": 24,
+      "restriction_state_semantics": 16,
+      "robot_completed": 12,
+      "robot_failure": 28,
+      "robot_status": 12,
+      "runtime_commit_surface": 5,
+      "runtime_noise_surface": 9,
+      "runtime_order_surface": 105,
+      "runtime_preference_surface": 8,
+      "runtime_query_surface": 9,
+      "runtime_recommend_surface": 21,
+      "runtime_reference_surface": 9,
+      "runtime_restriction_surface": 23,
+      "runtime_self_correction_surface": 11,
+      "self_correction": 15,
+      "semantic_cancel_state": 24,
+      "semantic_confirmation_partial": 16,
+      "semantic_recommendation_state": 16,
+      "semantic_reference_state": 24,
+      "spoken_robustness": 8,
+      "stt_surface_augmentation": 56,
+      "supported_exact_contrast": 16,
+      "timing": 24,
+      "unsupported_clarify": 12
+    },
+    "target_top_level_key_combinations": {
+      "order": 1005,
+      "restrictions": 348,
+      "clarify": 151,
+      "recommendation": 138,
+      "queries": 124,
+      "confirmation+order": 84,
+      "order+restrictions": 52,
+      "order+commit+confirmation": 40,
+      "preferences": 31,
+      "recommendation+commit": 28,
+      "commit": 25,
+      "order+queries": 20,
+      "order+commit": 12,
+      "confirmation": 11,
+      "restrictions+order": 10,
+      "queries+order": 8,
+      "preferences+order": 8,
+      "order+confirmation": 4,
+      "recommendation+order": 4,
+      "preferences+recommendation+commit": 3,
+      "order+recommendation+commit": 2,
+      "order+recommendation": 2,
+      "commit+confirmation": 1
+    },
+    "semantic_atom_count_distribution": {
+      "1": 1545,
+      "2": 399,
+      "3": 159,
+      "4": 5,
+      "5": 3
+    },
+    "single_atom_rows": 1545,
+    "two_or_more_atom_rows": 566,
+    "clarify_rows": 151,
+    "schema_top_level_key_order_violation_count": 114,
+    "schema_top_level_key_order_violations": [
+      {
+        "id": "g00216_01",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00216_02",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00216_03",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00216_04",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00216_05",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00218_01",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00218_02",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00218_03",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00218_04",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00218_05",
+        "family": "restriction_add",
+        "keys": [
+          "restrictions",
+          "order"
+        ]
+      },
+      {
+        "id": "g00281_01",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00281_02",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00281_03",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00281_04",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00283_01",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00283_02",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00283_03",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00283_04",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00286_01",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00286_02",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00286_03",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00286_04",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00288_01",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00288_02",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00288_03",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00288_04",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00289_01",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00289_02",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00289_03",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00289_04",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00290_01",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00290_02",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00290_03",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00290_04",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00291_01",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00291_02",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00291_03",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00291_04",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00292_01",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00292_02",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00292_03",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "g00292_04",
+        "family": "confirmation_compound",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0073_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0074_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0075_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0076_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0077_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0078_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0079_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0080_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0081_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0082_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0083_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0084_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0085_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0086_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0087_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0088_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0089_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0090_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0091_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0092_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0093_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0094_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0095_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0096_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0097_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0098_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0099_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0100_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0101_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0102_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0103_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0104_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0105_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0106_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0107_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0108_01",
+        "family": "compound_confirmation_order",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0121_01",
+        "family": "compound_query_order",
+        "keys": [
+          "queries",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0122_01",
+        "family": "compound_query_order",
+        "keys": [
+          "queries",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0123_01",
+        "family": "compound_query_order",
+        "keys": [
+          "queries",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0124_01",
+        "family": "compound_query_order",
+        "keys": [
+          "queries",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0125_01",
+        "family": "compound_query_order",
+        "keys": [
+          "queries",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0126_01",
+        "family": "compound_query_order",
+        "keys": [
+          "queries",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0127_01",
+        "family": "compound_query_order",
+        "keys": [
+          "queries",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0128_01",
+        "family": "compound_query_order",
+        "keys": [
+          "queries",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0133_01",
+        "family": "compound_recommendation",
+        "keys": [
+          "recommendation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0134_01",
+        "family": "compound_recommendation",
+        "keys": [
+          "recommendation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0135_01",
+        "family": "compound_recommendation",
+        "keys": [
+          "recommendation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0136_01",
+        "family": "compound_recommendation",
+        "keys": [
+          "recommendation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0137_01",
+        "family": "compound_preference_order",
+        "keys": [
+          "preferences",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0138_01",
+        "family": "compound_preference_order",
+        "keys": [
+          "preferences",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0139_01",
+        "family": "compound_preference_order",
+        "keys": [
+          "preferences",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0140_01",
+        "family": "compound_preference_order",
+        "keys": [
+          "preferences",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0141_01",
+        "family": "compound_preference_order",
+        "keys": [
+          "preferences",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0142_01",
+        "family": "compound_preference_order",
+        "keys": [
+          "preferences",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0143_01",
+        "family": "compound_preference_order",
+        "keys": [
+          "preferences",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0144_01",
+        "family": "compound_preference_order",
+        "keys": [
+          "preferences",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0209_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0210_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0211_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0212_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0213_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0214_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0215_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0216_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0217_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0218_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0219_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0220_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0221_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0222_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0223_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      },
+      {
+        "id": "v225t0224_01",
+        "family": "semantic_confirmation_partial",
+        "keys": [
+          "confirmation",
+          "order"
+        ]
+      }
+    ],
+    "exact_full_input_duplicate_group_count": 3,
+    "exact_full_input_conflict_group_count": 0,
+    "exact_full_input_duplicate_groups": [
+      {
+        "ids": [
+          "g00339_01",
+          "v22g0061_01"
+        ],
+        "distinct_targets": 1
+      },
+      {
+        "ids": [
+          "rtg00388_02",
+          "rtg00438_01"
+        ],
+        "distinct_targets": 1
+      },
+      {
+        "ids": [
+          "rtg00396_02",
+          "rtg00439_01"
+        ],
+        "distinct_targets": 1
+      }
+    ],
+    "exact_full_input_conflict_groups": []
+  },
+  "validation": {
+    "source": "/home/roma/Downloads/SOOMAC_DECISION_LOCAL_INT4/dataset/soomac_decision_adapter_v2_2_5_semantic_rebalance/records/decision_validation.jsonl",
+    "rows": 159,
+    "family_counts": {
+      "multi_intent": 4,
+      "order_compound": 5,
+      "order_scalar": 15,
+      "order_topping": 55,
+      "preference": 8,
+      "query": 4,
+      "query_compound": 4,
+      "recommendation": 8,
+      "reference": 4,
+      "restriction_add": 20,
+      "restriction_remove": 4,
+      "restriction_replace": 8,
+      "self_correction": 12,
+      "spoken_robustness": 8
+    },
+    "target_top_level_key_combinations": {
+      "order": 99,
+      "restrictions": 32,
+      "preferences": 8,
+      "recommendation": 8,
+      "queries": 4,
+      "order+queries": 4,
+      "order+restrictions": 4
+    },
+    "semantic_atom_count_distribution": {
+      "1": 130,
+      "2": 21,
+      "3": 8
+    },
+    "single_atom_rows": 130,
+    "two_or_more_atom_rows": 29,
+    "clarify_rows": 0,
+    "schema_top_level_key_order_violation_count": 0,
+    "schema_top_level_key_order_violations": [],
+    "exact_full_input_duplicate_group_count": 0,
+    "exact_full_input_conflict_group_count": 0,
+    "exact_full_input_duplicate_groups": [],
+    "exact_full_input_conflict_groups": []
+  }
+}

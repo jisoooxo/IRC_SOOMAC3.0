@@ -1,0 +1,19 @@
+{
+  "source": "/home/roma/IRC_SOOMAC3.0/decision_adapter_v225_root_cause_review_20260930/temporary_any_order_eval/hard_v221/predictions.jsonl",
+  "total": 16,
+  "correct": 16,
+  "accuracy": 1.0,
+  "family": {
+    "confirmation_partial": {
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0
+    },
+    "robot_failure": {
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0
+    }
+  },
+  "failed_ids": []
+}

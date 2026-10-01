@@ -1,0 +1,16 @@
+{
+  "source": "/home/roma/IRC_SOOMAC3.0/decision_adapter_v225_root_cause_review_20260930/temporary_any_order_eval/runtime_holdout/predictions.jsonl",
+  "total": 45,
+  "correct": 44,
+  "accuracy": 0.9777777777777777,
+  "family": {
+    "real_runtime_holdout": {
+      "correct": 44,
+      "total": 45,
+      "accuracy": 0.9777777777777777
+    }
+  },
+  "failed_ids": [
+    "real_runtime_040"
+  ]
+}
