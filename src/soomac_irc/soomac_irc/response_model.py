@@ -7,12 +7,19 @@ import xgrammar as xgr
 from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
 from soomac_irc.agent_contract import RESPONSE_SCHEMA
-from soomac_irc.agent_prompts import RESPONSE_SYSTEM
+from soomac_irc.agent_prompts import (GENERAL_RESPONSE_SYSTEM,MIXED_RESPONSE_SYSTEM,TASK_RESPONSE_SYSTEM)
 from soomac_irc.llm_langgraph import SessionState
 
 
 RESPONSE_HISTORY_TURNS = 8
 RESPONSE_MAX_TOKENS = 512
+# route는 Decision Agent가 이미 한 번의 inference로 확정했다.
+# Response에서는 추가 inference 없이 해당 route의 system prompt만 Python mapping으로 선택한다.
+RESPONSE_SYSTEM_BY_ROUTE = {
+    "task": TASK_RESPONSE_SYSTEM,
+    "general": GENERAL_RESPONSE_SYSTEM,
+    "mixed": MIXED_RESPONSE_SYSTEM,
+}
 
 def make_call_response(model, processor, logger=None):
     # state 변경이 끝난 뒤 Python이 확정한 사실만 읽는 Response Agent를 만든다.
@@ -28,8 +35,22 @@ def make_call_response(model, processor, logger=None):
     compiled_grammar = xgr.GrammarCompiler(tokenizer_info).compile_json_schema(RESPONSE_SCHEMA)
 
     @torch.inference_mode()
-    def call_response(user_text: str, session: SessionState, policy: dict, applied_changes: dict, future_changes: list[dict], recommendation_result: dict | None, queries: list[dict], next_prompt: dict | None, robot_state: dict) -> str:
+    def call_response(
+        user_text: str,
+        session: SessionState,
+        policy: dict,
+        applied_changes: dict,
+        future_changes: list[dict],
+        recommendation_result: dict | None,
+        queries: list[dict],
+        next_prompt: dict | None,
+        robot_state: dict,
+        route: str,
+    ) -> str:
         started = time.perf_counter()
+        # route는 schema enum을 통과한 값이며, 여기서는 Response prompt 선택에만 사용한다.
+        # 새로운 Decision field나 별도 Router LLM 호출은 만들지 않는다.
+        response_system = RESPONSE_SYSTEM_BY_ROUTE[route]
         history = copy.deepcopy(session["history"][-(RESPONSE_HISTORY_TURNS * 2):])
         compact_session = {
             "order": session["order"],
@@ -61,12 +82,13 @@ def make_call_response(model, processor, logger=None):
             "recent_action_history": recent_action_history,
         }
         messages = [
-            {"role": "system", "content": RESPONSE_SYSTEM},
+            {"role": "system", "content": response_system},
             *history,
             {"role": "user", "content": json.dumps(model_input, ensure_ascii=False, separators=(",", ":"))},
         ]
         trace = {
             "stage": "response",
+            "route": route,
             "model_input": copy.deepcopy(model_input),
             "messages": copy.deepcopy(messages),
         }

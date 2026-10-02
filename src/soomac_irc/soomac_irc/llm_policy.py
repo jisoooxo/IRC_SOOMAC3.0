@@ -239,6 +239,53 @@ def find_route_consistency_errors(decision: dict) -> list[str]:
 
     return errors
 
+def reference_targets_match_decision(decision: dict,resolved_targets: list[str],) -> bool:
+    # resolved_targets는 Decision JSON field가 아니라 dialogue_focus resolver가 만든 Python 내부 값
+    # 여기서는 reference 대상이 지원 domain인지, Decision semantic target과 같은지만 검사
+    # 햄→소시지, 페퍼로니→페퍼론치노 같은 alias·유사어 치환은 절대 하지 않는다.
+    supported_targets = {
+        *SAUCES,
+        *NOODLE_TYPES,
+        *TOPPINGS,
+        *RESTRICTION_CATEGORY_ITEMS.keys(),
+    }
+
+    if any(target not in supported_targets for target in resolved_targets):
+        # focus가 떡볶이 같은 unsupported 대상을 가리키면 mutation과 실행을 허용하지 않는다.
+        return False
+
+    patch = decision["order_patch"]
+    decision_targets = []
+
+    # scalar 주문은 field 이름이 아니라 실제 사용자가 선택한 canonical 값을 비교한다.
+    for field in ("sauce", "noodle_type"):
+        if patch[field] is not None:
+            decision_targets.append(patch[field])
+
+    # 토핑 dict의 key가 실제 reference 대상이고 value는 양 또는 삭제 의미
+    decision_targets.extend(patch["toppings"].keys())
+
+    # restriction도 기존 target field만 사용하고 reference 전용 field는 만들지 않음
+    for option in decision["restriction_options"]:
+        decision_targets.append(option["target"])
+
+    # target이 있는 기존 query만 비교 대상에 포함한다.
+    for query in decision["queries"]:
+        target = query.get("target")
+
+        if target in supported_targets:
+            decision_targets.append(target)
+
+    # 같은 대상이 order와 query에 동시에 나타나도 reference 후보 자체는 하나이므로 중복만 제거 X
+    unique_decision_targets = list(dict.fromkeys(decision_targets))
+    unique_resolved_targets = list(dict.fromkeys(resolved_targets))
+
+    # plural reference는 두 대상이 모두 존재해야 하지만 JSON object key 순서까지 강제하지 X
+    return (
+        len(unique_decision_targets) == len(unique_resolved_targets)
+        and set(unique_decision_targets) == set(unique_resolved_targets)
+    )
+
 ####################### restriction 우선순위와 주문 충돌 계산 ################################33
 def restriction_priority(reason: str) -> int:
     # restriction reason을 안전 우선순위를 숫자로 변환(알러지, 식이제약, 단순 기호 등)

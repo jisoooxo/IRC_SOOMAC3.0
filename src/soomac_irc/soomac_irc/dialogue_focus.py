@@ -106,3 +106,34 @@ def previous_focus_mentions(focus: dict, current_history_turn: int) -> list[str]
         return []
 
     return copy.deepcopy(previous.get("mentions", []))
+
+
+def resolve_focus_reference(user_text: str,focus: dict,current_history_turn: int,) -> list[str] | None:
+    # 반환값은 Decision JSON field가 아니라 graph 내부에서만 사용하는 resolver 결과이다.
+    # []는 reference 표현 없음, list[str]은 정상 해석, None은 후보 부족·모호함을 뜻한다.
+    # 긴 표현을 먼저 검사해야 "아까 그거"가 일반적인 "그거"로 잘못 처리되지 않는다.
+    text = user_text.strip()
+    current_mentions = current_focus_mentions(focus, current_history_turn)
+    previous_mentions = previous_focus_mentions(focus, current_history_turn)
+
+    # temporal reference는 current가 아니라 바로 이전 recent[0] event만 사용한다.
+    if "아까 그거" in text or "전에 말한 거" in text:
+        return previous_mentions if len(previous_mentions) == 1 else None
+
+    # plural reference는 정확히 두 후보가 있을 때만 두 대상을 등장 순서대로 반환한다.
+    if "둘 다" in text or "두 개 다" in text:
+        return current_mentions if len(current_mentions) == 2 else None
+
+    # ordinal reference는 focus에 저장된 사용자 mention 순서를 그대로 사용한다.
+    if "첫 번째 거" in text:
+        return [current_mentions[0]] if len(current_mentions) >= 1 else None
+
+    if "두 번째 거" in text:
+        return [current_mentions[1]] if len(current_mentions) >= 2 else None
+
+    # 단수 current reference는 후보가 정확히 하나일 때만 안전하게 확정할 수 있다.
+    if any(reference in text for reference in ("방금 그거", "그거", "이거")):
+        return current_mentions if len(current_mentions) == 1 else None
+
+    # reference가 없는 발화는 Decision을 수정하지 않도록 빈 목록을 반환한다.
+    return []

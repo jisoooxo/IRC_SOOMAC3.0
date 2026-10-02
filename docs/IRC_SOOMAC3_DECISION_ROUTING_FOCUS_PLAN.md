@@ -19,15 +19,15 @@
 
 ## 0. 확정된 범위
 
-### 0.1 이번 v1에서 한다
+### 0.1 이번 작업에서 한다
 
 1. Decision 출력에 required `route`와 optional `mentions`를 추가한다.
 2. 주문 선택 대화 구간에서 `general`, `task`, `mixed`를 분기한다.
-3. `그거`, `아까 그거`를 history와 `dialogue_focus`로 처리한다.
+3. `그거`, `방금 그거`, `아까 그거`, `둘 다`, `첫 번째 거`, `두 번째 거`를 `dialogue_focus`와 Python resolver로 처리한다.
 4. unsupported 대상과 모호한 지시어가 주문·로봇 실행으로 이어지지 않게 한다.
 5. task/general/mixed가 같은 history 저장 경로를 사용하게 한다.
 
-### 0.2 이번 v1에서 하지 않는다
+### 0.2 이번 작업에서 하지 않는다
 
 1. 로봇 동작 중 자유대화는 지원하지 않는다. 기존 `robot_busy` 차단과 STT gate를 유지한다.
 2. 기존 Decision Adapter는 연결하지 않는다. 새 데이터로 재학습한 뒤 연결한다.
@@ -78,10 +78,11 @@ Effect: STT·TTS·UI·VLM·로봇 제어 동시성 문제를 이번 변경에서
 ```text
 Decision
 = 현재 발화의 route와 sparse task semantics 추출
-+ history와 dialogue_focus를 사용해 지시어를 canonical target으로 해석
++ 현재 발화에 직접 등장한 mention을 순서대로 추출
 
 Python
-= route·reference·supported 여부 검증
+= dialogue_focus를 사용한 reference resolution
++ route·supported 여부 검증
 + canonical state·restriction·물리 상태·실행 권한 관리
 
 Response
@@ -91,9 +92,9 @@ ROS
 = Python policy가 execute=True로 허용한 task만 실행
 ```
 
-**지시어는 Decision이 해석하고 Python이 검증한다.** Python이 자연어 전체를 다시 이해하는 별도 semantic parser가 되는 구조는 만들지 않는다.
+**Decision은 최소 의미만 출력하고, 지시어 해석은 `dialogue_focus`와 Python resolver가 담당한다.** resolver는 합의된 지시어 표현만 판별하며 자연어 전체를 다시 이해하는 별도 LLM이나 범용 semantic parser가 아니다.
 
-(내가 의역해보자면, Decision이 `그거=치즈`라고 읽고, Python이 정말 지금 가리킬 수 있는 대상이 치즈 하나뿐인지 검사한다.)
+(내가 의역해보자면, Decision은 `그거 넣어줘`가 task라는 최소 의미를 출력하고, Python이 `그거`의 후보를 focus에서 찾아 기존 주문 의미와 결합한다.)
 
 ---
 
@@ -105,8 +106,8 @@ User utterance
 Decision Agent 1회
   route + mentions + existing sparse semantics
       ↓
-Decision contract + reference guard
-  route consistency + focus candidate 검증
+Decision contract + Python reference resolver
+  route consistency + focus candidate 해석·검증
       ↓
 route_by_decision
   ├─ general ─→ no-op policy ─┐
@@ -165,6 +166,10 @@ unsupported 메뉴라도 주문 의도이면 `task`이다.
 3. Assistant가 혼자 말한 대상은 현재 mention으로 복사하지 않는다.
 4. 명시적 alias만 허용하며 fuzzy·semantic nearest-neighbor 치환은 금지한다.
 5. 배열 순서는 user 발화를 그대로 보존한다.
+
+`mentions`를 포함해 이번에 새로 추가하는 Decision field는 `route`, `mentions` 두 개뿐이다. `reference`, `reference_type`, `reference_index`, `issue`, `supported`, `unsupported`, `confidence`, `intent_type`, `topic`, `section`, `current/future`, `general_query`, `mixed_query`, `ordinal`, `temporal_reference`, `target_source` 같은 별도 field는 추가하지 않는다.
+
+새 edge case는 먼저 `route` + `mentions` + 기존 semantic fields + `dialogue_focus` + Python resolver/validation + 기존 canonical state의 조합으로 처리한다. 이 계약으로 의미를 표현할 수 없다는 실패 test가 생겨도 field를 바로 추가하지 않고, 이유와 대안을 설명하여 사용자 승인을 먼저 받는다.
 
 ### 3.3 내부 Decision 기본값
 
@@ -238,7 +243,7 @@ dialogue_focus = 최근 user mentions와 해당 history 턴을 가리키는 작�
 3. 메뉴를 주문 field나 물리 section으로 변환
 4. 주문 state 수정과 로봇 실행 결정
 
-Decision은 history와 focus를 읽고 지시어 의미를 해석한다. Python reference guard는 후보 개수·등장 순서·지원 여부와 Decision 결과의 일치만 검증한다. 실제 주문 변경과 물리 실행 가능 여부는 기존 `llm_policy.py`가 계속 담당한다.
+Python reference resolver는 user utterance의 합의된 지시어와 focus를 읽어 후보 개수·등장 순서·시간 위치를 해석한다. supported 여부, 실제 주문 변경, 물리 실행 가능 여부는 기존 domain validation과 `llm_policy.py`가 계속 담당한다.
 
 unsupported mention도 별도 구조로 바꾸지 않고 사용자가 말한 문자열로 저장한다.
 
@@ -317,16 +322,19 @@ Effect: 실행을 시작한 task만 참조 대상에서 빠지고 나머지 focu
 ```
 
 - `current.mentions`에 후보가 정확히 1개여야 한다.
-- Decision이 출력한 canonical 주문 target이 그 mention과 일치해야 한다.
-- 다르거나 후보가 여러 개면 `clarify=true`로 바꾼다.
+- Python resolver가 그 후보를 기존 semantic field의 target으로 사용한다.
+- 후보가 없거나 여러 개면 임의 선택하지 않고 `clarify=true`로 바꾼다.
 
-### 5.2 v1에서 제외하는 reference
+### 5.2 plural·ordinal reference
 
 ```text
 둘 다 / 두 개 다 / 첫 번째 거 / 두 번째 거
 ```
 
-plural·ordinal reference는 핵심 요구가 아니며 focus 구조와 dataset 범위를 불필요하게 늘리므로 v1에서 지원하지 않는다. 해당 표현이 들어오면 임의 대상을 고르지 않고 clarify한다.
+- `둘 다`, `두 개 다`: `current.mentions`가 정확히 2개일 때 두 대상을 등장 순서대로 선택한다.
+- `첫 번째 거`: `current.mentions[0]`이 있을 때 첫 대상을 선택한다.
+- `두 번째 거`: `current.mentions[1]`이 있을 때 두 번째 대상을 선택한다.
+- 필요한 후보 개수나 순서가 없으면 임의 선택하지 않고 `clarify=true`로 바꾼다.
 
 ### 5.3 temporal reference
 
@@ -334,7 +342,7 @@ plural·ordinal reference는 핵심 요구가 아니며 focus 구조와 dataset 
 아까 그거 / 전에 말한 거
 ```
 
-v1은 `current` 바로 이전의 `recent[0]` focus event만 대상으로 삼는다. 그 event의 `mentions`가 정확히 1개일 때만 허용한다.
+`current` 바로 이전의 `recent[0]` focus event만 대상으로 삼는다. 그 event의 `mentions`가 정확히 1개일 때만 허용한다.
 
 ```text
 U1: 치즈가 뭐야?   → current=치즈
@@ -363,10 +371,10 @@ robot execution 없음
 
 ### 5.5 reference field는 추가하지 않음
 
-v1에서는 별도의 `reference` JSON field를 만들지 않는다. Decision이 history와 `dialogue_focus`를 보고 기존 canonical order field를 출력하고, Python이 사용자 문장의 reference 표현과 focus를 대조한다.
+별도의 `reference` JSON field를 만들지 않는다. Python resolver가 user utterance의 지시어와 `dialogue_focus`를 해석하고 기존 semantic fields 및 canonical state와 결합한다.
 
-Cause: 기존 schema로 task semantics를 표현할 수 있고 Python은 검증만 하면 된다.  
-Effect: schema·dataset·resolver를 불필요하게 확장하지 않고 MVP를 만들 수 있다.
+Cause: 기존 schema와 focus로 task semantics 및 reference 후보를 표현할 수 있다.
+Effect: Decision schema를 늘리지 않고 plural·ordinal·temporal reference까지 처리할 수 있다.
 
 ---
 

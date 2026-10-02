@@ -2,14 +2,13 @@ import copy
 from typing import Callable, TypedDict
 
 from soomac_irc.agent_contract import new_decision
-from soomac_irc.dialogue_focus import new_dialogue_focus, update_dialogue_focus
+from soomac_irc.dialogue_focus import new_dialogue_focus, resolve_focus_reference, update_dialogue_focus
 from soomac_irc.llm_policy import (
     allowed_order_fields, build_applied_changes, build_completed_modification_warning,
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event,
     evaluate_runtime_policy, find_invalid_order_fields, find_invalid_queries, find_new_physical_restriction_conflicts,
-    find_route_consistency_errors, recommendation_allowed_fields, restore_protected_order_values,
-    validate_recommendation_proposal,
-)
+    find_route_consistency_errors, recommendation_allowed_fields, reference_targets_match_decision,
+    restore_protected_order_values, validate_recommendation_proposal)
 
 # State / Decision 계약
 # 실제 값 형식은 agent_contract.py가 잡고, 여기는 그래프가 들고 다닐 state 구조만 선언함
@@ -298,7 +297,7 @@ def new_turn_state(session: SessionState, user_text: str, robot_state: dict) -> 
 def build_graph(
     call_decision: Callable[[SessionState, str, dict, dict | None], Decision],  # 발화 -> 구조화 decision
     call_recommendation: Callable[[SessionState, Decision, dict, list[str]], dict],  # 조건 -> 추천안
-    call_response: Callable[[str, SessionState, dict, dict, list[dict], dict | None, list[dict], dict | None, dict], str],  # 확정 사실 -> 자연어 응답
+    call_response: Callable[[str, SessionState, dict, dict, list[dict], dict | None, list[dict], dict | None, dict, str], str],  # 확정 사실 + route -> 자연어 응답
 ):
     # Orchestrator → semantic repair → workers → recommendation → policy → Response Agent
     from langgraph.graph import END, START, StateGraph
@@ -346,21 +345,62 @@ def build_graph(
 
         return {"decision": repaired}
 
+    def resolve_reference(state: TurnState) -> dict:
+        # 현재 user 발화는 아직 history에 추가되지 않았으므로 다음 완료 턴 번호를 직접 계산한다.
+        # 이 값은 generate_response에서 focus를 저장할 때 사용하는 계산식과 동일해야 TTL이 어긋나지 않는다.
+        current_history_turn = len(state["session"]["history"]) // 2 + 1
+        resolved_targets = resolve_focus_reference(
+            state["user_text"],
+            state["session"]["dialogue_focus"],
+            current_history_turn,
+        )
+
+        if resolved_targets == []:
+            # reference 표현 자체가 없는 발화는 기존 Decision을 그대로 다음 단계로 보낸다.
+            return {}
+
+        decision = copy.deepcopy(state["decision"])
+
+        if resolved_targets is None:
+            # 후보가 없거나 여러 개인 단수 reference는 임의 선택하지 않고 기존 clarify 계약을 사용한다.
+            decision["understanding"] = "clarify"
+            return {"decision": decision}
+
+        if (
+            decision["route"] != "general"
+            and decision["understanding"] != "clarify"
+            and not reference_targets_match_decision(decision, resolved_targets)
+        ):
+            # unsupported 대상 또는 focus와 다른 semantic target이면 mutation과 실행을 막는다.
+            decision["understanding"] = "clarify"
+
+        return {"decision": decision}
+
     def route_by_decision(state: TurnState) -> str:
         # general만 mutation 없는 전용 경로로 보내고 task/mixed는 기존 안전 pipeline을 그대로 사용한다.
         return "general" if state["decision"]["route"] == "general" else "task"
 
     def build_general_noop_policy(state: TurnState) -> dict:
-        # 일반대화는 주문·추천·확인 state를 바꾸지 않고 Response와 공통 턴 마감에 필요한 값만 채운다.
-        return {
-            "session": copy.deepcopy(state["session"]),
-            "recommendation_result": None,
-            "policy": {
+        # 일반대화는 주문 state를 수정하지 않지만 reference가 모호하면 Response가 재질문할 수 있어야 한다.
+        if state["decision"]["understanding"] == "clarify":
+            policy = {
+                "status": "clarify",
+                "reason": "understanding",
+                "execute": False,
+                "conflicts": [],
+            }
+        else:
+            policy = {
                 "status": "pass",
                 "reason": "general",
                 "execute": False,
                 "conflicts": [],
-            },
+            }
+
+        return {
+            "session": copy.deepcopy(state["session"]),
+            "recommendation_result": None,
+            "policy": policy,
         }
 
     def resolve_confirmation(state: TurnState) -> dict:
@@ -528,6 +568,7 @@ def build_graph(
                 copy.deepcopy(state["decision"]["queries"]),
                 copy.deepcopy(next_prompt),
                 copy.deepcopy(state["robot_state"]),
+                state["decision"]["route"],
             )
 
         session = copy.deepcopy(state["session"])  # history까지 기록할 최종 session 복사본
@@ -558,6 +599,7 @@ def build_graph(
     graph = StateGraph(TurnState)
     graph.add_node("interpret_decision", interpret_decision)
     graph.add_node("validate_and_repair", validate_and_repair)
+    graph.add_node("resolve_reference", resolve_reference)
     graph.add_node("build_general_noop_policy", build_general_noop_policy)
     graph.add_node("resolve_confirmation", resolve_confirmation)
     graph.add_node("apply_workers", apply_workers)
@@ -567,8 +609,9 @@ def build_graph(
 
     graph.add_edge(START, "interpret_decision")
     graph.add_edge("interpret_decision", "validate_and_repair")
+    graph.add_edge("validate_and_repair", "resolve_reference")
     graph.add_conditional_edges(
-        "validate_and_repair",
+        "resolve_reference",
         route_by_decision,
         {
             "general": "build_general_noop_policy",
