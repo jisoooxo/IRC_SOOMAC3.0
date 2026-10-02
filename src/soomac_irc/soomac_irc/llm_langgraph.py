@@ -38,6 +38,11 @@ class Decision(TypedDict):
     confirmation: str  # [한 턴만 사용] 대기 중인 확인에 대한 accept/reject/none
     queries: list[dict]  # [한 턴만 사용] 주문 변경이 아닌 상태·설명 질문
 
+
+class DuplicateDecisionKeyError(ValueError):
+    # Decision JSON의 같은 object 안에서 key가 반복된 경우만 나타내는 좁은 parsing 오류이다.
+    pass
+
 # 한 번의 graph.invoke 동안 stage 사이에서만 쓰는 턴 state
 class TurnState(TypedDict):
     session: SessionState  # 여러 턴 유지 이번 턴 결과를 담아 다음 턴으로 넘김
@@ -306,11 +311,27 @@ def build_graph(
     # Orchestrator → semantic repair → workers → recommendation → policy → Response Agent
     from langgraph.graph import END, START, StateGraph
 
+    def call_decision_or_safe_clarify(
+        state: TurnState,
+        repair: dict | None,
+    ) -> Decision:
+        # duplicate JSON은 일부 field도 복구하지 않고 빈 safe clarify Decision으로 폐기한다.
+        # token overflow나 다른 ValueError는 잡지 않으므로 실제 runtime 오류는 그대로 드러난다.
+        try:
+            return call_decision(
+                copy.deepcopy(state["session"]),
+                state["user_text"],
+                copy.deepcopy(state["robot_state"]),
+                repair,
+            )
+        except DuplicateDecisionKeyError:
+            decision = new_decision()
+            decision["understanding"] = "clarify"
+            return decision
+
     def interpret_decision(state: TurnState) -> dict:
-        decision = call_decision(  # 전체 session.history를 포함한 session으로 발화 해석
-            copy.deepcopy(state["session"]),
-            state["user_text"],
-            copy.deepcopy(state["robot_state"]),
+        decision = call_decision_or_safe_clarify(  # 전체 session.history를 포함한 session으로 발화 해석
+            state,
             None,
         )
         return {"decision": decision}
@@ -321,7 +342,8 @@ def build_graph(
         decision = copy.deepcopy(state["decision"])
 
         if (
-            decision["commit"] is False
+            decision["understanding"] == "ok"
+            and decision["commit"] is False
             and has_explicit_commit_intent(state["user_text"])
         ):
             decision["commit"] = True
@@ -344,10 +366,8 @@ def build_graph(
             "previous_output": copy.deepcopy(state["decision"]),  # 첫 Decision 출력
             "instruction": "원래 발화에 대응되는 field와 route만 수정하고 임의 치환하지 않는다.",
         }
-        repaired = call_decision(  # 같은 발화를 repair 정보와 함께 한 번만 재호출
-            copy.deepcopy(state["session"]),
-            state["user_text"],
-            copy.deepcopy(state["robot_state"]),
+        repaired = call_decision_or_safe_clarify(  # 같은 발화를 repair 정보와 함께 한 번만 재호출
+            state,
             repair,
         )
         remaining = (  # 재호출 뒤에도 남은 invalid 항목

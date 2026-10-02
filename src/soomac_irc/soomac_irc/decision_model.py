@@ -8,7 +8,7 @@ from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
 from soomac_irc.agent_contract import DECISION_SCHEMA, normalize_decision
 from soomac_irc.agent_prompts import DECISION_SYSTEM
-from soomac_irc.llm_langgraph import Decision, SessionState
+from soomac_irc.llm_langgraph import Decision, DuplicateDecisionKeyError, SessionState
 from soomac_irc.decision_overrides import post_decision_override, pre_decision_override
 from soomac_irc.dialogue_focus import build_reference_context
 
@@ -83,7 +83,7 @@ def _reject_duplicate_json_keys(pairs: list[tuple[str, object]]) -> dict:
         # 같은 JSON object 내부에서만 중복을 검사한다.
         # 서로 다른 queries 원소가 각각 target을 갖는 정상 구조는 문제없이 통과한다.
         if key in parsed:
-            raise ValueError(f"Decision JSON duplicate key: {key}")
+            raise DuplicateDecisionKeyError(f"Decision JSON duplicate key: {key}")
 
         parsed[key] = value
 
