@@ -2,11 +2,13 @@ import copy
 from typing import Callable, TypedDict
 
 from soomac_irc.agent_contract import new_decision
+from soomac_irc.dialogue_focus import new_dialogue_focus, update_dialogue_focus
 from soomac_irc.llm_policy import (
     allowed_order_fields, build_applied_changes, build_completed_modification_warning,
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event,
     evaluate_runtime_policy, find_invalid_order_fields, find_invalid_queries, find_new_physical_restriction_conflicts,
-    recommendation_allowed_fields, restore_protected_order_values, validate_recommendation_proposal,
+    find_route_consistency_errors, recommendation_allowed_fields, restore_protected_order_values,
+    validate_recommendation_proposal,
 )
 
 # State / Decision 계약
@@ -18,11 +20,14 @@ class SessionState(TypedDict):
     preferences: list[dict]  # 여러 턴 유지 맛·식감처럼 주문 필드 밖의 사용자 기호
     recommendation: dict  # 여러 턴 유지 추천 단계, 최근 추천안, 추천 이력
     pending_confirmation: dict | None  # 여러 턴 유지 다음 턴 답변을 기다리는 확인 건
+    dialogue_focus: dict  # 여러 턴 유지 최근 user mention과 해당 history 턴을 보관하는 참조용 상태
     history: list[dict]  # 여러 턴 유지 저장 제한 없음; Decision 입력은 8192 token 안의 최근 대화만 사용
     action_history: list[dict]  # 여러 턴 유지 저장 제한 없음; 실제 주문 변경과 로봇/VLM 사건 이력
 
 
 class Decision(TypedDict):
+    route: str  # 한 턴만 사용 task/general/mixed 처리 경로
+    mentions: list[str]  # 한 턴만 사용 현재 user 발화에서 직접 언급한 대상과 순서
     understanding: str  # 한 턴만 사용 ok면 처리 계속, clarify면 재질문
     order_patch: dict  # 한 턴만 사용 현재 발화에서 바꿀 주문 필드만 담음
     restriction_options: list[dict]  # 한 턴만 사용 알레르기·금지 재료 추가/해제 목록
@@ -68,6 +73,7 @@ def new_session_state() -> SessionState:
             "history": [],  # 이전 추천안 기록
         },
         "pending_confirmation": None,  # 현재 대기 중인 안전 확인
+        "dialogue_focus": new_dialogue_focus(),  # history 턴에 연결되는 최근 user mention 기억
         "history": [],  # 전체 자연어 대화 이력
         "action_history": [],  # 실제 적용된 변경 이력
     }
@@ -309,16 +315,18 @@ def build_graph(
     def validate_and_repair(state: TurnState) -> dict:
         invalid_fields = find_invalid_order_fields(state["decision"], state["robot_state"])  # 현재 section에서 못 바꾸는 필드
         invalid_queries = find_invalid_queries(state["decision"])  # 지원하지 않는 query 타입
+        route_errors = find_route_consistency_errors(state["decision"])  # route와 task semantic 조합 오류
 
-        if not invalid_fields and not invalid_queries:
+        if not invalid_fields and not invalid_queries and not route_errors:
             return {}
 
         repair = {
             "invalid_fields": invalid_fields,  # 다시 해석해야 하는 주문 필드
             "invalid_queries": invalid_queries,  # 제거·수정해야 하는 query
+            "route_errors": route_errors,  # task/general/mixed 의미와 semantic field의 모순
             "allowed_fields": allowed_order_fields(state["robot_state"]["section"]),  # 이번 section 허용 필드
             "previous_output": copy.deepcopy(state["decision"]),  # 첫 Decision 출력
-            "instruction": "원래 발화에 대응되는 field만 수정하고 임의 치환하지 않는다.",  # repair 제약
+            "instruction": "원래 발화에 대응되는 field와 route만 수정하고 임의 치환하지 않는다.",
         }
         repaired = call_decision(  # 같은 발화를 repair 정보와 함께 한 번만 재호출
             copy.deepcopy(state["session"]),
@@ -329,6 +337,7 @@ def build_graph(
         remaining = (  # 재호출 뒤에도 남은 invalid 항목
             find_invalid_order_fields(repaired, state["robot_state"])
             or find_invalid_queries(repaired)
+            or find_route_consistency_errors(repaired)
         )
 
         if remaining:
@@ -336,6 +345,23 @@ def build_graph(
             repaired["understanding"] = "clarify"
 
         return {"decision": repaired}
+
+    def route_by_decision(state: TurnState) -> str:
+        # general만 mutation 없는 전용 경로로 보내고 task/mixed는 기존 안전 pipeline을 그대로 사용한다.
+        return "general" if state["decision"]["route"] == "general" else "task"
+
+    def build_general_noop_policy(state: TurnState) -> dict:
+        # 일반대화는 주문·추천·확인 state를 바꾸지 않고 Response와 공통 턴 마감에 필요한 값만 채운다.
+        return {
+            "session": copy.deepcopy(state["session"]),
+            "recommendation_result": None,
+            "policy": {
+                "status": "pass",
+                "reason": "general",
+                "execute": False,
+                "conflicts": [],
+            },
+        }
 
     def resolve_confirmation(state: TurnState) -> dict:
         working, effective = resolve_pending_confirmation(  # pending 처리 후 기준 session과 유효 decision
@@ -474,12 +500,16 @@ def build_graph(
             applied_changes,
             state["robot_state"],
         )
-        next_prompt = build_next_prompt(  # 다음에 물을 항목 또는 실행 안내
-            state["session"],
-            state["decision"],
-            state["policy"],
-            state["robot_state"],
-        )
+        if state["decision"]["route"] == "general":
+            # 일반대화 뒤에 주문 section 질문을 자동으로 붙이지 않는다.
+            next_prompt = None
+        else:
+            next_prompt = build_next_prompt(  # 다음에 물을 항목 또는 실행 안내
+                state["session"],
+                state["decision"],
+                state["policy"],
+                state["robot_state"],
+            )
 
         if state["policy"]["reason"] == "understanding":
             reply = "요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요."
@@ -501,6 +531,15 @@ def build_graph(
             )
 
         session = copy.deepcopy(state["session"])  # history까지 기록할 최종 session 복사본
+
+        # focus는 별도 턴을 만들지 않고, 이번 응답까지 포함될 기존 history 턴 번호를 그대로 사용한다.
+        current_history_turn = len(session["history"]) // 2 + 1
+        session["dialogue_focus"] = update_dialogue_focus(
+            session["dialogue_focus"],
+            state["decision"]["mentions"],
+            current_history_turn,
+        )
+
         action_event = build_turn_action_event(applied_changes, future_changes)  # 의미 있는 변경 요약
 
         if action_event is not None:
@@ -515,18 +554,28 @@ def build_graph(
         }
 
     # graph wiring: 위 stage를 선언 순서 그대로 직렬 실행
-    graph = StateGraph(TurnState)  # 한 턴 동안 공유할 state schema
-    graph.add_node("interpret_decision", interpret_decision)  # 발화 구조화
-    graph.add_node("validate_and_repair", validate_and_repair)  # invalid 출력 1회 repair
-    graph.add_node("resolve_confirmation", resolve_confirmation)  # 지난 확인 답변 처리
-    graph.add_node("apply_workers", apply_workers)  # 주문·제한·취향 후보 반영
-    graph.add_node("run_recommendation", run_recommendation)  # 추천 생성·선택·취소
-    graph.add_node("check_policy", check_policy)  # 물리·안전 정책 판정
-    graph.add_node("generate_response", generate_response)  # 응답 생성과 history 누적
+    # graph wiring: route 검증 뒤 general은 no-op, task/mixed는 기존 pipeline으로 분기한다.
+    graph = StateGraph(TurnState)
+    graph.add_node("interpret_decision", interpret_decision)
+    graph.add_node("validate_and_repair", validate_and_repair)
+    graph.add_node("build_general_noop_policy", build_general_noop_policy)
+    graph.add_node("resolve_confirmation", resolve_confirmation)
+    graph.add_node("apply_workers", apply_workers)
+    graph.add_node("run_recommendation", run_recommendation)
+    graph.add_node("check_policy", check_policy)
+    graph.add_node("generate_response", generate_response)
 
     graph.add_edge(START, "interpret_decision")
     graph.add_edge("interpret_decision", "validate_and_repair")
-    graph.add_edge("validate_and_repair", "resolve_confirmation")
+    graph.add_conditional_edges(
+        "validate_and_repair",
+        route_by_decision,
+        {
+            "general": "build_general_noop_policy",
+            "task": "resolve_confirmation",
+        },
+    )
+    graph.add_edge("build_general_noop_policy", "generate_response")
     graph.add_edge("resolve_confirmation", "apply_workers")
     graph.add_edge("apply_workers", "run_recommendation")
     graph.add_edge("run_recommendation", "check_policy")

@@ -12,8 +12,8 @@ from soomac_irc.llm_langgraph import Decision, SessionState
 from soomac_irc.decision_overrides import post_decision_override, pre_decision_override
 # 설정값
 DECISION_HISTORY_TURNS = 8       # Decision Agent에 전달할 최근 완료 대화 턴 수
-DECISION_INPUT_MAX_TOKENS = 8192  # 모델 입력 상한. 출력 token 한도와 별개이다.
-DECISION_MAX_TOKENS = 1024        # sparse 출력이 잘리지 않도록 기존 여유를 유지한다.
+DECISION_INPUT_MAX_TOKENS = 8192  # 모델 입력 상한. 출력 token 한도와 별개임.
+DECISION_MAX_TOKENS = 1024        # sparse 출력이 잘리지 않도록 기존 여유를 유지.
 
 def build_decision_inputs(session: SessionState, user_text: str, robot_state: dict, processor, repair: dict | None = None):
     # 전체 세션에서 token 한도에 맞는 최근 문맥과 현재 발화를 모델 입력으로 만든다.
@@ -26,6 +26,7 @@ def build_decision_inputs(session: SessionState, user_text: str, robot_state: di
             "preferences": copy.deepcopy(session["preferences"]),
             "recommendation": copy.deepcopy(session["recommendation"]),
             "pending_confirmation": copy.deepcopy(session["pending_confirmation"]),
+            "dialogue_focus": copy.deepcopy(session["dialogue_focus"]),
             "action_history": action_history,
             "robot_state": copy.deepcopy(robot_state),
             "message": user_text.strip(),

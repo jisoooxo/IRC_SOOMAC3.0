@@ -202,6 +202,43 @@ def find_invalid_queries(decision: dict) -> list[str]:
 
     return invalid
 
+def decision_has_task_semantics(decision: dict) -> bool:
+    # mentions와 route 자체는 대화 문맥이고 주문·상태 조회·실행 semantic에는 포함하지 않는다.
+    patch = decision["order_patch"]
+    has_order_patch = (
+        patch["sauce"] is not None
+        or patch["noodle_type"] is not None
+        or patch["noodle_portion"] is not None
+        or bool(patch["toppings"])
+    )
+
+    return bool(
+        has_order_patch
+        or decision["restriction_options"]
+        or decision["preference_options"]
+        or decision["recommendation"]["action"] != "none"
+        or decision["commit"]
+        or decision["confirmation"] != "none"
+        or decision["queries"]
+    )
+
+
+def find_route_consistency_errors(decision: dict) -> list[str]:
+    # general의 mutation과 task/mixed의 빈 의미를 찾아 Decision repair 대상으로 돌린다.
+    route = decision["route"]
+    has_task_semantics = decision_has_task_semantics(decision)
+    has_task_intent = has_task_semantics or decision["understanding"] == "clarify"
+    errors = []
+
+    if route == "general" and has_task_semantics:
+        errors.append("general_has_task_semantics")
+    elif route == "mixed" and not has_task_intent:
+        errors.append("mixed_missing_task_semantics")
+    elif route == "task" and not has_task_intent:
+        errors.append("task_missing_task_semantics")
+
+    return errors
+
 ####################### restriction 우선순위와 주문 충돌 계산 ################################33
 def restriction_priority(reason: str) -> int:
     # restriction reason을 안전 우선순위를 숫자로 변환(알러지, 식이제약, 단순 기호 등)

@@ -14,6 +14,7 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, Int16, String
 
+from soomac_irc.dialogue_focus import remove_focus_mentions
 from soomac_irc.model_runtime import load_model, make_call_vlm
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.llm_langgraph import build_graph, build_preselected_confirmation_reply, build_preselected_section_confirmation, new_session_state, new_turn_state
@@ -1100,6 +1101,11 @@ class LLMLangGraphNode(Node):
         task_class = task["class"]
 
         self.active_task = copy.deepcopy(task)
+        # 실행 대상으로 확정된 task만 참조 후보에서 빼고, 아직 실행하지 않은 다른 mention은 유지한다.
+        self.graph_state["dialogue_focus"] = remove_focus_mentions(
+            self.graph_state["dialogue_focus"],
+            [task_class],
+        )
         self.robot_started = True
         self.vlm_confirmed = False
 

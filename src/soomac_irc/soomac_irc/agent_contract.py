@@ -58,6 +58,22 @@ SPARSE_ORDER_SCHEMA = {
 DECISION_SCHEMA = {
     "type": "object", # dict
     "properties": {
+        # route는 이번 발화가 기존 주문 pipeline을 타야 하는지, 일반 답변으로 끝낼지 결정 -> 답변을 유연하게 가져가기 위함
+        # 메뉴 단어가 포함됐는지가 아니라 실제 주문 state/robot action을 요구하는지로 판단
+        # task와 일반 질문이 한 문장 안에 같이 있으면 mixed로 보내서 task 부분은 기존 pipeline이 처리한다.
+        "route": {
+            "type": "string",
+            "enum": ["task", "general", "mixed"],
+        },
+
+        # mentions는 지금 user 발화에서 사용자가 직접 입으로 말한 대상을 등장 순서대로 기록
+        # supported 메뉴만 넣는 field가 아니므로 떡볶이, 라면 같은 unsupported 대상도 문자열 그대로 허용
+        # 그거/아까 그거/둘 다 같은 지시어 자체는 mention이 아니고 dialogue_focus를 이용해서 다음 단계에서 해석
+        "mentions": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+
         "order": SPARSE_ORDER_SCHEMA, # 변화한거
         "restrictions": { # 제한
             "type": "array", # 제한은 여러개가 한 번에 들어올 수 있으니까 list
@@ -110,7 +126,10 @@ DECISION_SCHEMA = {
         },
         "clarify": {"type": "boolean"}, 
     },
-    # sparse 출력이라 top-level required는 없음 -> 이번 발화랑 상관없는 값은 아예 안내보내도 됨
+
+    # 기존 semantic field는 sparse라서 이번 발화와 관계없으면 생략
+    # route만은 graph가 어느 branch로 갈지 항상 알아야 하므로 매 Decision 출력에서 필수임
+    "required": ["route"],
     "additionalProperties": False,
 }
 
@@ -158,6 +177,14 @@ RESPONSE_SCHEMA = {
 def new_decision() -> dict:
     # 모델은 sparse하게 내보내니까 기존 LangGraph가 먹을 수 있는 full 기본값을 먼저 만듦
     return {
+        # 모델을 건너뛰는 confirmation/recommendation override도 기존 주문 domain에서 발생
+        # override가 route를 따로 채우지 않아도 general branch로 빠지지 않게 안전 기본값은 task로 둔다.
+        "route": "task",
+
+        # external Decision에서는 optional이지만 내부에서는 항상 list로 유지
+        # 이렇게 해야 이후 dialogue_focus 코드가 key 존재 여부를 반복해서 검사하지 않아도 된다.
+        "mentions": [],
+
         "understanding": "ok",
         "order_patch": {"sauce": None, "noodle_type": None, "noodle_portion": None, "toppings": {}},
         "restriction_options": [],
@@ -174,6 +201,16 @@ def new_decision() -> dict:
 def normalize_decision(sparse_decision: dict) -> dict:
     # 아래에서는 sparse_decision 원본을 안건드리고 decision에 필요한 값만 복사함
     decision = new_decision()
+
+    # XGrammar를 통과한 모델 출력은 route를 항상 갖지만, deterministic test나 수동 호출도
+    # normalize_decision을 사용할 수 있으므로 누락 시에는 실행 권한이 더 제한적인 기존 task 경로를 유지
+    # general을 기본값으로 두면 잘못 누락된 출력이 Python safety pipeline을 우회할 수 있어서 안됨.
+    decision["route"] = sparse_decision.get("route", "task")
+
+    # mentions는 이후 dialogue_focus에서 언어적 표면형 목록이다.
+    # 원본 sparse JSON과 내부 Decision이 같은 list 객체를 공유하지 않게 deepcopy.
+    decision["mentions"] = copy.deepcopy(sparse_decision.get("mentions", []))
+
 
     # 의미를 하나로 못정한 경우 -> 주문 반영이나 로봇 실행을 막는 understanding 상태로 변환
     if sparse_decision.get("clarify") is True:
