@@ -156,6 +156,7 @@ class TestRestrictionRemoveTargetGroundingRed(unittest.TestCase):
             result["session"]["order"]["restrictions"],
             self.session["order"]["restrictions"],
         )
+        self.assertEqual(result["decision"]["understanding"], "clarify")
         self.assertFalse(result["policy"]["execute"])
 
     def test_matching_restriction_remove_target_still_works(self):
@@ -166,6 +167,51 @@ class TestRestrictionRemoveTargetGroundingRed(unittest.TestCase):
         )
 
         self.assertEqual(result["session"]["order"]["restrictions"], [])
+
+    def test_wrong_restriction_remove_does_not_drop_order_semantics(self):
+        session = copy.deepcopy(self.session)
+        session["order"]["toppings"] = {"버섯": "normal"}
+        decision = restriction_remove_decision("버섯")
+        decision["mentions"] = ["버섯", "치즈"]
+        decision["order_patch"]["toppings"] = {
+            "버섯": "none",
+            "치즈": "normal",
+        }
+
+        result = invoke_decision(
+            "버섯 넣지 말고 치즈 넣어줘",
+            decision,
+            session,
+        )
+
+        self.assertEqual(
+            result["session"]["order"]["restrictions"],
+            self.session["order"]["restrictions"],
+        )
+        self.assertEqual(
+            result["session"]["order"]["toppings"],
+            {"치즈": "normal"},
+        )
+        self.assertEqual(result["decision"]["understanding"], "ok")
+        self.assertFalse(result["policy"]["execute"])
+
+    def test_reference_grounded_restriction_remove_still_works(self):
+        session = copy.deepcopy(self.session)
+        session["dialogue_focus"]["current"] = {
+            "mentions": ["게살"],
+            "history_turn": 1,
+        }
+        decision = restriction_remove_decision("게살")
+        decision["mentions"] = []
+
+        result = invoke_decision(
+            "그거 제한 해제해줘",
+            decision,
+            session,
+        )
+
+        self.assertEqual(result["session"]["order"]["restrictions"], [])
+        self.assertFalse(result["policy"]["execute"])
 
 
 class TestHallucinatedMentionFocusRed(unittest.TestCase):
@@ -189,20 +235,24 @@ class TestHallucinatedMentionFocusRed(unittest.TestCase):
 
     def test_surface_grounded_mentions_are_saved_even_when_unsupported(self):
         cases = (
-            ("치즈가 뭐야?", "치즈"),
-            ("떡볶이가 뭐야?", "떡볶이"),
+            ("치즈가 뭐야?", ["치즈"]),
+            ("떡볶이가 뭐야?", ["떡볶이"]),
+            ("치즈랑 버섯 차이가 뭐야?", ["치즈", "버섯"]),
         )
 
-        for user_text, mention in cases:
+        for user_text, mentions in cases:
             with self.subTest(user_text=user_text):
+                decision = new_decision()
+                decision["route"] = "general"
+                decision["mentions"] = mentions
                 result = invoke_decision(
                     user_text,
-                    self.general_decision(mention),
+                    decision,
                     new_session_state(),
                 )
                 self.assertEqual(
                     result["session"]["dialogue_focus"]["current"]["mentions"],
-                    [mention],
+                    mentions,
                 )
 
 

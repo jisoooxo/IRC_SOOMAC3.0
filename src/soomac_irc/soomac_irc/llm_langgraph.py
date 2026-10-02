@@ -8,7 +8,7 @@ from soomac_irc.llm_policy import (
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event, build_safe_clarify_decision,
     evaluate_runtime_policy, find_invalid_order_fields, find_invalid_queries, find_new_physical_restriction_conflicts,
     find_decision_grounding_errors, find_route_consistency_errors,
-    has_explicit_commit_intent, recommendation_allowed_fields,
+    filter_ungrounded_restriction_removals, grounded_mentions, has_explicit_commit_intent, recommendation_allowed_fields,
     reference_targets_are_supported, reference_targets_match_decision,
     restore_protected_order_values, validate_recommendation_proposal,)
 
@@ -337,16 +337,14 @@ def build_graph(
         return {"decision": decision}
     
     def apply_explicit_commit_gate(state: TurnState) -> dict:
-        # Base Decision이 명시적 실행 표현을 놓친 경우 commit 하나만 False→True로 복구한다.
-        # order/restriction/recommendation 등 기존 semantic은 같은 복사본에 그대로 보존한다.
+        # 명시적 실행 표현만 commit=true로 허용해서 모델이 만든 실행 권한 환각을 제거한다.
+        # commit 하나만 보정하고 order/restriction/recommendation 등 기존 semantic은 그대로 보존한다.
         decision = copy.deepcopy(state["decision"])
 
-        if (
-            decision["understanding"] == "ok"
-            and decision["commit"] is False
-            and has_explicit_commit_intent(state["user_text"])
-        ):
-            decision["commit"] = True
+        if decision["understanding"] == "ok":
+            decision["commit"] = has_explicit_commit_intent(
+                state["user_text"]
+            )
 
         return {"decision": decision}
 
@@ -439,8 +437,8 @@ def build_graph(
         return {"decision": decision}
 
     def guard_decision_grounding(state: TurnState) -> dict:
-        # reference resolver가 먼저 확정한 target과 현재 발화를 이용해 명백한 mutation 모순만 차단한다.
-        # 오류가 있으면 기존 semantic을 수정하지 않고 안전한 clarify Decision으로 전체 mutation을 폐기한다.
+        # 잘못된 restriction remove만 먼저 제거하고, 나머지 명백한 mutation 모순은 기존처럼 차단한다.
+        # restriction target 하나의 오류 때문에 unrelated 정상 order semantic을 폐기하지 않는다.
         decision = state["decision"]
 
         if decision["understanding"] == "clarify":
@@ -457,6 +455,11 @@ def build_graph(
             if reference_context["status"] == "resolved"
             else []
         )
+        decision = filter_ungrounded_restriction_removals(
+            state["user_text"],
+            decision,
+            resolved_targets,
+        )
         grounding_errors = find_decision_grounding_errors(
             state["user_text"],
             decision,
@@ -464,7 +467,7 @@ def build_graph(
         )
 
         if not grounding_errors:
-            return {}
+            return {"decision": decision}
 
         safe_decision = build_safe_clarify_decision(
             decision,
@@ -746,9 +749,13 @@ def build_graph(
 
         # focus는 별도 턴을 만들지 않고, 이번 응답까지 포함될 기존 history 턴 번호를 그대로 사용한다.
         current_history_turn = len(session["history"]) // 2 + 1
+        focus_mentions = grounded_mentions(
+            state["user_text"],
+            state["decision"]["mentions"],
+        )
         session["dialogue_focus"] = update_dialogue_focus(
             session["dialogue_focus"],
-            state["decision"]["mentions"],
+            focus_mentions,
             current_history_turn,
         )
 

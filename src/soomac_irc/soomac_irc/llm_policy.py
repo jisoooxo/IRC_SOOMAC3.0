@@ -15,6 +15,7 @@ EXPLICIT_COMMIT_PHRASES = (
     "바로 시작해",
     "담기 시작해",
     "주문 확정해",
+    "실행해줘",
 )
 # 질문·제안·부정 표현이 있으면 positive phrase가 포함돼도 commit으로 올리지 않는다.
 BLOCKED_COMMIT_MARKERS = (
@@ -332,6 +333,40 @@ def has_explicit_commit_intent(user_text: str) -> bool:
         _compact_surface_text(phrase) in compact_user_text
         for phrase in EXPLICIT_COMMIT_PHRASES
     )
+
+def filter_ungrounded_restriction_removals(
+    user_text: str,
+    decision: dict,
+    resolved_targets: list[str] | None = None,
+) -> dict:
+    # remove target은 현재 발화의 정확한 surface 또는 Python resolver 결과로만 인정한다.
+    # 잘못된 restriction remove만 버리고 다른 정상 semantic은 같은 Decision에 보존한다.
+    compact_user_text = _compact_surface_text(user_text)
+    resolved_target_set = set(resolved_targets or [])
+    filtered = copy.deepcopy(decision)
+    kept_options = []
+    removed_invalid_option = False
+
+    for option in filtered["restriction_options"]:
+        target = option["target"]
+        target_is_grounded = (
+            _compact_surface_text(target) in compact_user_text
+            or target in resolved_target_set
+        )
+
+        if option["action"] == "remove" and not target_is_grounded:
+            removed_invalid_option = True
+            continue
+
+        kept_options.append(option)
+
+    filtered["restriction_options"] = kept_options
+
+    # 잘못된 remove가 유일한 task semantic이었다면 빈 task를 통과시키지 않고 재질문한다.
+    if removed_invalid_option and not decision_has_task_semantics(filtered):
+        filtered["understanding"] = "clarify"
+
+    return filtered
 
 def find_decision_grounding_errors(
     user_text: str,
