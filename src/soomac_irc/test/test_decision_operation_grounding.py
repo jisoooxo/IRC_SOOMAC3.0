@@ -336,6 +336,19 @@ class TestValidDecisionControls(unittest.TestCase):
                 "페퍼론치노": "high",
             },
         )
+    def test_mixed_information_and_mutation_still_works(self):
+        decision = order_decision("양파", "high")
+        decision["route"] = "mixed"
+
+        _, result = invoke_decision(
+            "양파 많이 넣어줘. 그리고 양파는 뭐야?",
+            decision,
+        )
+
+        self.assertEqual(
+            result["session"]["order"]["toppings"]["양파"],
+            "high",
+        )
 
 if __name__ == "__main__":
     unittest.main()

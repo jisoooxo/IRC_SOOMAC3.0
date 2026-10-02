@@ -7,7 +7,8 @@ from soomac_irc.llm_policy import (
     allowed_order_fields, build_applied_changes, build_completed_modification_warning,
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event, build_safe_clarify_decision,
     evaluate_runtime_policy, find_invalid_order_fields, find_invalid_queries, find_new_physical_restriction_conflicts,
-    find_route_consistency_errors, has_explicit_commit_intent, recommendation_allowed_fields,
+    find_decision_grounding_errors, find_route_consistency_errors,
+    has_explicit_commit_intent, recommendation_allowed_fields,
     reference_targets_are_supported, reference_targets_match_decision,
     restore_protected_order_values, validate_recommendation_proposal,)
 
@@ -417,6 +418,40 @@ def build_graph(
 
         return {"decision": decision}
 
+    def guard_decision_grounding(state: TurnState) -> dict:
+        # reference resolver가 먼저 확정한 target과 현재 발화를 이용해 명백한 mutation 모순만 차단한다.
+        # 오류가 있으면 기존 semantic을 수정하지 않고 안전한 clarify Decision으로 전체 mutation을 폐기한다.
+        decision = state["decision"]
+
+        if decision["understanding"] == "clarify":
+            return {}
+
+        current_history_turn = len(state["session"]["history"]) // 2 + 1
+        reference_context = build_reference_context(
+            state["user_text"],
+            state["session"]["dialogue_focus"],
+            current_history_turn,
+        )
+        resolved_targets = (
+            reference_context["targets"]
+            if reference_context["status"] == "resolved"
+            else []
+        )
+        grounding_errors = find_decision_grounding_errors(
+            state["user_text"],
+            decision,
+            resolved_targets,
+        )
+
+        if not grounding_errors:
+            return {}
+
+        safe_decision = build_safe_clarify_decision(
+            decision,
+            state["user_text"],
+        )
+        return {"decision": safe_decision}
+
     def route_by_decision(state: TurnState) -> str:
         # general만 mutation 없는 전용 경로로 보내고 task/mixed는 기존 안전 pipeline을 그대로 사용한다.
         return "general" if state["decision"]["route"] == "general" else "task"
@@ -717,6 +752,7 @@ def build_graph(
     graph.add_node("explicit_commit_gate", apply_explicit_commit_gate)
     graph.add_node("validate_and_repair", validate_and_repair)
     graph.add_node("resolve_reference", resolve_reference)
+    graph.add_node("guard_decision_grounding", guard_decision_grounding)
     graph.add_node("build_general_noop_policy", build_general_noop_policy)
     graph.add_node("resolve_confirmation", resolve_confirmation)
     graph.add_node("apply_workers", apply_workers)
@@ -728,8 +764,9 @@ def build_graph(
     graph.add_edge("interpret_decision", "explicit_commit_gate")
     graph.add_edge("explicit_commit_gate", "validate_and_repair")
     graph.add_edge("validate_and_repair", "resolve_reference")
+    graph.add_edge("resolve_reference", "guard_decision_grounding")
     graph.add_conditional_edges(
-        "resolve_reference",
+        "guard_decision_grounding",
         route_by_decision,
         {
             "general": "build_general_noop_policy",

@@ -36,6 +36,52 @@ BLOCKED_COMMIT_EXAMPLES = (
     "진행하지 마",
     "시작하지 마",
 )
+
+# 집합 표현은 개별 target의 alias가 아니라 정확히 함께 변경돼야 하는 canonical target 묶음이다.
+ORDER_COLLECTION_TARGETS = {
+    "야채": frozenset(("양파", "버섯")),
+    "채소": frozenset(("양파", "버섯")),
+    "추가 재료": frozenset(("치즈", "페퍼론치노")),
+}
+
+# 자연어 전체를 재해석하지 않고 명백한 mutation 모순만 차단하는 좁은 marker이다.
+ORDER_REMOVE_MARKERS = (
+    "빼",
+    "제외",
+    "삭제",
+    "없이",
+    "안 넣",
+)
+# 주문 변경이 발화에 실제로 나타났는지만 확인한다. 구체적인 semantic은 Decision이 담당한다.
+ORDER_MUTATION_MARKERS = (
+    "넣",
+    "빼",
+    "제외",
+    "삭제",
+    "없이",
+    "안 넣",
+    "바꿔",
+    "변경",
+    "많이",
+    "조금",
+    "적게",
+)
+
+INFORMATION_ONLY_MARKERS = (
+    "뭐야",
+    "무엇",
+    "설명해",
+    "알려줘",
+)
+
+RESTRICTION_REMOVE_MARKERS = (
+    "해제",
+    "철회",
+    "제한 취소",
+    "알레르기 취소",
+    "제한 풀어",
+    "알레르기 풀어",
+)
 # ################ 주문 field 위치, 현재·미래 시점, 추천 가능 범위 ###############
 def order_key_timing(key: str, robot_state: dict)-> str:
     # 주문 field가 로봇 기준으로 과거, 현재, 미래인지 계산
@@ -286,6 +332,106 @@ def has_explicit_commit_intent(user_text: str) -> bool:
         _compact_surface_text(phrase) in compact_user_text
         for phrase in EXPLICIT_COMMIT_PHRASES
     )
+
+def find_decision_grounding_errors(
+    user_text: str,
+    decision: dict,
+    resolved_targets: list[str] | None = None,
+) -> list[str]:
+    # Decision semantic을 새로 생성하지 않고 발화와 명백히 모순되는 mutation만 fail-closed 한다.
+    # 반환값은 Python 내부 진단용이며 Decision JSON field가 아니다.
+    compact_user_text = _compact_surface_text(user_text)
+    resolved_target_set = set(resolved_targets or [])
+    errors = []
+
+    if decision["understanding"] == "clarify":
+        return errors
+
+    toppings = decision["order_patch"]["toppings"]
+    topping_targets = set(toppings)
+
+    if toppings:
+        # 설명 질문을 주문 mutation으로 바꾼 출력은 명백한 모순이다.
+        information_question_is_present = any(
+            _compact_surface_text(marker) in compact_user_text
+            for marker in INFORMATION_ONLY_MARKERS
+        )
+        order_mutation_is_present = any(
+            _compact_surface_text(marker) in compact_user_text
+            for marker in ORDER_MUTATION_MARKERS
+        )
+
+        if (
+            information_question_is_present
+            and not order_mutation_is_present
+        ):
+            errors.append("information_question_has_order_mutation")
+
+        collection_targets = set()
+
+        for surface, required_targets in ORDER_COLLECTION_TARGETS.items():
+            if _compact_surface_text(surface) not in compact_user_text:
+                continue
+
+            if not required_targets.issubset(topping_targets):
+                errors.append(f"incomplete_collection:{surface}")
+            else:
+                collection_targets.update(required_targets)
+
+        # 직접 언급되지 않았고 resolver가 확정하지도 않은 target은 통과시키지 않는다.
+        for target in topping_targets:
+            target_is_grounded = (
+                _compact_surface_text(target) in compact_user_text
+                or target in resolved_target_set
+                or target in collection_targets
+            )
+
+            if not target_is_grounded:
+                errors.append(f"ungrounded_order_target:{target}")
+
+        # 단일 target 또는 집합 전체가 같은 동작을 받는 경우에만 add/remove 모순을 확인한다.
+        collection_is_present = any(
+            _compact_surface_text(surface) in compact_user_text
+            for surface in ORDER_COLLECTION_TARGETS
+        )
+
+        if len(toppings) == 1 or collection_is_present:
+            remove_requested = any(
+                _compact_surface_text(marker) in compact_user_text
+                for marker in ORDER_REMOVE_MARKERS
+            )
+            removes_target = any(
+                amount == "none"
+                for amount in toppings.values()
+            )
+            adds_target = any(
+                amount != "none"
+                for amount in toppings.values()
+            )
+
+            if remove_requested and adds_target:
+                errors.append("remove_request_has_add_operation")
+            elif not remove_requested and removes_target:
+                errors.append("add_request_has_remove_operation")
+
+    restriction_remove_requested = any(
+        option["action"] == "remove"
+        for option in decision["restriction_options"]
+    )
+
+    if restriction_remove_requested and not any(
+        _compact_surface_text(marker) in compact_user_text
+        for marker in RESTRICTION_REMOVE_MARKERS
+    ):
+        errors.append("restriction_remove_not_explicit")
+
+    if decision["commit"] and any(
+        marker in compact_user_text
+        for marker in BLOCKED_COMMIT_MARKERS
+    ):
+        errors.append("commit_contradicted_by_question_or_negative")
+
+    return errors
 
 def grounded_mentions(user_text: str, mentions: list[str]) -> list[str]:
     # Decision이 낸 mention 중 현재 사용자 발화에 실제 surface가 존재하는 값만 순서대로 보존한다.
