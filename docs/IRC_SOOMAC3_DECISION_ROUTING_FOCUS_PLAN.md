@@ -732,6 +732,207 @@ DECISION_SCHEMA에 required route와 optional mentions 추가
 
 ---
 
+## 16. Base Model Routing Test 결과 — 2026-10-02
+
+전체 원문 결과는 [`base model routing test.jsonl`](<base model routing test.jsonl>)에 기록한다.
+
+→ **이번 결과는 새 Decision Adapter를 연결하지 않은 Base Gemma의 기준선(baseline)이다. JSON 형식 준수와 의미 정확도를 분리해서 본다.**
+
+### 16.1 실행 조건
+
+| 항목 | 값 |
+| --- | --- |
+| Branch | `flexible_llm` |
+| Model | `/home/roma/Desktop/sLLM/gemma-4-12B-it` |
+| Quantization | NF4 4-bit |
+| Decision Adapter | 없음 |
+| Response Adapter | 없음 |
+| 실행 범위 | LLM-only |
+| 제외 | STT, TTS, 실제 VLM 호출, UI, robot node |
+| Model load | 4.531초 |
+| VRAM allocated | 7.15 GiB |
+
+실제 실행에서는 다음 경로가 모두 적용됐다.
+
+```text
+DECISION_SYSTEM
++ 최근 history와 dialogue_focus를 포함한 JSON 입력
++ DECISION_SCHEMA 기반 XGrammar
+→ normalize_decision
+→ Python reference / policy / state 처리
+→ route별 TASK / GENERAL / MIXED_RESPONSE_SYSTEM
++ RESPONSE_SCHEMA 기반 XGrammar
+```
+
+**Schema가 JSON 모양과 enum을 강제하는 것은 확인됐다. 그러나 `mentions` 누락이나 unsupported 명사의 잘못된 치환처럼 의미가 틀린 출력까지 막아주지는 않는다.**
+
+### 16.2 전체 결과
+
+| 지표 | 결과 |
+| --- | ---: |
+| 총 테스트 | 133 |
+| PASS / FAIL | 36 / 97 |
+| Route 정확도 | 81 / 131, 61.8% |
+| Mentions 정확도 | 17 / 81, 21.0% |
+| Mutation 안전성 | 96 / 99, 97.0% |
+| Mixed 전체 PASS | 2 / 10, 20.0% |
+| 기존 task regression PASS | 15 / 31, 48.4% |
+
+최신 사실 질문은 routing과 factual correctness를 분리했다.
+
+```text
+질문: 대한민국 대통령이 누구야?
+route: general
+reply: 대한민국의 현재 대통령은 윤석열입니다.
+```
+
+Route는 PASS이다. 인터넷을 사용하지 않는 구형 Base Gemma의 오래된 사실 답변은 routing FAIL에 포함하지 않았다.
+
+### 16.3 Latency
+
+| 구간 | 평균 |
+| --- | ---: |
+| Decision | 2,885.080 ms |
+| Response | 841.169 ms |
+| 전체 | 3,728.097 ms |
+| 전체 P95 | 6,547.338 ms |
+
+### 16.4 General과 lexical trap
+
+완전 무관한 일반 질문은 대부분 `general`로 처리됐다. 음식 단어가 포함된 일반 질문에서는 `mentions` 누락이 반복됐다.
+
+```text
+질문: 치즈랑 버섯은 뭐가 달라?
+기대: route=general, mentions=["치즈", "버섯"]
+실제: route=task, mentions=[], understanding=clarify
+reply: 요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요.
+```
+
+이 고정 답변은 모델이 만든 문장이 아니다. `llm_langgraph.py`가 `policy.reason=understanding`인 순수 task에 생성한 Python 문장이다. finalize 단계가 이 문장을 assistant history의 `content`로 저장하므로 다음 턴의 Decision과 Response에도 전달된다.
+
+Cause: Base Gemma가 음식 설명 질문을 task로 분류하고 직접 언급한 entity를 추출하지 못했다.
+
+Effect: `dialogue_focus`가 생성되지 않고 후속 reference 테스트까지 연쇄적으로 실패했다.
+
+### 16.5 Reference resolution
+
+| 항목 | 결과 |
+| --- | ---: |
+| 요청한 reference 케이스 | 25 |
+| Python resolver를 독립 평가할 수 있던 케이스 | 0 |
+| Setup mention 누락으로 평가가 막힌 케이스 | 25 |
+
+`그거`, `둘 다`, `첫 번째 거`, `두 번째 거`, `아까 그거`, `전에 말한 거`와 spacing variation을 모두 실행했다. 하지만 모든 setup 턴에서 `dialogue_focus.current`가 `null`이었다.
+
+따라서 이번 결과를 **Python resolver 25건 실패**라고 해석하면 안 된다. 1차 원인은 이전 general 턴의 `mentions` 누락이며, resolver 자체는 실제 후보가 있는 조건에서 평가되지 못했다.
+
+(내가 의역해보자면, 주소를 찾는 로직을 시험하려 했는데 주소록에 이름이 한 번도 저장되지 않은 상태이다.)
+
+### 16.6 Mixed response
+
+Mixed route는 일부 발화에서 task mutation과 일반 답변을 함께 유지했다. 다만 Python fact grounding 위반 1건이 확인됐다.
+
+```text
+test_id: 122
+user: 그거 빼고 파스타 역사 알려줘
+policy.reason: ambiguous_reference
+Python reference_targets: []
+reply: 치즈와 버섯 중 어떤 것을 제외하고 싶으신지 말씀해 주시겠어요?
+       파스타는 이탈리아의 대표적인 요리로 ...
+```
+
+Task mutation은 rollback됐고 일반 질문도 유지됐다. 그러나 Response가 Python 후보 없이 history를 보고 `치즈와 버섯`을 task 사실처럼 말했다.
+
+Cause: Response 입력에 최근 history가 포함되고 prompt 제약은 XGrammar처럼 의미를 강제하지 않는다.
+
+Effect: `reference_targets=[]`여도 Response가 과거 entity를 후보로 다시 추론할 수 있다.
+
+### 16.7 Unsupported
+
+| 구분 | 결과 |
+| --- | ---: |
+| 직접 unsupported 안전 통과 | 3 / 5 |
+| 직접 unsupported unsafe mutation | 2 / 5 |
+| Reference unsupported 독립 평가 | 0 / 5 |
+
+Reference unsupported 5건은 모두 setup mention 누락 때문에 평가가 막혔다. 직접 unsupported에서는 다음 두 건이 실제 canonical order를 변경했다.
+
+```json
+{
+  "test_id": 93,
+  "user_text": "햄 많이 넣어줘",
+  "decision_raw": {
+    "route": "task",
+    "order": {"toppings": {"양파": "high"}}
+  },
+  "state_after": {"toppings": {"양파": "high"}}
+}
+```
+
+```json
+{
+  "test_id": 94,
+  "user_text": "페퍼로니 조금 넣어줘",
+  "decision_raw": {
+    "route": "task",
+    "mentions": ["페퍼로니"],
+    "order": {"toppings": {"페퍼론치노": "low"}}
+  },
+  "state_after": {"toppings": {"페퍼론치노": "low"}}
+}
+```
+
+두 건의 1차 원인은 Decision 의미 오류이다. 동시에 Python이 직접 발화의 `mentions`와 `order_patch` 불일치를 막지 못했으므로 runtime 방어 공백으로도 기록한다.
+
+### 16.8 VLM 성격 질문
+
+이미지 없이 실행한 카메라·사진 질문 6건은 모두 실패했다.
+
+```text
+질문: 지금 카메라에 뭐가 보여?
+실제 route: task
+실제 reply: 현재 로봇은 면(noodle) 섹션에 있으며 ... 면 종류를 선택해 주시겠어요?
+```
+
+현재 Decision prompt에는 이미지 입력이 없는 카메라 질문을 어떻게 분류할지 명시된 규칙이나 예시가 없다. 이번 결과만으로 route enum에 `vlm`을 추가하지 않는다.
+
+### 16.9 실패 원인 분리
+
+97개 FAIL의 1차 원인은 모두 현재 Base Gemma의 Decision 의미 추출 부족으로 분류했다.
+
+| 분류 | 건수 | 의미 |
+| --- | ---: | --- |
+| Decision Adapter 1차 원인 | 97 | route, mentions, semantic extraction 또는 앞선 setup 실패 |
+| Python/runtime 추가 문제 | 2 | 직접 unsupported 치환을 canonical mutation 전에 막지 못함 |
+| Response/runtime 추가 문제 | 1 | Python에 없는 reference 후보를 history에서 생성 |
+
+이 수치는 **새 Adapter의 예상 성능이 아니다.** 새 계약을 학습하지 않은 Base Gemma가 현재 prompt와 schema만으로 보인 기준선이다.
+
+### 16.10 결과 파일 형식
+
+JSONL은 135줄이다.
+
+```text
+1 metadata
+133 test records
+1 summary
+```
+
+각 test record에는 다음을 저장했다.
+
+```text
+user_text / context_before
+Decision raw / final / semantic fields
+route / mentions
+policy.status / policy.reason / reference_targets
+reply
+Decision / Response / total latency
+state before / after / mutation / execute
+expected / PASS·FAIL / 원인 분류
+```
+
+---
+
 ## 용어 정리
 
 - **라우팅(routing)**: 발화를 `task`, `general`, `mixed` 중 하나로 보내는 과정이다.

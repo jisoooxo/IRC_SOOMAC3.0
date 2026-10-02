@@ -107,33 +107,89 @@ def previous_focus_mentions(focus: dict, current_history_turn: int) -> list[str]
 
     return copy.deepcopy(previous.get("mentions", []))
 
+def _compact_reference_text(user_text: str) -> str:
+    # STT가 띄어쓰기를 다르게 보내도 같은 reference 표현으로 비교하기 위해 공백만 제거한다.
+    # 문장 전체 의미를 Python regex로 해석하는 게 아니라 이미 지원하는 지시어 표면형만 통일한다.
+    return "".join(user_text.strip().split())
 
-def resolve_focus_reference(user_text: str,focus: dict,current_history_turn: int,) -> list[str] | None:
-    # 반환값은 Decision JSON field가 아니라 graph 내부에서만 사용하는 resolver 결과이다.
-    # []는 reference 표현 없음, list[str]은 정상 해석, None은 후보 부족·모호함을 뜻한다.
-    # 긴 표현을 먼저 검사해야 "아까 그거"가 일반적인 "그거"로 잘못 처리되지 않는다.
-    text = user_text.strip()
-    current_mentions = current_focus_mentions(focus, current_history_turn)
-    previous_mentions = previous_focus_mentions(focus, current_history_turn)
 
-    # temporal reference는 current가 아니라 바로 이전 recent[0] event만 사용한다.
-    if "아까 그거" in text or "전에 말한 거" in text:
-        return previous_mentions if len(previous_mentions) == 1 else None
+def build_reference_context(user_text: str,focus: dict,current_history_turn: int,) -> dict:
+    # Decision output field가 아니라 model input과 graph 한 턴에서만 사용하는 Python 내부값이다.
+    # status:
+    # - none: reference 표현 자체가 없음
+    # - resolved: target이 안전하게 하나 또는 둘로 확정됨
+    # - ambiguous: 후보는 있지만 요구한 개수/순서 조건을 만족하지 않음
+    # - missing: 사용할 focus event나 mention이 없음
+    # - stale: focus event는 있지만 TTL을 넘김
+    text = _compact_reference_text(user_text)
 
-    # plural reference는 정확히 두 후보가 있을 때만 두 대상을 등장 순서대로 반환한다.
-    if "둘 다" in text or "두 개 다" in text:
-        return current_mentions if len(current_mentions) == 2 else None
+    if "아까그거" in text or "전에말한거" in text:
+        recent = focus.get("recent", [])
+        event = recent[0] if recent else None
+        reference_kind = "single"
+    elif "둘다" in text or "두개다" in text:
+        event = focus.get("current")
+        reference_kind = "plural"
+    elif "첫번째거" in text:
+        event = focus.get("current")
+        reference_kind = "first"
+    elif "두번째거" in text:
+        event = focus.get("current")
+        reference_kind = "second"
+    elif any(reference in text for reference in ("방금그거", "그거", "이거")):
+        event = focus.get("current")
+        reference_kind = "single"
+    else:
+        return {"status": "none", "targets": []}
 
-    # ordinal reference는 focus에 저장된 사용자 mention 순서를 그대로 사용한다.
-    if "첫 번째 거" in text:
-        return [current_mentions[0]] if len(current_mentions) >= 1 else None
+    if not isinstance(event, dict):
+        return {"status": "missing", "targets": []}
 
-    if "두 번째 거" in text:
-        return [current_mentions[1]] if len(current_mentions) >= 2 else None
+    if not focus_event_is_fresh(event, current_history_turn):
+        return {"status": "stale", "targets": []}
 
-    # 단수 current reference는 후보가 정확히 하나일 때만 안전하게 확정할 수 있다.
-    if any(reference in text for reference in ("방금 그거", "그거", "이거")):
-        return current_mentions if len(current_mentions) == 1 else None
+    targets = copy.deepcopy(event.get("mentions", []))
 
-    # reference가 없는 발화는 Decision을 수정하지 않도록 빈 목록을 반환한다.
-    return []
+    if not targets:
+        return {"status": "missing", "targets": []}
+
+    if reference_kind == "plural":
+        if len(targets) == 2:
+            return {"status": "resolved", "targets": targets}
+
+        return {"status": "ambiguous", "targets": targets}
+
+    if reference_kind == "first":
+        if len(targets) >= 1:
+            return {"status": "resolved", "targets": [targets[0]]}
+
+        return {"status": "ambiguous", "targets": targets}
+
+    if reference_kind == "second":
+        if len(targets) >= 2:
+            return {"status": "resolved", "targets": [targets[1]]}
+
+        return {"status": "ambiguous", "targets": targets}
+
+    if len(targets) == 1:
+        return {"status": "resolved", "targets": targets}
+
+    return {"status": "ambiguous", "targets": targets}
+
+
+def resolve_focus_reference(user_text: str,focus: dict,current_history_turn: int) -> list[str] | None:
+    # 기존 caller 계약은 유지한다.
+    # []는 reference 없음, list[str]은 정상 해석, None은 ambiguous/missing/stale이다.
+    context = build_reference_context(
+        user_text,
+        focus,
+        current_history_turn,
+    )
+
+    if context["status"] == "none":
+        return []
+
+    if context["status"] == "resolved":
+        return copy.deepcopy(context["targets"])
+
+    return None

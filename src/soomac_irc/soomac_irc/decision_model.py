@@ -10,15 +10,23 @@ from soomac_irc.agent_contract import DECISION_SCHEMA, normalize_decision
 from soomac_irc.agent_prompts import DECISION_SYSTEM
 from soomac_irc.llm_langgraph import Decision, SessionState
 from soomac_irc.decision_overrides import post_decision_override, pre_decision_override
+from soomac_irc.dialogue_focus import build_reference_context
+
 # 설정값
 DECISION_HISTORY_TURNS = 8       # Decision Agent에 전달할 최근 완료 대화 턴 수
 DECISION_INPUT_MAX_TOKENS = 8192  # 모델 입력 상한. 출력 token 한도와 별개임.
 DECISION_MAX_TOKENS = 1024        # sparse 출력이 잘리지 않도록 기존 여유를 유지.
 
+
 def build_decision_inputs(session: SessionState, user_text: str, robot_state: dict, processor, repair: dict | None = None):
     # 전체 세션에서 token 한도에 맞는 최근 문맥과 현재 발화를 모델 입력으로 만든다.
     history = copy.deepcopy(session["history"][-(DECISION_HISTORY_TURNS * 2):])
     action_history = copy.deepcopy(session["action_history"])
+
+    # 현재 user turn은 아직 history에 저장되기 전이므로 완료될 턴 번호를 여기서 계산한다.
+    # LLM이 history에서 reference target을 새로 추측하기 전에 Python 결과를 입력으로 제공한다.
+    current_history_turn = len(session["history"]) // 2 + 1
+    reference_context = build_reference_context(user_text,session["dialogue_focus"], current_history_turn)
 
     while True:
         model_input = {
@@ -27,11 +35,11 @@ def build_decision_inputs(session: SessionState, user_text: str, robot_state: di
             "recommendation": copy.deepcopy(session["recommendation"]),
             "pending_confirmation": copy.deepcopy(session["pending_confirmation"]),
             "dialogue_focus": copy.deepcopy(session["dialogue_focus"]),
+            "reference_context": copy.deepcopy(reference_context),
             "action_history": action_history,
             "robot_state": copy.deepcopy(robot_state),
             "message": user_text.strip(),
         }
-
         if repair is not None:
             model_input["repair"] = copy.deepcopy(repair)
 
@@ -66,9 +74,29 @@ def build_decision_inputs(session: SessionState, user_text: str, robot_state: di
         raise ValueError(f"Decision 입력 token 초과: {prompt_tokens}/{DECISION_INPUT_MAX_TOKENS}")
 
 
+def _reject_duplicate_json_keys(pairs: list[tuple[str, object]]) -> dict:
+    # json.loads의 object_pairs_hook은 dict로 합치기 전 key-value 순서를 그대로 넘긴다.
+    # 일반 json.loads는 같은 key가 반복되면 앞의 값을 조용히 버리므로 여기서 즉시 막는다.
+    parsed = {}
+
+    for key, value in pairs:
+        # 같은 JSON object 내부에서만 중복을 검사한다.
+        # 서로 다른 queries 원소가 각각 target을 갖는 정상 구조는 문제없이 통과한다.
+        if key in parsed:
+            raise ValueError(f"Decision JSON duplicate key: {key}")
+
+        parsed[key] = value
+
+    return parsed
+
+
 def parse_decision(raw: str, session: SessionState | None = None) -> Decision:
     # sparse에서 scope를 생략한 경우에만 runtime 기본값을 채운 뒤 full Decision으로 정규화
-    sparse = json.loads(raw)
+    # 중복 key는 normalize 전에 거부해서 앞의 값이 조용히 사라지는 것을 막는다.
+    sparse = json.loads(
+        raw,
+        object_pairs_hook=_reject_duplicate_json_keys,
+    )
     recommendation = sparse.get("recommendation")
 
     if recommendation is not None and "scope" not in recommendation:

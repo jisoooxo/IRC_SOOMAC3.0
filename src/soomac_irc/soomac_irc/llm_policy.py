@@ -253,10 +253,13 @@ def reference_targets_are_supported(resolved_targets: list[str]) -> bool:
 
 
 
-def reference_targets_match_decision(decision: dict,resolved_targets: list[str],) -> bool:
-    # resolved_targets는 Decision JSON field가 아니라 dialogue_focus resolver가 만든 Python 내부 값
-    # 여기서는 reference 대상이 지원 domain인지, Decision semantic target과 같은지만 검사
-    # 햄→소시지, 페퍼로니→페퍼론치노 같은 alias·유사어 치환은 절대 하지 않는다.
+def reference_targets_match_decision(
+    decision: dict,
+    resolved_targets: list[str],
+) -> bool:
+    # resolved target은 Python이 focus에서 계산한 지시어 대상이다.
+    # 같은 발화에서 사용자가 직접 말한 새 대상은 decision["mentions"]로 별도 허용한다.
+    # 예: focus=["치즈"], "그거 빼고 버섯 많이"는 치즈와 버섯이 함께 있어야 정상이다.
     supported_targets = {
         *SAUCES,
         *NOODLE_TYPES,
@@ -265,39 +268,42 @@ def reference_targets_match_decision(decision: dict,resolved_targets: list[str],
     }
 
     if not reference_targets_are_supported(resolved_targets):
-        # unsupported 여부는 별도 helper가 판단하고, 이 함수는 기존처럼 전체 일치 여부만 반환한다.
         return False
 
     patch = decision["order_patch"]
     decision_targets = []
 
-    # scalar 주문은 field 이름이 아니라 실제 사용자가 선택한 canonical 값을 비교한다.
     for field in ("sauce", "noodle_type"):
         if patch[field] is not None:
             decision_targets.append(patch[field])
 
-    # 토핑 dict의 key가 실제 reference 대상이고 value는 양 또는 삭제 의미
     decision_targets.extend(patch["toppings"].keys())
 
-    # restriction도 기존 target field만 사용하고 reference 전용 field는 만들지 않음
     for option in decision["restriction_options"]:
         decision_targets.append(option["target"])
 
-    # target이 있는 기존 query만 비교 대상에 포함한다.
     for query in decision["queries"]:
         target = query.get("target")
 
         if target in supported_targets:
             decision_targets.append(target)
 
-    # 같은 대상이 order와 query에 동시에 나타나도 reference 후보 자체는 하나이므로 중복만 제거 X
-    unique_decision_targets = list(dict.fromkeys(decision_targets))
-    unique_resolved_targets = list(dict.fromkeys(resolved_targets))
+    unique_decision_targets = set(decision_targets)
+    unique_resolved_targets = set(resolved_targets)
 
-    # plural reference는 두 대상이 모두 존재해야 하지만 JSON object key 순서까지 강제하지 X
+    # 현재 user_text에서 직접 언급했다고 Decision이 기록한 supported target만 추가 대상으로 허용한다.
+    explicit_supported_targets = {
+        mention
+        for mention in decision["mentions"]
+        if mention in supported_targets
+    }
+    allowed_targets = unique_resolved_targets | explicit_supported_targets
+
+    # reference 대상은 전부 semantic에 있어야 하고,
+    # 그 외 semantic target은 현재 발화의 직접 mention으로 확인된 값만 허용한다.
     return (
-        len(unique_decision_targets) == len(unique_resolved_targets)
-        and set(unique_decision_targets) == set(unique_resolved_targets)
+        unique_resolved_targets.issubset(unique_decision_targets)
+        and unique_decision_targets.issubset(allowed_targets)
     )
 
 ####################### restriction 우선순위와 주문 충돌 계산 ################################33

@@ -4,7 +4,7 @@ COMMON_JSON_ONLY_RULE = "\n- JSON 객체 하나만 출력한다."
 
 DECISION_SYSTEM = """너는 사용자 발화에서 이번 턴의 의미만 Sparse Decision JSON으로 추출한다.
 입력 JSON에서 message가 현재 사용자 발화이다.
-order, preferences, recommendation, pending_confirmation, action_history, robot_state, dialogue_focus는 문맥 확인용이다.
+order, preferences, recommendation, pending_confirmation, action_history, robot_state, dialogue_focus, reference_context는 문맥 확인용이다.
 repair가 있으면 이전 출력의 semantic field 오류를 한 번 수정한다.
 
 출력 가능한 top-level field:
@@ -54,13 +54,13 @@ mentions:
 - 현재 message에 직접 언급한 대상이 없으면 mentions field를 생략한다. 빈 배열을 기본값처럼 출력하지 않는다.
 
 reference:
-- "그거" 같은 지시어는 history와 dialogue_focus를 보고 canonical 주문 target으로 해석한다.
-- current focus가 정확히 하나이면 그 대상을 기존 order semantic field로 출력한다.
-- current focus 후보가 여러 개인데 "그거"처럼 하나만 가리키면 임의 선택하지 말고 route=task, clarify=true를 출력한다.
-- "둘 다"는 current focus 후보가 정확히 두 개일 때만 두 대상을 모두 추출한다.
-- "첫 번째 거", "두 번째 거"는 dialogue_focus에 보존된 사용자 mention 순서를 사용한다.
-- "아까 그거"는 current가 아니라 바로 이전 recent focus를 우선 사용한다. 하나로 확정되지 않으면 clarify=true이다.
-- focus 대상이 unsupported이면 지원 메뉴로 치환하지 않는다. 주문 의도는 route=task로 두고 clarify=true를 출력한다.
+- reference_context는 Python이 현재 message와 dialogue_focus로 미리 계산한 내부 입력이며 Decision 출력 field가 아니다.
+- status=none이면 reference 표현이 없는 것이므로 targets를 주문에 복사하지 않는다.
+- status=resolved이면 targets가 지시어의 확정 대상이다. target을 history에서 다시 고르지 말고 현재 message의 동작·양·삭제 의미만 기존 semantic field로 조합한다.
+- resolved targets는 지시어가 가리킨 값이므로 mentions에 복사하지 않는다. 현재 message에서 직접 말한 새 대상만 mentions에 출력한다.
+- status=ambiguous, missing, stale이면 target을 임의 선택하지 말고 task 또는 mixed 의도를 유지하면서 clarify=true를 출력한다.
+- reference target과 현재 message에서 직접 말한 새 target은 한 Decision에 함께 존재할 수 있다.
+- focus 대상이 unsupported이면 지원 메뉴로 치환하지 않는다. 주문 의도는 route=task 또는 mixed로 두고 clarify=true를 출력한다.
 
 
 order:

@@ -2,7 +2,7 @@ import copy
 from typing import Callable, TypedDict
 
 from soomac_irc.agent_contract import new_decision
-from soomac_irc.dialogue_focus import current_focus_mentions,new_dialogue_focus,previous_focus_mentions,resolve_focus_reference,update_dialogue_focus
+from soomac_irc.dialogue_focus import build_reference_context,new_dialogue_focus,update_dialogue_focus
 from soomac_irc.llm_policy import (
     allowed_order_fields, build_applied_changes, build_completed_modification_warning,
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event,
@@ -347,46 +347,41 @@ def build_graph(
             repaired["understanding"] = "clarify"
 
         return {"decision": repaired}
+    
     def resolve_reference(state: TurnState) -> dict:
-        # 현재 발화는 아직 history에 없으므로 이번에 완료될 user/assistant 턴 번호를 계산한다.
+        # build_decision_inputs와 같은 deterministic helper를 다시 사용해 최종 Decision을 검증한다.
+        # target 계산은 model inference 전에 이미 입력으로 전달됐고, 여기서는 결과 일치 여부만 확인한다.
         current_history_turn = len(state["session"]["history"]) // 2 + 1
-        focus = state["session"]["dialogue_focus"]
-        resolved_targets = resolve_focus_reference(
+        reference_context = build_reference_context(
             state["user_text"],
-            focus,
+            state["session"]["dialogue_focus"],
             current_history_turn,
         )
+        status = reference_context["status"]
 
-        if resolved_targets == []:
-            # reference 표현이 없는 발화는 Decision과 내부 context를 건드리지 않는다.
+        if status == "none":
             return {}
 
         decision = copy.deepcopy(state["decision"])
 
-        if resolved_targets is None:
-            # temporal 표현만 previous focus를 사용하고 나머지 표현은 current focus 후보를 보여준다.
-            text = state["user_text"]
-
-            if "아까 그거" in text or "전에 말한 거" in text:
-                candidates = previous_focus_mentions(focus,current_history_turn)
-            else:
-                candidates = current_focus_mentions(focus, current_history_turn)
-
+        if status in ("ambiguous", "missing", "stale"):
+            # 후보 개수 부족, focus 없음, TTL 만료를 모두 안전한 clarification으로 보낸다.
             decision["understanding"] = "clarify"
             return {
                 "decision": decision,
                 "reference_context": {
                     "reason": "ambiguous_reference",
-                    "targets": candidates,
+                    "targets": copy.deepcopy(reference_context["targets"]),
                 },
             }
+
+        resolved_targets = reference_context["targets"]
 
         if (
             decision["route"] != "general"
             and not reference_targets_are_supported(resolved_targets)
         ):
-            # reference는 명확하지만 현재 domain에 없는 대상이면 unsupported로 따로 기록한다.
-            # 가장 비슷한 지원 메뉴로 바꾸지 않고 기존 mutation과 실행을 clarify로 막는다.
+            # unsupported reference는 지원 메뉴로 치환하지 않고 기존 session mutation을 rollback한다.
             decision["understanding"] = "clarify"
             return {
                 "decision": decision,
@@ -401,7 +396,7 @@ def build_graph(
             and decision["understanding"] != "clarify"
             and not reference_targets_match_decision(decision, resolved_targets)
         ):
-            # 지원 대상이지만 Decision semantic target이 focus와 다르면 기존 generic clarify를 유지한다.
+            # Python target과 Decision semantic이 다르면 임의 수정하지 않고 generic clarify로 차단한다.
             decision["understanding"] = "clarify"
 
         return {"decision": decision}
@@ -445,6 +440,15 @@ def build_graph(
 
     def run_recommendation(state: TurnState) -> dict:
         # 추천 생성과 기존 추천안 선택 모두 현재 restriction·물리 상태로 다시 검증한다.
+
+        if state["decision"]["understanding"] == "clarify":
+            # 대상이나 의미가 확정되지 않은 턴에서 추천 모델을 먼저 호출해도 결과는 policy에서 rollback된다.
+            # 불필요한 inference와 recommendation_result 오염을 막고 기존 check_policy rollback은 그대로 사용한다.
+            return {
+                "candidate_session": copy.deepcopy(state["candidate_session"]),
+                "recommendation_result": None,
+            }
+
         request = state["decision"]["recommendation"]  # 이번 추천 요청
         action = request["action"]  # none/request/revise/select/cancel
         recommendation_state = state["candidate_session"]["recommendation"]  # 누적 추천 state
