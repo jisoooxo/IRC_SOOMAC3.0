@@ -8,6 +8,34 @@ import copy
 from soomac_irc.agent_contract import new_decision
 from soomac_irc.domain import NOODLE_TYPES, RESTRICTION_CATEGORY_ITEMS, RESTRICTION_PRIORITY, SAUCES, SECTION_ORDER, TOPPINGS
 
+# Python positive gate와 Decision prompt가 동일한 실행 확정 표현을 사용한다.
+EXPLICIT_COMMIT_PHRASES = (
+    "바로 진행해",
+    "이대로 진행해",
+    "바로 시작해",
+    "담기 시작해",
+    "주문 확정해",
+)
+# 질문·제안·부정 표현이 있으면 positive phrase가 포함돼도 commit으로 올리지 않는다.
+BLOCKED_COMMIT_MARKERS = (
+    "?",
+    "해도돼",
+    "해도될까",
+    "해도괜찮",
+    "해볼까",
+    "할까",
+    "하지마",
+    "하지말",
+    "하지않",
+)
+
+# Decision prompt에 보여줄 질문·제안·부정의 완성 문장 예시이다.
+BLOCKED_COMMIT_EXAMPLES = (
+    "바로 진행해도 돼?",
+    "진행해볼까?",
+    "진행하지 마",
+    "시작하지 마",
+)
 # ################ 주문 field 위치, 현재·미래 시점, 추천 가능 범위 ###############
 def order_key_timing(key: str, robot_state: dict)-> str:
     # 주문 field가 로봇 기준으로 과거, 현재, 미래인지 계산
@@ -239,6 +267,54 @@ def find_route_consistency_errors(decision: dict) -> list[str]:
 
     return errors
 
+# user_text와 mention의 공백 차이만 제거한다. alias·유사어·형태소 추측은 하지 않는다.
+def _compact_surface_text(value: str) -> str:
+    return "".join(value.split())
+
+def has_explicit_commit_intent(user_text: str) -> bool:
+    # 범용 자연어 parser가 아니라 합의된 실행 표현만 허용하는 좁은 positive gate이다.
+    # 질문·제안·부정 marker를 먼저 검사한 뒤 명시적 실행 표현을 확인한다.
+    compact_user_text = _compact_surface_text(user_text)
+
+    if any(
+        marker in compact_user_text
+        for marker in BLOCKED_COMMIT_MARKERS
+    ):
+        return False
+
+    return any(
+        _compact_surface_text(phrase) in compact_user_text
+        for phrase in EXPLICIT_COMMIT_PHRASES
+    )
+
+def grounded_mentions(user_text: str, mentions: list[str]) -> list[str]:
+    # Decision이 낸 mention 중 현재 사용자 발화에 실제 surface가 존재하는 값만 순서대로 보존한다.
+    compact_user_text = _compact_surface_text(user_text)
+    grounded = []
+
+    for mention in mentions:
+        if not isinstance(mention, str):
+            continue
+
+        compact_mention = _compact_surface_text(mention)
+
+        if compact_mention and compact_mention in compact_user_text:
+            grounded.append(copy.deepcopy(mention))
+
+    return grounded
+
+
+def build_safe_clarify_decision(decision: dict, user_text: str) -> dict:
+    # repair가 재실패하면 첫 Decision의 route와 실제 발화에 grounded된 mentions만 보존한다.
+    # new_decision() 기본값을 사용하므로 모든 mutation/query semantic은 fail-closed로 폐기된다.
+    safe = new_decision()
+    safe["route"] = decision["route"]
+    safe["mentions"] = grounded_mentions(
+        user_text,
+        decision["mentions"],
+    )
+    safe["understanding"] = "clarify"
+    return safe
 
 """
 파이썬의 all() 함수는 반복 가능한 객체(iterable)의 모든 요소가 참(True)인지 확인하고, 모두 참일 때만 True를 반환하는 내장 함수

@@ -5,9 +5,9 @@ from soomac_irc.agent_contract import new_decision
 from soomac_irc.dialogue_focus import build_reference_context,new_dialogue_focus,update_dialogue_focus
 from soomac_irc.llm_policy import (
     allowed_order_fields, build_applied_changes, build_completed_modification_warning,
-    build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event,
+    build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event, build_safe_clarify_decision,
     evaluate_runtime_policy, find_invalid_order_fields, find_invalid_queries, find_new_physical_restriction_conflicts,
-    find_route_consistency_errors, recommendation_allowed_fields,
+    find_route_consistency_errors, has_explicit_commit_intent, recommendation_allowed_fields,
     reference_targets_are_supported, reference_targets_match_decision,
     restore_protected_order_values, validate_recommendation_proposal,)
 
@@ -313,6 +313,19 @@ def build_graph(
             None,
         )
         return {"decision": decision}
+    
+    def apply_explicit_commit_gate(state: TurnState) -> dict:
+        # Base Decision이 명시적 실행 표현을 놓친 경우 commit 하나만 False→True로 복구한다.
+        # order/restriction/recommendation 등 기존 semantic은 같은 복사본에 그대로 보존한다.
+        decision = copy.deepcopy(state["decision"])
+
+        if (
+            decision["commit"] is False
+            and has_explicit_commit_intent(state["user_text"])
+        ):
+            decision["commit"] = True
+
+        return {"decision": decision}
 
     def validate_and_repair(state: TurnState) -> dict:
         invalid_fields = find_invalid_order_fields(state["decision"], state["robot_state"])  # 현재 section에서 못 바꾸는 필드
@@ -343,8 +356,11 @@ def build_graph(
         )
 
         if remaining:
-            repaired = new_decision()
-            repaired["understanding"] = "clarify"
+            # 두 번째 Decision도 invalid면 첫 Decision의 안전한 문맥만 남기고 mutation semantic은 전부 폐기한다.
+            repaired = build_safe_clarify_decision(
+                state["decision"],
+                state["user_text"],
+            )
 
         return {"decision": repaired}
     
@@ -698,6 +714,7 @@ def build_graph(
     # graph wiring: route 검증 뒤 general은 no-op, task/mixed는 기존 pipeline으로 분기한다.
     graph = StateGraph(TurnState)
     graph.add_node("interpret_decision", interpret_decision)
+    graph.add_node("explicit_commit_gate", apply_explicit_commit_gate)
     graph.add_node("validate_and_repair", validate_and_repair)
     graph.add_node("resolve_reference", resolve_reference)
     graph.add_node("build_general_noop_policy", build_general_noop_policy)
@@ -708,7 +725,8 @@ def build_graph(
     graph.add_node("generate_response", generate_response)
 
     graph.add_edge(START, "interpret_decision")
-    graph.add_edge("interpret_decision", "validate_and_repair")
+    graph.add_edge("interpret_decision", "explicit_commit_gate")
+    graph.add_edge("explicit_commit_gate", "validate_and_repair")
     graph.add_edge("validate_and_repair", "resolve_reference")
     graph.add_conditional_edges(
         "resolve_reference",

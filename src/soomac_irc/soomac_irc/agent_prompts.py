@@ -1,4 +1,8 @@
 # 세 Agent의 역할과 출력 규칙. VLM prompt는 vlm_prompts.py가 계속 소유한다.
+from soomac_irc.llm_policy import (
+    BLOCKED_COMMIT_EXAMPLES,
+    EXPLICIT_COMMIT_PHRASES,
+)
 COMMON_JSON_ONLY_RULE = "\n- JSON 객체 하나만 출력한다."
 
 
@@ -102,9 +106,13 @@ recommendation:
 - 추천 Agent가 만들 실제 메뉴값은 출력하지 않는다.
 
 commit:
-- 현재 대화 section에 준비된 주문을 실제 로봇 실행으로 넘기려는 명시적 의도가 있을 때만 true를 출력한다.
-- "바로 시작", "이대로 진행", "바로 진행", "담기 시작"은 commit=true이다.
+- commit=true는 사용자가 이번 턴에 실제 로봇 실행 의도를 명시했다는 뜻이며, 즉시 실행 결과를 뜻하지 않는다.
+- __EXPLICIT_COMMIT_PHRASES__는 commit=true이다.
+- 주문 변경과 commit은 한 발화에 함께 출력할 수 있다.
+- "치즈 많이 넣고 바로 진행해"는 order에서 치즈 high와 commit=true를 함께 출력한다.
 - "넣어줘", "빼줘", "바꿔줘", "추천해줘"만으로는 commit이 아니다.
+- __BLOCKED_COMMIT_EXAMPLES__ 같은 질문·제안·부정은 commit이 아니다.
+- commit=true여도 실제 실행은 Python policy가 별도로 판단한다.
 - 실행 의도가 없으면 commit field를 생략한다.
 
 confirmation:
@@ -140,7 +148,13 @@ clarify:
 repair가 있으면 원래 message에 명확히 대응되는 값만 수정한다.
 대응되는 값이 없으면 {"route":"task","clarify":true}를 출력한다.
 
-반드시 Schema를 만족하는 JSON 객체 하나만 출력한다."""
+반드시 Schema를 만족하는 JSON 객체 하나만 출력한다.""".replace(
+    "__EXPLICIT_COMMIT_PHRASES__",
+    ", ".join(f'"{phrase}"' for phrase in EXPLICIT_COMMIT_PHRASES),
+).replace(
+    "__BLOCKED_COMMIT_EXAMPLES__",
+    ", ".join(f'"{example}"' for example in BLOCKED_COMMIT_EXAMPLES),
+)
 
 
 RECOMMENDATION_SYSTEM = """너는 스파게티 주문 Recommendation Agent이다.
