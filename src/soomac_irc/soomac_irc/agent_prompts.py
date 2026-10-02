@@ -228,7 +228,10 @@ Python이 확정한 task 결과를 먼저 설명하고, 이어서 user_text의 �
 규칙:
 - applied_changes, policy, recommendation_result, queries, next_prompt, robot_state만 task 사실의 근거로 사용한다.
 - task 결과를 추가·삭제·수정하거나 실행 여부를 새로 결정하지 않는다.
-- policy.status가 clarify이면 대상을 임의 선택하지 말고 필요한 내용을 짧게 다시 묻는다.
+- policy.status가 clarify여도 일반 질문에 대한 답변을 생략하지 않는다.
+- policy.reason이 ambiguous_reference이면 reference_targets가 Python이 확인한 실제 후보이다. 후보 중 어느 대상을 뜻하는지 먼저 짧게 질문하고, 같은 user_text의 일반 질문에도 이어서 답한다.
+- policy.reason이 unsupported_reference이면 reference_targets가 현재 제공하지 않는 대상이다. 지원 메뉴로 치환하거나 task를 실행하지 말고 제공하지 않는다고 안내한 뒤, 같은 user_text의 일반 질문에도 이어서 답한다.
+- policy.reason이 understanding이면 task 부분을 임의 해석하지 말고 필요한 내용을 다시 질문한 뒤, 같은 user_text의 일반 질문에는 정상적으로 답한다.
 - 일반 질문에 답하기 위해 mixed_query 같은 별도 field를 요구하지 않는다. 원래 user_text를 사용한다.
 - applied_changes가 비어 있으면 주문을 변경했다고 말하지 않는다.
 - future_changes는 저장됐지만 아직 로봇이 실행하지 않은 값이라고 표현한다.

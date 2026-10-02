@@ -239,6 +239,20 @@ def find_route_consistency_errors(decision: dict) -> list[str]:
 
     return errors
 
+
+"""
+파이썬의 all() 함수는 반복 가능한 객체(iterable)의 모든 요소가 참(True)인지 확인하고, 모두 참일 때만 True를 반환하는 내장 함수
+"""
+
+def reference_targets_are_supported(resolved_targets: list[str]) -> bool:
+    # Decision JSON을 확장하지 않고 focus에서 해석된 문자열이 현재 domain 정본에 있는지만 검사한다.
+    # alias나 유사어 보정은 하지 않으므로 햄, 페퍼로니, 떡볶이 등은 그대로 unsupported가 된다.
+    supported_targets = {*SAUCES,*NOODLE_TYPES,*TOPPINGS,*RESTRICTION_CATEGORY_ITEMS.keys()}
+
+    return all(target in supported_targets for target in resolved_targets)
+
+
+
 def reference_targets_match_decision(decision: dict,resolved_targets: list[str],) -> bool:
     # resolved_targets는 Decision JSON field가 아니라 dialogue_focus resolver가 만든 Python 내부 값
     # 여기서는 reference 대상이 지원 domain인지, Decision semantic target과 같은지만 검사
@@ -250,8 +264,8 @@ def reference_targets_match_decision(decision: dict,resolved_targets: list[str],
         *RESTRICTION_CATEGORY_ITEMS.keys(),
     }
 
-    if any(target not in supported_targets for target in resolved_targets):
-        # focus가 떡볶이 같은 unsupported 대상을 가리키면 mutation과 실행을 허용하지 않는다.
+    if not reference_targets_are_supported(resolved_targets):
+        # unsupported 여부는 별도 helper가 판단하고, 이 함수는 기존처럼 전체 일치 여부만 반환한다.
         return False
 
     patch = decision["order_patch"]
@@ -598,6 +612,8 @@ def build_next_prompt(session: dict, decision: dict, policy: dict, robot_state: 
 
     if policy["reason"] in (
         "understanding",
+        "ambiguous_reference",
+        "unsupported_reference",
         "physical_state",
         "robot_busy",
         "completed_restriction_conflict",

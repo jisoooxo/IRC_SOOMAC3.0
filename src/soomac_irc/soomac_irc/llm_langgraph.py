@@ -2,13 +2,14 @@ import copy
 from typing import Callable, TypedDict
 
 from soomac_irc.agent_contract import new_decision
-from soomac_irc.dialogue_focus import new_dialogue_focus, resolve_focus_reference, update_dialogue_focus
+from soomac_irc.dialogue_focus import current_focus_mentions,new_dialogue_focus,previous_focus_mentions,resolve_focus_reference,update_dialogue_focus
 from soomac_irc.llm_policy import (
     allowed_order_fields, build_applied_changes, build_completed_modification_warning,
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event,
     evaluate_runtime_policy, find_invalid_order_fields, find_invalid_queries, find_new_physical_restriction_conflicts,
-    find_route_consistency_errors, recommendation_allowed_fields, reference_targets_match_decision,
-    restore_protected_order_values, validate_recommendation_proposal)
+    find_route_consistency_errors, recommendation_allowed_fields,
+    reference_targets_are_supported, reference_targets_match_decision,
+    restore_protected_order_values, validate_recommendation_proposal,)
 
 # State / Decision 계약
 # 실제 값 형식은 agent_contract.py가 잡고, 여기는 그래프가 들고 다닐 state 구조만 선언함
@@ -46,6 +47,7 @@ class TurnState(TypedDict):
     working_session: SessionState | None  # 한 턴만 사용 확인 답변까지 반영한 임시 상태
     candidate_session: SessionState | None  # 한 턴만 사용 이번 변경과 추천을 반영한 임시 상태
     recommendation_result: dict | None  # 한 턴만 사용 허용 필드 검사까지 끝난 추천 결과
+    reference_context: dict | None  # graph 한 턴에서만 유지하는 reference clarify 원인과 대상
     policy: dict | None  # 한 턴만 사용 pass/warning/clarify/hitl/blocked 판정
     reply: str | None  # 한 턴만 사용 사용자에게 보낼 최종 응답
 
@@ -288,6 +290,7 @@ def new_turn_state(session: SessionState, user_text: str, robot_state: dict) -> 
         "working_session": None,  # resolve_confirmation에서 채움
         "candidate_session": None,  # apply_workers에서 채움
         "recommendation_result": None,  # run_recommendation에서 채움
+        "reference_context": None,  # Decision JSON과 SessionState에는 저장하지 않는 한 턴 내부값
         "policy": None,  # check_policy에서 채움
         "reply": None,  # generate_response에서 채움
     }
@@ -344,34 +347,61 @@ def build_graph(
             repaired["understanding"] = "clarify"
 
         return {"decision": repaired}
-
     def resolve_reference(state: TurnState) -> dict:
-        # 현재 user 발화는 아직 history에 추가되지 않았으므로 다음 완료 턴 번호를 직접 계산한다.
-        # 이 값은 generate_response에서 focus를 저장할 때 사용하는 계산식과 동일해야 TTL이 어긋나지 않는다.
+        # 현재 발화는 아직 history에 없으므로 이번에 완료될 user/assistant 턴 번호를 계산한다.
         current_history_turn = len(state["session"]["history"]) // 2 + 1
+        focus = state["session"]["dialogue_focus"]
         resolved_targets = resolve_focus_reference(
             state["user_text"],
-            state["session"]["dialogue_focus"],
+            focus,
             current_history_turn,
         )
 
         if resolved_targets == []:
-            # reference 표현 자체가 없는 발화는 기존 Decision을 그대로 다음 단계로 보낸다.
+            # reference 표현이 없는 발화는 Decision과 내부 context를 건드리지 않는다.
             return {}
 
         decision = copy.deepcopy(state["decision"])
 
         if resolved_targets is None:
-            # 후보가 없거나 여러 개인 단수 reference는 임의 선택하지 않고 기존 clarify 계약을 사용한다.
+            # temporal 표현만 previous focus를 사용하고 나머지 표현은 current focus 후보를 보여준다.
+            text = state["user_text"]
+
+            if "아까 그거" in text or "전에 말한 거" in text:
+                candidates = previous_focus_mentions(focus,current_history_turn)
+            else:
+                candidates = current_focus_mentions(focus, current_history_turn)
+
             decision["understanding"] = "clarify"
-            return {"decision": decision}
+            return {
+                "decision": decision,
+                "reference_context": {
+                    "reason": "ambiguous_reference",
+                    "targets": candidates,
+                },
+            }
+
+        if (
+            decision["route"] != "general"
+            and not reference_targets_are_supported(resolved_targets)
+        ):
+            # reference는 명확하지만 현재 domain에 없는 대상이면 unsupported로 따로 기록한다.
+            # 가장 비슷한 지원 메뉴로 바꾸지 않고 기존 mutation과 실행을 clarify로 막는다.
+            decision["understanding"] = "clarify"
+            return {
+                "decision": decision,
+                "reference_context": {
+                    "reason": "unsupported_reference",
+                    "targets": copy.deepcopy(resolved_targets),
+                },
+            }
 
         if (
             decision["route"] != "general"
             and decision["understanding"] != "clarify"
             and not reference_targets_match_decision(decision, resolved_targets)
         ):
-            # unsupported 대상 또는 focus와 다른 semantic target이면 mutation과 실행을 막는다.
+            # 지원 대상이지만 Decision semantic target이 focus와 다르면 기존 generic clarify를 유지한다.
             decision["understanding"] = "clarify"
 
         return {"decision": decision}
@@ -505,6 +535,21 @@ def build_graph(
             physical_conflicts,
         )
 
+        # reference가 없는 턴이나 이전 형식의 TurnState도 KeyError 없이 통과
+        reference_context = state.get("reference_context")
+
+        if (
+            policy["status"] == "clarify"
+            and policy["reason"] == "understanding"
+            and reference_context is not None
+        ):
+            # evaluate_runtime_policy의 generic understanding을 resolver가 확정한 구체적 원인으로 교체한다.
+            # 이 값은 Response 입력용 내부 policy이며 Decision JSON schema에는 영향을 주지 않는다.
+            policy["reason"] = reference_context["reason"]
+            policy["reference_targets"] = copy.deepcopy(
+                reference_context["targets"]
+            )
+
         if policy["status"] in ("pass", "warning"):
             next_session = copy.deepcopy(candidate)  # 후보 변경을 그대로 확정
 
@@ -551,14 +596,65 @@ def build_graph(
                 state["robot_state"],
             )
 
-        if state["policy"]["reason"] == "understanding":
+        # if state["policy"]["reason"] == "understanding":
+        #     reply = "요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요."
+        # elif state["policy"]["reason"] == "completed_restriction_conflict":
+        #     reply = build_completed_restriction_warning(state["policy"]["conflicts"])
+        # elif state["policy"]["reason"] == "physical_state":
+        #     reply = build_completed_modification_warning(state["policy"]["blocked_changes"])
+        # else:
+        #     reply = call_response(  # 전체 대화 history는 넘기지 않고 현재 확정 사실만 넘김
+        #         state["user_text"],
+        #         copy.deepcopy(state["session"]),
+        #         copy.deepcopy(state["policy"]),
+        #         copy.deepcopy(applied_changes),
+        #         copy.deepcopy(future_changes),
+        #         copy.deepcopy(state["recommendation_result"]),
+        #         copy.deepcopy(state["decision"]["queries"]),
+        #         copy.deepcopy(next_prompt),
+        #         copy.deepcopy(state["robot_state"]),
+        #         state["decision"]["route"],
+        #     )
+
+        route = state["decision"]["route"]
+        policy_reason = state["policy"]["reason"]
+        reference_targets = state["policy"].get("reference_targets", [])
+
+        if route == "task" and policy_reason == "ambiguous_reference":
+            # 순수 task는 Base Gemma를 호출하지 않고 Python이 확정한 후보만 보여준다.
+            # "또는"을 사용해서 메뉴 이름의 받침 여부와 관계없이 자연스럽게 연결한다.
+            if reference_targets:
+                targets_text = " 또는 ".join(reference_targets)
+                reply = f"{targets_text} 중 어떤 것을 말씀하시는 건가요?"
+            else:
+                reply = "어떤 대상을 말씀하시는 건지 다시 알려주세요."
+
+        elif route == "task" and policy_reason == "unsupported_reference":
+            # unsupported 문자열은 지원 메뉴로 치환하지 않고 사용자가 말한 값을 그대로 안내한다.
+            if reference_targets:
+                targets_text = ", ".join(reference_targets)
+                reply = f"말씀하신 {targets_text} 메뉴는 현재 제공하지 않아요."
+            else:
+                reply = "말씀하신 대상은 현재 제공하지 않는 메뉴예요."
+
+        elif policy_reason == "understanding" and route != "mixed":
+            # 기존 task/general generic clarify는 유지하지만 mixed는 아래 Response Agent로 보낸다.
             reply = "요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요."
-        elif state["policy"]["reason"] == "completed_restriction_conflict":
-            reply = build_completed_restriction_warning(state["policy"]["conflicts"])
-        elif state["policy"]["reason"] == "physical_state":
-            reply = build_completed_modification_warning(state["policy"]["blocked_changes"])
+
+        elif policy_reason == "completed_restriction_conflict":
+            reply = build_completed_restriction_warning(
+                state["policy"]["conflicts"]
+            )
+
+        elif policy_reason == "physical_state":
+            reply = build_completed_modification_warning(
+                state["policy"]["blocked_changes"]
+            )
+
         else:
-            reply = call_response(  # 전체 대화 history는 넘기지 않고 현재 확정 사실만 넘김
+            # mixed + clarify도 이 경로를 사용한다.
+            # rollback된 session과 Python policy를 읽고 task 재질문과 일반대화 답변을 함께 만든다.
+            reply = call_response(
                 state["user_text"],
                 copy.deepcopy(state["session"]),
                 copy.deepcopy(state["policy"]),
@@ -568,7 +664,7 @@ def build_graph(
                 copy.deepcopy(state["decision"]["queries"]),
                 copy.deepcopy(next_prompt),
                 copy.deepcopy(state["robot_state"]),
-                state["decision"]["route"],
+                route,
             )
 
         session = copy.deepcopy(state["session"])  # history까지 기록할 최종 session 복사본
