@@ -15,7 +15,7 @@ from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, Int16, String
 
 from soomac_irc.dialogue_focus import remove_focus_mentions
-from soomac_irc.model_runtime import load_model, make_call_vlm
+from soomac_irc.model_runtime import DECISION_ADAPTER_PATH, load_model, make_call_vlm
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.llm_langgraph import build_graph, build_preselected_confirmation_reply, build_preselected_section_confirmation, new_session_state, new_turn_state
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
@@ -74,7 +74,7 @@ class LLMLangGraphNode(Node):
         if call_decision is None:
             # Decision, Recommendation, Response, VLM은 같은 base model을 순차적으로 사용
             self.get_logger().info("Agentic LLM base model 로딩중")
-            self.model, self.processor = load_model(None)
+            self.model, self.processor = load_model(DECISION_ADAPTER_PATH)
             call_decision = make_call_decision(self.model, self.processor, self.get_logger())
             call_recommendation = make_call_recommendation(self.model, self.processor, self.get_logger())
             call_response = make_call_response(self.model, self.processor, self.get_logger())

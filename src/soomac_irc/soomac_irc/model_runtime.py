@@ -12,8 +12,8 @@ except ImportError:
 
 # 모델 경로
 MODEL_PATH = "/home/roma/Desktop/sLLM/gemma-4-12B-it"
-
-MODEL_QUANTIZATION = "int8" # int8, nf4(qlora), bf16(원본)
+DECISION_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/decision_adapter_epoch6_best"
+MODEL_QUANTIZATION = "nf4" # int8, nf4(qlora), bf16(원본)
 
 VLM_MAX_TOKENS = 1024
 
