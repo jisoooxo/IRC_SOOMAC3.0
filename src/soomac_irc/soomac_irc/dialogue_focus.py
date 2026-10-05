@@ -113,7 +113,7 @@ def _compact_reference_text(user_text: str) -> str:
     return "".join(user_text.strip().split())
 
 
-def build_reference_context(user_text: str,focus: dict,current_history_turn: int,) -> dict:
+def build_reference_context(user_text: str,focus: dict,current_history_turn: int, question: dict | None = None) -> dict:
     # Decision output field가 아니라 model input과 graph 한 턴에서만 사용하는 Python 내부값이다.
     # status:
     # - none: reference 표현 자체가 없음
@@ -142,13 +142,20 @@ def build_reference_context(user_text: str,focus: dict,current_history_turn: int
     else:
         return {"status": "none", "targets": []}
 
+    # 질문에 대한 답은 로봇이 실제 제시한 선택지를 참조한다.
+    # '아까 그거'는 의도적으로 사용자 과거 mention 경로를 유지한다.
+    uses_question = bool(question and "아까그거" not in text and "전에말한거" not in text)
+    if uses_question:
+        event = {"mentions": question.get("targets", []),
+                 "history_turn": question["history_turn"]}
+
     if not isinstance(event, dict):
         return {"status": "missing", "targets": []}
 
-    if not focus_event_is_fresh(event, current_history_turn):
+    if not uses_question and not focus_event_is_fresh(event, current_history_turn):
         return {"status": "stale", "targets": []}
 
-    targets = copy.deepcopy(event.get("mentions", []))
+    targets = list(dict.fromkeys(event.get("mentions", [])))
 
     if not targets:
         return {"status": "missing", "targets": []}

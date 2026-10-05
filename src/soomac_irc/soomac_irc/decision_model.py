@@ -11,6 +11,7 @@ from soomac_irc.agent_prompts import DECISION_SYSTEM
 from soomac_irc.llm_langgraph import Decision, DuplicateDecisionKeyError, SessionState
 from soomac_irc.decision_overrides import post_decision_override, pre_decision_override
 from soomac_irc.dialogue_focus import build_reference_context
+from soomac_irc.dialogue_questions import active_question
 
 # 설정값
 DECISION_HISTORY_TURNS = 8       # Decision Agent에 전달할 최근 완료 대화 턴 수
@@ -26,7 +27,8 @@ def build_decision_inputs(session: SessionState, user_text: str, robot_state: di
     # 현재 user turn은 아직 history에 저장되기 전이므로 완료될 턴 번호를 여기서 계산한다.
     # LLM이 history에서 reference target을 새로 추측하기 전에 Python 결과를 입력으로 제공한다.
     current_history_turn = len(session["history"]) // 2 + 1
-    reference_context = build_reference_context(user_text,session["dialogue_focus"], current_history_turn)
+    question = active_question(session, robot_state["section"])
+    reference_context = build_reference_context(user_text,session["dialogue_focus"], current_history_turn, question)
 
     while True:
         model_input = {
@@ -36,6 +38,7 @@ def build_decision_inputs(session: SessionState, user_text: str, robot_state: di
             "pending_confirmation": copy.deepcopy(session["pending_confirmation"]),
             "dialogue_focus": copy.deepcopy(session["dialogue_focus"]),
             "reference_context": copy.deepcopy(reference_context),
+            "pending_question": question,
             "action_history": action_history,
             "robot_state": copy.deepcopy(robot_state),
             "message": user_text.strip(),

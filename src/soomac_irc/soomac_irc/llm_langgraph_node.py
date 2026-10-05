@@ -15,13 +15,16 @@ from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, Int16, String
 
 from soomac_irc.dialogue_focus import remove_focus_mentions
+from soomac_irc.dialogue_questions import question_for_section
 from soomac_irc.model_runtime import DECISION_ADAPTER_PATH, load_model, make_call_vlm
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.llm_langgraph import build_graph, build_preselected_confirmation_reply, build_preselected_section_confirmation, new_session_state, new_turn_state
+from soomac_irc.llm_policy import build_applied_changes
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
 from soomac_irc.recommendation_model import make_call_recommendation
 from soomac_irc.response_model import make_call_response
 from soomac_irc.vlm import build_vlm_request, build_vlm_spoken_reply, decide_vlm_outcome, parse_vlm_verdict
+from soomac_irc.vlm_ui import build_vlm_ui_jpeg
 # main_vlm.py가 소스 완료 뒤 cover를 직접 실행하고 /llm/reset을 보낸다.
 from soomac_irc.domain import SECTION_ORDER
 
@@ -322,21 +325,13 @@ class LLMLangGraphNode(Node):
 ################ 래퍼런스 + 이전 이미지 + 현재 이미지 ui에 쏴버림 #################
 
     def _publish_vlm_ui_snapshot(self, request: dict | None):
-        # UI에는 이번 판정에 사용한 가장 최신 이미지만 JPEG로 보낸다.
+        # 모델 입력은 보존하고 역할별 이미지를 한 JPEG로 합성해 보낸다.
         if not ENABLE_VLM_UI_IMAGES or self.vlm_ui_image_pub is None or request is None:
             return
 
-        images = request.get("images", [])
-
-        if not images:
-            return
-
-        jpeg_buffer = BytesIO()
-        images[-1].convert("RGB").save(jpeg_buffer, format="JPEG", quality=80)
-
         message = CompressedImage()
         message.format = "jpeg"
-        message.data = jpeg_buffer.getvalue()
+        message.data = build_vlm_ui_jpeg(request)
         self.vlm_ui_image_pub.publish(message)
 
 
@@ -550,6 +545,10 @@ class LLMLangGraphNode(Node):
 
     def _section_prompt(self) -> str:
         # 사용자 입력이 필요한 section 안내
+        self.graph_state["pending_question"] = question_for_section(
+            self.section,
+            len(self.graph_state["history"]) // 2,
+        )
         if self.section == "veggie":
             return "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
 
@@ -561,16 +560,11 @@ class LLMLangGraphNode(Node):
 
         raise ValueError(f"사용자 선택 안내가 없는 section : {self.section}")
     
-    def _advance_after_section(self, completed_section: str) -> str:
-        section_replies = {
-            "noodle": "면을 다 담았어요.",
-            "veggie": "고르신 야채를 전부 담았어요.",
-            "meat": "고르신 육류를 다 담았어요.",
-            "extra": "추가 재료를 다 담았어요",
-        }
-
+    def _advance_after_section(self, completed_section: str, *, outcome: str = "completed") -> str:
         if completed_section not in SECTION_ORDER:
             raise ValueError(f"알 수 없는 section : {completed_section}")
+        if outcome not in ("completed", "skipped"):
+            raise ValueError(f"알 수 없는 단계 전환 결과: {outcome}")
 
         next_index = SECTION_ORDER.index(completed_section) + 1
 
@@ -581,6 +575,7 @@ class LLMLangGraphNode(Node):
             raise ValueError(f"{completed_section} 다음 section이 없음")
 
         self.section = SECTION_ORDER[next_index] # 다음거 ㅇㅇ
+        self.graph_state["pending_question"] = None
 
 ###################### 레일 먼저 선수 이동 치도록 일단 추가 #######################
 
@@ -595,23 +590,48 @@ class LLMLangGraphNode(Node):
 
 ##############################################################################
 
-        completed_reply = section_replies[completed_section]
-
         if self.section == "sauce":
             if not self._start_current_section():
                 raise RuntimeError("선택된 소스 작업을 만들지 못함")
+            next_reply = "마지막으로 고르신 소스를 올릴게요."
+            next_prompt = None
+        else:
+            pending = build_preselected_section_confirmation(self.graph_state, self.section)
+            if pending is not None:
+                self.graph_state["pending_confirmation"] = pending
+                next_reply = build_preselected_confirmation_reply(pending)
+                next_prompt = {"type": "future_confirmation", "section": self.section,
+                               "items": copy.deepcopy(pending["items"])}
+            else:
+                next_reply = self._section_prompt()
+                next_prompt = copy.deepcopy(self.graph_state["pending_question"])
 
-            return f"{completed_reply} 마지막으로 고르신 소스를 올릴게요."
-
-        pending = build_preselected_section_confirmation(self.graph_state, self.section)
-
-        if pending is not None:
-            self.graph_state["pending_confirmation"] = pending
+        transition = {"type": "section_transition", "section": completed_section,
+                      "outcome": outcome, "next_section": self.section}
+        self.graph_state["action_history"].append(copy.deepcopy(transition))
+        robot_state = self._build_robot_state()
+        robot_state["section_transition"] = transition
+        self.runtime_log.log_event("section_transition", {
+            "transition": copy.deepcopy(transition), "robot_state": copy.deepcopy(robot_state),
+        })
+        try:
+            # 로봇 사건이다. 사용자 명령을 만들거나 Decision을 다시 호출하지 않는다.
+            reply = self.call_response(
+                "", copy.deepcopy(self.graph_state),
+                {"status": "pass", "reason": "section_transition", "execute": False,
+                 "conflicts": []},
+                build_applied_changes(self.graph_state, self.graph_state),
+                [], None, [], next_prompt, robot_state, "task",
+            )
+            if not isinstance(reply, str) or not reply.strip():
+                raise ValueError("단계 전환 응답이 비어 있음")
+        except Exception as error:
+            self.get_logger().error(f"단계 전환 응답 생성 실패: {error}")
+            # 생성 실패 시 완료를 추측하지 않고 기존의 다음 단계 안내만 사용한다.
+            reply = next_reply
+        if self.section != "sauce":
             self._set_stt_enabled(True)
-            return f"{completed_reply} {build_preselected_confirmation_reply(pending)}"
-
-        self._set_stt_enabled(True)
-        return f"{completed_reply} {self._section_prompt()}"
+        return reply
 
 
 #################### llm next 받으면 지금 task 끝내고 다음거 넘김 ####################
@@ -1106,6 +1126,8 @@ class LLMLangGraphNode(Node):
             self.graph_state["dialogue_focus"],
             [task_class],
         )
+        # 이 선택 단계는 실행으로 넘어갔다. 옛 질문에서 실행 재료가 되살아나지 않게 닫는다.
+        self.graph_state["pending_question"] = None
         self.robot_started = True
         self.vlm_confirmed = False
 
@@ -1253,7 +1275,7 @@ class LLMLangGraphNode(Node):
 
             # 선택 재료가 없는 optional section은 로봇 작업 없이 바로 다음 section으로 이동한다.
             if self.section in ("veggie", "meat", "extra"):
-                reply = self._advance_after_section(self.section)
+                reply = self._advance_after_section(self.section, outcome="skipped")
 
                 if self.graph_state["history"] and self.graph_state["history"][-1]["role"] == "assistant":
                     self.graph_state["history"][-1]["content"] = reply

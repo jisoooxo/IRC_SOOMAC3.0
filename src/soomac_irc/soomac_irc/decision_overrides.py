@@ -2,7 +2,7 @@ import re
 
 from soomac_irc.agent_contract import new_decision
 from soomac_irc.llm_langgraph import Decision, SessionState
-
+from soomac_irc.dialogue_questions import active_question
 
 ACCEPT_CONFIRMATIONS = {
     "응",
@@ -40,6 +40,22 @@ def pre_decision_override(text: str, session: SessionState, robot_state: dict) -
             decision["confirmation"] = "reject"
             return decision
 
+        return None
+
+    question = active_question(session, robot_state["section"])
+
+    if question and question["type"] == "menu_confirmation":
+        if normalized in ACCEPT_CONFIRMATIONS:
+            decision = new_decision()
+            decision["confirmation"] = "accept"
+            return decision
+
+        if normalized in REJECT_CONFIRMATIONS:
+            decision = new_decision()
+            decision["confirmation"] = "reject"
+            return decision
+
+        # 복합 답변은 모델이 문맥과 함께 해석한다.
         return None
 
     if session["recommendation"]["phase"] == "proposed":

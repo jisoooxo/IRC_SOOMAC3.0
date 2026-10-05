@@ -9,6 +9,7 @@ from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 from soomac_irc.agent_contract import RESPONSE_SCHEMA
 from soomac_irc.agent_prompts import (GENERAL_RESPONSE_SYSTEM,MIXED_RESPONSE_SYSTEM,TASK_RESPONSE_SYSTEM)
 from soomac_irc.llm_langgraph import SessionState
+from soomac_irc.dialogue_questions import active_question
 
 
 RESPONSE_HISTORY_TURNS = 8
@@ -51,6 +52,27 @@ def make_call_response(model, processor, logger=None):
         # route는 schema enum을 통과한 값이며, 여기서는 Response prompt 선택에만 사용한다.
         # 새로운 Decision field나 별도 Router LLM 호출은 만들지 않는다.
         response_system = RESPONSE_SYSTEM_BY_ROUTE[route]
+        response_system += """
+        [처리 결과와 대화 표현의 구분]
+        - dialogue_result는 이번 처리의 사실이다. user_text는 요청이며, 처리 결과가 아니다.
+        - confirmed_order는 현재 저장된 주문이다.
+        - applied_this_turn에 있는 변경만 이번에 반영됐다고 안내한다.
+        - unconfirmed_candidate는 아직 저장하지 않은 해석 후보이다.
+        - 후보가 있으면 확정 주문처럼 안내하지 말고 question_to_ask에 따라 확인한다.
+        - execution_authorized는 실행 허가이지 실제 작업 완료가 아니다.
+        - 실제 진행과 완료는 active_task와 completed_tasks를 따른다.
+        - 이전 assistant 발언보다 최신 dialogue_result를 우선한다.
+        - question_to_ask가 있으면 그 대상과 목적에 맞게 자연스럽게 질문한다.
+        - question_to_ask가 없으면 새로운 주문 확인이나 선택 질문을 임의로 만들지 않는다.
+        - 일반 질문과 설명 요청은 계속 답한다.
+        - 문구를 기계적으로 반복하지 말고 문맥에 맞게 자연스럽게 표현한다.
+        - section_transition이 있으면 사용자 요청이 아닌 실제 단계 전환 사건에 답한다.
+        - section_transition.outcome=skipped이면 해당 단계에서 담기 작업을 하지 않고 넘어간 것이다.
+        - section_transition.outcome=completed일 때만 해당 단계의 담기 완료를 안내한다.
+        - 전환 결과를 안내한 뒤 question_to_ask가 있으면 그 질문을 한다.
+        """
+
+
         history = copy.deepcopy(session["history"][-(RESPONSE_HISTORY_TURNS * 2):])
         compact_session = {
             "order": session["order"],
@@ -69,6 +91,57 @@ def make_call_response(model, processor, logger=None):
             if needs_failure_history
             else []
         )
+        # model_input = {
+        #     "user_text": user_text,
+        #     "session": compact_session,
+        #     "policy": policy,
+        #     "applied_changes": applied_changes,
+        #     "future_changes": future_changes,
+        #     "recommendation_result": recommendation_result,
+        #     "queries": queries,
+        #     "next_prompt": next_prompt,
+        #     "robot_state": robot_state,
+        #     "recent_action_history": recent_action_history,
+        # }
+
+        question = active_question(session, robot_state["section"])
+        candidate = None
+        question_to_ask = copy.deepcopy(next_prompt)
+
+        if (
+            question is not None
+            and question.get("type") == "menu_confirmation"
+            and policy["reason"] == "menu_confirmation"
+        ):
+            candidate = copy.deepcopy(question["proposal"])
+            question_to_ask = {
+                "type": "confirm_menu_interpretation",
+                "targets": copy.deepcopy(question["targets"]),
+                "proposal": copy.deepcopy(candidate),
+            }
+
+        # 지난 질문과 이번 확인 후보를 구분한다.
+        previous_question = copy.deepcopy(question)
+        if (
+            previous_question is not None
+            and previous_question.get("type") == "menu_confirmation"
+        ):
+            previous_question = None
+
+        dialogue_result = {
+            "confirmed_order": copy.deepcopy(session["order"]),
+            "applied_this_turn": copy.deepcopy(applied_changes),
+            "unconfirmed_candidate": candidate,
+            "processing_status": policy["status"],
+            "processing_reason": policy["reason"],
+            "execution_authorized": bool(policy["execute"]),
+            "active_task": copy.deepcopy(robot_state.get("active_task")),
+            "completed_tasks": copy.deepcopy(robot_state["completed_tasks"]),
+            "previous_question": previous_question,
+            "question_to_ask": question_to_ask,
+            "section_transition": copy.deepcopy(robot_state.get("section_transition")),
+        }
+
         model_input = {
             "user_text": user_text,
             "session": compact_session,
@@ -77,9 +150,10 @@ def make_call_response(model, processor, logger=None):
             "future_changes": future_changes,
             "recommendation_result": recommendation_result,
             "queries": queries,
-            "next_prompt": next_prompt,
+            "next_prompt": question_to_ask,
             "robot_state": robot_state,
             "recent_action_history": recent_action_history,
+            "dialogue_result": dialogue_result,
         }
         messages = [
             {"role": "system", "content": response_system},

@@ -75,13 +75,23 @@ def build_vlm_request(expected: str, camera_images: list, reference_image=None, 
 
     image_count = len(camera_images)
 
+    # 역할을 명시한다. 이미지 개수로 reference/previous를 추측하지 않는다.
+    comparison_label = "PREVIOUS PASS" if comparison_source == "pass" else "COMPARISON"
+    if comparison_source == "retried":
+        comparison_label = "PREVIOUS RETRY (NOT VERIFIED)"
+    ui_panels = [
+        {"label": "REFERENCE", "image": None if expected == "뚜껑" else reference_image},
+        {"label": comparison_label, "image": comparison_image},
+        {"label": "CURRENT OBSERVATION", "image": camera_images[-1]},
+    ]
+
     # 뚜껑은 참고 재료 이미지 없이 작업 전후 도시락 상태를 비교
     if expected == "뚜껑":
         if comparison_image is None:
             return None
         images = [comparison_image, *camera_images]
         system_prompt, user_text = build_lid_prompt(image_count)
-        return {"images": images, "system_prompt": system_prompt, "user_text": user_text}
+        return {"images": images, "system_prompt": system_prompt, "user_text": user_text, "ui_panels": ui_panels}
 
     # 나머지는 참고 이미지 ㅇㅇ
     if reference_image is None:
@@ -93,7 +103,7 @@ def build_vlm_request(expected: str, camera_images: list, reference_image=None, 
             return None
         images = [reference_image, comparison_image, *camera_images]
         system_prompt, user_text = build_sauce_prompt(expected, image_count)
-        return {"images": images, "system_prompt": system_prompt, "user_text": user_text}
+        return {"images": images, "system_prompt": system_prompt, "user_text": user_text, "ui_panels": ui_panels}
 
     # 첫 재료 작업에는 래퍼런스랑 현재 장면 확인.
     if comparison_image is None:
@@ -103,7 +113,7 @@ def build_vlm_request(expected: str, camera_images: list, reference_image=None, 
         images = [reference_image, comparison_image, *camera_images]
 
     system_prompt, user_text = build_ingredient_prompt(expected, image_count, comparison_image is not None, comparison_source)
-    return {"images": images, "system_prompt": system_prompt, "user_text": user_text}
+    return {"images": images, "system_prompt": system_prompt, "user_text": user_text, "ui_panels": ui_panels}
 
 
 def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enable_uncertain_retake: bool)-> dict:
@@ -188,5 +198,4 @@ def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enab
             "다음 단계로 진행할게요."
         ),
     }
-
 

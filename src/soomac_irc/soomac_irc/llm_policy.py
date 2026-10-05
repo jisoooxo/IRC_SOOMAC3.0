@@ -385,13 +385,18 @@ def find_decision_grounding_errors(
     if decision["understanding"] == "clarify":
         return errors
 
-    # STT에서 승인된 별칭은 이미 정규 메뉴로 보정된다. 여기서는 새 별칭을 추측하지 않는다.
-    # 과거 주문이나 모델 mentions만으로는 새 면 선택의 근거가 되지 않는다.
-    # 추천 선택·확인은 order_patch가 아닌 기존 전용 경로에서 처리한다.
+    # 정규 이름 외에도 메뉴 자체의 명확한 형용 표현은 근거이다.
+    # '면은 얇은 걸로'를 '얇은면'과 글자가 다르다는 이유로 취소하지 않는다.
+    # 후보가 둘이거나 모르는 면 이름이면 추측하지 않고 graph가 확인 후보로 보관한다.
     noodle_type = decision["order_patch"]["noodle_type"]
+    described_noodles = {
+        name for name, descriptor in (("얇은면", "얇은"), ("넓은면", "넓은"))
+        if "면" in compact_user_text and descriptor in compact_user_text
+    }
     if noodle_type is not None and not (
         _compact_surface_text(noodle_type) in compact_user_text
         or noodle_type in resolved_target_set
+        or described_noodles == {noodle_type}
     ):
         errors.append(f"ungrounded_noodle_type:{noodle_type}")
 
@@ -790,13 +795,7 @@ def build_completed_modification_warning(blocked_changes: list[str]) -> str:
     blocked_items = [field_names.get(key, key) for key in blocked_changes] # 변경이 막힌 field의 사용자용 이름
     blocked_text = ", ".join(blocked_items) # 거절 문장에 넣을 항목 문자열
 
-    if len(blocked_items) > 1:
-        return f"이미 담기 시작했거나 완료된 항목({blocked_text})은 변경할 수 없습니다."
-
-    if blocked_text in ("소스", "면 종류", "양파", "소시지", "치즈", "페퍼론치노"):
-        return f"이미 담기 시작했거나 완료된 {blocked_text}는 변경할 수 없습니다."
-
-    return f"이미 담기 시작했거나 완료된 {blocked_text}은 변경할 수 없습니다."
+    return f"{blocked_text} 항목은 작업이 시작됐거나 선택 단계가 지나 지금 변경할 수 없어요. 실제로 담긴 재료와는 구분해 주세요."
 
 
 def build_applied_changes(previous_session: dict, current_session: dict) -> dict:

@@ -8,7 +8,7 @@ COMMON_JSON_ONLY_RULE = "\n- JSON 객체 하나만 출력한다."
 
 DECISION_SYSTEM = """너는 사용자 발화에서 이번 턴의 의미만 Sparse Decision JSON으로 추출한다.
 입력 JSON에서 message가 현재 사용자 발화이다.
-order, preferences, recommendation, pending_confirmation, action_history, robot_state, dialogue_focus, reference_context는 문맥 확인용이다.
+order, preferences, recommendation, pending_confirmation, pending_question, action_history, robot_state, dialogue_focus, reference_context는 문맥 확인용이다.
 repair가 있으면 이전 출력의 semantic field 오류를 한 번 수정한다.
 
 출력 가능한 top-level field:
@@ -59,7 +59,7 @@ mentions:
 - 현재 message에 직접 언급한 대상이 없으면 mentions field를 생략한다. 빈 배열을 기본값처럼 출력하지 않는다.
 
 reference:
-- reference_context는 Python이 현재 message와 dialogue_focus로 미리 계산한 내부 입력이며 Decision 출력 field가 아니다.
+- reference_context는 Python이 현재 message와 대기 질문 또는 dialogue_focus로 미리 계산한 내부 입력이며 Decision 출력 field가 아니다.
 - status=none이면 reference 표현이 없는 것이므로 targets를 주문에 복사하지 않는다.
 - status=resolved이면 targets가 지시어의 확정 대상이다. target을 history에서 다시 고르지 말고 현재 message의 동작·양·삭제 의미만 기존 semantic field로 조합한다.
 - resolved targets는 지시어가 가리킨 값이므로 mentions에 복사하지 않는다. 현재 message에서 직접 말한 새 대상만 mentions에 출력한다.
@@ -117,8 +117,11 @@ commit:
 - 실행 의도가 없으면 commit field를 생략한다.
 
 confirmation:
-- pending_confirmation 질문에 답한 경우에만 accept 또는 reject를 출력한다.
-- pending_confirmation이 없으면 confirmation field를 생략한다. 추천 proposal 동의/거절은 recommendation select/cancel로 표현한다.
+- pending_confirmation 질문에 답한 경우 accept 또는 reject를 출력한다. 안전 확인은 메뉴 해석 확인보다 우선한다.
+- pending_confirmation이 없고 pending_question.type=menu_confirmation이면 그 후보에 대한 동의/거절을 confirmation의 accept/reject로 출력한다. 지시어를 포함한 답변도 문맥으로 판단한다.
+- 메뉴 후보 자체는 order에 복사하지 않는다. 같은 답변에서 사용자가 새로 명시한 변경만 order에 출력한다. 후보 확인만으로 commit을 만들지 않는다.
+- 해당 확인 질문이 없으면 confirmation field를 생략한다. 추천 proposal 동의/거절은 recommendation select/cancel로 표현한다.
+- pending_question의 선택·양·누락 항목 질문에 대한 답변은 그 대상/field에 연결해 order로 추출한다. 질문은 문맥이지 이미 확정된 주문이 아니다.
 - "응 그리고 소시지는 많이"처럼 확인과 새 변경이 함께 있으면 둘 다 출력한다.
 - preselected_section 확인에서 일부만 유지하려면 제외할 항목을 order의 "none"으로 명시한다.
 - preselected_section 질문에 "아니, 치즈만 그대로"처럼 일부만 유지해 실행하려면 reject와 유지할 order patch와 commit=true를 함께 출력한다.

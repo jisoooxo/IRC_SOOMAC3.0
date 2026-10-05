@@ -3,6 +3,7 @@ from typing import Callable, TypedDict
 
 from soomac_irc.agent_contract import new_decision
 from soomac_irc.dialogue_focus import build_reference_context,new_dialogue_focus,update_dialogue_focus
+from soomac_irc.dialogue_questions import active_question, question_after_turn
 from soomac_irc.llm_policy import (
     allowed_order_fields, build_applied_changes, build_completed_modification_warning,
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event, build_safe_clarify_decision,
@@ -22,6 +23,7 @@ class SessionState(TypedDict):
     recommendation: dict  # 여러 턴 유지 추천 단계, 최근 추천안, 추천 이력
     pending_confirmation: dict | None  # 여러 턴 유지 다음 턴 답변을 기다리는 확인 건
     dialogue_focus: dict  # 여러 턴 유지 최근 user mention과 해당 history 턴을 보관하는 참조용 상태
+    pending_question: dict | None  # 로봇이 실제 물은 질문 및 미확정 메뉴 후보
     history: list[dict]  # 여러 턴 유지 저장 제한 없음; Decision 입력은 8192 token 안의 최근 대화만 사용
     action_history: list[dict]  # 여러 턴 유지 저장 제한 없음; 실제 주문 변경과 로봇/VLM 사건 이력
 
@@ -81,6 +83,7 @@ def new_session_state() -> SessionState:
         },
         "pending_confirmation": None,  # 현재 대기 중인 안전 확인
         "dialogue_focus": new_dialogue_focus(),  # history 턴에 연결되는 최근 user mention 기억
+        "pending_question": None,
         "history": [],  # 전체 자연어 대화 이력
         "action_history": [],  # 실제 적용된 변경 이력
     }
@@ -328,13 +331,78 @@ def build_graph(
             decision = new_decision()
             decision["understanding"] = "clarify"
             return decision
-
     def interpret_decision(state: TurnState) -> dict:
-        decision = call_decision_or_safe_clarify(  # 전체 session.history를 포함한 session으로 발화 해석
-            state,
-            None,
+        decision = call_decision_or_safe_clarify(state, None)
+        session = copy.deepcopy(state["session"])
+        question = active_question(
+            session, state["robot_state"]["section"]
         )
-        return {"decision": decision}
+
+        stored_question = session.get("pending_question")
+        if stored_question and question is None:
+            session["pending_question"] = None
+
+        if (
+            session["pending_confirmation"] is None
+            and question is not None
+            and question["type"] == "menu_confirmation"
+            and decision["confirmation"] in ("accept", "reject")
+        ):
+            session["pending_question"] = None
+            decision["commit"] = False
+
+            if decision["route"] == "general":
+                decision["route"] = "task"
+
+            if decision["confirmation"] == "reject":
+                return {"decision": decision, "session": session}
+
+            proposal = copy.deepcopy(question["proposal"])
+            patch = decision["order_patch"]
+
+            # 이번 답변에 명시한 변경값이 후보값보다 우선한다.
+            for field in ("sauce", "noodle_type", "noodle_portion"):
+                if patch[field] is None:
+                    patch[field] = proposal[field]
+
+            patch["toppings"] = {
+                **proposal["toppings"],
+                **patch["toppings"],
+            }
+
+            decision["confirmation"] = "none"
+            decision["understanding"] = "ok"
+
+            return {
+                "decision": decision,
+                "session": session,
+                "reference_context": {
+                    "reason": "confirmed_menu",
+                    "targets": copy.deepcopy(question["targets"]),
+                    "confirmed_proposal": proposal,
+                    "confirmed_question": copy.deepcopy(question),
+                },
+            }
+
+        return {"decision": decision, "session": session}
+    # def interpret_decision(state: TurnState) -> dict:
+    #     decision = call_decision_or_safe_clarify(  # 전체 session.history를 포함한 session으로 발화 해석
+    #         state,
+    #         None,
+    #     )
+    #     session = copy.deepcopy(state["session"])
+    #     question = active_question(session, state["robot_state"]["section"])
+    #     if question and question["type"] == "menu_confirmation" and decision["confirmation"] != "none":
+    #         if decision["confirmation"] == "accept":
+    #             # 확인한 후보를 주문에만 반영한다. 실행 권한은 이어받지 않는다.
+    #             decision["order_patch"] = copy.deepcopy(question["proposal"])
+    #             decision["commit"] = False
+    #             decision["understanding"] = "ok"
+    #         decision["confirmation"] = "none"
+    #         session["pending_question"] = None
+    #         return {"decision": decision, "session": session,
+    #                 "reference_context": {"reason": "confirmed_menu", "targets": question["targets"]}}
+    #     return {"decision": decision}
     
     # def apply_explicit_commit_gate(state: TurnState) -> dict:
     #     # 명시적 실행 표현만 commit=true로 허용해서 모델이 만든 실행 권한 환각을 제거한다.
@@ -350,22 +418,13 @@ def build_graph(
 
     def apply_explicit_commit_gate(state: TurnState) -> dict:
         decision = copy.deepcopy(state["decision"])
-        compact_text = "".join(state["user_text"].split())
-
-        # 설명·인용이 섞인 발화는 보수적으로 실행하지 않는다.
-        explanation_markers = (
-            "뜻", "의미", "표현", "설명", "예시", "예를들", "가정",
-            "라고", "라는", "하면",
-            "'", '"', "‘", "’", "“", "”", "「", "」", "『", "』", "`",
-        )
-        is_explanation = any(
-            marker in compact_text for marker in explanation_markers
-        )
-
+        # 실행 의미는 Decision이 결정한다. Python은 권한을 낮출 수만 있다.
+        # 질문/명령을 단어 blacklist로 다시 해석하거나 commit=False를 True로 올리지 않는다.
         decision["commit"] = bool(
+            decision["commit"]
+            and
             decision["understanding"] == "ok"
             and decision["route"] != "general"
-            and not is_explanation
             and has_explicit_commit_intent(state["user_text"])
         )
 
@@ -418,10 +477,12 @@ def build_graph(
         # build_decision_inputs와 같은 deterministic helper를 다시 사용해 최종 Decision을 검증한다.
         # target 계산은 model inference 전에 이미 입력으로 전달됐고, 여기서는 결과 일치 여부만 확인한다.
         current_history_turn = len(state["session"]["history"]) // 2 + 1
+        confirmed = (state.get("reference_context") or {}).get("confirmed_question")
         reference_context = build_reference_context(
             state["user_text"],
             state["session"]["dialogue_focus"],
             current_history_turn,
+            confirmed or active_question(state["session"], state["robot_state"]["section"]),
         )
         status = reference_context["status"]
 
@@ -442,6 +503,11 @@ def build_graph(
             }
 
         resolved_targets = reference_context["targets"]
+
+        if confirmed and reference_context["status"] == "resolved":
+            # 확인한 후보는 이미 이번 턴 patch에 병합했다. 복합 답변의 추가 변경은
+            # 뒤의 grounding/physical policy에서 따로 검사한다.
+            return {}
 
         if (
             decision["route"] != "general"
@@ -480,25 +546,85 @@ def build_graph(
             state["user_text"],
             state["session"]["dialogue_focus"],
             current_history_turn,
+            active_question(state["session"], state["robot_state"]["section"]),
         )
         resolved_targets = (
             reference_context["targets"]
             if reference_context["status"] == "resolved"
             else []
         )
+        if (state.get("reference_context") or {}).get("reason") == "confirmed_menu":
+            resolved_targets = state["reference_context"]["targets"]
+        question = active_question(state["session"], state["robot_state"]["section"])
+        if question and question["type"] == "amount":
+            resolved_targets = question["targets"]
         decision = filter_ungrounded_restriction_removals(
             state["user_text"],
             decision,
             resolved_targets,
         )
+        # grounding_errors = find_decision_grounding_errors(
+        #     state["user_text"],
+        #     decision,
+        #     resolved_targets,
+        # )
+
+        check_decision = copy.deepcopy(decision)
+        confirmed = (
+            state.get("reference_context") or {}
+        ).get("confirmed_proposal")
+
+        if confirmed is not None:
+            patch = check_decision["order_patch"]
+
+            for field in ("sauce", "noodle_type", "noodle_portion"):
+                if (
+                    confirmed[field] is not None
+                    and patch[field] == confirmed[field]
+                ):
+                    patch[field] = None
+
+            for target, amount in confirmed["toppings"].items():
+                if patch["toppings"].get(target) == amount:
+                    patch["toppings"].pop(target)
+
         grounding_errors = find_decision_grounding_errors(
             state["user_text"],
-            decision,
+            check_decision,
             resolved_targets,
         )
 
         if not grounding_errors:
             return {"decision": decision}
+
+        # 발화 근거가 불확실한 메뉴는 '잘못된 주문'으로 버리지 않고 확인 후보로 격리한다.
+        uncertain = [error for error in grounding_errors
+                     if error.startswith(("ungrounded_noodle_type:", "ungrounded_order_target:"))]
+        if len(uncertain) == len(grounding_errors):
+            mentions = grounded_mentions(state["user_text"], decision["mentions"])
+            unsupported = [m for m in mentions if not reference_targets_are_supported([m])]
+            if unsupported:
+                safe = build_safe_clarify_decision(decision, state["user_text"])
+                return {"decision": safe, "reference_context": {
+                    "reason": "unsupported_reference", "targets": unsupported}}
+            clean = copy.deepcopy(decision)
+            proposal = new_decision()["order_patch"]
+            targets = []
+            for error in uncertain:
+                kind, target = error.split(":", 1)
+                targets.append(target)
+                if kind == "ungrounded_noodle_type":
+                    proposal["noodle_type"] = clean["order_patch"]["noodle_type"]
+                    clean["order_patch"]["noodle_type"] = None
+                else:
+                    proposal["toppings"][target] = clean["order_patch"]["toppings"].pop(target)
+            clean["commit"] = False
+            session = copy.deepcopy(state["session"])
+            session["pending_question"] = {"type": "menu_confirmation", "targets": targets,
+                "proposal": proposal, "section": state["robot_state"]["section"],
+                "history_turn": current_history_turn}
+            return {"decision": clean, "session": session,
+                    "reference_context": {"reason": "menu_confirmation", "targets": targets}}
 
         safe_decision = build_safe_clarify_decision(
             decision,
@@ -682,6 +808,8 @@ def build_graph(
         else:
             next_session = copy.deepcopy(state["working_session"])  # 안전한 기준 state로 rollback
 
+        if (reference_context or {}).get("reason") == "menu_confirmation" and policy["status"] == "pass":
+            policy = {"status": "clarify", "reason": "menu_confirmation", "execute": False, "conflicts": []}
         return {"session": next_session, "policy": policy}
 
     def generate_response(state: TurnState) -> dict:
@@ -704,6 +832,11 @@ def build_graph(
                 state["policy"],
                 state["robot_state"],
             )
+
+        question = active_question(state["session"], state["robot_state"]["section"])
+        if question and state["policy"]["reason"] == "menu_confirmation":
+            # 응답과 다음 턴 기억에 동일한 질문을 사용한다.
+            next_prompt = copy.deepcopy(question)
 
         # if state["policy"]["reason"] == "understanding":
         #     reply = "요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요."
@@ -800,6 +933,10 @@ def build_graph(
         focus_mentions = grounded_mentions(
             state["user_text"],
             state["decision"]["mentions"],
+        )
+        session["pending_question"] = question_after_turn(
+            session, state["decision"], state["policy"], next_prompt,
+            state["robot_state"]["section"], current_history_turn, focus_mentions,
         )
         session["dialogue_focus"] = update_dialogue_focus(
             session["dialogue_focus"],
