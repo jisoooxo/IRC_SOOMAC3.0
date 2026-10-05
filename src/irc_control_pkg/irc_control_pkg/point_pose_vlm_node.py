@@ -19,20 +19,20 @@ POINT2 = np.deg2rad([90.0, -5.8, 0.0, 70.0, 87.0, 0.0]) ## 카메라를 수직�
 VLM_CONFIRM_POINT = np.deg2rad([-102.0, -5.8, 0.0, 70.0, 114.0, -11.0])
 VLM_CONFIRM_POINT2 = np.deg2rad([258.0, -5.8, 0.0, 70.0, 114.0, -11.0])
 
-INITIAL_PACK_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float) # 용기 실제 좌표 x = 0.23.5
-INITIAL_PACK_PLACE_POINT = np.array([-0.01, -0.25, 0.04], dtype=float)
+INITIAL_PACK_PICK_POINT = np.array([-0.245, -0.000, 0.03], dtype=float) # 용기 실제 좌표 x = 0.23.5
+INITIAL_PACK_PLACE_POINT = np.array([-0.005, -0.265, 0.04], dtype=float)
 
-TOMATO_PICK_POINT = np.array([-0.25, 0.14, 0.04], dtype=float)
-CREAM_PICK_POINT = np.array([-0.25, 0.000, 0.04], dtype=float)
-OIL_PICK_POINT = np.array([-0.25, -0.14, 0.04], dtype=float)
+TOMATO_PICK_POINT = np.array([-0.25, 0.14, 0.03], dtype=float)
+CREAM_PICK_POINT = np.array([-0.25, 0.000, 0.03], dtype=float)
+OIL_PICK_POINT = np.array([-0.25, -0.14, 0.03], dtype=float)
 SAUCE_PLACE_POINT = np.array([0.000, -0.25, 0.07], dtype=float)
 PLACE_POINTS = {
     'noodle': {'position': np.array([-0.012, -0.19, 0.06], dtype=float), 'yaw_deg': 180.0,},
-    'mushroom': {'position': np.array([-0.065, -0.305, 0.06], dtype=float), 'yaw_deg': 180.0,},
+    'mushroom': {'position': np.array([-0.07, -0.300, 0.06], dtype=float), 'yaw_deg': 180.0,},
     'onion': {'position': np.array([-0.055, -0.305, 0.06], dtype=float), 'yaw_deg': 180.0,},
-    'crab': {'position': np.array([-0.065, -0.24, 0.06], dtype=float), 'yaw_deg': 180.0,},
+    'crab': {'position': np.array([-0.075, -0.24, 0.06], dtype=float), 'yaw_deg': 180.0,},
     'sausage': {'position': np.array([0.062, -0.30, 0.06], dtype=float), 'yaw_deg': 180.0,},
-    'cover': {'position': np.array([0.01, -0.26, 0.06], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
+    'cover': {'position': np.array([0.01, -0.265, 0.06], dtype=float), 'yaw_deg': 180.0,},  ##yaw 고정
 }
 
 LIFT_HEIGHT = 0.15

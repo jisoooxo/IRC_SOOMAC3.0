@@ -2,7 +2,7 @@
 
 import math
 import numpy as np
-
+from irc_control_pkg.kinematics_irc import IRCKinematics
 
 DOF = 6
 
@@ -38,6 +38,9 @@ def motion_q_delta(q_goal, q_start):
 
 
 class MotionTrajectory:
+
+    def __init__(self):
+        self.kinematics = IRCKinematics()
 
     def build_phase_trajectory(self, phase, q_start, waypoints, class_name):
         trajectory = []
@@ -118,7 +121,7 @@ class MotionTrajectory:
             self.hold(trajectory, CONTROL_READY, 1.0)
 
             self.move(trajectory, CONTROL_READY, pick_lift, 2.0, True)
-            self.move(trajectory, pick_lift, pick, 2.0, True)
+            self.move_cartesian_pack(trajectory,pick_lift, pick, 2.0) ## cartesian 경로로 이동
 
             self.hold(
                 trajectory, pick, 1.0,
@@ -131,7 +134,7 @@ class MotionTrajectory:
             self.hold(trajectory, pick_lift, 0.5, pack_horizontal=True)
 
             self.move(trajectory, pick_lift, place_lift, 6.0, True)
-            self.move(trajectory, place_lift, place, 2.0, True)
+            self.move_cartesian_pack(trajectory, place_lift, place, 2.0) ## cartesian 경로로 이동
 
             self.hold(
                 trajectory, place, 1.0,
@@ -356,3 +359,91 @@ class MotionTrajectory:
             candidates,
             key=lambda value: abs(value - reference_q5)
         ))
+
+    def move_cartesian_pack(self, trajectory, q_start, q_goal, minimum_duration, step_m=0.005):
+        q_start = np.asarray(q_start, dtype=float).copy()
+        q_goal = np.asarray(q_goal, dtype=float).copy()
+
+        p_start = self.kinematics.pack_fk(q_start)
+        p_goal = self.kinematics.pack_fk(q_goal)
+
+        distance = float(
+            np.linalg.norm(p_goal - p_start)
+        )
+
+        if distance < 1.0e-6:
+            self.move(
+                trajectory,
+                q_start,
+                q_goal,
+                minimum_duration,
+                True
+            )
+            return
+
+        num_steps = max(
+            2, int(math.ceil(distance / step_m))
+        )
+
+        # 전체 이동에 필요한 시간
+        total_duration = self.safe_move_duration(
+            q_start,
+            q_goal,
+            minimum_duration
+        )
+
+        segment_duration = (
+            total_duration / num_steps
+        )
+
+        q_previous = q_start.copy()
+
+        for i in range(1, num_steps + 1):
+
+            ratio = float(i) / float(num_steps)
+
+            target_position = p_start + ratio * (p_goal - p_start)
+    
+            if i == num_steps:
+                q_next = q_goal.copy()
+
+            else:
+
+                # PACK 전용 IK
+                q_next = self.kinematics.solve_pack_point(
+                    target_position,
+                    q_previous
+                )
+
+                if q_next is None:
+                    raise RuntimeError(
+                        'Cartesian PACK IK 계산 실패: '
+                        f'position={target_position.tolist()}'
+                    )
+
+                q_next = np.asarray(q_next, dtype=float).copy()
+                q_next[2] = 0.0
+
+                q_next[4] = self.kinematics.horizontal_q5(
+                    q_next[1],
+                    q_next[2],
+                    q_next[3],
+                    q_previous[4]
+                )
+                q_next[5] = q_start[5]
+
+            if not np.all(np.isfinite(q_next)):
+                raise RuntimeError(
+                    'Cartesian PACK IK에서 유효하지 않은 '
+                    f'관절값 발생: {q_next}'
+                )
+
+            self.move(
+                trajectory,
+                q_previous,
+                q_next,
+                segment_duration,
+                True
+            )
+
+            q_previous = q_next.copy()

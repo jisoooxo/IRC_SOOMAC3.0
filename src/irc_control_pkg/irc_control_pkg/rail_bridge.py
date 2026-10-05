@@ -14,10 +14,10 @@ SERIAL_BAUD = 115200
 RAIL_ROTATIONS = {
     'noodle_thick': 0,
     'noodle_thin': 0,
-    'sausage': 208,
-    'crab': 290,
+    'sausage': 210,
+    'crab': 285,
     'onion': 60,
-    'mushroom': 135,
+    'mushroom': 138,
     'pepperoncino': 371,
     'cheese': 371,
     'sauce_cream': 371,
@@ -34,7 +34,7 @@ class RailBridge(Node):
 
         # MAIN -> RAIL
         self.create_subscription(Empty, '/rail/home', self.home_callback, 10)
-        self.create_subscription(String, '/rail/motion_ahead', self.motion_ahead_callback, 10)
+        self.create_subscription(String, '/rail/move_ahead', self.move_ahead_callback, 10)
         self.create_subscription(String, '/rail/motion', self.motion_callback, 10)
         self.create_subscription(String, '/reset', self.reset_callback, 10)
 
@@ -67,7 +67,7 @@ class RailBridge(Node):
 
         self.send_serial('H')
 
-    def motion_ahead_callback(self, msg):
+    def move_ahead_callback(self, msg):
         data = json.loads(msg.data)
         class_name = str(data['class']).strip()
 

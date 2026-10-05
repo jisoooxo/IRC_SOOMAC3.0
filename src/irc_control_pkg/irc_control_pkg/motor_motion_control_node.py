@@ -13,7 +13,7 @@ from irc_control_pkg.motion_trajectory import (MotionTrajectory, motion_q_delta,
 
 PORT_XH = '/dev/dynamixel_0'
 PORT_XM = '/dev/dynamixel_1'
-ARDUINO_PORT = '/dev/ttyUSB2'
+ARDUINO_PORT = '/dev/ttyUSB0'
 
 XH_IDS = [1, 2, 3, 4]
 ARM_IDS = [1, 2, 3, 4, 5, 6]
@@ -51,10 +51,10 @@ GRIPPER_CLOSE_DEG = {
     'noodle_thick': -70,
     'noodle_thin': -70,
     'mushroom': -70,
-    'onion':    -70,
+    'onion':    -73,
     'crab':     -68,
     'sausage':  -65,
-    'spoon':    -54
+    'spoon':    -57
 }
 
 FINISH_TOLERANCE_DEG = 0.2
