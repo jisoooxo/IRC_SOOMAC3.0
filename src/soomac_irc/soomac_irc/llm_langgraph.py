@@ -336,15 +336,38 @@ def build_graph(
         )
         return {"decision": decision}
     
-    def apply_explicit_commit_gate(state: TurnState) -> dict:
-        # 명시적 실행 표현만 commit=true로 허용해서 모델이 만든 실행 권한 환각을 제거한다.
-        # commit 하나만 보정하고 order/restriction/recommendation 등 기존 semantic은 그대로 보존한다.
-        decision = copy.deepcopy(state["decision"])
+    # def apply_explicit_commit_gate(state: TurnState) -> dict:
+    #     # 명시적 실행 표현만 commit=true로 허용해서 모델이 만든 실행 권한 환각을 제거한다.
+    #     # commit 하나만 보정하고 order/restriction/recommendation 등 기존 semantic은 그대로 보존한다.
+    #     decision = copy.deepcopy(state["decision"])
 
-        if decision["understanding"] == "ok":
-            decision["commit"] = has_explicit_commit_intent(
-                state["user_text"]
-            )
+    #     if decision["understanding"] == "ok":
+    #         decision["commit"] = has_explicit_commit_intent(
+    #             state["user_text"]
+    #         )
+
+    #     return {"decision": decision}
+
+    def apply_explicit_commit_gate(state: TurnState) -> dict:
+        decision = copy.deepcopy(state["decision"])
+        compact_text = "".join(state["user_text"].split())
+
+        # 설명·인용이 섞인 발화는 보수적으로 실행하지 않는다.
+        explanation_markers = (
+            "뜻", "의미", "표현", "설명", "예시", "예를들", "가정",
+            "라고", "라는", "하면",
+            "'", '"', "‘", "’", "“", "”", "「", "」", "『", "』", "`",
+        )
+        is_explanation = any(
+            marker in compact_text for marker in explanation_markers
+        )
+
+        decision["commit"] = bool(
+            decision["understanding"] == "ok"
+            and decision["route"] != "general"
+            and not is_explanation
+            and has_explicit_commit_intent(state["user_text"])
+        )
 
         return {"decision": decision}
 
@@ -364,10 +387,18 @@ def build_graph(
             "previous_output": copy.deepcopy(state["decision"]),  # 첫 Decision 출력
             "instruction": "원래 발화에 대응되는 field와 route만 수정하고 임의 치환하지 않는다.",
         }
-        repaired = call_decision_or_safe_clarify(  # 같은 발화를 repair 정보와 함께 한 번만 재호출
+        # repaired = call_decision_or_safe_clarify(  # 같은 발화를 repair 정보와 함께 한 번만 재호출
+        #     state,
+        #     repair,
+        # )
+
+        repaired = call_decision_or_safe_clarify(
             state,
             repair,
         )
+        repaired = apply_explicit_commit_gate(
+            {**state, "decision": repaired}
+        )["decision"]
         remaining = (  # 재호출 뒤에도 남은 invalid 항목
             find_invalid_order_fields(repaired, state["robot_state"])
             or find_invalid_queries(repaired)
@@ -698,10 +729,22 @@ def build_graph(
         policy_reason = state["policy"]["reason"]
         reference_targets = state["policy"].get("reference_targets", [])
 
+        # if route == "task" and policy_reason == "ambiguous_reference":
+        #     # 순수 task는 Base Gemma를 호출하지 않고 Python이 확정한 후보만 보여준다.
+        #     # "또는"을 사용해서 메뉴 이름의 받침 여부와 관계없이 자연스럽게 연결한다.
+        #     if reference_targets:
+        #         targets_text = " 또는 ".join(reference_targets)
+        #         reply = f"{targets_text} 중 어떤 것을 말씀하시는 건가요?"
+        #     else:
+        #         reply = "어떤 대상을 말씀하시는 건지 다시 알려주세요."
         if route == "task" and policy_reason == "ambiguous_reference":
-            # 순수 task는 Base Gemma를 호출하지 않고 Python이 확정한 후보만 보여준다.
-            # "또는"을 사용해서 메뉴 이름의 받침 여부와 관계없이 자연스럽게 연결한다.
-            if reference_targets:
+            if reference_targets and all(
+                not reference_targets_are_supported([target])
+                for target in reference_targets
+            ):
+                targets_text = ", ".join(reference_targets)
+                reply = f"말씀하신 {targets_text} 메뉴는 현재 제공하지 않아요."
+            elif reference_targets:
                 targets_text = " 또는 ".join(reference_targets)
                 reply = f"{targets_text} 중 어떤 것을 말씀하시는 건가요?"
             else:
@@ -715,8 +758,13 @@ def build_graph(
             else:
                 reply = "말씀하신 대상은 현재 제공하지 않는 메뉴예요."
 
-        elif policy_reason == "understanding" and route != "mixed":
-            # 기존 task/general generic clarify는 유지하지만 mixed는 아래 Response Agent로 보낸다.
+        # elif policy_reason == "understanding" and route != "mixed":
+        #     # 기존 task/general generic clarify는 유지하지만 mixed는 아래 Response Agent로 보낸다.
+        #     reply = "요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요."
+
+        elif policy_reason == "understanding" and route == "general":
+            # 일반대화의 불명확한 질문만 고정 재질문을 유지한다.
+            # task/mixed는 아래 else의 Response Agent가 안내한다.
             reply = "요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요."
 
         elif policy_reason == "completed_restriction_conflict":

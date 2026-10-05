@@ -16,6 +16,9 @@ EXPLICIT_COMMIT_PHRASES = (
     "담기 시작해",
     "주문 확정해",
     "실행해줘",
+    "바로시작",
+    "바로시작해줘",
+    "바로시작해",
 )
 # 질문·제안·부정 표현이 있으면 positive phrase가 포함돼도 commit으로 올리지 않는다.
 BLOCKED_COMMIT_MARKERS = (
@@ -381,6 +384,16 @@ def find_decision_grounding_errors(
 
     if decision["understanding"] == "clarify":
         return errors
+
+    # STT에서 승인된 별칭은 이미 정규 메뉴로 보정된다. 여기서는 새 별칭을 추측하지 않는다.
+    # 과거 주문이나 모델 mentions만으로는 새 면 선택의 근거가 되지 않는다.
+    # 추천 선택·확인은 order_patch가 아닌 기존 전용 경로에서 처리한다.
+    noodle_type = decision["order_patch"]["noodle_type"]
+    if noodle_type is not None and not (
+        _compact_surface_text(noodle_type) in compact_user_text
+        or noodle_type in resolved_target_set
+    ):
+        errors.append(f"ungrounded_noodle_type:{noodle_type}")
 
     toppings = decision["order_patch"]["toppings"]
     topping_targets = set(toppings)
