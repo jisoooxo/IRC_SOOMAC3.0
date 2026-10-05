@@ -44,7 +44,7 @@ def pre_decision_override(text: str, session: SessionState, robot_state: dict) -
 
     question = active_question(session, robot_state["section"])
 
-    if question and question["type"] == "menu_confirmation":
+    if question and question["type"] in ("menu_confirmation", "execution_offer"):
         if normalized in ACCEPT_CONFIRMATIONS:
             decision = new_decision()
             decision["confirmation"] = "accept"

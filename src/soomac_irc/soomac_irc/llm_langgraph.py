@@ -7,7 +7,7 @@ from soomac_irc.dialogue_questions import active_question, question_after_turn
 from soomac_irc.llm_policy import (
     allowed_order_fields, build_already_set, build_applied_changes, build_completed_modification_warning,
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event, build_safe_clarify_decision,
-    canonical_mentions, decision_has_task_semantics, drop_menu_references,
+    canonical_mentions, decision_has_task_semantics, decision_targets_are_direct, drop_menu_references,
     evaluate_runtime_policy, find_invalid_order_fields, find_invalid_queries, find_new_physical_restriction_conflicts,
     find_route_consistency_errors, grade_menu_grounding,
     grounded_mentions, has_explicit_commit_intent, recommendation_allowed_fields,
@@ -364,11 +364,31 @@ def build_graph(
         if (
             session["pending_confirmation"] is None
             and question is not None
+            and question["type"] == "execution_offer"
+            and decision["confirmation"] in ("accept", "reject")
+        ):
+            # 로봇이 "바로 담을까요?"라고 물은 상태의 답이다. 실행 근거는 문구가 아니라 이 질문 state이다.
+            session["pending_question"] = None
+            accepted = decision["confirmation"] == "accept"
+            decision["confirmation"] = "none"
+
+            if not accepted:
+                return {"decision": decision, "session": session}
+
+            decision["route"] = "task"
+            decision["commit"] = True
+            decision["understanding"] = "ok"
+            return {"decision": decision, "session": session,
+                    "reference_context": {"reason": "execution_offer_accepted", "targets": copy.deepcopy(question["targets"])}}
+
+        if (
+            session["pending_confirmation"] is None
+            and question is not None
             and question["type"] == "menu_confirmation"
             and decision["confirmation"] in ("accept", "reject")
         ):
             session["pending_question"] = None
-            decision["commit"] = False
+            # 후보를 accept하면서 실행도 요청했다면 그 의도를 보존한다. 실행 문구 게이트는 다음 단계에서 그대로 적용된다.
 
             if decision["route"] == "general":
                 decision["route"] = "task"
@@ -439,12 +459,14 @@ def build_graph(
         decision = copy.deepcopy(state["decision"])
         # 실행 의미는 Decision이 결정한다. Python은 권한을 낮출 수만 있다.
         # 질문/명령을 단어 blacklist로 다시 해석하거나 commit=False를 True로 올리지 않는다.
+        # 예외는 하나뿐이다: 로봇이 직접 "바로 담을까요?"라고 묻고 사용자가 수락한 state.
+        offer_accepted = (state.get("reference_context") or {}).get("reason") == "execution_offer_accepted"
         decision["commit"] = bool(
             decision["commit"]
             and
             decision["understanding"] == "ok"
             and decision["route"] != "general"
-            and has_explicit_commit_intent(state["user_text"])
+            and (offer_accepted or has_explicit_commit_intent(state["user_text"]))
         )
 
         return {"decision": decision}
@@ -506,6 +528,10 @@ def build_graph(
         status = reference_context["status"]
 
         if status == "none":
+            return {}
+
+        # 발화에 대상이 직접 있으면 Decision 해석이 우선한다. 예: "소시지랑 게살 둘 다"의 '둘 다'를 focus로 다시 풀지 않는다.
+        if not confirmed and decision_targets_are_direct(state["user_text"], state["decision"]):
             return {}
 
         decision = copy.deepcopy(state["decision"])
@@ -851,6 +877,11 @@ def build_graph(
             next_session = copy.deepcopy(state["working_session"])  # 안전한 기준 state로 rollback
 
         if (reference_context or {}).get("reason") == "menu_confirmation" and policy["status"] == "pass":
+            policy = {"status": "clarify", "reason": "menu_confirmation", "execute": False, "conflicts": []}
+
+        # 미확정 메뉴 후보가 남아 있으면 accept/reject 전까지 실행·section skip을 막는다. 후보를 임의로 accept하지 않는다.
+        unresolved = active_question(state["session"], state["robot_state"]["section"])
+        if policy["execute"] and unresolved is not None and unresolved["type"] == "menu_confirmation":
             policy = {"status": "clarify", "reason": "menu_confirmation", "execute": False, "conflicts": []}
         return {"session": next_session, "policy": policy}
 

@@ -43,7 +43,8 @@ class TestQuestionLifecycle(unittest.TestCase):
                 result = invoke(text, decision, candidate_session())
                 self.assertEqual(result["session"]["order"]["toppings"], {"게살": "normal"})
                 self.assertFalse(result["policy"]["execute"])
-                self.assertIsNone(result["session"]["pending_question"])
+                # 후보 질문은 닫히고, 반영된 현재 section에 대한 실행 제안만 남는다. (2026-10-05 execution_offer)
+                self.assertEqual(result["session"]["pending_question"]["type"], "execution_offer")
 
     def test_compound_accept_keeps_explicit_changes(self):
         decision = new_decision()
@@ -104,7 +105,8 @@ class TestQuestionLifecycle(unittest.TestCase):
         decision["order_patch"]["toppings"] = {"게살": "normal", "소시지": "normal"}
         result = invoke("두 개 다 보통 양으로 줘", decision, session)
         self.assertEqual(result["session"]["order"]["toppings"], decision["order_patch"]["toppings"])
-        self.assertIsNone(result["session"]["pending_question"])
+        # 선택 질문은 닫히고 실행 제안으로 바뀐다. (2026-10-05 execution_offer)
+        self.assertEqual(result["session"]["pending_question"]["type"], "execution_offer")
 
     def test_new_topic_clears_old_candidate(self):
         decision = new_decision()

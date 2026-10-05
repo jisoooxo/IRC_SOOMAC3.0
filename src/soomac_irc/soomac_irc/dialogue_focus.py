@@ -45,26 +45,22 @@ def update_dialogue_focus(focus: dict, mentions: list[str], history_turn: int) -
 
 def remove_focus_mentions(focus: dict, mentions_to_remove: list[str]) -> dict:
     # focus는 task 의미를 해석하지 않고, caller가 넘긴 문자열과 정확히 같은 mention만 제거한다.
-    # event 자체는 남겨서 recent[0]이 더 오래된 event로 당겨지는 것을 막는다.
+    # mention이 0개가 된 event는 참조할 대상이 없으므로 남기지 않는다. 빈 current를 resolver가 잡는 것을 막는다.
+    # current가 비면 None으로 두고 recent를 current로 당기지 않는다. '그거'가 더 오래된 대상을 가리키지 않게 한다.
     updated = copy.deepcopy(focus)
     remove_set = set(mentions_to_remove)
 
-    current = updated.get("current")
-
-    if isinstance(current, dict):
-        current["mentions"] = [
-            mention for mention in current.get("mentions", [])
-            if mention not in remove_set
-        ]
-
-    for event in updated.get("recent", []):
+    def without_removed(event):
         if not isinstance(event, dict):
-            continue
+            return None
+        mentions = [m for m in event.get("mentions", []) if m not in remove_set]
+        return {**event, "mentions": mentions} if mentions else None
 
-        event["mentions"] = [
-            mention for mention in event.get("mentions", [])
-            if mention not in remove_set
-        ]
+    updated["current"] = without_removed(updated.get("current"))
+    updated["recent"] = [
+        event for event in (without_removed(e) for e in updated.get("recent", []))
+        if event is not None
+    ]
 
     return updated
 

@@ -25,7 +25,7 @@ from soomac_irc.recommendation_model import make_call_recommendation
 from soomac_irc.response_model import make_call_response
 from soomac_irc.vlm import build_vlm_request, build_vlm_spoken_reply, decide_vlm_outcome, parse_vlm_verdict
 from soomac_irc.vlm_ui import build_vlm_ui_jpeg
-# main_vlm.py가 소스 완료 뒤 cover를 직접 실행하고 /llm/reset을 보낸다.
+# lid section이 cover(뚜껑) task를 만든다. main_vlm.py는 소스(마지막 작업) 완료 뒤 /llm/reset을 보낸다.
 from soomac_irc.domain import SECTION_ORDER
 
 
@@ -1072,7 +1072,7 @@ class LLMLangGraphNode(Node):
 
     def _build_current_section_tasks(self) -> list[dict]:
         # 현재 graph 주문을 기존 ROS 작업 단위로 변환한다. 담을 재료 계산은 Response 입력과 같은 함수를 쓴다.
-        # cover는 main_vlm.py가 소스 완료 뒤 자동 실행하므로 여기서 만들지 않는다.
+        # cover(뚜껑)는 lid section의 task로 여기서 만든다.
         return [
             {
                 "class": entry["item"],

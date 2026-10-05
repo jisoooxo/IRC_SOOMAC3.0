@@ -507,6 +507,23 @@ def grade_menu_grounding(
 
     return {"uncertain": uncertain, "ungrounded": ungrounded}
 
+def decision_targets_are_direct(user_text: str, decision: dict) -> bool:
+    # Decision의 메뉴 대상이 모두 이번 발화에 근거가 있으면 지시어("둘 다", "그거")를 다시 해석할 필요가 없다.
+    references = _menu_references(decision)
+    return bool(references) and all(
+        menu_grounding_distance(user_text, reference["target"]) <= MENU_GROUNDED_MAX_DISTANCE
+        for reference in references
+    )
+
+def compact_order_patch(patch: dict) -> dict:
+    # Response에 넘길 때 비어 있는 필드를 뺀다. 빈 필드를 질문 대상으로 오해하지 않게 한다.
+    compact = {field: patch[field] for field in ("sauce", "noodle_type", "noodle_portion") if patch.get(field) is not None}
+
+    if patch.get("toppings"):
+        compact["toppings"] = copy.deepcopy(patch["toppings"])
+
+    return compact
+
 def drop_menu_references(decision: dict, references: list[dict]) -> dict:
     # 근거가 없거나 확인이 필요한 값만 빼고 같은 발화의 나머지 semantic은 보존한다.
     cleaned = copy.deepcopy(decision)
@@ -991,6 +1008,23 @@ def build_next_prompt(session: dict, decision: dict, policy: dict, robot_state: 
                 "type": "recommendation_offer", # 비어 있는 section 추천 제안
                 "scope": robot_state["section"], # 추천을 제안할 현재 section
             }
+
+    # 이번 턴에 현재 section 주문을 바꿨고 바로 담을 수 있으면 실행 여부를 묻는다. 질문의 존재는 state가 정한다.
+    section = robot_state["section"]
+    items = section_execution_items(session["order"], section)
+    changed_here = set(changed_order_keys(decision)) & set(allowed_order_fields(section))
+
+    if (
+        policy["reason"] == "state_update_only"
+        and items
+        and changed_here
+        and not missing_current_section(session["order"], section)
+    ):
+        return {
+            "type": "execution_offer", # 반영한 현재 section을 바로 담을지 확인
+            "section": section,
+            "targets": [entry["item"] for entry in items],
+        }
 
     return None
 

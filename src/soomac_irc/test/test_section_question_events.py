@@ -130,11 +130,12 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertIsNone(node.graph_state["pending_question"])
         self.assertEqual(node.call_response.call_args.args[7]["type"], "future_confirmation")
 
-    def test_extra_skip_starts_sauce_without_claiming_extra_completion(self):
+    def test_extra_skip_starts_lid_without_claiming_extra_completion(self):
+        # 2026-10-05: extra 다음은 lid(뚜껑)이며 사용자 입력 없이 자동 시작한다.
         node = make_node("extra")
         node._start_current_section.return_value = True
         node._advance_after_section("extra", outcome="skipped")
-        self.assertEqual(node.section, "sauce")
+        self.assertEqual(node.section, "lid")
         node._start_current_section.assert_called_once()
         self.assertIsNone(node.call_response.call_args.args[7])
         self.assertEqual(node.call_response.call_args.args[8]["section_transition"]["outcome"], "skipped")

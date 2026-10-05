@@ -29,7 +29,7 @@ def active_question(session, section):
 def question_from_prompt(prompt, section, turn, order):
     """Response에 넘긴 질문의 의미를 저장한다. 생성된 문장을 재해석하지 않는다."""
     if not prompt or prompt.get("type") not in (
-        "choice", "amount", "missing_field", "menu_confirmation",
+        "choice", "amount", "missing_field", "menu_confirmation", "execution_offer",
     ):
         # 안전 확인과 추천 확인은 기존 pending_confirmation/recommendation이 소유한다.
         return None
@@ -69,5 +69,6 @@ def question_after_turn(session, decision, policy, next_prompt, section, turn, m
         if answered and (policy["status"] in ("pass", "warning") or policy["reason"] == "missing_order"):
             question = None
     if next_prompt is not None:
-        return question_from_prompt(next_prompt, section, turn, session["order"])
+        # 저장하지 않는 prompt(recommendation_offer 등)가 기존 질문을 None으로 덮지 않게 한다.
+        return question_from_prompt(next_prompt, section, turn, session["order"]) or question
     return question

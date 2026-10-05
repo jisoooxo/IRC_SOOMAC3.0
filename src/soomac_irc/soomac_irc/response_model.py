@@ -10,7 +10,7 @@ from soomac_irc.agent_contract import RESPONSE_SCHEMA
 from soomac_irc.agent_prompts import (GENERAL_RESPONSE_SYSTEM,MIXED_RESPONSE_SYSTEM,TASK_RESPONSE_SYSTEM)
 from soomac_irc.llm_langgraph import SessionState
 from soomac_irc.dialogue_questions import active_question
-from soomac_irc.llm_policy import section_execution_items
+from soomac_irc.llm_policy import compact_order_patch, section_execution_items
 
 
 RESPONSE_HISTORY_TURNS = 8
@@ -70,6 +70,7 @@ def make_call_response(model, processor, logger=None):
         - 실제 진행과 완료는 active_task와 completed_tasks를 따른다.
         - 이전 assistant 발언보다 최신 dialogue_result를 우선한다.
         - question_to_ask가 있으면 그 대상과 목적에 맞게 자연스럽게 질문한다.
+        - question_to_ask.type이 execution_offer이면 반영 내용을 말한 뒤 targets를 지금 바로 담기 시작할지 묻는다.
         - question_to_ask가 없으면 새로운 주문 확인이나 선택 질문을 임의로 만들지 않는다.
         - 일반 질문과 설명 요청은 계속 답한다.
         - 문구를 기계적으로 반복하지 말고 문맥에 맞게 자연스럽게 표현한다.
@@ -120,7 +121,7 @@ def make_call_response(model, processor, logger=None):
             and question.get("type") == "menu_confirmation"
             and policy["reason"] == "menu_confirmation"
         ):
-            candidate = copy.deepcopy(question["proposal"])
+            candidate = compact_order_patch(question["proposal"])  # 비어 있는 필드는 질문 대상이 아니다
             question_to_ask = {
                 "type": "confirm_menu_interpretation",
                 "targets": copy.deepcopy(question["targets"]),
