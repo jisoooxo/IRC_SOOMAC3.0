@@ -1,0 +1,80 @@
+{
+  "contract": {
+    "decision_schema_sha256": "33ea5b21424b8455723245a37d3a64ede68cad8f8d1f1e2cd99f9da3254d739d",
+    "decision_system_sha256": "aecbbe142f4e9bdf089866b0e75fd6d7edf376c46691fe964268810c40812dc9",
+    "combined_sha256": "8fb7401bb8b09838f93b046cdd99a6ac3b1882bffd41b5a0c65052b0f44bf40b",
+    "schema_fields_added": []
+  },
+  "before": {
+    "total": 2789,
+    "task": 2528,
+    "general": 229,
+    "mixed": 32,
+    "sha256": "1323841165b7a2267c9d8a51d030267adc438e87d9221ff01a3f89a757d443a9"
+  },
+  "generated": {
+    "general_raw": 300,
+    "mixed_raw": 250,
+    "reviewer_pass": 550,
+    "reviewer_reject": 0,
+    "validator_pass": 550,
+    "validator_fail": 0,
+    "dedup_removed": 0,
+    "supplement_final": 550,
+    "family_counts": {
+      "commit_general_mixed": 25,
+      "entity_comparison_general": 40,
+      "food_knowledge_general": 35,
+      "hypothetical_question_boundary": 40,
+      "non_domain_general": 25,
+      "order_mutation_general_mixed": 55,
+      "recommendation_general_mixed": 20,
+      "reference_ambiguous_general_mixed": 25,
+      "reference_resolved_general_mixed": 35,
+      "restriction_general_mixed": 25,
+      "robot_general_boundary": 35,
+      "state_query_general_mixed": 35,
+      "supported_entity_general": 80,
+      "unsupported_entity_general": 45,
+      "unsupported_task_general_mixed": 30
+    },
+    "near_duplicate_pairs_rejected": 0
+  },
+  "after": {
+    "total": 3339,
+    "task": 2528,
+    "general": 529,
+    "mixed": 282,
+    "percentage": {
+      "task": 75.71,
+      "general": 15.84,
+      "mixed": 8.45
+    }
+  },
+  "preservation": {
+    "base_rows_prefix_identical": true,
+    "base_rows_preserved": 2789,
+    "state_context_in_dedup_identity": true,
+    "minimal_pairs_not_deduped_by_surface": true,
+    "base_overwritten": false
+  },
+  "hard_eval": {
+    "raw": 495,
+    "pass": 495,
+    "fail": 0,
+    "category_counts": {
+      "commit_mixed": 25,
+      "general_task_minimal_pair": 220,
+      "mixed_boundary": 110,
+      "query_vs_general": 70,
+      "reference_mixed": 35,
+      "unsupported_mixed": 35
+    },
+    "general_task_minimal_pairs": 110,
+    "exact_train_leakage": 0
+  },
+  "outputs": {
+    "final_train_rebalanced": "/home/roma/IRC_SOOMAC3.0/soomac_decision_migration_merge_bundle/route_rebalance/final_train_rebalanced.jsonl",
+    "hard_eval": "/home/roma/IRC_SOOMAC3.0/soomac_decision_migration_merge_bundle/route_rebalance/hard_eval.jsonl"
+  }
+}

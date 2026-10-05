@@ -19,6 +19,18 @@ class TestSttHotword(unittest.TestCase):
             normalize_stt_text('페파론치노 적당히 저.'),
             '페퍼론치노 적당히 줘.')
 
+    def test_approved_neoljeok_noodle_variants(self):
+        for text in ('널적면으로 주세요', '널적 면으로 주세요', '널적   면으로 주세요'):
+            with self.subTest(text=text):
+                normalized = normalize_stt_text(text)
+                self.assertEqual(normalized, '넓은면으로 주세요')
+                self.assertEqual(normalize_stt_text(normalized), normalized)
+
+    def test_ambiguous_or_unsupported_menu_is_not_guessed(self):
+        for text in ('보통면으로 주세요', '햄 빼줘', '페퍼로니 넣어줘'):
+            with self.subTest(text=text):
+                self.assertEqual(normalize_stt_text(text), text)
+
     def test_menu_only_request_is_normalized(self):
         self.assertEqual(normalize_stt_text('양파 만조'), '양파만 줘')
 

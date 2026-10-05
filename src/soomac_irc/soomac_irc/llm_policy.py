@@ -6,7 +6,10 @@
 import copy
 
 from soomac_irc.agent_contract import new_decision
-from soomac_irc.domain import NOODLE_TYPES, RESTRICTION_CATEGORY_ITEMS, RESTRICTION_PRIORITY, SAUCES, SECTION_ORDER, TOPPINGS
+from soomac_irc.domain import (
+    NOODLE_TYPES, ORDER_COLLECTION_TARGETS, RESTRICTION_CATEGORY_ITEMS, RESTRICTION_PRIORITY,
+    SAUCES, SECTION_ORDER, TOPPINGS,
+)
 
 # Python positive gate와 Decision prompt가 동일한 실행 확정 표현을 사용한다.
 EXPLICIT_COMMIT_PHRASES = (
@@ -41,51 +44,17 @@ BLOCKED_COMMIT_EXAMPLES = (
     "시작하지 마",
 )
 
-# 집합 표현은 개별 target의 alias가 아니라 정확히 함께 변경돼야 하는 canonical target 묶음이다.
-ORDER_COLLECTION_TARGETS = {
-    "야채": frozenset(("양파", "버섯")),
-    "채소": frozenset(("양파", "버섯")),
-    "추가 재료": frozenset(("치즈", "페퍼론치노")),
-}
+# 메뉴 근거는 domain 메뉴명과 발화의 자모 편집거리 비율로만 판단한다. 0은 같은 글자, 1은 전혀 다른 글자이다.
+# 기준값은 2026-10-05 로그 실측값이다. STT 오인식은 0.17~0.33, 모델이 지어낸 메뉴는 0.67 이상이었다.
+MENU_GROUNDED_MAX_DISTANCE = 0.35 # 이하이면 발화에 나온 메뉴로 인정
+MENU_UNRELATED_MIN_DISTANCE = 0.65 # 이상이면 발화와 무관한 메뉴로 판단. 사이 구간은 사용자에게 확인
 
-# 자연어 전체를 재해석하지 않고 명백한 mutation 모순만 차단하는 좁은 marker이다.
-ORDER_REMOVE_MARKERS = (
-    "빼",
-    "제외",
-    "삭제",
-    "없이",
-    "안 넣",
-)
-# 주문 변경이 발화에 실제로 나타났는지만 확인한다. 구체적인 semantic은 Decision이 담당한다.
-ORDER_MUTATION_MARKERS = (
-    "넣",
-    "빼",
-    "제외",
-    "삭제",
-    "없이",
-    "안 넣",
-    "바꿔",
-    "변경",
-    "많이",
-    "조금",
-    "적게",
-)
+SUPPORTED_MENU_NAMES = (*SAUCES, *NOODLE_TYPES, *TOPPINGS, *RESTRICTION_CATEGORY_ITEMS.keys(), *ORDER_COLLECTION_TARGETS.keys())
 
-INFORMATION_ONLY_MARKERS = (
-    "뭐야",
-    "무엇",
-    "설명해",
-    "알려줘",
-)
+SAFETY_RESTRICTION_REASONS = ("allergy", "cannot_eat", "dietary_rule") # 해제에 더 엄격한 근거가 필요한 제한
 
-RESTRICTION_REMOVE_MARKERS = (
-    "해제",
-    "철회",
-    "제한 취소",
-    "알레르기 취소",
-    "제한 풀어",
-    "알레르기 풀어",
-)
+HANGUL_SYLLABLE_BASE = 0xAC00
+HANGUL_SYLLABLE_COUNT = 11172
 # ################ 주문 field 위치, 현재·미래 시점, 추천 가능 범위 ###############
 def order_key_timing(key: str, robot_state: dict)-> str:
     # 주문 field가 로봇 기준으로 과거, 현재, 미래인지 계산
@@ -125,6 +94,27 @@ def allowed_order_fields(section: str) -> list[str]:
         return ["toppings.치즈", "toppings.페퍼론치노"]
 
     return []
+
+def section_execution_items(order: dict, section: str) -> list[dict]:
+    # 현재 물리 section에서 실행할 주문값을 반환한다. 노드 task 생성과 Response 입력이 같은 계산을 쓴다.
+    if section == "noodle":
+        if order["noodle_type"] is None or order["noodle_portion"] is None:
+            return []
+        return [{"item": order["noodle_type"], "amount": order["noodle_portion"]}]
+
+    if section == "sauce":
+        return [] if order["sauce"] is None else [{"item": order["sauce"], "amount": None}]
+
+    items = []
+
+    for key in allowed_order_fields(section):
+        topping = key.split(".", 1)[1]
+        amount = order["toppings"].get(topping)
+
+        if amount is not None and amount != "none":
+            items.append({"item": topping, "amount": amount})
+
+    return items
 
 def recommendation_allowed_fields(scope: str, current_section: str) -> list[str]:
     # scope=current/remaining/all을 대화 section 목록으로 바꾼 뒤 field를 평탄화함
@@ -337,167 +327,212 @@ def has_explicit_commit_intent(user_text: str) -> bool:
         for phrase in EXPLICIT_COMMIT_PHRASES
     )
 
-def filter_ungrounded_restriction_removals(
-    user_text: str,
-    decision: dict,
-    resolved_targets: list[str] | None = None,
-) -> dict:
-    # remove target은 현재 발화의 정확한 surface 또는 Python resolver 결과로만 인정한다.
-    # 잘못된 restriction remove만 버리고 다른 정상 semantic은 같은 Decision에 보존한다.
-    compact_user_text = _compact_surface_text(user_text)
-    resolved_target_set = set(resolved_targets or [])
-    filtered = copy.deepcopy(decision)
-    kept_options = []
-    removed_invalid_option = False
+def _jamo_units(text: str) -> list:
+    # 한글 음절을 초성·중성·종성으로 나눠 STT의 받침·모음 오인식을 작은 거리로 계산한다.
+    units = []
 
-    for option in filtered["restriction_options"]:
-        target = option["target"]
-        target_is_grounded = (
-            _compact_surface_text(target) in compact_user_text
-            or target in resolved_target_set
+    for char in text:
+        offset = ord(char) - HANGUL_SYLLABLE_BASE
+
+        if 0 <= offset < HANGUL_SYLLABLE_COUNT:
+            units.append(("initial", offset // 588))
+            units.append(("medial", (offset % 588) // 28))
+
+            if offset % 28:
+                units.append(("final", offset % 28))
+        else:
+            units.append(("char", char))
+
+    return units
+
+def _edit_distance(left: list, right: list) -> int:
+    previous = list(range(len(right) + 1))
+
+    for left_index, left_unit in enumerate(left, 1):
+        current = [left_index]
+
+        for right_index, right_unit in enumerate(right, 1):
+            current.append(min(
+                previous[right_index] + 1,
+                current[right_index - 1] + 1,
+                previous[right_index - 1] + (left_unit != right_unit),
+            ))
+
+        previous = current
+
+    return previous[-1]
+
+def menu_surface_match(user_text: str, menu_name: str) -> tuple[float, str]:
+    # menu_name과 가장 비슷한 발화 구간과 그 자모 편집거리 비율을 반환한다.
+    # 메뉴명 길이 -1 ~ +1 글자 구간만 비교하므로 긴 문장 전체와 비교해 거리가 희석되지 않는다.
+    text = _compact_surface_text(user_text)
+    target = _compact_surface_text(menu_name)
+    target_units = _jamo_units(target)
+
+    if not target_units:
+        return 1.0, ""
+
+    best = (1.0, "")
+
+    for length in range(max(1, len(target) - 1), len(target) + 2):
+        for start in range(len(text) - length + 1):
+            span = text[start:start + length]
+            distance = _edit_distance(_jamo_units(span), target_units) / len(target_units)
+
+            if distance < best[0]:
+                best = (distance, span)
+
+    return best
+
+def menu_surface_distance(user_text: str, menu_name: str) -> float:
+    return menu_surface_match(user_text, menu_name)[0]
+
+def menu_grounding_distance(user_text: str, menu_name: str) -> float:
+    # 그 구간이 다른 메뉴명에 더 가까우면 이 메뉴의 근거가 아니다. 예: '넓은면' 구간은 얇은면(0.2)의 근거가 아니다.
+    distance, span = menu_surface_match(user_text, menu_name)
+
+    for other in SUPPORTED_MENU_NAMES:
+        if other != menu_name and menu_surface_distance(span, other) < distance:
+            return 1.0
+
+    return distance
+
+def closest_menu_name(surface: str) -> tuple[str | None, float]:
+    # 사용자 표면형과 가장 가까운 domain 메뉴명을 찾는다. 짧은 표면형('면')은 메뉴명 안에서도 찾는다.
+    best_name = None
+    best_distance = 1.0
+
+    for name in SUPPORTED_MENU_NAMES:
+        distance = min(
+            menu_surface_distance(surface, name),
+            menu_surface_distance(name, surface),
         )
 
-        if option["action"] == "remove" and not target_is_grounded:
-            removed_invalid_option = True
+        if distance < best_distance:
+            best_name = name
+            best_distance = distance
+
+    return best_name, best_distance
+
+def canonical_mentions(mentions: list[str]) -> list[str]:
+    # focus에 저장할 mention을 가까운 domain 메뉴명으로 바꾼다. 애매하면 사용자 표면형 그대로 둔다.
+    canonical = []
+
+    for mention in mentions:
+        name, distance = closest_menu_name(mention)
+        value = name if name is not None and distance <= MENU_GROUNDED_MAX_DISTANCE else mention
+
+        if value not in canonical:
+            canonical.append(value)
+
+    return canonical
+
+def unsupported_mentions(mentions: list[str]) -> list[str]:
+    # 어떤 domain 메뉴의 표면 변형으로도 볼 수 없는 사용자 표면형만 '제공하지 않는 메뉴' 후보로 반환한다.
+    # 짧은 단어는 거리 비율이 쉽게 0.5 근처로 가므로 무관 기준(0.65)이 아니라 인정 기준(0.35)으로 판단한다.
+    return [
+        mention for mention in mentions
+        if closest_menu_name(mention)[1] > MENU_GROUNDED_MAX_DISTANCE
+    ]
+
+def _menu_references(decision: dict) -> list[dict]:
+    # Decision 안에서 메뉴명을 가리키는 값만 모은다. 양(low/normal/high)은 발화 근거 검사 대상이 아니다.
+    references = []
+    patch = decision["order_patch"]
+
+    for field in ("sauce", "noodle_type"):
+        if patch[field] is not None:
+            references.append({"kind": field, "target": patch[field]})
+
+    for topping in patch["toppings"]:
+        references.append({"kind": "topping", "target": topping})
+
+    for index, option in enumerate(decision["restriction_options"]):
+        references.append({
+            "kind": f"restriction_{option['action']}",
+            "target": option["target"],
+            "index": index,
+        })
+
+    return references
+
+def grade_menu_grounding(
+    user_text: str,
+    decision: dict,
+    context_targets: list[str] | None = None,
+) -> dict:
+    # 모델이 낸 메뉴명이 이번 발화에 근거가 있는지 자모 거리로만 판정한다.
+    # context_targets는 지시어·확인 질문·안전 확인처럼 발화 밖 상태가 이미 확정한 대상이다.
+    # 반환: uncertain=사용자에게 확인할 값, ungrounded=근거 없는 값
+    context = set(context_targets or [])
+    # 실행 게이트와 같은 질문·부정 표지를 재사용한다. "게살 먹어도 돼?"가 알러지를 풀지 않게 한다.
+    compact_user_text = _compact_surface_text(user_text)
+    is_question_or_negative = any(marker in compact_user_text for marker in BLOCKED_COMMIT_MARKERS)
+
+    for collection, items in ORDER_COLLECTION_TARGETS.items():
+        if menu_surface_distance(user_text, collection) <= MENU_GROUNDED_MAX_DISTANCE:
+            context.update(items)
+
+    uncertain = []
+    ungrounded = []
+
+    for reference in _menu_references(decision):
+        if (
+            reference["kind"] == "restriction_remove"
+            and is_question_or_negative
+            and decision["restriction_options"][reference["index"]]["type"] in SAFETY_RESTRICTION_REASONS
+        ):
+            ungrounded.append(reference)
             continue
 
-        kept_options.append(option)
+        if reference["target"] in context:
+            continue
 
-    filtered["restriction_options"] = kept_options
+        distance = menu_grounding_distance(user_text, reference["target"])
 
-    # 잘못된 remove가 유일한 task semantic이었다면 빈 task를 통과시키지 않고 재질문한다.
-    if removed_invalid_option and not decision_has_task_semantics(filtered):
-        filtered["understanding"] = "clarify"
+        if reference["kind"] == "restriction_add":
+            # 제한 등록은 잘못 들어가도 더 안전한 방향이므로 무관한 값만 버린다.
+            if distance >= MENU_UNRELATED_MIN_DISTANCE:
+                ungrounded.append(reference)
+        elif reference["kind"] == "restriction_remove":
+            # 제한 해제는 안전과 직결되므로 확실히 들린 대상만 허용한다.
+            if distance > MENU_GROUNDED_MAX_DISTANCE:
+                ungrounded.append(reference)
+        elif distance >= MENU_UNRELATED_MIN_DISTANCE:
+            ungrounded.append(reference)
+        elif distance > MENU_GROUNDED_MAX_DISTANCE:
+            uncertain.append(reference)
 
-    return filtered
+    return {"uncertain": uncertain, "ungrounded": ungrounded}
 
-def find_decision_grounding_errors(
-    user_text: str,
-    decision: dict,
-    resolved_targets: list[str] | None = None,
-) -> list[str]:
-    # Decision semantic을 새로 생성하지 않고 발화와 명백히 모순되는 mutation만 fail-closed 한다.
-    # 반환값은 Python 내부 진단용이며 Decision JSON field가 아니다.
-    compact_user_text = _compact_surface_text(user_text)
-    resolved_target_set = set(resolved_targets or [])
-    errors = []
+def drop_menu_references(decision: dict, references: list[dict]) -> dict:
+    # 근거가 없거나 확인이 필요한 값만 빼고 같은 발화의 나머지 semantic은 보존한다.
+    cleaned = copy.deepcopy(decision)
+    dropped_restrictions = set()
 
-    if decision["understanding"] == "clarify":
-        return errors
+    for reference in references:
+        if reference["kind"] in ("sauce", "noodle_type"):
+            cleaned["order_patch"][reference["kind"]] = None
+        elif reference["kind"] == "topping":
+            cleaned["order_patch"]["toppings"].pop(reference["target"], None)
+        else:
+            dropped_restrictions.add(reference["index"])
 
-    # 정규 이름 외에도 메뉴 자체의 명확한 형용 표현은 근거이다.
-    # '면은 얇은 걸로'를 '얇은면'과 글자가 다르다는 이유로 취소하지 않는다.
-    # 후보가 둘이거나 모르는 면 이름이면 추측하지 않고 graph가 확인 후보로 보관한다.
-    noodle_type = decision["order_patch"]["noodle_type"]
-    described_noodles = {
-        name for name, descriptor in (("얇은면", "얇은"), ("넓은면", "넓은"))
-        if "면" in compact_user_text and descriptor in compact_user_text
-    }
-    if noodle_type is not None and not (
-        _compact_surface_text(noodle_type) in compact_user_text
-        or noodle_type in resolved_target_set
-        or described_noodles == {noodle_type}
-    ):
-        errors.append(f"ungrounded_noodle_type:{noodle_type}")
-
-    toppings = decision["order_patch"]["toppings"]
-    topping_targets = set(toppings)
-
-    if toppings:
-        # 설명 질문을 주문 mutation으로 바꾼 출력은 명백한 모순이다.
-        information_question_is_present = any(
-            _compact_surface_text(marker) in compact_user_text
-            for marker in INFORMATION_ONLY_MARKERS
-        )
-        order_mutation_is_present = any(
-            _compact_surface_text(marker) in compact_user_text
-            for marker in ORDER_MUTATION_MARKERS
-        )
-
-        if (
-            information_question_is_present
-            and not order_mutation_is_present
-        ):
-            errors.append("information_question_has_order_mutation")
-
-        collection_targets = set()
-
-        for surface, required_targets in ORDER_COLLECTION_TARGETS.items():
-            if _compact_surface_text(surface) not in compact_user_text:
-                continue
-
-            if not required_targets.issubset(topping_targets):
-                errors.append(f"incomplete_collection:{surface}")
-            else:
-                collection_targets.update(required_targets)
-
-        # 직접 언급되지 않았고 resolver가 확정하지도 않은 target은 통과시키지 않는다.
-        for target in topping_targets:
-            target_is_grounded = (
-                _compact_surface_text(target) in compact_user_text
-                or target in resolved_target_set
-                or target in collection_targets
-            )
-
-            if not target_is_grounded:
-                errors.append(f"ungrounded_order_target:{target}")
-
-        # 단일 target 또는 집합 전체가 같은 동작을 받는 경우에만 add/remove 모순을 확인한다.
-        collection_is_present = any(
-            _compact_surface_text(surface) in compact_user_text
-            for surface in ORDER_COLLECTION_TARGETS
-        )
-
-        if len(toppings) == 1 or collection_is_present:
-            remove_requested = any(
-                _compact_surface_text(marker) in compact_user_text
-                for marker in ORDER_REMOVE_MARKERS
-            )
-            removes_target = any(
-                amount == "none"
-                for amount in toppings.values()
-            )
-            adds_target = any(
-                amount != "none"
-                for amount in toppings.values()
-            )
-
-            if remove_requested and adds_target:
-                errors.append("remove_request_has_add_operation")
-            elif not remove_requested and removes_target:
-                errors.append("add_request_has_remove_operation")
-
-    restriction_remove_requested = any(
-        option["action"] == "remove"
-        for option in decision["restriction_options"]
-    )
-
-    if restriction_remove_requested and not any(
-        _compact_surface_text(marker) in compact_user_text
-        for marker in RESTRICTION_REMOVE_MARKERS
-    ):
-        errors.append("restriction_remove_not_explicit")
-
-    if decision["commit"] and any(
-        marker in compact_user_text
-        for marker in BLOCKED_COMMIT_MARKERS
-    ):
-        errors.append("commit_contradicted_by_question_or_negative")
-
-    return errors
+    cleaned["restriction_options"] = [
+        option for index, option in enumerate(cleaned["restriction_options"])
+        if index not in dropped_restrictions
+    ]
+    return cleaned
 
 def grounded_mentions(user_text: str, mentions: list[str]) -> list[str]:
-    # Decision이 낸 mention 중 현재 사용자 발화에 실제 surface가 존재하는 값만 순서대로 보존한다.
-    compact_user_text = _compact_surface_text(user_text)
+    # Decision이 낸 mention 중 현재 사용자 발화에 비슷한 구간이 있는 값만 순서대로 보존한다.
     grounded = []
 
     for mention in mentions:
-        if not isinstance(mention, str):
+        if not isinstance(mention, str) or not _compact_surface_text(mention):
             continue
 
-        compact_mention = _compact_surface_text(mention)
-
-        if compact_mention and compact_mention in compact_user_text:
+        if menu_surface_distance(user_text, mention) <= MENU_GROUNDED_MAX_DISTANCE:
             grounded.append(copy.deepcopy(mention))
 
     return grounded
@@ -847,6 +882,32 @@ def build_applied_changes(previous_session: dict, current_session: dict) -> dict
         "preference_removed": preference_removed, # 삭제된 자유 취향
     }
 
+
+def build_already_set(previous_session: dict, decision: dict) -> dict:
+    # 이번 요청값 중 턴 시작 전에 이미 같은 값이던 항목. 변경이 없을 때 Response가 말할 근거로 쓴다.
+    previous_order = previous_session["order"]
+    patch = decision["order_patch"]
+    order = {}
+
+    for field in ("sauce", "noodle_type", "noodle_portion"):
+        if patch[field] is not None and patch[field] == previous_order[field]:
+            order[field] = patch[field]
+
+    for topping, amount in patch["toppings"].items():
+        if amount != "none" and previous_order["toppings"].get(topping) == amount:
+            order[f"toppings.{topping}"] = amount
+
+    restrictions = [
+        {"target": option["target"], "reason": option["type"]}
+        for option in decision["restriction_options"]
+        if option["action"] == "add"
+        and {"target": option["target"], "reason": option["type"]} in previous_order["restrictions"]
+    ]
+
+    if not order and not restrictions:
+        return {}
+
+    return {"order": order, "restrictions": restrictions}
 
 def build_future_changes(applied_changes: dict, robot_state: dict) -> list[dict]:
     # 실제 반영된 주문 변경 중 미래 section에서 실행할 값만 분리

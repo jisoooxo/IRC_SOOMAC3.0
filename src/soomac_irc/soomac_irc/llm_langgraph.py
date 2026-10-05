@@ -5,13 +5,14 @@ from soomac_irc.agent_contract import new_decision
 from soomac_irc.dialogue_focus import build_reference_context,new_dialogue_focus,update_dialogue_focus
 from soomac_irc.dialogue_questions import active_question, question_after_turn
 from soomac_irc.llm_policy import (
-    allowed_order_fields, build_applied_changes, build_completed_modification_warning,
+    allowed_order_fields, build_already_set, build_applied_changes, build_completed_modification_warning,
     build_completed_restriction_warning, build_future_changes, build_next_prompt, build_turn_action_event, build_safe_clarify_decision,
+    canonical_mentions, decision_has_task_semantics, drop_menu_references,
     evaluate_runtime_policy, find_invalid_order_fields, find_invalid_queries, find_new_physical_restriction_conflicts,
-    find_decision_grounding_errors, find_route_consistency_errors,
-    filter_ungrounded_restriction_removals, grounded_mentions, has_explicit_commit_intent, recommendation_allowed_fields,
+    find_route_consistency_errors, grade_menu_grounding,
+    grounded_mentions, has_explicit_commit_intent, recommendation_allowed_fields,
     reference_targets_are_supported, reference_targets_match_decision,
-    restore_protected_order_values, validate_recommendation_proposal,)
+    restore_protected_order_values, unsupported_mentions, validate_recommendation_proposal,)
 
 # State / Decision 계약
 # 실제 값 형식은 agent_contract.py가 잡고, 여기는 그래프가 들고 다닐 state 구조만 선언함
@@ -130,7 +131,11 @@ def resolve_pending_confirmation(session: SessionState, decision: Decision) -> t
     effective = copy.deepcopy(decision)  # 확인 답변으로 commit이 바뀔 수 있는 decision 복사본
     pending = working["pending_confirmation"]  # 지난 턴에서 대기시킨 확인 건
 
-    if pending is None or decision["confirmation"] == "none":
+    if pending is None:
+        return working, effective
+
+    # 안전 확인은 답이 없어도 아래에서 닫아야 하므로 confirmation=none 조기 반환에서 제외한다.
+    if decision["confirmation"] == "none" and pending["type"] != "restriction_conflict":
         return working, effective
 
     if pending["type"] == "preselected_section":
@@ -151,34 +156,25 @@ def resolve_pending_confirmation(session: SessionState, decision: Decision) -> t
     if pending["type"] != "restriction_conflict":
         return working, effective
 
-    working = copy.deepcopy(pending["candidate_session"])
+    # 안전 확인은 다음 한 턴만 유효하다. 답하지 않은 턴에서도 닫아야 질문이 누적되지 않는다.
+    # restriction은 이미 live order에 있으므로 닫혀도 안전하다. 보류한 주문값만 사라진다.
     working["pending_confirmation"] = None
 
     if decision["confirmation"] == "accept":
-        # restriction을 해제하고 보류됐던 실행 요청을 이어감
+        # restriction을 해제하고 보류한 주문값을 현재 상태 위에 다시 적용한다.
         for conflict in pending["conflicts"]:
             restriction = conflict["restriction"]  # 사용자가 해제에 동의한 제한
 
             if restriction in working["order"]["restrictions"]:
                 working["order"]["restrictions"].remove(restriction)
 
-        effective["commit"] = pending["decision"]["commit"] or decision["commit"]
+        apply_order_patch(working["order"], pending["held_patch"])
+        effective["commit"] = pending["held_commit"] or decision["commit"]
         return working, effective
 
-    # restriction을 유지하는 경우 충돌하는 미실행 주문값만 제거
-    for conflict in pending["conflicts"]:
-        key = conflict["key"]  # restriction과 충돌한 주문 필드
+    if decision["confirmation"] == "reject":
+        effective["commit"] = False
 
-        if key.startswith("toppings."):
-            topping = key.split(".", 1)[1]
-            working["order"]["toppings"].pop(topping, None)
-        elif key == "noodle_type":
-            working["order"]["noodle_type"] = None
-            working["order"]["noodle_portion"] = None
-        else:
-            working["order"][key] = None
-
-    effective["commit"] = False
     return working, effective
 
 
@@ -192,6 +188,26 @@ def apply_recommendation_proposal(session: SessionState, proposal: dict) -> Sess
     return updated
 
 
+def order_patch_is_empty(patch: dict) -> bool:
+    return (
+        patch["sauce"] is None
+        and patch["noodle_type"] is None
+        and patch["noodle_portion"] is None
+        and not patch["toppings"]
+    )
+
+
+def accepts_pending_recommendation(decision: Decision, phase: str) -> bool:
+    # 명시 선택, 또는 사용자가 직접 고른 값 없이 proposed 상태에서 실행만 요청한 경우만 추천안 승인이다.
+    action = decision["recommendation"]["action"]
+    return action == "select" or (
+        action == "none"
+        and decision["commit"]
+        and phase == "proposed"
+        and order_patch_is_empty(decision["order_patch"])
+    )
+
+
 def merge_recommendation(session: SessionState, decision: Decision, recommendation_result: dict | None) -> SessionState:
     # 추천안의 생성·수정·선택·취소 반영
 
@@ -199,9 +215,12 @@ def merge_recommendation(session: SessionState, decision: Decision, recommendati
     request = decision["recommendation"]  # 이번 턴의 추천 요청
     action = request["action"]  # none/request/revise/select/cancel
     phase = updated["recommendation"]["phase"]  # 현재 추천 lifecycle 단계
-    accept_pending = action == "select" or (  # 명시 선택 또는 proposed 상태에서 실행 요청
-        action == "none" and decision["commit"] and phase == "proposed"
-    )
+    accept_pending = accepts_pending_recommendation(decision, phase)  # 명시 선택 또는 proposed 상태에서 실행 요청
+
+    if action == "none" and phase == "proposed" and not order_patch_is_empty(decision["order_patch"]):
+        # 추천을 받은 뒤 사용자가 직접 메뉴를 고르면 남은 추천안이 나중 실행에 섞이지 않게 닫는다.
+        updated["recommendation"]["phase"] = "idle"
+        return updated
 
     if action == "cancel":
         updated["recommendation"]["phase"] = "idle"
@@ -534,40 +553,41 @@ def build_graph(
         return {"decision": decision}
 
     def guard_decision_grounding(state: TurnState) -> dict:
-        # 잘못된 restriction remove만 먼저 제거하고, 나머지 명백한 mutation 모순은 기존처럼 차단한다.
-        # restriction target 하나의 오류 때문에 unrelated 정상 order semantic을 폐기하지 않는다.
+        # 모델이 낸 메뉴명마다 발화 근거를 자모 거리로 확인한다.
+        # 근거 없는 값은 그 값만 버리고, 애매한 값은 확인 후보로 옮기며, 나머지 semantic은 보존한다.
         decision = state["decision"]
+        mentions = grounded_mentions(state["user_text"], decision["mentions"])
+        unsupported = unsupported_mentions(mentions)
 
         if decision["understanding"] == "clarify":
+            if unsupported and state.get("reference_context") is None:
+                return {"reference_context": {"reason": "unsupported_reference", "targets": unsupported}}
             return {}
 
         current_history_turn = len(state["session"]["history"]) // 2 + 1
+        question = active_question(state["session"], state["robot_state"]["section"])
         reference_context = build_reference_context(
             state["user_text"],
             state["session"]["dialogue_focus"],
             current_history_turn,
-            active_question(state["session"], state["robot_state"]["section"]),
+            question,
         )
-        resolved_targets = (
-            reference_context["targets"]
-            if reference_context["status"] == "resolved"
-            else []
-        )
+        # 발화 밖 상태가 이미 확정한 대상: 지시어 결과, 확인한 후보, 양 질문 대상, 안전 확인 대상
+        context_targets = []
+
+        if reference_context["status"] == "resolved":
+            context_targets.extend(reference_context["targets"])
         if (state.get("reference_context") or {}).get("reason") == "confirmed_menu":
-            resolved_targets = state["reference_context"]["targets"]
-        question = active_question(state["session"], state["robot_state"]["section"])
+            context_targets.extend(state["reference_context"]["targets"])
         if question and question["type"] == "amount":
-            resolved_targets = question["targets"]
-        decision = filter_ungrounded_restriction_removals(
-            state["user_text"],
-            decision,
-            resolved_targets,
-        )
-        # grounding_errors = find_decision_grounding_errors(
-        #     state["user_text"],
-        #     decision,
-        #     resolved_targets,
-        # )
+            context_targets.extend(question["targets"])
+
+        pending = state["session"]["pending_confirmation"]
+
+        if pending is not None and pending["type"] == "restriction_conflict":
+            for conflict in pending["conflicts"]:
+                context_targets.append(conflict["item"])
+                context_targets.append(conflict["restriction"]["target"])
 
         check_decision = copy.deepcopy(decision)
         confirmed = (
@@ -588,36 +608,30 @@ def build_graph(
                 if patch["toppings"].get(target) == amount:
                     patch["toppings"].pop(target)
 
-        grounding_errors = find_decision_grounding_errors(
+        grading = grade_menu_grounding(
             state["user_text"],
             check_decision,
-            resolved_targets,
+            context_targets,
         )
 
-        if not grounding_errors:
+        if not grading["uncertain"] and not grading["ungrounded"]:
             return {"decision": decision}
 
-        # 발화 근거가 불확실한 메뉴는 '잘못된 주문'으로 버리지 않고 확인 후보로 격리한다.
-        uncertain = [error for error in grounding_errors
-                     if error.startswith(("ungrounded_noodle_type:", "ungrounded_order_target:"))]
-        if len(uncertain) == len(grounding_errors):
-            mentions = grounded_mentions(state["user_text"], decision["mentions"])
-            unsupported = [m for m in mentions if not reference_targets_are_supported([m])]
-            if unsupported:
-                safe = build_safe_clarify_decision(decision, state["user_text"])
-                return {"decision": safe, "reference_context": {
-                    "reason": "unsupported_reference", "targets": unsupported}}
-            clean = copy.deepcopy(decision)
+        clean = drop_menu_references(decision, grading["uncertain"] + grading["ungrounded"])
+
+        if grading["uncertain"]:
+            # 애매하게 들린 메뉴는 주문에 넣지 않고 확인 후보로 보관한다. 실행 권한은 이어받지 않는다.
             proposal = new_decision()["order_patch"]
             targets = []
-            for error in uncertain:
-                kind, target = error.split(":", 1)
-                targets.append(target)
-                if kind == "ungrounded_noodle_type":
-                    proposal["noodle_type"] = clean["order_patch"]["noodle_type"]
-                    clean["order_patch"]["noodle_type"] = None
+
+            for reference in grading["uncertain"]:
+                targets.append(reference["target"])
+
+                if reference["kind"] == "topping":
+                    proposal["toppings"][reference["target"]] = decision["order_patch"]["toppings"][reference["target"]]
                 else:
-                    proposal["toppings"][target] = clean["order_patch"]["toppings"].pop(target)
+                    proposal[reference["kind"]] = reference["target"]
+
             clean["commit"] = False
             session = copy.deepcopy(state["session"])
             session["pending_question"] = {"type": "menu_confirmation", "targets": targets,
@@ -626,11 +640,15 @@ def build_graph(
             return {"decision": clean, "session": session,
                     "reference_context": {"reason": "menu_confirmation", "targets": targets}}
 
-        safe_decision = build_safe_clarify_decision(
-            decision,
-            state["user_text"],
-        )
-        return {"decision": safe_decision}
+        if not decision_has_task_semantics(clean):
+            # 근거 있는 값이 하나도 남지 않았을 때만 재질문한다.
+            clean["understanding"] = "clarify"
+
+            if unsupported:
+                return {"decision": clean, "reference_context": {
+                    "reason": "unsupported_reference", "targets": unsupported}}
+
+        return {"decision": clean}
 
     def route_by_decision(state: TurnState) -> str:
         # general만 mutation 없는 전용 경로로 보내고 task/mixed는 기존 안전 pipeline을 그대로 사용한다.
@@ -653,8 +671,15 @@ def build_graph(
                 "conflicts": [],
             }
 
+        session = copy.deepcopy(state["session"])
+        pending = session["pending_confirmation"]
+
+        if pending is not None and pending["type"] == "restriction_conflict":
+            # 안전 확인은 다음 한 턴만 유효하다. restriction은 live order에 남아 있다.
+            session["pending_confirmation"] = None
+
         return {
-            "session": copy.deepcopy(state["session"]),
+            "session": session,
             "recommendation_result": None,
             "policy": policy,
         }
@@ -683,10 +708,8 @@ def build_graph(
         request = state["decision"]["recommendation"]  # 이번 추천 요청
         action = request["action"]  # none/request/revise/select/cancel
         recommendation_state = state["candidate_session"]["recommendation"]  # 누적 추천 state
-        accept_pending = action == "select" or (  # 기존 proposed 추천을 확정하는 경우
-            action == "none"
-            and state["decision"]["commit"]
-            and recommendation_state["phase"] == "proposed"
+        accept_pending = accepts_pending_recommendation(  # 기존 proposed 추천을 확정하는 경우
+            state["decision"], recommendation_state["phase"]
         )
 
         if action not in ("request", "revise") and not accept_pending:
@@ -793,12 +816,31 @@ def build_graph(
             next_session = copy.deepcopy(candidate)  # 부족한 값 외의 선택은 유지
 
         elif policy["status"] == "hitl":
-            next_session = copy.deepcopy(state["working_session"])  # 충돌 주문은 확인 전까지 보류
+            # restriction과 충돌하지 않는 변경은 반영하고, 충돌한 주문값만 꺼내 확인 전까지 보류한다.
+            # restriction은 live order에 바로 남겨 확인 대기 중에도 실행 검사가 막을 수 있게 한다.
+            next_session = copy.deepcopy(candidate)
+            held_patch = new_decision()["order_patch"]  # 동의 시 다시 적용할 충돌 주문값
+
+            for conflict in policy["conflicts"]:
+                key = conflict["key"]
+
+                if key.startswith("toppings."):
+                    topping = key.split(".", 1)[1]
+                    held_patch["toppings"][topping] = next_session["order"]["toppings"].pop(topping)
+                elif key == "noodle_type":
+                    held_patch["noodle_type"] = next_session["order"]["noodle_type"]
+                    held_patch["noodle_portion"] = next_session["order"]["noodle_portion"]
+                    next_session["order"]["noodle_type"] = None
+                    next_session["order"]["noodle_portion"] = None
+                else:
+                    held_patch[key] = next_session["order"][key]
+                    next_session["order"][key] = None
+
             next_session["pending_confirmation"] = {
                 "type": "restriction_conflict",  # 다음 턴 confirmation 해석 기준
-                "decision": copy.deepcopy(state["decision"]),  # 보류한 실행 요청
-                "candidate_session": copy.deepcopy(candidate),  # 동의 시 되살릴 후보
                 "conflicts": copy.deepcopy(policy["conflicts"]),  # 사용자에게 확인할 충돌
+                "held_patch": held_patch,  # 동의 시 현재 상태 위에 다시 적용할 주문값
+                "held_commit": bool(state["decision"]["commit"]),  # 보류한 실행 요청
             }
 
         elif policy["status"] == "blocked" and policy["reason"] == "physical_state":
@@ -860,47 +902,13 @@ def build_graph(
 
         route = state["decision"]["route"]
         policy_reason = state["policy"]["reason"]
-        reference_targets = state["policy"].get("reference_targets", [])
+        policy = copy.deepcopy(state["policy"])
+        # 이미 같은 값이던 요청은 변경이 없어도 Response가 "이미 들어 있다"고 말할 수 있게 사실로 넘긴다.
+        policy["already_set"] = build_already_set(state["previous_session"], state["decision"])
 
-        # if route == "task" and policy_reason == "ambiguous_reference":
-        #     # 순수 task는 Base Gemma를 호출하지 않고 Python이 확정한 후보만 보여준다.
-        #     # "또는"을 사용해서 메뉴 이름의 받침 여부와 관계없이 자연스럽게 연결한다.
-        #     if reference_targets:
-        #         targets_text = " 또는 ".join(reference_targets)
-        #         reply = f"{targets_text} 중 어떤 것을 말씀하시는 건가요?"
-        #     else:
-        #         reply = "어떤 대상을 말씀하시는 건지 다시 알려주세요."
-        if route == "task" and policy_reason == "ambiguous_reference":
-            if reference_targets and all(
-                not reference_targets_are_supported([target])
-                for target in reference_targets
-            ):
-                targets_text = ", ".join(reference_targets)
-                reply = f"말씀하신 {targets_text} 메뉴는 현재 제공하지 않아요."
-            elif reference_targets:
-                targets_text = " 또는 ".join(reference_targets)
-                reply = f"{targets_text} 중 어떤 것을 말씀하시는 건가요?"
-            else:
-                reply = "어떤 대상을 말씀하시는 건지 다시 알려주세요."
-
-        elif route == "task" and policy_reason == "unsupported_reference":
-            # unsupported 문자열은 지원 메뉴로 치환하지 않고 사용자가 말한 값을 그대로 안내한다.
-            if reference_targets:
-                targets_text = ", ".join(reference_targets)
-                reply = f"말씀하신 {targets_text} 메뉴는 현재 제공하지 않아요."
-            else:
-                reply = "말씀하신 대상은 현재 제공하지 않는 메뉴예요."
-
-        # elif policy_reason == "understanding" and route != "mixed":
-        #     # 기존 task/general generic clarify는 유지하지만 mixed는 아래 Response Agent로 보낸다.
-        #     reply = "요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요."
-
-        elif policy_reason == "understanding" and route == "general":
-            # 일반대화의 불명확한 질문만 고정 재질문을 유지한다.
-            # task/mixed는 아래 else의 Response Agent가 안내한다.
-            reply = "요청을 제대로 이해하지 못했습니다. 다시 말씀해 주세요."
-
-        elif policy_reason == "completed_restriction_conflict":
+        # 재질문·제공 불가 안내도 Response Agent가 policy.reason과 reference_targets로 만든다.
+        # 고정 문장은 이미 담긴 재료에 대한 안전 경고 두 가지만 남긴다.
+        if policy_reason == "completed_restriction_conflict":
             reply = build_completed_restriction_warning(
                 state["policy"]["conflicts"]
             )
@@ -916,7 +924,7 @@ def build_graph(
             reply = call_response(
                 state["user_text"],
                 copy.deepcopy(state["session"]),
-                copy.deepcopy(state["policy"]),
+                copy.deepcopy(policy),
                 copy.deepcopy(applied_changes),
                 copy.deepcopy(future_changes),
                 copy.deepcopy(state["recommendation_result"]),
@@ -930,10 +938,11 @@ def build_graph(
 
         # focus는 별도 턴을 만들지 않고, 이번 응답까지 포함될 기존 history 턴 번호를 그대로 사용한다.
         current_history_turn = len(session["history"]) // 2 + 1
-        focus_mentions = grounded_mentions(
+        # focus에는 가까운 domain 메뉴명으로 저장해야 다음 턴 '그거'가 STT 표면형(양판)이 아닌 양파를 가리킨다.
+        focus_mentions = canonical_mentions(grounded_mentions(
             state["user_text"],
             state["decision"]["mentions"],
-        )
+        ))
         session["pending_question"] = question_after_turn(
             session, state["decision"], state["policy"], next_prompt,
             state["robot_state"]["section"], current_history_turn, focus_mentions,
@@ -954,6 +963,7 @@ def build_graph(
 
         return {
             "session": session,
+            "policy": policy,
             "reply": reply,
         }
 

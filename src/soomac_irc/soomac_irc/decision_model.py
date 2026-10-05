@@ -19,6 +19,17 @@ DECISION_INPUT_MAX_TOKENS = 8192  # 모델 입력 상한. 출력 token 한도와
 DECISION_MAX_TOKENS = 1024        # sparse 출력이 잘리지 않도록 기존 여유를 유지.
 
 
+def decision_pending_view(pending: dict | None) -> dict | None:
+    # 학습 데이터와 같은 형태로만 보여준다. 보류 주문값 같은 내부 상태는 모델 입력에 넣지 않는다.
+    if pending is None or pending["type"] != "restriction_conflict":
+        return copy.deepcopy(pending)
+
+    return {
+        "type": "restriction_conflict",
+        "conflicts": [{"item": conflict["item"]} for conflict in pending["conflicts"]],
+    }
+
+
 def build_decision_inputs(session: SessionState, user_text: str, robot_state: dict, processor, repair: dict | None = None):
     # 전체 세션에서 token 한도에 맞는 최근 문맥과 현재 발화를 모델 입력으로 만든다.
     history = copy.deepcopy(session["history"][-(DECISION_HISTORY_TURNS * 2):])
@@ -35,7 +46,7 @@ def build_decision_inputs(session: SessionState, user_text: str, robot_state: di
             "order": copy.deepcopy(session["order"]),
             "preferences": copy.deepcopy(session["preferences"]),
             "recommendation": copy.deepcopy(session["recommendation"]),
-            "pending_confirmation": copy.deepcopy(session["pending_confirmation"]),
+            "pending_confirmation": decision_pending_view(session["pending_confirmation"]),
             "dialogue_focus": copy.deepcopy(session["dialogue_focus"]),
             "reference_context": copy.deepcopy(reference_context),
             "pending_question": question,

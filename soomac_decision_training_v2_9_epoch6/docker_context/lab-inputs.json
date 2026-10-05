@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "model": {
+    "required": true,
+    "default": {
+      "repo_id": "google/gemma-4-12B-it",
+      "revision": "main",
+      "model_type": "base",
+      "model_family": "gemma4"
+    },
+    "subdir": ".",
+    "required_files": [
+      "config.json",
+      "model.safetensors",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "processor_config.json",
+      "chat_template.jinja"
+    ]
+  },
+  "dataset": {
+    "required": true,
+    "subdir": ".",
+    "required_files": [
+      "records/decision_train.jsonl",
+      "records/decision_validation.jsonl",
+      "contract/decision_system.txt",
+      "contract/decision_schema.json",
+      "manifest.json"
+    ],
+    "embedded": {
+      "path": "/app/assets/dataset",
+      "required_files": [
+        "records/decision_train.jsonl",
+        "records/decision_validation.jsonl",
+        "contract/decision_system.txt",
+        "contract/decision_schema.json",
+        "manifest.json"
+      ]
+    }
+  }
+}

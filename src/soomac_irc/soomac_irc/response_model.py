@@ -10,6 +10,7 @@ from soomac_irc.agent_contract import RESPONSE_SCHEMA
 from soomac_irc.agent_prompts import (GENERAL_RESPONSE_SYSTEM,MIXED_RESPONSE_SYSTEM,TASK_RESPONSE_SYSTEM)
 from soomac_irc.llm_langgraph import SessionState
 from soomac_irc.dialogue_questions import active_question
+from soomac_irc.llm_policy import section_execution_items
 
 
 RESPONSE_HISTORY_TURNS = 8
@@ -57,9 +58,15 @@ def make_call_response(model, processor, logger=None):
         - dialogue_result는 이번 처리의 사실이다. user_text는 요청이며, 처리 결과가 아니다.
         - confirmed_order는 현재 저장된 주문이다.
         - applied_this_turn에 있는 변경만 이번에 반영됐다고 안내한다.
+        - changed_this_turn이 false이면 이번 턴에 주문·제한·취향을 반영·해제·변경했다고 말하지 않는다.
+        - 이전 assistant 발언의 변경 안내를 이번 턴 결과처럼 반복하지 않는다.
+        - changed_this_turn이 false이면 user_text와 confirmed_order를 비교해, 요청한 값이 이미 주문에 있으면 이미 반영돼 있다고 답한다.
+        - already_set의 order와 restrictions는 이번 턴 전부터 이미 있던 주문값과 제한(알러지 포함)이다. 새로 반영·추가했다고 말하지 말고 이미 들어 있다고 말한다.
         - unconfirmed_candidate는 아직 저장하지 않은 해석 후보이다.
         - 후보가 있으면 확정 주문처럼 안내하지 말고 question_to_ask에 따라 확인한다.
         - execution_authorized는 실행 허가이지 실제 작업 완료가 아니다.
+        - execution_authorized가 false이면 담기·시작·진행한다고 절대 말하지 않는다. 실행 안내는 execution_authorized가 true일 때만 한다.
+        - execution_authorized가 true이면 starting_now에 있는 재료만 지금 담기 시작한다고 말한다. history나 completed_tasks의 재료를 지금 담는다고 말하지 않는다.
         - 실제 진행과 완료는 active_task와 completed_tasks를 따른다.
         - 이전 assistant 발언보다 최신 dialogue_result를 우선한다.
         - question_to_ask가 있으면 그 대상과 목적에 맞게 자연스럽게 질문한다.
@@ -135,6 +142,13 @@ def make_call_response(model, processor, logger=None):
             "processing_status": policy["status"],
             "processing_reason": policy["reason"],
             "execution_authorized": bool(policy["execute"]),
+            # 실행 허가 시 이번 section에서 실제로 담을 재료. 응답 생성 뒤에 task가 만들어지므로 여기서 미리 계산한다.
+            "starting_now": (
+                section_execution_items(session["order"], robot_state["section"])
+                if policy["execute"] else []
+            ),
+            "changed_this_turn": any(bool(value) for value in applied_changes.values()),
+            "already_set": copy.deepcopy(policy.get("already_set") or {}),
             "active_task": copy.deepcopy(robot_state.get("active_task")),
             "completed_tasks": copy.deepcopy(robot_state["completed_tasks"]),
             "previous_question": previous_question,

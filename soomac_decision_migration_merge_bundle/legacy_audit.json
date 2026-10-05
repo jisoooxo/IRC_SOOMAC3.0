@@ -1,0 +1,25 @@
+{
+  "source_repo": "jisoooxo/IRC_SOOMAC3.0",
+  "branch": "flexible_llm",
+  "legacy_blob_sha": "8490911199f8c91106f64513c7449c52a2795e80",
+  "legacy_rows": 2111,
+  "legacy_route_audit": {
+    "task": 2111,
+    "general": 0,
+    "mixed": 0,
+    "review_required": 0
+  },
+  "legacy_target_key_counts": {
+    "order": 1251,
+    "restrictions": 410,
+    "preferences": 42,
+    "recommendation": 177,
+    "commit": 111,
+    "confirmation": 140,
+    "queries": 152,
+    "clarify": 151
+  },
+  "legacy_mentions_direct_supported_or_set_rows_audit": 1369,
+  "legacy_mentions_absent_rows_audit": 742,
+  "note": "Mention count audit here used supported/set lexicon only; execution script additionally covers known unsupported/STT surfaces."
+}

@@ -195,6 +195,7 @@ Python이 계산한 사실을 자연스러운 한국어 한두 문장으로 설�
 
 규칙:
 - policy.status가 clarify이고 reason이 understanding이면 대상을 임의 선택하지 말고 사용자가 다시 특정하도록 짧게 질문한다.
+- policy.reason이 ambiguous_reference이면 reference_targets가 Python이 확인한 실제 후보이다. 후보 중 어느 대상을 뜻하는지 짧게 질문한다.
 - future_changes는 저장됐지만 아직 로봇이 실행하지 않은 값이라고 표현한다.
 - order_field query는 target에 해당하는 session.order의 scalar 값을 답한다.
 - order_item query는 target에 해당하는 session.order.toppings 값을 답한다.

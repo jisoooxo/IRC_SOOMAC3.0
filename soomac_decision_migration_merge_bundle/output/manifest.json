@@ -1,0 +1,19 @@
+{
+  "legacy_original": 2111,
+  "migration_pass": 2111,
+  "migration_review_required": 0,
+  "migration_fail": 0,
+  "supplement": 685,
+  "merged_raw": 2796,
+  "dedup_removed": 7,
+  "validator_fail": 0,
+  "final_train": 2789,
+  "route_counts": {
+    "task": 2111
+  },
+  "mentions_added_rows": 1432,
+  "mentions_absent_rows": 679,
+  "repeated_surface_groups_retained": 479,
+  "dedup_policy": "exact full input+target only; state/context differences and minimal pairs retained",
+  "legacy_overwritten": false
+}

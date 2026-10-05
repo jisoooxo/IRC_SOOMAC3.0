@@ -1,0 +1,31 @@
+{
+  "training_image_spec": "2.9",
+  "source": "soomac_decision_migration_merge_bundle/route_rebalance/final_train_rebalanced.jsonl",
+  "split_method": "semantic_id SHA-256 bucket; bucket 0 is validation",
+  "split_salt": "soomac-decision-v29-epoch6",
+  "epochs": 6,
+  "total_rows": 3339,
+  "train_rows": 3049,
+  "validation_rows": 290,
+  "train_route_counts": {
+    "task": 2312,
+    "general": 480,
+    "mixed": 257
+  },
+  "validation_route_counts": {
+    "task": 216,
+    "general": 49,
+    "mixed": 25
+  },
+  "train_history_rows": 384,
+  "validation_history_rows": 34,
+  "semantic_group_overlap": 0,
+  "hard_eval_rows": 495,
+  "sha256": {
+    "records/decision_train.jsonl": "65134028b44aaee671842e82ae9a4cc135b3f637981214c69dcb38bb8568d83e",
+    "records/decision_validation.jsonl": "f9601f4ea1fdae0dc0d561cbfb10c760b3de1b439fbb8bc6f5cd7387c90e9aa8",
+    "evaluation/hard_eval.jsonl": "4aa52149c662850a88f2b674ef947a8f0625b9b992f3ed349858a440be902990",
+    "contract/decision_system.txt": "9d8ac79d13cce6057398860c50628a11470570bf422f62b091bc5a3c8ab3a50e",
+    "contract/decision_schema.json": "3f300e4a9fb806324a1f46fa8e0a2b4c44a68fe5006116c1b2be5d1bc721ee20"
+  }
+}

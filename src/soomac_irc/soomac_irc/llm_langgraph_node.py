@@ -19,7 +19,7 @@ from soomac_irc.dialogue_questions import question_for_section
 from soomac_irc.model_runtime import DECISION_ADAPTER_PATH, load_model, make_call_vlm
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.llm_langgraph import build_graph, build_preselected_confirmation_reply, build_preselected_section_confirmation, new_session_state, new_turn_state
-from soomac_irc.llm_policy import build_applied_changes
+from soomac_irc.llm_policy import build_applied_changes, section_execution_items
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
 from soomac_irc.recommendation_model import make_call_recommendation
 from soomac_irc.response_model import make_call_response
@@ -1062,53 +1062,15 @@ class LLMLangGraphNode(Node):
 #################### 현재 section 주문값을 실제 로봇 task 목록으로 바꿈 ####################
 
     def _build_current_section_tasks(self) -> list[dict]:
-        # 현재 graph 주문을 기존 ROS 작업 단위로 변환한다.
+        # 현재 graph 주문을 기존 ROS 작업 단위로 변환한다. 담을 재료 계산은 Response 입력과 같은 함수를 쓴다.
         # cover는 main_vlm.py가 소스 완료 뒤 자동 실행하므로 여기서 만들지 않는다.
-        order = self.graph_state["order"]
-
-        if self.section == "noodle":
-            noodle_type = order["noodle_type"]
-            amount = order["noodle_portion"]
-
-            if noodle_type is None or amount is None:
-                return []
-
-            return [{
-                "class": noodle_type,
-                "repeat_count": AMOUNT_TO_COUNT[amount],
-            }]
-
-        if self.section == "veggie":
-            section_items = ("양파", "버섯")
-        elif self.section == "meat":
-            section_items = ("소시지", "게살")
-        elif self.section == "extra":
-            section_items = ("치즈", "페퍼론치노")
-        elif self.section == "sauce":
-            sauce = order["sauce"]
-
-            if sauce is None:
-                return []
-
-            return [{
-                "class": sauce,
-                "repeat_count": 1,
-            }]
-        else:
-            return []
-
-        tasks = []
-
-        for item in section_items:
-            amount = order["toppings"].get(item)
-
-            if amount in AMOUNT_TO_COUNT:
-                tasks.append({
-                    "class": item,
-                    "repeat_count": AMOUNT_TO_COUNT[amount],
-                })
-
-        return tasks
+        return [
+            {
+                "class": entry["item"],
+                "repeat_count": 1 if self.section == "sauce" else AMOUNT_TO_COUNT[entry["amount"]],
+            }
+            for entry in section_execution_items(self.graph_state["order"], self.section)
+        ]
 
 #################### queue 맨 앞 task를 llm plan으로 하나씩 발행 ####################
 
