@@ -590,11 +590,17 @@ class LLMLangGraphNode(Node):
 
 ##############################################################################
 
-        if self.section == "sauce":
+        if self.section == "lid":
+            if not self._start_current_section():
+                raise RuntimeError("lid 작업을 만들지 못함")
+            next_reply = "이제 뚜껑을 닫을게요."
+            next_prompt = None
+        elif self.section == "sauce":
             if not self._start_current_section():
                 raise RuntimeError("선택된 소스 작업을 만들지 못함")
             next_reply = "마지막으로 고르신 소스를 올릴게요."
             next_prompt = None
+
         else:
             pending = build_preselected_section_confirmation(self.graph_state, self.section)
             if pending is not None:
@@ -629,7 +635,7 @@ class LLMLangGraphNode(Node):
             self.get_logger().error(f"단계 전환 응답 생성 실패: {error}")
             # 생성 실패 시 완료를 추측하지 않고 기존의 다음 단계 안내만 사용한다.
             reply = next_reply
-        if self.section != "sauce":
+        if self.section not in ("lid", "sauce"):
             self._set_stt_enabled(True)
         return reply
 
@@ -870,6 +876,7 @@ class LLMLangGraphNode(Node):
             "veggie": "야채",
             "meat": "육류",
             "extra": "추가 재료",
+            "lid": "뚜껑 닫기",
             "sauce": "소스",
         }
         group_names = {
@@ -877,8 +884,10 @@ class LLMLangGraphNode(Node):
             "veggie": "vegetable",
             "meat": "meat",
             "extra": "extra",
+            "lid": "cover",
             "sauce": "sauce",
         }
+
         section_items = {
             "veggie": ("양파", "버섯"),
             "meat": ("소시지", "게살"),
@@ -1067,7 +1076,7 @@ class LLMLangGraphNode(Node):
         return [
             {
                 "class": entry["item"],
-                "repeat_count": 1 if self.section == "sauce" else AMOUNT_TO_COUNT[entry["amount"]],
+                "repeat_count": 1 if self.section in ("sauce", "lid") else AMOUNT_TO_COUNT[entry["amount"]],
             }
             for entry in section_execution_items(self.graph_state["order"], self.section)
         ]

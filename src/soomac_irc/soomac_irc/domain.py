@@ -6,7 +6,7 @@ TOPPINGS = ("양파", "버섯", "소시지", "게살", "치즈", "페퍼론치�
 AMOUNTS = ("low", "normal", "high")
 
 # main_vlm.py가 소스 완료 뒤 cover를 직접 실행하고 /llm/reset을 보냄
-SECTION_ORDER = ("noodle", "veggie", "meat", "extra", "sauce")
+SECTION_ORDER = ("noodle", "veggie", "meat", "extra", "lid", "sauce")
 
 RESTRICTION_CATEGORY_ITEMS = {
     "유제품": ("크림", "치즈"),

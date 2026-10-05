@@ -9,8 +9,7 @@ SECTION_CHOICES = {
     "extra": ["치즈", "페퍼론치노"],
 }
 SECTION_NAMES = {"noodle": "면", "veggie": "야채", "meat": "육류",
-                 "extra": "추가 재료", "sauce": "소스"}
-
+                 "extra": "추가 재료", "lid": "뚜껑", "sauce": "소스"}
 
 def question_for_section(section, turn):
     if section not in SECTION_CHOICES:

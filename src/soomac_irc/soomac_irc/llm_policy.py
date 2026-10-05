@@ -104,6 +104,8 @@ def section_execution_items(order: dict, section: str) -> list[dict]:
 
     if section == "sauce":
         return [] if order["sauce"] is None else [{"item": order["sauce"], "amount": None}]
+    if section == "lid":
+            return [{"item": "뚜껑", "amount": None}]
 
     items = []
 
