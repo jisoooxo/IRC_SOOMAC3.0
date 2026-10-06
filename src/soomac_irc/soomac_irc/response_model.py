@@ -38,7 +38,6 @@ def make_call_response(model, processor, logger=None):
         applied_changes: dict,
         future_changes: list[dict],
         recommendation_result: dict | None,
-        queries: list[dict],  # 이전 호출부 호환용이며 v3 Decision은 query 구조체를 만들지 않는다.
         next_prompt: dict | None,
         robot_state: dict,
         route: str,

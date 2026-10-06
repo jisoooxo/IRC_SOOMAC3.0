@@ -100,10 +100,10 @@ class TestSectionQuestionEvents(unittest.TestCase):
                 self.assertEqual(node._advance_after_section("meat", outcome=outcome),
                                  "모델이 만든 단계 전환 안내")
                 args = node.call_response.call_args.args
-                self.assertEqual(args[8]["section_transition"]["outcome"], outcome)
-                self.assertEqual(args[8]["section_transition"]["section"], "meat")
-                self.assertEqual(args[7]["type"], "section_prompt")
-                self.assertEqual(args[7]["section"], "extra")
+                self.assertEqual(args[7]["section_transition"]["outcome"], outcome)
+                self.assertEqual(args[7]["section_transition"]["section"], "meat")
+                self.assertEqual(args[6]["type"], "section_prompt")
+                self.assertEqual(args[6]["section"], "extra")
                 self.assertIsNone(node.graph_state["pending"])
                 self.assertEqual(node.graph_state["action_history"][-1]["outcome"], outcome)
                 self.assertFalse(args[2]["execute"])
@@ -132,7 +132,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node._advance_after_section("meat", outcome="skipped")
         self.assertEqual(node.graph_state["pending"]["items"], {"치즈": "low"})
         self.assertEqual(node.graph_state["pending"]["type"], "execution")
-        self.assertEqual(node.call_response.call_args.args[7]["type"], "execution")
+        self.assertEqual(node.call_response.call_args.args[6]["type"], "execution")
 
     def test_extra_skip_starts_lid_without_claiming_extra_completion(self):
         # 2026-10-05: extra 다음은 lid(뚜껑)이며 사용자 입력 없이 자동 시작한다.
@@ -141,8 +141,8 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node._advance_after_section("extra", outcome="skipped")
         self.assertEqual(node.section, "lid")
         node._start_current_section.assert_called_once()
-        self.assertIsNone(node.call_response.call_args.args[7])
-        self.assertEqual(node.call_response.call_args.args[8]["section_transition"]["outcome"], "skipped")
+        self.assertIsNone(node.call_response.call_args.args[6])
+        self.assertEqual(node.call_response.call_args.args[7]["section_transition"]["outcome"], "skipped")
         node._set_stt_enabled.assert_not_called()
 
     def test_invalid_outcome_does_not_move_stage(self):
@@ -161,7 +161,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node.graph.invoke.return_value = {"session": session, "policy": {"execute": True},
                                           "reply": "이전 응답"}
         node._process_turn("바로 진행해")
-        self.assertEqual(node.call_response.call_args.args[8]["section_transition"]["outcome"], "skipped")
+        self.assertEqual(node.call_response.call_args.args[7]["section_transition"]["outcome"], "skipped")
         node._publish_reply.assert_called_once_with("모델이 만든 단계 전환 안내")
         self.assertEqual(node.graph_state["history"][-1]["content"], "모델이 만든 단계 전환 안내")
         self.assertEqual(node.runtime_log.log_turn.call_args.args[0]["status"], "section_advanced")

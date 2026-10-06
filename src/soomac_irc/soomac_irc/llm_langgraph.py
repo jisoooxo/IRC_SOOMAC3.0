@@ -245,19 +245,6 @@ def _pending_prompt(pending: dict | None) -> dict | None:
     return copy.deepcopy(pending)
 
 
-def _call_recommendation_compat(call_recommendation, session, decision, robot_state, user_text):
-    # 새 추천 함수에는 사용자 원문까지 넘긴다.
-    # 이전 형식의 test double도 리팩터 전환 기간에는 그대로 호출할 수 있게 둔다.
-    try:
-        return call_recommendation(
-            copy.deepcopy(session), copy.deepcopy(decision), copy.deepcopy(robot_state), None, user_text
-        )
-    except TypeError:
-        return call_recommendation(
-            copy.deepcopy(session), copy.deepcopy(decision), copy.deepcopy(robot_state), []
-        )
-
-
 def _has_explicit_new_semantics(decision: Decision) -> bool:
     # 사용자가 새 주문·제한·취향·추천을 명시했는지 구조화 결과만 보고 판단한다.
     return bool(
@@ -505,8 +492,11 @@ def build_graph(
         # 5. 추천 요청은 원문과 history를 추천 모델이 직접 읽는다.
         # 추천 결과도 일반 주문과 같은 validator를 통과한 뒤 pending에만 저장한다.
         if decision["recommendation"]["action"] in ("request", "revise"):
-            raw = _call_recommendation_compat(
-                call_recommendation, session, decision, state["robot_state"], state["user_text"]
+            raw = call_recommendation(
+                copy.deepcopy(session),
+                copy.deepcopy(decision),
+                copy.deepcopy(state["robot_state"]),
+                state["user_text"],
             )
             rec_validation = validate_recommendation_proposal(session, raw["proposal"], state["robot_state"])
             recommendation_result = {
@@ -628,7 +618,6 @@ def build_graph(
             copy.deepcopy(applied),
             copy.deepcopy(future),
             copy.deepcopy(state.get("recommendation_result")),
-            [],
             copy.deepcopy(next_prompt),
             copy.deepcopy(state["robot_state"]),
             state["decision"]["route"],

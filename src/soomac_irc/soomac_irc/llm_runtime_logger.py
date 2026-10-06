@@ -140,7 +140,7 @@ class LLMSessionJsonlLogger:
         self.turn_log_path = None
         self.event_log_path = None
 
-    def close(self, timeout: float = 0.0) -> None:
+    def close(self) -> None:
         # 동기 append 방식이므로 종료할 writer thread나 flush queue가 없다.
         return
 

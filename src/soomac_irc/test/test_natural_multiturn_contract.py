@@ -545,7 +545,6 @@ def test_multiple_failures_keep_valid_change_and_block_commit_for_response():
         applied,
         _future,
         _recommendation,
-        _queries,
         next_prompt,
         _robot,
         _route,

@@ -38,7 +38,6 @@ from std_msgs.msg import String
 from cosyvoice.cli.cosyvoice import AutoModel
 
 MODEL_DIR = '/home/roma/models/audio/tts/Fun-CosyVoice3-0.5B-2512'
-REFERENCE_WAV = '/home/roma/CosyVoice_new/asset/산사10.wav'
 OUTPUT_DIR = '/home/roma/ros2_ws/src/soomac_ai/src/tts_out'
 PROMPT_WAV = os.path.join(OUTPUT_DIR, 'prompt_5p5s.wav')
 LAST_WAV = os.path.join(OUTPUT_DIR, 'last.wav')

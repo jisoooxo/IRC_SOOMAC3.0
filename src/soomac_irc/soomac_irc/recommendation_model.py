@@ -30,14 +30,13 @@ def make_call_recommendation(model, processor, logger=None):
         session: SessionState,
         decision: Decision,
         robot_state: dict,
-        allowed_fields=None,
-        user_text: str | None = None,
+        user_text: str,
     ) -> dict:
         # Decision이 추천 조건을 별도 field로 번역하지 않는다.
         # 추천 모델이 사용자 원문·최근 대화·현재 주문을 직접 읽고 후보를 만든다.
         started = time.perf_counter()
         model_input = {
-            "current_user_text": (user_text or "").strip(),
+            "current_user_text": user_text.strip(),
             "recent_history": copy.deepcopy(session["history"][-(RECOMMENDATION_HISTORY_TURNS * 2):]),
             "order": copy.deepcopy(session["order"]),
             "restrictions": copy.deepcopy(session["order"].get("restrictions", [])),

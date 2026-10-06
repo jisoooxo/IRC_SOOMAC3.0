@@ -190,7 +190,6 @@ def main() -> None:
         "decision_model.py",
         "agent_contract.py",
         "agent_prompts.py",
-        "decision_overrides.py",
         "domain.py",
         "llm_policy.py",
         "llm_langgraph.py",

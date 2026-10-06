@@ -36,8 +36,6 @@ SECRET_ENV_NAME = 'CLOVA_SPEECH_SECRET_KEY'
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
-SAMPLE_WIDTH = 2
-FRAME_MS = 30
 FRAMES_PER_BUFFER = 480     # 30ms 분량. webrtcvad 는 10/20/30ms 만 받는다
 AUDIO_FORMAT = pyaudio.paInt16
 INPUT_DEVICE_INDEX = None   # hw:0,0 은 16kHz 를 못 연다. 기본 플러그인 경로를 써야 리샘플해준다

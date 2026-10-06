@@ -38,7 +38,6 @@ WORLD_CAM_TOPIC = "/vision/overlay_image"
 VLM_UI_IMAGE_TOPIC = "/agent/vlm_snapshot"
 NUMBER_IMAGE_FOR_CONFIRM = 5
 JOB_STOP = "stop"
-JOB_MODES = ("start", "turn", "reset", "finish", "confirm", "next") 
 
 AMOUNT_TO_COUNT = {
     "low": 1,
@@ -104,45 +103,10 @@ class LLMLangGraphNode(Node):
         self._jobs : queue.Queue[tuple[str, object]] = queue.Queue(maxsize=32)
         self._worker_stop = threading.Event()
 
-        """
-        threading.Event 객체는 Python에서 멀티쓰레딩 환경에서 스레드 간의 신호를 주고받기 위한 동기화 프리미티브
-        Event 객체는 내부적으로 불리언 플래그를 유지하며, 플래그가 설정(set)되었는지 여부를 스레드들이 확인하고 대기할 수 있다.
-        이를 통해 여러 스레드 간의 통신 및 동기화를 간편하게 할 수 있다.
-        """
-                # 최근 프레임만 보관하도록
-
         self.camera_lock = threading.Lock()
         self.latest_camera_message = None
         self.vlm_camera_messages = deque(maxlen=NUMBER_IMAGE_FOR_CONFIRM)
         self._clear_state()
-
-        """ clear state시 생성
-        self.graph_state = new_session_state()
-
-        self.section = "noodle"
-        self.task_queue = []
-        self.active_task = None
-        self.completed_tasks = []
-        self.robot_started = False
-
-        self.ui_started = False
-        self.pending_initial_next = False
-        self.conversation_started = False
-        self.order_finished = False
-
-        self.vlm_confirmed = False
-        self.verification_history = []
-
-        # 실제 PASS 또는 재시도 종료 장면을 다음 작업의 비교 이미지로 사용한다.
-        self.comparison_image = None
-        self.comparison_source = None
-        self.comparison_task_class = None
-
-        with self.camera_lock:
-            self.latest_camera_message = None
-            self.vlm_camera_messages.clear()
-
-        """
 
         self.runtime_log = LLMSessionJsonlLogger(logger=self.get_logger())
 
@@ -187,10 +151,6 @@ class LLMLangGraphNode(Node):
         try:
             self._jobs.put_nowait((mode, data)) # 큐 내부에 
 
-            """
-            put_nowait : (Queue)가 가득 차 있을 때 대기(blocking)하지 않고 즉시 queue — 동기화된 큐 클래스 예외를 발생시키는 비동기/동기 메서드
-            논블로킹(Non-blocking): 큐에 빈 자리가 없어도 코드가 멈추지 않고 즉시 실행된다.
-            """
             return True
         except queue.Full:
             self.get_logger().error(f"LLM 작업 queue가 가득 차서 {mode} 입력을 받지 못함")
@@ -629,7 +589,7 @@ class LLMLangGraphNode(Node):
                 {"status": "pass", "reason": "section_transition", "execute": False,
                  "conflicts": []},
                 build_applied_changes(self.graph_state, self.graph_state),
-                [], None, [], next_prompt, robot_state, "task",
+                [], None, next_prompt, robot_state, "task",
             )
             if not isinstance(reply, str) or not reply.strip():
                 raise ValueError("단계 전환 응답이 비어 있음")
@@ -1338,7 +1298,7 @@ class LLMLangGraphNode(Node):
                 final_session=copy.deepcopy(self.graph_state),
                 robot_state=self._build_robot_state(),
             )
-        self.runtime_log.close(timeout=2.0)
+        self.runtime_log.close()
 
         return super().destroy_node()
 

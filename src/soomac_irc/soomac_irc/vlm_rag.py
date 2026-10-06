@@ -4,9 +4,6 @@ import numpy as np
 from PIL import Image
 
 
-# DATA_ROOT = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v13"
-# CHROMA_PATH = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v13"
-
 DATA_ROOT = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v15"
 CHROMA_PATH = "/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v15"
 

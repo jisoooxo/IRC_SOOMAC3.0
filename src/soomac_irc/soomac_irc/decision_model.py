@@ -82,11 +82,6 @@ def _parse_sparse_decision(raw: str) -> dict:
     return json.loads(raw, object_pairs_hook=_reject_duplicate_json_keys)
 
 
-def parse_decision(raw: str, session: SessionState | None = None) -> Decision:
-    # session 인자는 이전 호출부 호환용이며, 새 계약은 현재 JSON 자체만 정규화한다.
-    return normalize_decision(_parse_sparse_decision(raw))
-
-
 #################### 실제 Decision 추론 함수 만들기 ####################
 
 def make_call_decision(model, processor, logger=None):

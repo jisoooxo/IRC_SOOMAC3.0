@@ -28,17 +28,3 @@ RESTRICTION_PRIORITY = (
     "dietary_rule",
     "dislike",
 )
-
-RESTRICTION_CATEGORIES = (
-    "유제품",
-    "갑각류",
-    "육류",
-    "비건",
-)
-
-# 주문 집합 표현이 가리키는 canonical 토핑 묶음
-ORDER_COLLECTION_TARGETS = {
-    "야채": ("양파", "버섯"),
-    "채소": ("양파", "버섯"),
-    "추가 재료": ("치즈", "페퍼론치노"),
-}

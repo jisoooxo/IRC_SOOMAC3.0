@@ -113,18 +113,6 @@ def protected_order_keys(robot_state: dict) -> list[str]:
     return protected
 
 
-def compact_order_patch(patch: dict) -> dict:
-    # Response나 pending에 넘길 때 의미 없는 null·빈 toppings를 제거한다.
-    compact = {
-        field: copy.deepcopy(patch[field])
-        for field in ("sauce", "noodle_type", "noodle_portion")
-        if patch.get(field) is not None
-    }
-    if patch.get("toppings"):
-        compact["toppings"] = copy.deepcopy(patch["toppings"])
-    return compact
-
-
 def changed_order_keys_from_patch(patch: dict) -> list[str]:
     # patch에 실제로 들어온 값만 평평한 key 목록으로 바꾼다.
     # restriction 충돌이 이번 사용자 요청 때문인지 구분할 때 사용한다.
