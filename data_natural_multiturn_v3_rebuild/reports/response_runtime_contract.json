@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "rows": 1225,
+  "runtime_contract_mismatch_found": 693,
+  "runtime_contract_mismatch_fixed": 693,
+  "runtime_contract_mismatch_remaining": 0,
+  "fixed_families": {
+    "current_partial_unsupported_fixture": 1,
+    "current_restriction_conflict_fixture": 1,
+    "current_physical_conflict_fixture": 1,
+    "normal_order_mutation": 60,
+    "recommendation_unavailable": 60,
+    "unsupported": 60,
+    "restriction_conflict": 60,
+    "physical_conflict": 60,
+    "partial_success": 60,
+    "status_question": 60,
+    "section_transition": 15,
+    "understanding_clarify": 60,
+    "stt_noisy": 15,
+    "pending_status_question": 60,
+    "multiple_validation_issues": 60,
+    "completion": 60
+  },
+  "failure_families": {},
+  "failures": [],
+  "canonical_sources": [
+    "src/soomac_irc/soomac_irc/llm_langgraph.py",
+    "src/soomac_irc/soomac_irc/llm_langgraph_node.py",
+    "src/soomac_irc/soomac_irc/response_model.py"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "contract": "natural_multiturn_v3",
+  "runtime_commit": "25ce994",
+  "decision": {
+    "splits": {
+      "train": 2595,
+      "validation": 285,
+      "test": 285,
+      "challenge": 495,
+      "holdout": 377
+    },
+    "legacy_candidates": 3339,
+    "runtime_reviewed": 14,
+    "excluded_eval_identity": 171,
+    "duplicates_removed": 17,
+    "holdout_duplicates_removed": 0
+  },
+  "response": {
+    "splits": {
+      "train": 898,
+      "validation": 101,
+      "test": 86,
+      "challenge": 75,
+      "holdout": 65
+    },
+    "new_synthetic": 1440,
+    "reviewed": 12,
+    "duplicates_removed": 227
+  }
+}

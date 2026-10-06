@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "counts": {
+    "train": 2595,
+    "validation": 285,
+    "test": 285,
+    "challenge": 495,
+    "holdout": 377
+  },
+  "schema_invalid": 0,
+  "legacy_field": 0,
+  "duplicate": 0,
+  "routes": {
+    "task": 2874,
+    "general": 676,
+    "mixed": 487
+  },
+  "target_fields": {
+    "route": 4037,
+    "order": 2165,
+    "restrictions": 518,
+    "preferences": 65,
+    "recommendation": 177,
+    "confirmation": 206,
+    "commit": 204,
+    "clarify": 198
+  },
+  "failures": [],
+  "duplicate_examples": []
+}

@@ -862,6 +862,146 @@ phrase dictionary를 Python runtime 코드로 옮기지 않는다.
 
 ---
 
+## 14. Natural Multiturn V3 dataset semantic cleanup과 runtime contract 최종 검증
+
+참고 bundle: [data_natural_multiturn_v3_rebuild](../data_natural_multiturn_v3_rebuild), [BUILD_REPORT.md](../data_natural_multiturn_v3_rebuild/BUILD_REPORT.md), [DATA_QUALITY_REPORT.md](../data_natural_multiturn_v3_rebuild/DATA_QUALITY_REPORT.md)
+
+→ runtime `25ce994`를 정본으로 Decision v3와 Response v1 dataset을 재구축하고, 학습 전에 semantic gold와 실제 Response 입력 구조를 최종 검증했다.
+
+이번 단계에서는 runtime source와 schema를 수정하지 않았다. 학습, `git add`, commit도 실행하지 않았다.
+
+### 14.1 Semantic cleanup
+
+schema·duplicate·contamination 검사만으로 잡히지 않던 semantic 오류를 generator 원인에서 수정했다.
+
+| 항목 | 발견 | 수정 | 잔여 |
+|---|---:|---:|---:|
+| Decision fake mutation | 68 | 68 | 0 |
+| Response completed/pending 모순 | 60 | 60 | 0 |
+| 부자연스러운 한국어 영향 row | 1,246 | 1,246 | 0 |
+
+Decision의 원인은 `unsupported_mutation()`이 주문용 `해줘`와 설명용 `설명해줘`를 같은 동작으로 취급한 것이었다. 재료명 뒤에 실제 추가·삭제·변경 동작이 있는 경우만 unsupported mutation으로 복원하도록 수정했다.
+
+```text
+설명 대상: 로봇, 갑각류, 유제품, 육류
+→ order mutation 생성 금지
+
+명시적 요청: 베이컨 많이 넣어줘
+→ toppings.베이컨=high 유지
+```
+
+Response의 `pending_status_question`은 선택 상태를 `task_completed`로 기록해 같은 대상을 완료와 실행 대기로 동시에 만들고 있었다. 이를 실제 session event인 `turn_applied.order_changes`로 바꿨다.
+
+한국어 생성은 받침 기반의 주제격·목적격·주격·방향격과 `이에요/예요`를 사용하도록 통합했다.
+
+```text
+버섯는          → 버섯은
+소시지이        → 소시지가
+페퍼론치노이에요 → 페퍼론치노예요
+많이로          → 많이
+```
+
+Decision high-risk 200행과 Response high-risk 200행에는 다음 review metadata를 기록했다.
+
+```json
+{
+  "semantic_review": "pass | fixed | discard",
+  "review_reason": "...",
+  "error_class": []
+}
+```
+
+이번 표본은 수정 영향 row를 우선 추출했으므로 Decision 200행과 Response 200행 모두 `fixed`, discard는 0이다.
+
+### 14.2 Response runtime contract 전수 검사
+
+정본은 현재 [llm_langgraph.py](../src/soomac_irc/soomac_irc/llm_langgraph.py), [llm_langgraph_node.py](../src/soomac_irc/soomac_irc/llm_langgraph_node.py), [response_model.py](../src/soomac_irc/soomac_irc/response_model.py) 세 파일이다.
+
+Response 전체 1,225행에서 runtime contract mismatch 693행을 발견했고 모두 해당 synthetic family 또는 reviewed fixture 생성 단계에서 수정했다.
+
+| 수정 범위 | row |
+|---|---:|
+| validation issue 5개 family | 300 |
+| 상태 조회·실행 불가능 family | 240 |
+| current-update pending 구조 | 75 |
+| recommendation unavailable | 60 |
+| section transition | 15 |
+| reviewed fixture | 3 |
+
+주요 차이는 다음과 같다.
+
+```text
+policy.status=partial          → warning
+unsupported/restriction/physical의 blocked → warning
+recommendation_unavailable    → clarify
+policy.reason=state_query      → state_update_only
+next_prompt=section_selection  → section_prompt
+개별 issue next_prompt         → validation_issues
+robot task {class, amount}     → {class, repeat_count}
+```
+
+`active_execution`은 Node가 `active_task` 또는 `task_queue`가 존재할 때 STT turn을 Graph에 전달하지 않으므로 실제 Response 입력으로 생성될 수 없다. 해당 60행은 실제 가능한 `understanding_clarify` family로 교체했다.
+
+current-update execution pending은 session에는 `items`를 저장하지 않고, `_pending_prompt()`가 Response 입력의 `items={}`를 만든다. preselected pending만 `items`와 `candidate`를 유지하도록 dataset을 맞췄다.
+
+section transition은 Node가 실제로 넣는 다음 정보를 모두 포함하도록 수정했다.
+
+```text
+policy.reason=section_transition
+next_prompt.type=section_prompt
+robot_state.section_transition
+completed_tasks
+robot_started=true
+recent_action_history의 section_transition event
+```
+
+### 14.3 Decision 9행 감소 원인
+
+semantic cleanup 전 Decision train/validation/test 합계는 3,174행, cleanup 후 합계는 3,165행이다.
+
+**감소한 9행이 전부 재라벨 이후 중복 제거된 것은 아니다.**
+
+```text
+4행 → 한국어 정규화 후 input/target이 같아져 duplicate 제거
+5행 → 정규화 후 frozen evaluation 발화와 같아져 training에서 격리
+임의 discard → 0
+```
+
+추가로 격리된 5행은 `DV3-L01096`, `DV3-L01097`, `DV3-L01098`, `DV3-L01099`, `DV3-L01466`이다.
+
+### 14.4 최종 dataset과 검증 결과
+
+| dataset | train | validation | test | challenge | holdout | total |
+|---|---:|---:|---:|---:|---:|---:|
+| Decision v3 | 2,595 | 285 | 285 | 495 | 377 | 4,037 |
+| Response v1 | 898 | 101 | 86 | 75 | 65 | 1,225 |
+
+Response는 family 교체 뒤 balanced split을 다시 계산해 train 899→898, test 85→86으로 한 행 이동했지만 전체 1,225행은 유지했다.
+
+최종 검증 결과:
+
+```text
+Decision schema / semantic       PASS
+Response schema / fact / prompt  PASS
+Response runtime contract        PASS
+Response lifecycle consistency   PASS
+Korean language quality          PASS
+duplicate                        0
+contamination                    0
+compileall                       PASS
+git diff --check                 PASS
+```
+
+검증 결과는 [response_runtime_contract.json](../data_natural_multiturn_v3_rebuild/reports/response_runtime_contract.json)과 [quality_report.json](../data_natural_multiturn_v3_rebuild/quality_report.json)에 저장했다.
+
+**최종 판정은 `READY FOR TRAINING`이다. 이 판정 이후에는 추가적인 dataset 구조 재검토 없이 학습 단계로 이동한다.**
+
+Cause: synthetic Response가 과거 policy status와 가상의 prompt/task 구조를 일부 유지하고 있었다.
+
+Effect: Response 1,225행은 현재 Graph와 ROS Node가 실제 생성할 수 있는 입력 구조만 사용한다.
+
+---
+
 ## 용어 정리
 
 ### Sparse Decision

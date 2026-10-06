@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "malformed_found": 1228,
+  "malformed_fixed": 1228,
+  "malformed_remaining": 0,
+  "decision": {
+    "rows": 4037,
+    "fixed": 605,
+    "malformed": 0,
+    "examples": []
+  },
+  "response": {
+    "rows": 1225,
+    "fixed": 623,
+    "malformed": 0,
+    "examples": []
+  }
+}

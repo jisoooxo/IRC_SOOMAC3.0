@@ -1,0 +1,243 @@
+{
+  "status": "READY FOR TRAINING",
+  "runtime_source_changed": false,
+  "contract": "natural_multiturn_v3",
+  "runtime_commit": "25ce994",
+  "decision_validation": {
+    "status": "PASS",
+    "counts": {
+      "train": 2595,
+      "validation": 285,
+      "test": 285,
+      "challenge": 495,
+      "holdout": 377
+    },
+    "schema_invalid": 0,
+    "legacy_field": 0,
+    "duplicate": 0,
+    "routes": {
+      "task": 2874,
+      "general": 676,
+      "mixed": 487
+    },
+    "target_fields": {
+      "route": 4037,
+      "order": 2165,
+      "restrictions": 518,
+      "preferences": 65,
+      "recommendation": 177,
+      "confirmation": 206,
+      "commit": 204,
+      "clarify": 198
+    },
+    "failures": [],
+    "duplicate_examples": []
+  },
+  "response_validation": {
+    "status": "PASS",
+    "counts": {
+      "train": 898,
+      "validation": 101,
+      "test": 86,
+      "challenge": 75,
+      "holdout": 65
+    },
+    "invalid_input": 0,
+    "empty_reply": 0,
+    "fact_consistency_failure": 0,
+    "next_prompt_failure": 0,
+    "duplicate": 0,
+    "families": {
+      "current_execution_pending_fixture": 1,
+      "current_recommendation_fixture": 1,
+      "current_missing_order_fixture": 1,
+      "current_partial_unsupported_fixture": 1,
+      "current_restriction_conflict_fixture": 1,
+      "current_physical_conflict_fixture": 1,
+      "current_confirmation_reject_fixture": 1,
+      "prompt_boundary_general": 1,
+      "current_execution_allowed_fixture": 1,
+      "current_section_transition_fixture": 1,
+      "normal_order_mutation": 60,
+      "execution_accept": 60,
+      "recommendation_revise": 60,
+      "recommendation_unavailable": 60,
+      "recommendation_reject": 15,
+      "preference_update": 20,
+      "restriction_update": 60,
+      "missing_order": 53,
+      "unsupported": 60,
+      "restriction_conflict": 60,
+      "physical_conflict": 60,
+      "partial_success": 60,
+      "status_question": 60,
+      "general_question": 15,
+      "mixed_turn": 60,
+      "section_transition": 15,
+      "understanding_clarify": 60,
+      "stt_noisy": 15,
+      "pending_status_question": 60,
+      "multiple_validation_issues": 60,
+      "current_preselected_refresh_fixture": 1,
+      "preselected_pending": 60,
+      "legacy_robot_completed_fixture": 1,
+      "completion": 60,
+      "recommendation_request": 60,
+      "execution_reject": 60
+    },
+    "next_prompt_types": {
+      "execution": 197,
+      "recommendation": 121,
+      "missing_order": 54,
+      "validation_issues": 303,
+      "none": 534,
+      "section_prompt": 16
+    },
+    "failures": [],
+    "duplicate_examples": []
+  },
+  "decision_semantic_audit": {
+    "status": "PASS",
+    "rows": 4037,
+    "mixed_route_inspected": 487,
+    "question_or_description_with_order_inspected": 413,
+    "explicit_unsupported_mutations_preserved": 256,
+    "known_fake_mutations_fixed": 68,
+    "fake_mutations_detected": 68,
+    "fake_mutations_discarded": 0,
+    "known_fake_mutation": 0,
+    "semantic_suspicious": 0,
+    "unresolved_suspicious_mutations": 0,
+    "suspicious_examples": [],
+    "high_risk_review": {
+      "rows": 200,
+      "status_counts": {
+        "fixed": 200
+      },
+      "missing_review_fields": []
+    }
+  },
+  "response_state_consistency": {
+    "status": "PASS",
+    "rows": 1225,
+    "completed_pending_contradiction": 0,
+    "active_pending_contradiction": 0,
+    "invalid_robot_lifecycle": 0,
+    "pending_without_next_prompt": 0,
+    "fact_mismatch": 0,
+    "impossible_state_detected": 60,
+    "impossible_state_fixed": 60,
+    "impossible_state_discarded": 0,
+    "known_impossible_state": 0,
+    "examples": {
+      "completed_pending": [],
+      "active_pending": [],
+      "invalid_robot_lifecycle": [],
+      "pending_without_next_prompt": [],
+      "fact_mismatch": []
+    },
+    "high_risk_review": {
+      "rows": 200,
+      "status_counts": {
+        "fixed": 200
+      },
+      "missing_review_fields": []
+    }
+  },
+  "response_runtime_contract": {
+    "status": "PASS",
+    "rows": 1225,
+    "runtime_contract_mismatch_found": 693,
+    "runtime_contract_mismatch_fixed": 693,
+    "runtime_contract_mismatch_remaining": 0,
+    "fixed_families": {
+      "current_partial_unsupported_fixture": 1,
+      "current_restriction_conflict_fixture": 1,
+      "current_physical_conflict_fixture": 1,
+      "normal_order_mutation": 60,
+      "recommendation_unavailable": 60,
+      "unsupported": 60,
+      "restriction_conflict": 60,
+      "physical_conflict": 60,
+      "partial_success": 60,
+      "status_question": 60,
+      "section_transition": 15,
+      "understanding_clarify": 60,
+      "stt_noisy": 15,
+      "pending_status_question": 60,
+      "multiple_validation_issues": 60,
+      "completion": 60
+    },
+    "failure_families": {},
+    "failures": [],
+    "canonical_sources": [
+      "src/soomac_irc/soomac_irc/llm_langgraph.py",
+      "src/soomac_irc/soomac_irc/llm_langgraph_node.py",
+      "src/soomac_irc/soomac_irc/response_model.py"
+    ]
+  },
+  "language_quality": {
+    "status": "PASS",
+    "malformed_found": 1228,
+    "malformed_fixed": 1228,
+    "malformed_remaining": 0,
+    "decision": {
+      "rows": 4037,
+      "fixed": 605,
+      "malformed": 0,
+      "examples": []
+    },
+    "response": {
+      "rows": 1225,
+      "fixed": 623,
+      "malformed": 0,
+      "examples": []
+    }
+  },
+  "contamination": {
+    "decision_v3": {
+      "status": "PASS",
+      "rows": 4037,
+      "train": 2595,
+      "evaluation": 872,
+      "leak_count": 0,
+      "leaks": [],
+      "orphan_ids": 0
+    },
+    "response_v1": {
+      "status": "PASS",
+      "rows": 1225,
+      "train": 898,
+      "evaluation": 140,
+      "leak_count": 0,
+      "leaks": [],
+      "orphan_ids": 0
+    },
+    "status": "PASS"
+  },
+  "high_risk_review": {
+    "decision": {
+      "reviewed": 200,
+      "fixed": 200,
+      "discarded": 0
+    },
+    "response": {
+      "reviewed": 200,
+      "fixed": 200,
+      "discarded": 0
+    }
+  },
+  "self_audit": {
+    "runtime_source_change": 0,
+    "legacy_decision_field": 0,
+    "old_model_prediction_as_gold": 0,
+    "train_eval_contamination": 0,
+    "duplicate": 0,
+    "response_fact_consistency_failure": 0,
+    "response_next_prompt_failure": 0,
+    "decision_unresolved_suspicious_mutation": 0,
+    "response_state_contradiction": 0,
+    "response_runtime_contract_mismatch": 0,
+    "malformed_korean": 0
+  }
+}

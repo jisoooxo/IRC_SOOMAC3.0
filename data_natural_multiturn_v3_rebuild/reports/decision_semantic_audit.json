@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "rows": 4037,
+  "mixed_route_inspected": 487,
+  "question_or_description_with_order_inspected": 413,
+  "explicit_unsupported_mutations_preserved": 256,
+  "known_fake_mutations_fixed": 68,
+  "fake_mutations_detected": 68,
+  "fake_mutations_discarded": 0,
+  "known_fake_mutation": 0,
+  "semantic_suspicious": 0,
+  "unresolved_suspicious_mutations": 0,
+  "suspicious_examples": [],
+  "high_risk_review": {
+    "rows": 200,
+    "status_counts": {
+      "fixed": 200
+    },
+    "missing_review_fields": []
+  }
+}

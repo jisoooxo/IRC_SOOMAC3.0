@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "rows": 1225,
+  "completed_pending_contradiction": 0,
+  "active_pending_contradiction": 0,
+  "invalid_robot_lifecycle": 0,
+  "pending_without_next_prompt": 0,
+  "fact_mismatch": 0,
+  "impossible_state_detected": 60,
+  "impossible_state_fixed": 60,
+  "impossible_state_discarded": 0,
+  "known_impossible_state": 0,
+  "examples": {
+    "completed_pending": [],
+    "active_pending": [],
+    "invalid_robot_lifecycle": [],
+    "pending_without_next_prompt": [],
+    "fact_mismatch": []
+  },
+  "high_risk_review": {
+    "rows": 200,
+    "status_counts": {
+      "fixed": 200
+    },
+    "missing_review_fields": []
+  }
+}
