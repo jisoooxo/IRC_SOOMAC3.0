@@ -18,7 +18,8 @@ sys.path.insert(0, str(PACKAGE_ROOT))
 
 from soomac_irc import model_runtime
 from soomac_irc.decision_model import make_call_decision
-from soomac_irc.llm_langgraph import build_graph, new_session_state, new_turn_state
+from soomac_irc.agent_contract import new_session_state, new_turn_state
+from soomac_irc.llm_langgraph import build_graph
 from soomac_irc.recommendation_model import make_call_recommendation
 from soomac_irc.response_model import make_call_response
 

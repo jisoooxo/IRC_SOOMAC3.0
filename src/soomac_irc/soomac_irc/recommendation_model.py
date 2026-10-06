@@ -6,10 +6,13 @@ import torch
 import xgrammar as xgr
 from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
-from soomac_irc.agent_contract import RECOMMENDATION_SCHEMA
+from soomac_irc.agent_contract import (
+    RECOMMENDATION_SCHEMA,
+    NormalizedDecision,
+    SessionState,
+)
 from soomac_irc.agent_prompts import RECOMMENDATION_SYSTEM
 from soomac_irc.domain import AMOUNTS, NOODLE_TYPES, SAUCES, TOPPINGS
-from soomac_irc.llm_langgraph import Decision, SessionState
 
 RECOMMENDATION_MAX_TOKENS = 1024
 RECOMMENDATION_HISTORY_TURNS = 10
@@ -28,7 +31,7 @@ def make_call_recommendation(model, processor, logger=None):
     @torch.inference_mode()
     def call_recommendation(
         session: SessionState,
-        decision: Decision,
+        decision: NormalizedDecision,
         robot_state: dict,
         user_text: str,
     ) -> dict:

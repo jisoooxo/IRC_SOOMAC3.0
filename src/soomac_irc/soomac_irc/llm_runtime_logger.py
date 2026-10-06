@@ -4,6 +4,11 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from soomac_irc.agent_contract import (
+    RUNTIME_CONTRACT_VERSION,
+    RUNTIME_LOG_SCHEMA_VERSION,
+)
+
 
 class LLMSessionJsonlLogger:
     """세션별 LLM trace와 보조 runtime event를 JSONL로 저장한다.
@@ -16,7 +21,8 @@ class LLMSessionJsonlLogger:
     - 성공 turn과 실패 turn을 모두 남길 수 있도록 log_turn()은 독립적으로 호출한다.
     """
 
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = RUNTIME_LOG_SCHEMA_VERSION
+    CONTRACT_VERSION = RUNTIME_CONTRACT_VERSION
 
     def __init__(self, base_dir: str | None = None, logger=None):
         configured = base_dir or os.environ.get("SOOMAC_LLM_LOG_DIR")
@@ -98,6 +104,7 @@ class LLMSessionJsonlLogger:
 
         row = {
             "schema_version": self.SCHEMA_VERSION,
+            "contract_version": self.CONTRACT_VERSION,
             "record_type": "agent_turn",
             "timestamp": datetime.now().astimezone().isoformat(timespec="milliseconds"),
             "session_id": self.session_id,
@@ -112,6 +119,7 @@ class LLMSessionJsonlLogger:
         self._event_seq += 1
         row = {
             "schema_version": self.SCHEMA_VERSION,
+            "contract_version": self.CONTRACT_VERSION,
             "record_type": "runtime_event",
             "timestamp": datetime.now().astimezone().isoformat(timespec="milliseconds"),
             "session_id": self.session_id,

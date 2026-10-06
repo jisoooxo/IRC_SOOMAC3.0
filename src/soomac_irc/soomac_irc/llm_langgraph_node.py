@@ -16,7 +16,12 @@ from std_msgs.msg import Bool, Int16, String
 
 from soomac_irc.model_runtime import DECISION_ADAPTER_PATH, load_model, make_call_vlm
 from soomac_irc.decision_model import make_call_decision
-from soomac_irc.llm_langgraph import build_graph, build_preselected_confirmation_reply, build_preselected_section_confirmation, new_session_state, new_turn_state
+from soomac_irc.agent_contract import new_session_state, new_turn_state
+from soomac_irc.llm_langgraph import (
+    build_graph,
+    build_preselected_confirmation_reply,
+    build_preselected_section_confirmation,
+)
 from soomac_irc.llm_policy import build_applied_changes, section_execution_items
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
 from soomac_irc.recommendation_model import make_call_recommendation

@@ -9,18 +9,27 @@ from pathlib import Path
 
 import xgrammar as xgr
 
-from soomac_irc.agent_contract import DECISION_SCHEMA, normalize_decision
+from soomac_irc.agent_contract import (
+    DECISION_SCHEMA,
+    DuplicateDecisionKeyError,
+    NormalizedDecision,
+    PolicyIssues,
+    RUNTIME_CONTRACT_VERSION,
+    RUNTIME_LOG_SCHEMA_VERSION,
+    new_decision,
+    new_session_state,
+    new_turn_state,
+    normalize_decision,
+)
 from soomac_irc.agent_prompts import DECISION_SYSTEM
 from soomac_irc.decision_model import DECISION_KEYS_ANY_ORDER, build_decision_model_input
 from soomac_irc.llm_langgraph import (
-    DuplicateDecisionKeyError,
     build_graph,
     build_preselected_section_confirmation,
     find_structural_decision_errors,
-    new_session_state,
-    new_turn_state,
 )
 from soomac_irc.llm_policy import validate_restriction_options
+from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
 
 
 def robot_state(section="veggie", *, completed=None, active=None, queue=None, started=False):
@@ -103,15 +112,46 @@ def run(session, decision, state, text="테스트"):
 
 def test_schema_and_session_use_the_v3_contract():
     properties = DECISION_SCHEMA["properties"]
-    assert "mentions" not in properties
-    assert "queries" not in properties
-    assert "cancel" not in properties
+    assert set(properties) == {
+        "route",
+        "order",
+        "restrictions",
+        "preferences",
+        "recommendation",
+        "commit",
+        "confirmation",
+        "clarify",
+    }
     assert "oneOf" not in DECISION_SCHEMA
     assert "maxProperties" not in DECISION_SCHEMA
-    assert "cancel" not in normalize_decision({"route": "task"})
+    normalized = normalize_decision({"route": "task"})
+    assert set(normalized) == {
+        "route",
+        "understanding",
+        "order_patch",
+        "restriction_options",
+        "preference_options",
+        "recommendation",
+        "commit",
+        "confirmation",
+    }
+    assert set(NormalizedDecision.__required_keys__) == set(new_decision())
     assert set(new_session_state()) == {
         "order", "preferences", "pending", "history", "action_history"
     }
+
+    forbidden = {
+        "mentions",
+        "queries",
+        "cancel",
+        "pending_question",
+        "pending_confirmation",
+        "dialogue_focus",
+        "reference_context",
+    }
+    assert forbidden.isdisjoint(properties)
+    assert forbidden.isdisjoint(normalized)
+    assert forbidden.isdisjoint(new_session_state())
 
 
 def test_decision_prompt_keeps_contextual_grounding_boundaries():
@@ -568,6 +608,7 @@ def test_multiple_failures_keep_valid_change_and_block_commit_for_response():
     assert result["policy"]["execute"] is False
     assert result["policy"]["issues"]["unsupported"][0]["item"] == "햄"
     assert result["policy"]["issues"]["restriction_conflicts"][0]["item"] == "게살"
+    assert set(result["policy"]["issues"]) == set(PolicyIssues.__required_keys__)
     assert captured["policy"]["issues"] == result["policy"]["issues"]
     assert captured["applied"]["order_changes"] == {"toppings.양파": "high"}
     assert captured["next_prompt"]["type"] == "validation_issues"
@@ -839,7 +880,11 @@ def test_recommendation_stays_pending_until_acceptance():
     )
     proposed = graph.invoke(new_turn_state(session, "추천해줘", robot_state()))
     assert proposed["session"]["order"]["toppings"] == {}
-    assert proposed["session"]["pending"]["type"] == "recommendation"
+    assert proposed["session"]["pending"] == {
+        "type": "recommendation",
+        "candidate": recommendation["proposal"],
+        "reason_tags": ["담백함"],
+    }
 
     accepted = run(
         proposed["session"],
@@ -856,6 +901,9 @@ def test_preselected_future_choice_uses_execution_pending():
     assert pending["type"] == "execution"
     assert pending["source"] == "preselected"
     assert pending["targets"] == ["소시지"]
+    assert set(pending) == {
+        "type", "source", "section", "targets", "items", "candidate"
+    }
 
 
 def test_commit_is_model_owned_but_runtime_checks_missing_and_busy():
@@ -889,3 +937,27 @@ def test_duplicate_decision_key_falls_back_without_mutating_state():
     assert result["policy"]["reason"] == "understanding"
     assert result["policy"]["execute"] is False
     assert result["session"]["order"] == session["order"]
+
+
+def test_runtime_log_rows_identify_current_contract(tmp_path):
+    logger = LLMSessionJsonlLogger(base_dir=str(tmp_path))
+    session = new_session_state()
+    state = robot_state()
+    session_dir = Path(logger.start_session(session, state))
+    logger.log_turn({"turn_id": logger.next_turn_id(), "result": "ok"})
+    logger.end_session("test_complete", session, state)
+
+    rows = []
+    for path in (session_dir / "agent_turns.jsonl", session_dir / "runtime_events.jsonl"):
+        rows.extend(
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+        )
+
+    assert rows
+    assert {row["schema_version"] for row in rows} == {
+        RUNTIME_LOG_SCHEMA_VERSION
+    }
+    assert {row["contract_version"] for row in rows} == {
+        RUNTIME_CONTRACT_VERSION
+    }

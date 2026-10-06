@@ -13,9 +13,9 @@ import unittest
 from unittest.mock import Mock
 
 from soomac_irc.domain import SECTION_ORDER
+from soomac_irc.agent_contract import new_session_state, new_turn_state
 from soomac_irc.llm_langgraph import (
     build_preselected_confirmation_reply, build_preselected_section_confirmation,
-    new_session_state, new_turn_state,
 )
 from soomac_irc.llm_policy import build_applied_changes
 

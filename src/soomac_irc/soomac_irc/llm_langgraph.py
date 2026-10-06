@@ -1,7 +1,14 @@
 import copy
-from typing import Callable, TypedDict
+from typing import Callable
 
-from soomac_irc.agent_contract import empty_order_patch, new_decision
+from soomac_irc.agent_contract import (
+    DuplicateDecisionKeyError as _DuplicateDecisionKeyError,
+    NormalizedDecision as _NormalizedDecision,
+    SessionState as _SessionState,
+    TurnState as _TurnState,
+    empty_order_patch,
+    new_decision,
+)
 from soomac_irc.llm_policy import (
     allowed_order_fields,
     apply_order_patch,
@@ -21,81 +28,6 @@ from soomac_irc.llm_policy import (
 )
 
 
-class SessionState(TypedDict):
-    # 확정된 주문 사실과 자연어 대화 기억만 session에 보관한다.
-    # 아직 확정하지 않은 실행·추천은 pending 하나에서 종류로 구분한다.
-    order: dict
-    preferences: list[dict]
-    pending: dict | None
-    history: list[dict]
-    action_history: list[dict]
-
-
-class Decision(TypedDict):
-    route: str
-    understanding: str
-    order_patch: dict
-    restriction_options: list[dict]
-    preference_options: list[dict]
-    recommendation: dict
-    commit: bool
-    confirmation: str
-
-
-class TurnState(TypedDict, total=False):
-    session: SessionState
-    previous_session: SessionState
-    user_text: str
-    robot_state: dict
-    decision: Decision | None
-    recommendation_result: dict | None
-    policy: dict | None
-    reply: str | None
-
-
-class DuplicateDecisionKeyError(ValueError):
-    pass
-
-
-#################### 새 주문·세션·턴 state 만들기 ####################
-
-def new_order_state() -> dict:
-    # 실제 주문의 기준값이다. 추천 후보나 거절된 값은 이 dict에 넣지 않는다.
-    return {
-        "sauce": None,
-        "noodle_type": None,
-        "noodle_portion": None,
-        "toppings": {},
-        "restrictions": [],
-    }
-
-
-def new_session_state() -> SessionState:
-    # 한 주문 대화가 시작될 때 만드는 최소 session 구조이다.
-    return {
-        "order": new_order_state(),
-        "preferences": [],
-        "pending": None,
-        "history": [],
-        "action_history": [],
-    }
-
-
-def new_turn_state(session: SessionState, user_text: str, robot_state: dict) -> TurnState:
-    # Graph는 복사본에서만 동작한다. 중간 단계가 실패해도 실제 Node state가 오염되지 않는다.
-    session_copy = copy.deepcopy(session)
-    return {
-        "session": session_copy,
-        "previous_session": copy.deepcopy(session_copy),
-        "user_text": user_text,
-        "robot_state": copy.deepcopy(robot_state),
-        "decision": None,
-        "recommendation_result": None,
-        "policy": None,
-        "reply": None,
-    }
-
-
 #################### 주문 patch와 pending을 다루는 작은 도우미 ####################
 
 def _patch_has_values(patch: dict) -> bool:
@@ -108,7 +40,7 @@ def _patch_has_values(patch: dict) -> bool:
     )
 
 
-def _external_decision_view(decision: Decision) -> dict:
+def _external_decision_view(decision: _NormalizedDecision) -> dict:
     """주입형 test double이 sparse 원문을 제공하지 않을 때 외부 계약 모양만 복원한다."""
     external = {"route": decision["route"]}
     patch = decision["order_patch"]
@@ -136,7 +68,7 @@ def _external_decision_view(decision: Decision) -> dict:
     return external
 
 
-def find_structural_decision_errors(decision: Decision) -> list[str]:
+def find_structural_decision_errors(decision: _NormalizedDecision) -> list[str]:
     """Decision 내부 field끼리 동시에 성립할 수 없는 조합만 찾는다.
 
     사용자 문장·메뉴 domain·session·robot state는 보지 않는다. 지원 여부와 물리적
@@ -194,7 +126,7 @@ def _remove_patch_from_order(order: dict, patch: dict) -> dict:
     return updated
 
 
-def build_preselected_section_confirmation(session: SessionState, section: str) -> dict | None:
+def build_preselected_section_confirmation(session: _SessionState, section: str) -> dict | None:
     """미리 고른 미래 section 재료를 execution pending 하나로 묶는다."""
     if section not in ("veggie", "meat", "extra"):
         return None
@@ -245,7 +177,7 @@ def _pending_prompt(pending: dict | None) -> dict | None:
     return copy.deepcopy(pending)
 
 
-def _has_explicit_new_semantics(decision: Decision) -> bool:
+def _has_explicit_new_semantics(decision: _NormalizedDecision) -> bool:
     # 사용자가 새 주문·제한·취향·추천을 명시했는지 구조화 결과만 보고 판단한다.
     return bool(
         _patch_has_values(decision["order_patch"])
@@ -255,7 +187,10 @@ def _has_explicit_new_semantics(decision: Decision) -> bool:
     )
 
 
-def _resolve_pending(session: SessionState, decision: Decision) -> tuple[SessionState, Decision, dict | None]:
+def _resolve_pending(
+    session: _SessionState,
+    decision: _NormalizedDecision,
+) -> tuple[_SessionState, _NormalizedDecision, dict | None]:
     """구조화된 pending의 수락·거절·교체만 처리한다.
 
     자연어 의미는 이미 Decision이 판단했으므로 여기서는 사용자 문장을 다시 해석하지 않는다.
@@ -325,7 +260,7 @@ def build_graph(
 ):
     from langgraph.graph import END, START, StateGraph
 
-    def interpret_decision(state: TurnState) -> dict:
+    def interpret_decision(state: _TurnState) -> dict:
         # 모델 출력은 아직 후보일 뿐이다. duplicate key는 기존 정책대로 바로 안전 종료한다.
         try:
             decision = call_decision(
@@ -334,7 +269,7 @@ def build_graph(
                 copy.deepcopy(state["robot_state"]),
                 None,
             )
-        except DuplicateDecisionKeyError:
+        except _DuplicateDecisionKeyError:
             decision = new_decision()
             decision["understanding"] = "clarify"
             return {"decision": decision}
@@ -366,7 +301,7 @@ def build_graph(
                 copy.deepcopy(state["robot_state"]),
                 repair,
             )
-        except DuplicateDecisionKeyError:
+        except _DuplicateDecisionKeyError:
             repaired = new_decision()
             repaired["understanding"] = "clarify"
 
@@ -378,11 +313,11 @@ def build_graph(
         decision = repaired
         return {"decision": decision}
 
-    def route_by_decision(state: TurnState) -> str:
+    def route_by_decision(state: _TurnState) -> str:
         # mixed는 주문 변경도 포함하므로 task 검증 경로를 사용한다.
         return "general" if state["decision"]["route"] == "general" else "task"
 
-    def process_general(state: TurnState) -> dict:
+    def process_general(state: _TurnState) -> dict:
         # 일반대화는 주문이나 pending을 바꾸지 않는다. 기존 pending은 다음 턴까지 유지한다.
         policy = {
             "status": "clarify" if state["decision"]["understanding"] == "clarify" else "pass",
@@ -396,7 +331,7 @@ def build_graph(
             "policy": policy,
         }
 
-    def process_task(state: TurnState) -> dict:
+    def process_task(state: _TurnState) -> dict:
         # 아래 분기는 모두 조기 반환한다. 위에서 아래로 읽으면 실제 처리 순서와 같다.
         previous = copy.deepcopy(state["session"])
         raw_decision = copy.deepcopy(state["decision"])
@@ -588,7 +523,7 @@ def build_graph(
             },
         }
 
-    def generate_response(state: TurnState) -> dict:
+    def generate_response(state: _TurnState) -> dict:
         # Response Agent에는 확정 state와 이번 턴 결과만 전달한다.
         # Response는 주문을 바꾸지 않고 사용자가 들을 문장만 만든다.
         applied = build_applied_changes(state["previous_session"], state["session"])
@@ -634,7 +569,7 @@ def build_graph(
 
     # stage 선언 순서가 실제 한 턴의 흐름이다.
     # interpret → general/task → response 순서만 유지해 Graph를 평평하게 둔다.
-    graph = StateGraph(TurnState)
+    graph = StateGraph(_TurnState)
     graph.add_node("interpret_decision", interpret_decision)
     graph.add_node("process_general", process_general)
     graph.add_node("process_task", process_task)

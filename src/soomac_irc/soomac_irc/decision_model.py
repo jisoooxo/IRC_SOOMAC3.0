@@ -6,9 +6,14 @@ import torch
 import xgrammar as xgr
 from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
-from soomac_irc.agent_contract import DECISION_SCHEMA, normalize_decision
+from soomac_irc.agent_contract import (
+    DECISION_SCHEMA,
+    DuplicateDecisionKeyError,
+    NormalizedDecision,
+    SessionState,
+    normalize_decision,
+)
 from soomac_irc.agent_prompts import DECISION_SYSTEM
-from soomac_irc.llm_langgraph import Decision, DuplicateDecisionKeyError, SessionState
 
 DECISION_HISTORY_TURNS = 10
 DECISION_INPUT_MAX_TOKENS = 8192
@@ -98,7 +103,12 @@ def make_call_decision(model, processor, logger=None):
     )
 
     @torch.inference_mode()
-    def call_decision(session: SessionState, user_text: str, robot_state: dict, repair: dict | None = None) -> Decision:
+    def call_decision(
+        session: SessionState,
+        user_text: str,
+        robot_state: dict,
+        repair: dict | None = None,
+    ) -> NormalizedDecision:
         # 한 호출의 입력·원문 출력·정규화 결과·지연 시간을 trace 하나에 모은다.
         # 호출마다 초기화해 이전 턴의 sparse 출력이 실패한 호출에 섞이지 않게 한다.
         call_decision.last_external_output = None

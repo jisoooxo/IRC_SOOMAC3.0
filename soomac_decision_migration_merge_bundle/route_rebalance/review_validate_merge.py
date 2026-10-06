@@ -15,8 +15,11 @@ import jsonschema
 
 from soomac_irc.agent_contract import DECISION_SCHEMA
 from soomac_irc.agent_prompts import DECISION_SYSTEM
-from soomac_irc.dialogue_focus import build_reference_context
-from soomac_irc.llm_policy import BLOCKED_COMMIT_MARKERS, EXPLICIT_COMMIT_PHRASES
+from legacy_dialogue_focus import (
+    BLOCKED_COMMIT_MARKERS,
+    EXPLICIT_COMMIT_PHRASES,
+    build_reference_context,
+)
 
 
 HERE = Path(__file__).resolve().parent
