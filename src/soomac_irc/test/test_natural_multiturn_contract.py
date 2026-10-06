@@ -121,6 +121,21 @@ def session_with_preselected_meat(items):
     return session
 
 
+def session_with_recommendation_pending(item="치즈", amount="normal"):
+    session = new_session_state()
+    session["pending"] = {
+        "type": "recommendation",
+        "candidate": {
+            "sauce": None,
+            "noodle_type": None,
+            "noodle_portion": None,
+            "toppings": {item: amount},
+        },
+        "reason_tags": ["기존 추천"],
+    }
+    return session
+
+
 def test_schema_and_session_use_the_v3_contract():
     assert {
         name
@@ -1029,10 +1044,15 @@ def test_recommendation_revise_receives_old_pending_then_replaces_it():
     seen = {}
 
     def call_decision(_session, _text, _robot_state, _repair):
-        return normalize_decision({"route": "task", "recommendation": {"action": "revise"}})
+        return normalize_decision({
+            "route": "task",
+            "preferences": [{"value": "매콤하게", "action": "add"}],
+            "recommendation": {"action": "revise"},
+        })
 
     def call_recommendation(recommendation_session, *_args):
         seen["pending"] = copy.deepcopy(recommendation_session["pending"])
+        seen["preferences"] = copy.deepcopy(recommendation_session["preferences"])
         return {"proposal": copy.deepcopy(new_proposal), "reason_tags": ["매운맛"]}
 
     graph = build_graph(call_decision, call_recommendation, lambda *_args: "ok")
@@ -1040,11 +1060,80 @@ def test_recommendation_revise_receives_old_pending_then_replaces_it():
 
     assert seen["pending"]["candidate"] == old_proposal
     assert seen["pending"]["reason_tags"] == ["담백함"]
+    assert seen["preferences"] == [{"value": "매콤하게"}]
     assert result["session"]["pending"] == {
         "type": "recommendation",
         "candidate": new_proposal,
         "reason_tags": ["매운맛"],
     }
+
+
+def test_recommendation_pending_is_removed_after_restriction_change():
+    session = session_with_recommendation_pending("치즈")
+    result = run(
+        session,
+        {
+            "route": "task",
+            "restrictions": [
+                {"target": "치즈", "reason": "allergy", "action": "add"},
+            ],
+        },
+        robot_state(section="extra"),
+    )
+
+    assert result["session"]["order"]["restrictions"] == [
+        {"target": "치즈", "reason": "allergy"},
+    ]
+    assert result["session"]["pending"] is None
+
+
+def test_recommendation_pending_is_removed_after_order_change():
+    session = session_with_recommendation_pending("양파")
+    result = run(
+        session,
+        {"route": "task", "order": {"toppings": {"소시지": "high"}}},
+        robot_state(section="veggie"),
+    )
+
+    assert result["session"]["order"]["toppings"] == {"소시지": "high"}
+    assert result["session"]["pending"] is None
+
+
+def test_recommendation_pending_is_removed_after_preference_change():
+    session = session_with_recommendation_pending()
+    result = run(
+        session,
+        {"route": "task", "preferences": [{"value": "매콤하게", "action": "add"}]},
+        robot_state(),
+    )
+
+    assert result["session"]["preferences"] == [{"value": "매콤하게"}]
+    assert result["session"]["pending"] is None
+
+
+def test_recommendation_pending_survives_status_and_general_turns():
+    session = session_with_recommendation_pending()
+    original_pending = copy.deepcopy(session["pending"])
+
+    status_result = run(session, {"route": "task"}, robot_state(), text="현재 상태 알려줘")
+    general_result = run(session, {"route": "general"}, robot_state(), text="안녕")
+
+    assert status_result["session"]["pending"] == original_pending
+    assert general_result["session"]["pending"] == original_pending
+
+
+def test_recommendation_pending_survives_noop_preference_mutation():
+    session = session_with_recommendation_pending()
+    session["preferences"] = [{"value": "매콤하게"}]
+    original_pending = copy.deepcopy(session["pending"])
+    result = run(
+        session,
+        {"route": "task", "preferences": [{"value": "매콤하게", "action": "add"}]},
+        robot_state(),
+    )
+
+    assert result["session"]["preferences"] == [{"value": "매콤하게"}]
+    assert result["session"]["pending"] == original_pending
 
 
 def test_recommendation_reject_removes_pending_without_applying_order():

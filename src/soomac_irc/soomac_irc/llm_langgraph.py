@@ -378,6 +378,17 @@ def build_graph(
         if _patch_has_values(decision["order_patch"]) or decision["restriction_options"]:
             _refresh_execution_pending(session)
 
+        # 일반 state 변경 뒤에는 이전 주문 상태로 만든 추천 후보를 더 이상 확인 대상으로 두지 않는다.
+        # request/revise 턴은 Recommendation Agent가 기존 후보까지 읽어야 하므로 호출 전까지 보존한다.
+        applied = build_applied_changes(previous, session)
+        if (
+            isinstance(session.get("pending"), dict)
+            and session["pending"].get("type") == "recommendation"
+            and decision["recommendation"]["action"] == "none"
+            and any(applied.values())
+        ):
+            session["pending"] = None
+
         # 4. 서로 다른 validator의 실패를 하나의 issues에 모아 Response가 모두 설명하게 한다.
         # 정상 field는 이미 반영했지만 issue가 하나라도 있으면 같은 턴의 commit은 실행하지 않는다.
         issues = {
@@ -503,7 +514,6 @@ def build_graph(
             }
 
         # 8. 현재 section 값만 바뀌었다면 바로 실행하지 않고 execution pending을 만든다.
-        applied = build_applied_changes(previous, session)
         section = state["robot_state"]["section"]
         if (
             session.get("pending") is None
