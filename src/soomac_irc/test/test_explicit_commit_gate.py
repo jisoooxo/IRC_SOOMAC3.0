@@ -1,5 +1,13 @@
 """명시적 실행 의도만 commit=true로 복구하는 Python positive gate 테스트."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import copy
 import unittest
 

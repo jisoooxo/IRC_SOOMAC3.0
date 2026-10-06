@@ -14,8 +14,6 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, Int16, String
 
-from soomac_irc.dialogue_focus import remove_focus_mentions
-from soomac_irc.dialogue_questions import question_for_section
 from soomac_irc.model_runtime import DECISION_ADAPTER_PATH, load_model, make_call_vlm
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.llm_langgraph import build_graph, build_preselected_confirmation_reply, build_preselected_section_confirmation, new_session_state, new_turn_state
@@ -544,11 +542,8 @@ class LLMLangGraphNode(Node):
             self._start_order()
 
     def _section_prompt(self) -> str:
-        # 사용자 입력이 필요한 section 안내
-        self.graph_state["pending_question"] = question_for_section(
-            self.section,
-            len(self.graph_state["history"]) // 2,
-        )
+        # 선택 질문은 자연어 대화 기록에 남긴다.
+        # 아직 사용자가 고른 후보가 아니므로 별도의 pending은 만들지 않는다.
         if self.section == "veggie":
             return "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
 
@@ -575,7 +570,7 @@ class LLMLangGraphNode(Node):
             raise ValueError(f"{completed_section} 다음 section이 없음")
 
         self.section = SECTION_ORDER[next_index] # 다음거 ㅇㅇ
-        self.graph_state["pending_question"] = None
+        self.graph_state["pending"] = None
 
 ###################### 레일 먼저 선수 이동 치도록 일단 추가 #######################
 
@@ -604,13 +599,14 @@ class LLMLangGraphNode(Node):
         else:
             pending = build_preselected_section_confirmation(self.graph_state, self.section)
             if pending is not None:
-                self.graph_state["pending_confirmation"] = pending
+                self.graph_state["pending"] = pending
                 next_reply = build_preselected_confirmation_reply(pending)
-                next_prompt = {"type": "future_confirmation", "section": self.section,
+                next_prompt = {"type": "execution", "source": "preselected", "section": self.section,
+                               "targets": copy.deepcopy(pending.get("targets", [])),
                                "items": copy.deepcopy(pending["items"])}
             else:
                 next_reply = self._section_prompt()
-                next_prompt = copy.deepcopy(self.graph_state["pending_question"])
+                next_prompt = {"type": "section_prompt", "section": self.section, "text": next_reply}
 
         transition = {"type": "section_transition", "section": completed_section,
                       "outcome": outcome, "next_section": self.section}
@@ -637,6 +633,8 @@ class LLMLangGraphNode(Node):
             reply = next_reply
         if self.section not in ("lid", "sauce"):
             self._set_stt_enabled(True)
+        # /llm/next처럼 Graph 밖에서 만든 단계 안내도 다음 자연어 턴이 볼 수 있게 기록한다.
+        self.graph_state["history"].append({"role": "assistant", "content": reply})
         return reply
 
 
@@ -812,6 +810,8 @@ class LLMLangGraphNode(Node):
             "먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
         )
         self._publish_reply(reply)
+        # Graph 밖에서 로봇이 먼저 말한 안내도 자연어 멀티턴 대화 기록에 남긴다.
+        self.graph_state["history"].append({"role": "assistant", "content": reply})
         self.runtime_log.log_event(
             "conversation_start",
             {"reply": reply, "session": copy.deepcopy(self.graph_state), "robot_state": self._build_robot_state()},
@@ -1092,13 +1092,8 @@ class LLMLangGraphNode(Node):
         task_class = task["class"]
 
         self.active_task = copy.deepcopy(task)
-        # 실행 대상으로 확정된 task만 참조 후보에서 빼고, 아직 실행하지 않은 다른 mention은 유지한다.
-        self.graph_state["dialogue_focus"] = remove_focus_mentions(
-            self.graph_state["dialogue_focus"],
-            [task_class],
-        )
-        # 이 선택 단계는 실행으로 넘어갔다. 옛 질문에서 실행 재료가 되살아나지 않게 닫는다.
-        self.graph_state["pending_question"] = None
+        # 실제 실행이 시작되면 대기 중인 제안이나 확인은 끝난 것으로 본다.
+        self.graph_state["pending"] = None
         self.robot_started = True
         self.vlm_confirmed = False
 

@@ -1,5 +1,13 @@
 """실제 메서드를 AST로 로드해 ROS·GPU·오디오 없이 완료 복귀 계약을 검사한다."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import ast
 import copy
 import itertools

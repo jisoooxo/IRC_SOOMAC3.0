@@ -1,5 +1,13 @@
 """P1 target + operation grounding의 위험 사례를 먼저 고정한다."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import copy
 import unittest
 

@@ -1,4 +1,12 @@
 """실제 graph에 모의 Decision을 넣는다. 모델 품질/실물 실행 시험은 아니다."""
+
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
 import copy
 import unittest
 

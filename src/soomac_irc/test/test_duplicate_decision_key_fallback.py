@@ -1,5 +1,13 @@
 """Decision JSON duplicate key를 graph 내부 safe clarify로 격리하는 테스트."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import copy
 import json
 import unittest

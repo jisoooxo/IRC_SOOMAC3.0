@@ -12,15 +12,12 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
 
-from soomac_irc.dialogue_focus import update_dialogue_focus
-from soomac_irc.dialogue_questions import question_for_section
 from soomac_irc.domain import SECTION_ORDER
 from soomac_irc.llm_langgraph import (
     build_preselected_confirmation_reply, build_preselected_section_confirmation,
     new_session_state, new_turn_state,
 )
 from soomac_irc.llm_policy import build_applied_changes
-from soomac_irc.dialogue_focus import remove_focus_mentions
 
 
 def node_methods():
@@ -49,6 +46,8 @@ def make_node(section="meat"):
     node.active_task = None
     node.task_queue = []
     node.completed_tasks = []
+    node.robot_started = False
+    node.vlm_confirmed = False
     node.conversation_started = True
     node.order_finished = False
     node.call_response = Mock(return_value="모델이 만든 단계 전환 안내")
@@ -65,26 +64,31 @@ def make_node(section="meat"):
         "section": node.section, "active_task": copy.deepcopy(node.active_task),
         "completed_tasks": copy.deepcopy(node.completed_tasks),
         "task_queue": copy.deepcopy(node.task_queue),
+        "robot_started": node.robot_started,
     }
     return node
 
 
 class TestSectionQuestionEvents(unittest.TestCase):
-    def test_start_closes_question_and_removes_only_active_focus(self):
+    def test_start_consumes_execution_pending(self):
         node = make_node()
-        node.graph_state["pending_question"] = question_for_section("meat", 0)
-        node.graph_state["dialogue_focus"] = update_dialogue_focus(
-            node.graph_state["dialogue_focus"], ["소시지", "게살"], 1)
+        node.graph_state["pending"] = {
+            "type": "execution", "source": "current_update",
+            "section": "meat", "targets": ["소시지"],
+        }
         node.task_queue = [{"class": "소시지", "repeat_count": 2}]
         self.assertTrue(node._publish_next_task())
-        self.assertIsNone(node.graph_state["pending_question"])
-        self.assertEqual(node.graph_state["dialogue_focus"]["current"]["mentions"], ["게살"])
+        self.assertIsNone(node.graph_state["pending"])
+        self.assertTrue(node.robot_started)
         self.assertEqual(json.loads(node.plan_pub.publish.call_args.args[0].data),
                          {"class": "sausage", "repeat_count": 2})
 
-    def test_no_task_does_not_close_question(self):
+    def test_no_task_does_not_consume_pending(self):
         node = make_node()
-        node.graph_state["pending_question"] = question_for_section("meat", 0)
+        node.graph_state["pending"] = {
+            "type": "execution", "source": "current_update",
+            "section": "meat", "targets": ["소시지"],
+        }
         before = copy.deepcopy(node.graph_state)
         self.assertFalse(node._publish_next_task())
         self.assertEqual(node.graph_state, before)
@@ -93,14 +97,14 @@ class TestSectionQuestionEvents(unittest.TestCase):
         for outcome in ("skipped", "completed"):
             with self.subTest(outcome=outcome):
                 node = make_node()
-                node.graph_state["pending_question"] = question_for_section("meat", 0)
                 self.assertEqual(node._advance_after_section("meat", outcome=outcome),
                                  "모델이 만든 단계 전환 안내")
                 args = node.call_response.call_args.args
                 self.assertEqual(args[8]["section_transition"]["outcome"], outcome)
                 self.assertEqual(args[8]["section_transition"]["section"], "meat")
-                self.assertEqual(args[7]["targets"], ["치즈", "페퍼론치노"])
-                self.assertEqual(node.graph_state["pending_question"]["section"], "extra")
+                self.assertEqual(args[7]["type"], "section_prompt")
+                self.assertEqual(args[7]["section"], "extra")
+                self.assertIsNone(node.graph_state["pending"])
                 self.assertEqual(node.graph_state["action_history"][-1]["outcome"], outcome)
                 self.assertFalse(args[2]["execute"])
                 self.assertEqual(node.completed_tasks, [])
@@ -126,9 +130,9 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node = make_node()
         node.graph_state["order"]["toppings"]["치즈"] = "low"
         node._advance_after_section("meat", outcome="skipped")
-        self.assertEqual(node.graph_state["pending_confirmation"]["items"], {"치즈": "low"})
-        self.assertIsNone(node.graph_state["pending_question"])
-        self.assertEqual(node.call_response.call_args.args[7]["type"], "future_confirmation")
+        self.assertEqual(node.graph_state["pending"]["items"], {"치즈": "low"})
+        self.assertEqual(node.graph_state["pending"]["type"], "execution")
+        self.assertEqual(node.call_response.call_args.args[7]["type"], "execution")
 
     def test_extra_skip_starts_lid_without_claiming_extra_completion(self):
         # 2026-10-05: extra 다음은 lid(뚜껑)이며 사용자 입력 없이 자동 시작한다.

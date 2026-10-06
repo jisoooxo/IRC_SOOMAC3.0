@@ -1,5 +1,13 @@
 """버전 없는 운영 모듈의 CPU 회귀 검사. 모델·ROS 노드·로봇은 실행하지 않는다."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import copy
 import unittest
 

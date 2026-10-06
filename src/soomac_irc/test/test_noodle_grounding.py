@@ -1,5 +1,13 @@
 """STT 보정과 면 종류 근거 검사를 실제 graph에 연결한 회귀 테스트."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import copy
 import unittest
 

@@ -1,5 +1,13 @@
 """Decision semantic별 좁은 fail-safe 처리를 구현하기 전 RED/control 테스트."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import copy
 import unittest
 

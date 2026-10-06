@@ -1,5 +1,13 @@
 """2026-10-05 로그에서 실패한 대화를 모의 Decision으로 재현한다. 모델 품질 시험은 아니다."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import copy
 import unittest
 

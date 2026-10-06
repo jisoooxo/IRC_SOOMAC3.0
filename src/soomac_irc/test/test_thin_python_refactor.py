@@ -1,5 +1,13 @@
 """2026-10-05 thin python 리팩토링 회귀 테스트. session_20261005_221135 실패를 모의 Decision으로 재현한다."""
 
+import pytest
+
+pytest.skip(
+    "legacy Decision v2 state contract; replacement coverage is in "
+    "test_natural_multiturn_contract.py",
+    allow_module_level=True,
+)
+
 import copy
 import unittest
 
