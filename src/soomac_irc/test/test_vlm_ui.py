@@ -1,8 +1,7 @@
 import unittest
 from io import BytesIO
 from PIL import Image
-from soomac_irc.vlm import build_vlm_request
-from soomac_irc.vlm_ui import build_vlm_ui_jpeg
+from soomac_irc.vlm import build_vlm_request, build_vlm_ui_jpeg
 
 
 class TestVlmUi(unittest.TestCase):

@@ -26,8 +26,13 @@ from soomac_irc.llm_policy import build_applied_changes, section_execution_items
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
 from soomac_irc.recommendation_model import make_call_recommendation
 from soomac_irc.response_model import make_call_response
-from soomac_irc.vlm import build_vlm_request, build_vlm_spoken_reply, decide_vlm_outcome, parse_vlm_verdict
-from soomac_irc.vlm_ui import build_vlm_ui_jpeg
+from soomac_irc.vlm import (
+    build_vlm_request,
+    build_vlm_spoken_reply,
+    build_vlm_ui_jpeg,
+    decide_vlm_outcome,
+    parse_vlm_verdict,
+)
 # lid section이 cover(뚜껑) task를 만든다. main_vlm.py는 소스(마지막 작업) 완료 뒤 /llm/reset을 보낸다.
 from soomac_irc.domain import SECTION_ORDER
 
@@ -289,7 +294,7 @@ class LLMLangGraphNode(Node):
 
     def _publish_vlm_ui_snapshot(self, request: dict | None):
         # 이전 llm_vlm 브랜치처럼 UI 발행 실패는 실제 VLM 판정을 막지 않는다.
-        # 화면 모양은 vlm_ui.py가 만들던 3분할 JPEG를 그대로 사용한다.
+        # 화면 모양은 기존과 같은 3분할 JPEG를 사용한다.
         if not ENABLE_VLM_UI_IMAGES or self.vlm_ui_image_pub is None or request is None:
             return
 

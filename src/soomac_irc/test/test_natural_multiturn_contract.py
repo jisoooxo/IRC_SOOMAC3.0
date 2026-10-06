@@ -6,14 +6,15 @@
 import copy
 import json
 from pathlib import Path
+from typing import is_typeddict
 
 import xgrammar as xgr
 
+import soomac_irc.agent_contract as agent_contract
 from soomac_irc.agent_contract import (
     DECISION_SCHEMA,
     DuplicateDecisionKeyError,
     NormalizedDecision,
-    PolicyIssues,
     RUNTIME_CONTRACT_VERSION,
     RUNTIME_LOG_SCHEMA_VERSION,
     new_decision,
@@ -111,6 +112,12 @@ def run(session, decision, state, text="테스트"):
 
 
 def test_schema_and_session_use_the_v3_contract():
+    assert {
+        name
+        for name, value in vars(agent_contract).items()
+        if is_typeddict(value)
+    } == {"NormalizedDecision", "SessionState", "RobotState", "TurnState"}
+
     properties = DECISION_SCHEMA["properties"]
     assert set(properties) == {
         "route",
@@ -138,6 +145,24 @@ def test_schema_and_session_use_the_v3_contract():
     assert set(NormalizedDecision.__required_keys__) == set(new_decision())
     assert set(new_session_state()) == {
         "order", "preferences", "pending", "history", "action_history"
+    }
+    assert set(agent_contract.RobotState.__optional_keys__) == {
+        "section",
+        "task_queue",
+        "active_task",
+        "completed_tasks",
+        "robot_started",
+        "section_transition",
+    }
+    assert set(new_turn_state(new_session_state(), "테스트", robot_state())) == {
+        "session",
+        "previous_session",
+        "user_text",
+        "robot_state",
+        "decision",
+        "recommendation_result",
+        "policy",
+        "reply",
     }
 
     forbidden = {
@@ -608,7 +633,13 @@ def test_multiple_failures_keep_valid_change_and_block_commit_for_response():
     assert result["policy"]["execute"] is False
     assert result["policy"]["issues"]["unsupported"][0]["item"] == "햄"
     assert result["policy"]["issues"]["restriction_conflicts"][0]["item"] == "게살"
-    assert set(result["policy"]["issues"]) == set(PolicyIssues.__required_keys__)
+    assert set(result["policy"]["issues"]) == {
+        "unsupported",
+        "invalid",
+        "protected",
+        "restriction_conflicts",
+        "physical_conflicts",
+    }
     assert captured["policy"]["issues"] == result["policy"]["issues"]
     assert captured["applied"]["order_changes"] == {"toppings.양파": "high"}
     assert captured["next_prompt"]["type"] == "validation_issues"

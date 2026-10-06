@@ -1,6 +1,10 @@
 # VLM 판정은 prompt 생성 → verdict parsing → retry 정책 결정 순서로 처리
 # ROS 이미지 변환과 topic 발행은 llm_node이 담당
 
+from io import BytesIO
+
+from PIL import Image, ImageDraw, ImageOps
+
 from soomac_irc.vlm_prompts import SAUCE_NAMES, build_lid_prompt, build_sauce_prompt, build_ingredient_prompt
 
 VERDICT_LINES = {
@@ -116,6 +120,43 @@ def build_vlm_request(expected: str, camera_images: list, reference_image=None, 
     return {"images": images, "system_prompt": system_prompt, "user_text": user_text, "ui_panels": ui_panels}
 
 
+def build_vlm_ui_jpeg(request: dict, panel_size=(480, 360)) -> bytes:
+    # VLM 입력 이미지는 건드리지 않고 UI에 보낼 세 패널 JPEG만 별도로 만든다.
+    panels = request.get("ui_panels", [])
+    if len(panels) != 3:
+        raise ValueError("VLM UI에는 reference/comparison/current 패널이 모두 필요함")
+
+    width, height = panel_size
+    canvas = Image.new("RGB", (width * 3, height + 36), "#17202c")
+    draw = ImageDraw.Draw(canvas)
+
+    for index, panel in enumerate(panels):
+        left = index * width
+        draw.text((left + 12, 12), panel["label"], fill="white")
+        source = panel.get("image")
+
+        if source is None:
+            draw.text(
+                (left + 12, 60),
+                "NOT AVAILABLE / NOT REQUIRED",
+                fill="#aab5c4",
+            )
+            continue
+
+        fitted = ImageOps.contain(source.convert("RGB"), (width - 8, height - 8))
+        canvas.paste(
+            fitted,
+            (
+                left + (width - fitted.width) // 2,
+                36 + (height - fitted.height) // 2,
+            ),
+        )
+
+    buffer = BytesIO()
+    canvas.save(buffer, format="JPEG", quality=85)
+    return buffer.getvalue()
+
+
 def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enable_uncertain_retake: bool)-> dict:
      # verdict와 이전 실패 횟수를 외부 제어 계약으로 변환한다.
     # 로봇을 정지시키지 않으며 첫 실패만 retry를 요청한다.
@@ -198,4 +239,3 @@ def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enab
             "다음 단계로 진행할게요."
         ),
     }
-

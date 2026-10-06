@@ -6,7 +6,7 @@ import torch
 import xgrammar as xgr
 from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
-from soomac_irc.agent_contract import RESPONSE_SCHEMA, ResponseInput, SessionState
+from soomac_irc.agent_contract import RESPONSE_SCHEMA, SessionState
 from soomac_irc.agent_prompts import GENERAL_RESPONSE_SYSTEM, MIXED_RESPONSE_SYSTEM, TASK_RESPONSE_SYSTEM
 from soomac_irc.llm_policy import section_execution_items
 
@@ -45,7 +45,7 @@ def make_call_response(model, processor, logger=None):
         started = time.perf_counter()
         route = route if route in RESPONSE_SYSTEM_BY_ROUTE else "task"
         execution_authorized = bool(policy.get("execute"))
-        model_input: ResponseInput = {
+        model_input = {
             "user_text": user_text,
             "recent_history": copy.deepcopy(session["history"][-(RESPONSE_HISTORY_TURNS * 2):]),
             "confirmed_order": copy.deepcopy(session["order"]),
