@@ -10,6 +10,7 @@ DECISION_SYSTEM = r'''너는 스파게티 밀키트 로봇의 Decision Agent다.
 - pending: 아직 확정되지 않은 실행 확인 또는 추천 후보. 없으면 null이다.
 - robot_state: 현재 로봇 단계와 실행 상태.
 - message: 현재 사용자 발화.
+- repair: 이전 Decision에 구조적 자기모순이 있을 때만 들어오는 1회 수정 정보. 없으면 이 입력 자체가 없다.
 
 출력 가능한 top-level field:
 - route
@@ -23,6 +24,11 @@ DECISION_SYSTEM = r'''너는 스파게티 밀키트 로봇의 Decision Agent다.
 
 route는 항상 출력한다.
 그 외 field는 현재 발화와 관련 있을 때만 출력한다.
+
+repair:
+- repair가 있으면 previous_output과 errors를 참고해 원래 message, recent_history, state를 다시 읽는다.
+- 원래 입력에 없는 의미를 새로 만들지 않고 서로 모순되는 field만 최소한으로 수정한다.
+- unsupported 메뉴나 물리적으로 바꿀 수 없는 값은 repair 대상이 아니다. 사용자의 의미를 그대로 출력한다.
 
 route:
 - task: 주문 변경, 제한/취향 변경, 추천 요청, 실행 요청, 현재 주문/로봇/진행 상태 질문처럼 시스템 상태와 관련된 발화.

@@ -108,6 +108,31 @@ def _patch_has_values(patch: dict) -> bool:
     )
 
 
+def find_structural_decision_errors(decision: Decision) -> list[str]:
+    """Decision 내부 field끼리 동시에 성립할 수 없는 조합만 찾는다.
+
+    사용자 문장·메뉴 domain·session·robot state는 보지 않는다. 지원 여부와 물리적
+    실행 가능성은 이 검사 뒤의 기존 final validator가 그대로 담당한다.
+    """
+    has_resolved_task_semantics = bool(
+        _patch_has_values(decision["order_patch"])
+        or decision["restriction_options"]
+        or decision["preference_options"]
+        or decision["recommendation"]["action"] != "none"
+        or decision["commit"]
+        or decision["confirmation"] != "none"
+    )
+    errors = []
+
+    if decision["route"] == "general" and has_resolved_task_semantics:
+        errors.append("route=general cannot contain task mutation or action")
+
+    if decision["understanding"] == "clarify" and has_resolved_task_semantics:
+        errors.append("clarify decision cannot contain resolved mutation or action")
+
+    return errors
+
+
 def _merge_patch(base: dict, overlay: dict) -> dict:
     # 추천 pending을 수락할 때 기존 후보 위에 같은 턴의 명시적 변경을 덮는다.
     merged = copy.deepcopy(base)
@@ -277,7 +302,7 @@ def build_graph(
     from langgraph.graph import END, START, StateGraph
 
     def interpret_decision(state: TurnState) -> dict:
-        # 모델 출력은 아직 후보일 뿐이다. duplicate key만 안전한 clarify로 바꾼다.
+        # 모델 출력은 아직 후보일 뿐이다. duplicate key는 기존 정책대로 바로 안전 종료한다.
         try:
             decision = call_decision(
                 copy.deepcopy(state["session"]),
@@ -288,6 +313,39 @@ def build_graph(
         except DuplicateDecisionKeyError:
             decision = new_decision()
             decision["understanding"] = "clarify"
+            return {"decision": decision}
+
+        errors = find_structural_decision_errors(decision)
+        if not errors:
+            return {"decision": decision}
+
+        # 자연어를 Python이 다시 판단하지 않고, 모델이 만든 field 조합의 자기모순만 알려준다.
+        repair = {
+            "reason": "structural_contradiction",
+            "errors": errors,
+            "previous_output": copy.deepcopy(decision),
+            "instruction": (
+                "현재 사용자 발화와 state를 다시 읽고, 의미를 임의로 추가하지 말고 "
+                "서로 모순되는 Decision field만 최소한으로 수정하라."
+            ),
+        }
+        try:
+            repaired = call_decision(
+                copy.deepcopy(state["session"]),
+                state["user_text"],
+                copy.deepcopy(state["robot_state"]),
+                repair,
+            )
+        except DuplicateDecisionKeyError:
+            repaired = new_decision()
+            repaired["understanding"] = "clarify"
+
+        # 두 번째 결과도 모순이면 세 번째 호출 없이 아무 의미도 확정하지 않은 Decision으로 끝낸다.
+        if find_structural_decision_errors(repaired):
+            repaired = new_decision()
+            repaired["understanding"] = "clarify"
+
+        decision = repaired
         return {"decision": decision}
 
     def route_by_decision(state: TurnState) -> str:

@@ -10,11 +10,12 @@ from pathlib import Path
 import xgrammar as xgr
 
 from soomac_irc.agent_contract import DECISION_SCHEMA, normalize_decision
-from soomac_irc.decision_model import DECISION_KEYS_ANY_ORDER
+from soomac_irc.decision_model import DECISION_KEYS_ANY_ORDER, build_decision_model_input
 from soomac_irc.llm_langgraph import (
     DuplicateDecisionKeyError,
     build_graph,
     build_preselected_section_confirmation,
+    find_structural_decision_errors,
     new_session_state,
     new_turn_state,
 )
@@ -51,6 +52,41 @@ def compiled_for(sparse_decision, recommendation=None):
         return "ok"
 
     return build_graph(call_decision, call_recommendation, call_response)
+
+
+def compiled_sequence(sparse_decisions):
+    calls = []
+
+    def call_decision(session, text, state, repair):
+        calls.append({
+            "session": copy.deepcopy(session),
+            "text": text,
+            "robot_state": copy.deepcopy(state),
+            "repair": copy.deepcopy(repair),
+        })
+        index = len(calls) - 1
+        if index >= len(sparse_decisions):
+            raise AssertionError("Decision Agent가 허용 횟수보다 많이 호출됨")
+        output = sparse_decisions[index]
+        if isinstance(output, Exception):
+            raise output
+        return normalize_decision(copy.deepcopy(output))
+
+    def call_recommendation(*_args, **_kwargs):
+        return {
+            "proposal": {
+                "sauce": None,
+                "noodle_type": None,
+                "noodle_portion": None,
+                "toppings": {},
+            },
+            "reason_tags": [],
+        }
+
+    def call_response(*_args, **_kwargs):
+        return "ok"
+
+    return build_graph(call_decision, call_recommendation, call_response), calls
 
 
 def run(session, decision, state, text="테스트"):
@@ -114,6 +150,155 @@ def test_xgrammar_accepts_shuffled_keys_but_keeps_schema_strict():
         matcher = xgr.GrammarMatcher(grammar, terminate_without_stop_token=True)
         raw = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
         assert not matcher.accept_string(raw) or not matcher.is_completed()
+
+
+def test_normal_decision_does_not_call_repair():
+    graph, calls = compiled_sequence([{
+        "route": "task",
+        "order": {"toppings": {"양파": "high"}},
+        "preferences": [{"action": "add", "value": "매콤하게"}],
+    }])
+    result = graph.invoke(new_turn_state(new_session_state(), "양파 많이, 맵게", robot_state()))
+
+    assert len(calls) == 1
+    assert calls[0]["repair"] is None
+    assert result["session"]["order"]["toppings"] == {"양파": "high"}
+    assert result["session"]["preferences"] == [{"value": "매콤하게"}]
+
+
+def test_general_task_contradiction_repairs_once_and_passes_payload():
+    first = {"route": "general", "order": {"toppings": {"양파": "high"}}}
+    repaired = {"route": "task", "order": {"toppings": {"양파": "high"}}}
+    graph, calls = compiled_sequence([first, repaired])
+    result = graph.invoke(new_turn_state(new_session_state(), "양파 많이 넣어줘", robot_state()))
+
+    assert len(calls) == 2
+    repair = calls[1]["repair"]
+    assert repair["reason"] == "structural_contradiction"
+    assert repair["errors"] == ["route=general cannot contain task mutation or action"]
+    assert repair["previous_output"] == normalize_decision(first)
+    assert calls[1]["text"] == calls[0]["text"]
+    assert calls[1]["session"] == calls[0]["session"]
+    assert calls[1]["robot_state"] == calls[0]["robot_state"]
+    model_input = build_decision_model_input(
+        calls[1]["session"],
+        calls[1]["text"],
+        calls[1]["robot_state"],
+        repair,
+    )
+    assert model_input["repair"] == repair
+    assert result["session"]["order"]["toppings"] == {"양파": "high"}
+
+
+def test_clarify_mutation_contradiction_can_be_repaired():
+    graph, calls = compiled_sequence([
+        {
+            "route": "task",
+            "clarify": True,
+            "order": {"toppings": {"양파": "high"}},
+            "commit": True,
+        },
+        {"route": "task", "order": {"toppings": {"양파": "high"}}},
+    ])
+    result = graph.invoke(new_turn_state(new_session_state(), "양파 많이", robot_state()))
+
+    assert len(calls) == 2
+    assert calls[1]["repair"]["errors"] == [
+        "clarify decision cannot contain resolved mutation or action"
+    ]
+    assert result["session"]["order"]["toppings"] == {"양파": "high"}
+
+
+def test_second_contradiction_stops_at_safe_clarify():
+    session = new_session_state()
+    session["order"]["toppings"]["버섯"] = "low"
+    session["preferences"].append({"value": "담백하게"})
+    graph, calls = compiled_sequence([
+        {"route": "general", "commit": True},
+        {
+            "route": "task",
+            "clarify": True,
+            "order": {"toppings": {"양파": "high"}},
+        },
+    ])
+    result = graph.invoke(new_turn_state(session, "처리해줘", robot_state()))
+
+    assert len(calls) == 2
+    assert result["decision"]["understanding"] == "clarify"
+    assert result["decision"]["commit"] is False
+    assert result["decision"]["recommendation"]["action"] == "none"
+    assert result["decision"]["confirmation"] == "none"
+    assert result["session"]["order"] == session["order"]
+    assert result["session"]["preferences"] == session["preferences"]
+    assert result["policy"]["reason"] == "understanding"
+
+
+def test_general_route_rejects_each_resolved_task_semantic():
+    sparse_decisions = [
+        {"route": "general", "restrictions": [{"target": "치즈", "reason": "allergy", "action": "add"}]},
+        {"route": "general", "preferences": [{"value": "맵게", "action": "add"}]},
+        {"route": "general", "recommendation": {"action": "request"}},
+        {"route": "general", "commit": True},
+        {"route": "general", "confirmation": "accept"},
+    ]
+    for sparse in sparse_decisions:
+        assert find_structural_decision_errors(normalize_decision(sparse)) == [
+            "route=general cannot contain task mutation or action"
+        ]
+
+
+def test_final_validator_failures_do_not_call_repair():
+    cases = []
+
+    unsupported_graph, unsupported_calls = compiled_sequence([
+        {"route": "task", "order": {"toppings": {"햄": "high"}}}
+    ])
+    cases.append((
+        unsupported_graph,
+        unsupported_calls,
+        new_session_state(),
+        robot_state(),
+        "unsupported",
+    ))
+
+    completed_session = new_session_state()
+    completed_session["order"]["toppings"]["양파"] = "normal"
+    completed_graph, completed_calls = compiled_sequence([
+        {"route": "task", "order": {"toppings": {"양파": "none"}}}
+    ])
+    cases.append((
+        completed_graph,
+        completed_calls,
+        completed_session,
+        robot_state(
+            section="veggie",
+            completed=[{"class": "양파", "repeat_count": 2}],
+            started=True,
+        ),
+        "physical_state",
+    ))
+
+    restricted_session = new_session_state()
+    restricted_session["order"]["restrictions"].append({
+        "target": "게살",
+        "reason": "allergy",
+    })
+    restricted_graph, restricted_calls = compiled_sequence([
+        {"route": "task", "order": {"toppings": {"게살": "normal"}}}
+    ])
+    cases.append((
+        restricted_graph,
+        restricted_calls,
+        restricted_session,
+        robot_state(section="meat"),
+        "restriction_conflict",
+    ))
+
+    for graph, calls, session, state, expected_reason in cases:
+        result = graph.invoke(new_turn_state(session, "테스트", state))
+        assert len(calls) == 1
+        assert calls[0]["repair"] is None
+        assert result["policy"]["reason"] == expected_reason
 
 
 def test_one_decision_applies_multiple_fields_and_semantics_together():
