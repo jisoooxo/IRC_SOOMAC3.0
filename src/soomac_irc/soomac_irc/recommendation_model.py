@@ -11,7 +11,7 @@ from soomac_irc.agent_prompts import RECOMMENDATION_SYSTEM
 from soomac_irc.domain import AMOUNTS, NOODLE_TYPES, SAUCES, TOPPINGS
 from soomac_irc.llm_langgraph import Decision, SessionState
 
-RECOMMENDATION_MAX_TOKENS = 768
+RECOMMENDATION_MAX_TOKENS = 1024
 RECOMMENDATION_HISTORY_TURNS = 10
 
 
