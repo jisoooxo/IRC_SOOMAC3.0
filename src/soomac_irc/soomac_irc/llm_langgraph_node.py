@@ -323,14 +323,20 @@ class LLMLangGraphNode(Node):
 ################ 래퍼런스 + 이전 이미지 + 현재 이미지 ui에 쏴버림 #################
 
     def _publish_vlm_ui_snapshot(self, request: dict | None):
-        # 모델 입력은 보존하고 역할별 이미지를 한 JPEG로 합성해 보낸다.
+        # 이전 llm_vlm 브랜치처럼 UI 발행 실패는 실제 VLM 판정을 막지 않는다.
+        # 화면 모양은 vlm_ui.py가 만들던 3분할 JPEG를 그대로 사용한다.
         if not ENABLE_VLM_UI_IMAGES or self.vlm_ui_image_pub is None or request is None:
             return
 
-        message = CompressedImage()
-        message.format = "jpeg"
-        message.data = build_vlm_ui_jpeg(request)
-        self.vlm_ui_image_pub.publish(message)
+        try:
+            message = CompressedImage()
+            message.header.stamp = self.get_clock().now().to_msg()
+            message.header.frame_id = "vlm_ui_snapshot"
+            message.format = "jpeg"
+            message.data = build_vlm_ui_jpeg(request)
+            self.vlm_ui_image_pub.publish(message)
+        except Exception as error:
+            self.get_logger().warning(f"VLM UI 이미지 발행 실패 : {error}")
 
 
     def _process_vlm_confirm(self, should_confirm: bool):
