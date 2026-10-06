@@ -108,6 +108,34 @@ def _patch_has_values(patch: dict) -> bool:
     )
 
 
+def _external_decision_view(decision: Decision) -> dict:
+    """주입형 test double이 sparse 원문을 제공하지 않을 때 외부 계약 모양만 복원한다."""
+    external = {"route": decision["route"]}
+    patch = decision["order_patch"]
+    order = {
+        field: copy.deepcopy(patch[field])
+        for field in ("sauce", "noodle_type", "noodle_portion")
+        if patch.get(field) is not None
+    }
+    if patch.get("toppings"):
+        order["toppings"] = copy.deepcopy(patch["toppings"])
+    if order:
+        external["order"] = order
+    if decision["restriction_options"]:
+        external["restrictions"] = copy.deepcopy(decision["restriction_options"])
+    if decision["preference_options"]:
+        external["preferences"] = copy.deepcopy(decision["preference_options"])
+    if decision["recommendation"]["action"] != "none":
+        external["recommendation"] = copy.deepcopy(decision["recommendation"])
+    if decision["commit"]:
+        external["commit"] = True
+    if decision["confirmation"] != "none":
+        external["confirmation"] = decision["confirmation"]
+    if decision["understanding"] == "clarify":
+        external["clarify"] = True
+    return external
+
+
 def find_structural_decision_errors(decision: Decision) -> list[str]:
     """Decision 내부 field끼리 동시에 성립할 수 없는 조합만 찾는다.
 
@@ -129,6 +157,15 @@ def find_structural_decision_errors(decision: Decision) -> list[str]:
 
     if decision["understanding"] == "clarify" and has_resolved_task_semantics:
         errors.append("clarify decision cannot contain resolved mutation or action")
+
+    # 면 종류를 지우면서 실제 면 양을 새로 지정하는 출력은 한 Decision 안에서 모순된다.
+    # unsupported 값은 여기서 다루지 않고 기존 final validator로 그대로 보낸다.
+    patch = decision["order_patch"]
+    if (
+        patch.get("noodle_type") == "none"
+        and patch.get("noodle_portion") in ("low", "normal", "high")
+    ):
+        errors.append("noodle_type=none cannot contain an active noodle_portion")
 
     return errors
 
@@ -315,6 +352,12 @@ def build_graph(
             decision["understanding"] = "clarify"
             return {"decision": decision}
 
+        # 실제 모델 함수는 정규화 전 sparse JSON을 별도로 보존한다.
+        # 주입형 함수가 해당 값을 제공하지 않을 때만 외부 key 이름으로 안전하게 복원한다.
+        external_output = getattr(call_decision, "last_external_output", None)
+        if not isinstance(external_output, dict):
+            external_output = _external_decision_view(decision)
+
         errors = find_structural_decision_errors(decision)
         if not errors:
             return {"decision": decision}
@@ -323,7 +366,7 @@ def build_graph(
         repair = {
             "reason": "structural_contradiction",
             "errors": errors,
-            "previous_output": copy.deepcopy(decision),
+            "previous_output": copy.deepcopy(external_output),
             "instruction": (
                 "현재 사용자 발화와 state를 다시 읽고, 의미를 임의로 추가하지 말고 "
                 "서로 모순되는 Decision field만 최소한으로 수정하라."
@@ -403,37 +446,63 @@ def build_graph(
         )
         session["order"] = restriction_enforcement["order"]
 
-        # 4. 이미 담은 재료에 새 제한이 생겨도 실제로 담긴 주문 기록은 되돌리지 않는다.
-        if restriction_enforcement["physical_conflicts"]:
+        # 4. 서로 다른 validator의 실패를 하나의 issues에 모아 Response가 모두 설명하게 한다.
+        # 정상 field는 이미 반영했지만 issue가 하나라도 있으면 같은 턴의 commit은 실행하지 않는다.
+        issues = {
+            "unsupported": copy.deepcopy(
+                order_validation["unsupported"] + restriction_validation["unsupported"]
+            ),
+            "invalid": copy.deepcopy(
+                order_validation["invalid"] + restriction_validation["invalid"]
+            ),
+            "protected": copy.deepcopy(order_validation["protected"]),
+            "restriction_conflicts": copy.deepcopy(
+                restriction_enforcement["requested_conflicts"]
+            ),
+            "physical_conflicts": copy.deepcopy(
+                restriction_enforcement["physical_conflicts"]
+            ),
+        }
+        if any(issues.values()):
+            if issues["physical_conflicts"]:
+                status = "blocked"
+                reason = "completed_restriction_conflict"
+                conflicts = issues["physical_conflicts"]
+            elif issues["restriction_conflicts"]:
+                status = "warning"
+                reason = "restriction_conflict"
+                conflicts = issues["restriction_conflicts"]
+            elif issues["unsupported"]:
+                status = "warning"
+                reason = "unsupported"
+                conflicts = []
+            elif issues["protected"]:
+                status = "warning"
+                reason = "physical_state"
+                conflicts = []
+            else:
+                status = "warning"
+                reason = "invalid_candidate"
+                conflicts = []
             return {
                 "session": session,
                 "decision": decision,
                 "recommendation_result": None,
                 "policy": {
-                    "status": "blocked",
-                    "reason": "completed_restriction_conflict",
+                    "status": status,
+                    "reason": reason,
                     "execute": False,
-                    "conflicts": copy.deepcopy(restriction_enforcement["physical_conflicts"]),
+                    "conflicts": copy.deepcopy(conflicts),
+                    "issues": issues,
+                    # 기존 Response/관측 코드가 읽던 top-level key도 유지한다.
+                    "unsupported": copy.deepcopy(issues["unsupported"]),
+                    "protected": copy.deepcopy(issues["protected"]),
+                    "invalid": copy.deepcopy(issues["invalid"]),
                     "restriction_blocked": copy.deepcopy(restriction_enforcement["blocked"]),
                 },
             }
 
-        # 5. 기존 안전 제한과 직접 충돌한 새 주문은 해당 값만 빼고 사용자에게 이유를 알린다.
-        if restriction_enforcement["requested_conflicts"]:
-            return {
-                "session": session,
-                "decision": decision,
-                "recommendation_result": None,
-                "policy": {
-                    "status": "warning",
-                    "reason": "restriction_conflict",
-                    "execute": False,
-                    "conflicts": copy.deepcopy(restriction_enforcement["requested_conflicts"]),
-                    "restriction_blocked": copy.deepcopy(restriction_enforcement["blocked"]),
-                },
-            }
-
-        # 6. 추천 요청은 원문과 history를 추천 모델이 직접 읽는다.
+        # 5. 추천 요청은 원문과 history를 추천 모델이 직접 읽는다.
         # 추천 결과도 일반 주문과 같은 validator를 통과한 뒤 pending에만 저장한다.
         if decision["recommendation"]["action"] in ("request", "revise"):
             raw = _call_recommendation_compat(
@@ -473,38 +542,7 @@ def build_graph(
                 "policy": policy,
             }
 
-        # 7. 일부 값이 거절돼도 나머지 정상 변경은 유지한다. 단, 같은 턴 자동 실행은 막는다.
-        rejected_any = bool(
-            order_validation["unsupported"]
-            or order_validation["protected"]
-            or order_validation["invalid"]
-            or restriction_validation["unsupported"]
-            or restriction_validation["invalid"]
-        )
-        if rejected_any:
-            if order_validation["unsupported"] or restriction_validation["unsupported"]:
-                reason = "unsupported"
-            elif order_validation["protected"]:
-                reason = "physical_state"
-            else:
-                reason = "invalid_candidate"
-            return {
-                "session": session,
-                "decision": decision,
-                "recommendation_result": recommendation_result,
-                "policy": {
-                    "status": "warning",
-                    "reason": reason,
-                    "execute": False,
-                    "conflicts": [],
-                    "unsupported": copy.deepcopy(order_validation["unsupported"] + restriction_validation["unsupported"]),
-                    "protected": copy.deepcopy(order_validation["protected"]),
-                    "invalid": copy.deepcopy(order_validation["invalid"] + restriction_validation["invalid"]),
-                    "restriction_blocked": copy.deepcopy(restriction_enforcement["blocked"]),
-                },
-            }
-
-        # 8. pending 거절은 state 변경 없이 정상적인 대화 결과로 끝낸다.
+        # 6. pending 거절은 state 변경 없이 정상적인 대화 결과로 끝낸다.
         if pending_result and pending_result.get("type") == "confirmation_rejected":
             return {
                 "session": session,
@@ -513,7 +551,7 @@ def build_graph(
                 "policy": {"status": "pass", "reason": "confirmation_rejected", "execute": False, "conflicts": []},
             }
 
-        # 9. commit 의미는 모델을 믿되 필수 주문과 robot busy는 코드가 마지막으로 확인한다.
+        # 7. commit 의미는 모델을 믿되 필수 주문과 robot busy는 코드가 마지막으로 확인한다.
         if decision["commit"]:
             missing = missing_current_section(session["order"], state["robot_state"]["section"])
             if missing:
@@ -529,7 +567,7 @@ def build_graph(
                 "policy": policy,
             }
 
-        # 10. 현재 section 값만 바뀌었다면 바로 실행하지 않고 execution pending을 만든다.
+        # 8. 현재 section 값만 바뀌었다면 바로 실행하지 않고 execution pending을 만든다.
         applied = build_applied_changes(previous, session)
         section = state["robot_state"]["section"]
         if (
@@ -567,7 +605,12 @@ def build_graph(
         future = build_future_changes(applied, state["robot_state"])
         next_prompt = _pending_prompt(state["session"].get("pending"))
         reason = state["policy"].get("reason")
-        if reason == "missing_order":
+        if state["policy"].get("issues"):
+            next_prompt = {
+                "type": "validation_issues",
+                "issues": copy.deepcopy(state["policy"]["issues"]),
+            }
+        elif reason == "missing_order":
             next_prompt = {"type": "missing_order", "fields": copy.deepcopy(state["policy"].get("missing", []))}
         elif reason == "unsupported":
             next_prompt = {"type": "unsupported", "items": copy.deepcopy(state["policy"].get("unsupported", []))}

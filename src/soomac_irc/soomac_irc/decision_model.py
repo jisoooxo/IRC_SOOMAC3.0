@@ -76,10 +76,15 @@ def _reject_duplicate_json_keys(pairs: list[tuple[str, object]]) -> dict:
     return parsed
 
 
+def _parse_sparse_decision(raw: str) -> dict:
+    # repair 입력에는 모델이 실제로 출력한 외부 계약 JSON을 그대로 보존해야 한다.
+    # 내부 기본값을 채우기 전 단계에서도 duplicate key 거절 정책은 동일하게 적용한다.
+    return json.loads(raw, object_pairs_hook=_reject_duplicate_json_keys)
+
+
 def parse_decision(raw: str, session: SessionState | None = None) -> Decision:
     # session 인자는 이전 호출부 호환용이며, 새 계약은 현재 JSON 자체만 정규화한다.
-    sparse = json.loads(raw, object_pairs_hook=_reject_duplicate_json_keys)
-    return normalize_decision(sparse)
+    return normalize_decision(_parse_sparse_decision(raw))
 
 
 #################### 실제 Decision 추론 함수 만들기 ####################
@@ -100,6 +105,8 @@ def make_call_decision(model, processor, logger=None):
     @torch.inference_mode()
     def call_decision(session: SessionState, user_text: str, robot_state: dict, repair: dict | None = None) -> Decision:
         # 한 호출의 입력·원문 출력·정규화 결과·지연 시간을 trace 하나에 모은다.
+        # 호출마다 초기화해 이전 턴의 sparse 출력이 실패한 호출에 섞이지 않게 한다.
+        call_decision.last_external_output = None
         started = time.perf_counter()
         trace = {
             "stage": "decision",
@@ -123,13 +130,16 @@ def make_call_decision(model, processor, logger=None):
             )
             output_tokens = output[0].shape[0] - prompt_tokens
             raw = processor.decode(output[0][prompt_tokens:], skip_special_tokens=True).strip()
-            parsed = parse_decision(raw, session)
+            sparse = _parse_sparse_decision(raw)
+            parsed = normalize_decision(sparse)
+            call_decision.last_external_output = copy.deepcopy(sparse)
             trace.update({
                 "model_input": model_input,
                 "messages": copy.deepcopy(messages),
                 "prompt_tokens": prompt_tokens,
                 "output_tokens": output_tokens,
                 "raw": raw,
+                "external": copy.deepcopy(sparse),
                 "parsed": copy.deepcopy(parsed),
             })
             if logger is not None:
@@ -143,4 +153,5 @@ def make_call_decision(model, processor, logger=None):
             call_decision.trace_events.append(copy.deepcopy(trace))
 
     call_decision.trace_events = []
+    call_decision.last_external_output = None
     return call_decision

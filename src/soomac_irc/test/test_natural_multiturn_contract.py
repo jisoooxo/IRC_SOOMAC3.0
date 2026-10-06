@@ -10,6 +10,7 @@ from pathlib import Path
 import xgrammar as xgr
 
 from soomac_irc.agent_contract import DECISION_SCHEMA, normalize_decision
+from soomac_irc.agent_prompts import DECISION_SYSTEM
 from soomac_irc.decision_model import DECISION_KEYS_ANY_ORDER, build_decision_model_input
 from soomac_irc.llm_langgraph import (
     DuplicateDecisionKeyError,
@@ -19,6 +20,7 @@ from soomac_irc.llm_langgraph import (
     new_session_state,
     new_turn_state,
 )
+from soomac_irc.llm_policy import validate_restriction_options
 
 
 def robot_state(section="veggie", *, completed=None, active=None, queue=None, started=False):
@@ -31,10 +33,12 @@ def robot_state(section="veggie", *, completed=None, active=None, queue=None, st
     }
 
 
-def compiled_for(sparse_decision, recommendation=None):
+def compiled_for(sparse_decision, recommendation=None, response=None):
     def call_decision(_session, _text, _robot_state, _repair):
+        call_decision.last_external_output = None
         if isinstance(sparse_decision, Exception):
             raise sparse_decision
+        call_decision.last_external_output = copy.deepcopy(sparse_decision)
         return normalize_decision(copy.deepcopy(sparse_decision))
 
     def call_recommendation(*_args, **_kwargs):
@@ -49,6 +53,8 @@ def compiled_for(sparse_decision, recommendation=None):
         }
 
     def call_response(*_args, **_kwargs):
+        if response is not None:
+            return response(*_args, **_kwargs)
         return "ok"
 
     return build_graph(call_decision, call_recommendation, call_response)
@@ -58,6 +64,7 @@ def compiled_sequence(sparse_decisions):
     calls = []
 
     def call_decision(session, text, state, repair):
+        call_decision.last_external_output = None
         calls.append({
             "session": copy.deepcopy(session),
             "text": text,
@@ -70,6 +77,7 @@ def compiled_sequence(sparse_decisions):
         output = sparse_decisions[index]
         if isinstance(output, Exception):
             raise output
+        call_decision.last_external_output = copy.deepcopy(output)
         return normalize_decision(copy.deepcopy(output))
 
     def call_recommendation(*_args, **_kwargs):
@@ -104,6 +112,19 @@ def test_schema_and_session_use_the_v3_contract():
     assert set(new_session_state()) == {
         "order", "preferences", "pending", "history", "action_history"
     }
+
+
+def test_decision_prompt_keeps_contextual_grounding_boundaries():
+    required_policies = (
+        "암묵적 양의 기본값은 normal",
+        "모든 topping을 high로 바꾸지 않는다",
+        "페퍼론치노를 기본 normal로 구체화",
+        '"물컹한 식감이 싫어"처럼 대상이 없는 감각 표현',
+        '"꾸덕하게 해줘"는 소스와 치즈 등 후보가 여러 개면 preference만 보존',
+        "질문·설명·감상·부정·가정은 실제 주문 mutation이 아니다",
+    )
+    for policy in required_policies:
+        assert policy in DECISION_SYSTEM
 
 
 def test_xgrammar_accepts_shuffled_keys_but_keeps_schema_strict():
@@ -176,7 +197,9 @@ def test_general_task_contradiction_repairs_once_and_passes_payload():
     repair = calls[1]["repair"]
     assert repair["reason"] == "structural_contradiction"
     assert repair["errors"] == ["route=general cannot contain task mutation or action"]
-    assert repair["previous_output"] == normalize_decision(first)
+    assert repair["previous_output"] == first
+    assert "order_patch" not in repair["previous_output"]
+    assert "restriction_options" not in repair["previous_output"]
     assert calls[1]["text"] == calls[0]["text"]
     assert calls[1]["session"] == calls[0]["session"]
     assert calls[1]["robot_state"] == calls[0]["robot_state"]
@@ -207,6 +230,87 @@ def test_clarify_mutation_contradiction_can_be_repaired():
         "clarify decision cannot contain resolved mutation or action"
     ]
     assert result["session"]["order"]["toppings"] == {"양파": "high"}
+
+
+def test_noodle_delete_with_active_portion_repairs_once():
+    first = {
+        "route": "task",
+        "order": {"noodle_portion": "high", "noodle_type": "none"},
+    }
+    repaired = {
+        "route": "task",
+        "order": {"noodle_type": "none", "noodle_portion": "none"},
+    }
+    session = new_session_state()
+    session["order"].update({"noodle_type": "넓은면", "noodle_portion": "high"})
+    graph, calls = compiled_sequence([first, repaired])
+
+    result = graph.invoke(new_turn_state(session, "면 선택 취소해줘", robot_state(section="noodle")))
+
+    assert len(calls) == 2
+    assert calls[1]["repair"]["previous_output"] == first
+    assert calls[1]["repair"]["errors"] == [
+        "noodle_type=none cannot contain an active noodle_portion"
+    ]
+    assert result["session"]["order"]["noodle_type"] is None
+    assert result["session"]["order"]["noodle_portion"] is None
+
+
+def test_noodle_delete_structural_check_only_rejects_active_canonical_amounts():
+    for portion in ("low", "normal", "high"):
+        decision = normalize_decision({
+            "route": "task",
+            "order": {"noodle_type": "none", "noodle_portion": portion},
+        })
+        assert find_structural_decision_errors(decision) == [
+            "noodle_type=none cannot contain an active noodle_portion"
+        ]
+
+    unsupported = normalize_decision({
+        "route": "task",
+        "order": {"noodle_type": "none", "noodle_portion": "huge"},
+    })
+    assert find_structural_decision_errors(unsupported) == []
+
+
+def test_restriction_changes_are_net_difference_from_turn_start():
+    empty_order = new_session_state()["order"]
+    existing_order = copy.deepcopy(empty_order)
+    existing_order["restrictions"] = [{"target": "치즈", "reason": "allergy"}]
+    add = {"target": "치즈", "reason": "allergy", "action": "add"}
+    remove = {"target": "치즈", "reason": "allergy", "action": "remove"}
+
+    cases = [
+        (empty_order, [add], [{"target": "치즈", "reason": "allergy"}], []),
+        (empty_order, [remove], [], []),
+        (empty_order, [add, remove], [], []),
+        (existing_order, [remove, add], [], []),
+        (existing_order, [remove], [], [{"target": "치즈", "reason": "allergy"}]),
+    ]
+    for order, options, expected_added, expected_removed in cases:
+        validated = validate_restriction_options(order, options)
+        assert validated["newly_added"] == expected_added
+        assert validated["newly_removed"] == expected_removed
+
+
+def test_add_then_remove_does_not_enforce_a_nonexistent_restriction():
+    session = new_session_state()
+    session["order"]["toppings"]["치즈"] = "normal"
+    result = run(
+        session,
+        {
+            "route": "task",
+            "restrictions": [
+                {"target": "치즈", "reason": "allergy", "action": "add"},
+                {"target": "치즈", "reason": "allergy", "action": "remove"},
+            ],
+        },
+        robot_state(section="veggie"),
+    )
+
+    assert result["session"]["order"]["restrictions"] == []
+    assert result["session"]["order"]["toppings"]["치즈"] == "normal"
+    assert result["policy"]["reason"] == "state_update_only"
 
 
 def test_second_contradiction_stops_at_safe_clarify():
@@ -375,6 +479,99 @@ def test_valid_fields_survive_when_other_fields_are_rejected():
     assert result["session"]["order"]["noodle_type"] is None
     assert result["session"]["order"]["noodle_portion"] == "normal"
     assert result["session"]["order"]["toppings"] == {"양파": "high"}
+    assert result["policy"]["issues"]["unsupported"]
+
+
+def test_valid_and_restriction_conflict_are_reported_together():
+    session = new_session_state()
+    session["order"]["restrictions"].append({"target": "게살", "reason": "allergy"})
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"양파": "high", "게살": "normal"}},
+        },
+        robot_state(section="veggie"),
+    )
+
+    assert result["session"]["order"]["toppings"] == {"양파": "high"}
+    assert result["policy"]["issues"]["restriction_conflicts"][0]["item"] == "게살"
+    assert result["policy"]["execute"] is False
+
+
+def test_unsupported_and_restriction_conflict_are_aggregated():
+    session = new_session_state()
+    session["order"]["restrictions"].append({"target": "게살", "reason": "allergy"})
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"햄": "high", "게살": "normal"}},
+        },
+        robot_state(section="veggie"),
+    )
+
+    issues = result["policy"]["issues"]
+    assert issues["unsupported"][0]["item"] == "햄"
+    assert issues["restriction_conflicts"][0]["item"] == "게살"
+    assert result["policy"]["execute"] is False
+
+
+def test_protected_and_unsupported_are_aggregated():
+    session = new_session_state()
+    session["order"]["toppings"]["양파"] = "normal"
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"양파": "low", "햄": "high"}},
+        },
+        robot_state(section="meat", started=True),
+    )
+
+    issues = result["policy"]["issues"]
+    assert issues["protected"][0]["item"] == "양파"
+    assert issues["unsupported"][0]["item"] == "햄"
+    assert result["session"]["order"]["toppings"]["양파"] == "normal"
+
+
+def test_multiple_failures_keep_valid_change_and_block_commit_for_response():
+    captured = {}
+
+    def capture_response(
+        _text,
+        _session,
+        policy,
+        applied,
+        _future,
+        _recommendation,
+        _queries,
+        next_prompt,
+        _robot,
+        _route,
+    ):
+        captured["policy"] = policy
+        captured["applied"] = applied
+        captured["next_prompt"] = next_prompt
+        return "확인"
+
+    session = new_session_state()
+    session["order"]["restrictions"].append({"target": "게살", "reason": "allergy"})
+    decision = {
+        "route": "task",
+        "order": {"toppings": {"양파": "high", "게살": "normal", "햄": "high"}},
+        "commit": True,
+    }
+    graph = compiled_for(decision, response=capture_response)
+    result = graph.invoke(new_turn_state(session, "전부 넣고 시작해", robot_state(section="veggie")))
+
+    assert result["session"]["order"]["toppings"] == {"양파": "high"}
+    assert result["policy"]["execute"] is False
+    assert result["policy"]["issues"]["unsupported"][0]["item"] == "햄"
+    assert result["policy"]["issues"]["restriction_conflicts"][0]["item"] == "게살"
+    assert captured["policy"]["issues"] == result["policy"]["issues"]
+    assert captured["applied"]["order_changes"] == {"toppings.양파": "high"}
+    assert captured["next_prompt"]["type"] == "validation_issues"
 
 
 def test_completed_item_cannot_be_removed():

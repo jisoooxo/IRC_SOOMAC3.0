@@ -237,13 +237,12 @@ def apply_order_patch(order: dict, patch: dict) -> dict:
 
 def validate_restriction_options(order: dict, options: list[dict]) -> dict:
     """구조화된 제한 변경을 검증한다. 사용자 문장의 의미는 다시 판단하지 않는다."""
-    existing = {(r.get("target"), r.get("reason")) for r in order.get("restrictions", [])}
+    initial = {(r.get("target"), r.get("reason")) for r in order.get("restrictions", [])}
+    existing = set(initial)
     accepted = []
     unsupported = []
     invalid = []
     unchanged = []
-    newly_added = []
-    newly_removed = []
 
     # 같은 턴에 add/remove가 연속으로 나와도 앞선 결과를 반영하도록 existing을 즉시 갱신한다.
     for option in options:
@@ -271,11 +270,27 @@ def validate_restriction_options(order: dict, options: list[dict]) -> dict:
         clean = {"target": target, "reason": reason, "action": action}
         accepted.append(clean)
         if action == "add":
-            newly_added.append({"target": target, "reason": reason})
             existing.add(key)
         else:
-            newly_removed.append({"target": target, "reason": reason})
             existing.discard(key)
+
+    # 한 턴 안의 중간 add/remove가 아니라 턴 시작과 최종 상태의 순변화만 downstream에 전달한다.
+    # accepted 순서를 따라 결과를 만들면 동일한 최종 상태에서도 응답과 trace 순서가 안정적이다.
+    added_keys = existing - initial
+    removed_keys = initial - existing
+    newly_added = []
+    newly_removed = []
+    seen_added = set()
+    seen_removed = set()
+    for option in accepted:
+        key = (option["target"], option["reason"])
+        entry = {"target": option["target"], "reason": option["reason"]}
+        if option["action"] == "add" and key in added_keys and key not in seen_added:
+            newly_added.append(entry)
+            seen_added.add(key)
+        if option["action"] == "remove" and key in removed_keys and key not in seen_removed:
+            newly_removed.append(entry)
+            seen_removed.add(key)
 
     return {
         "accepted": accepted,
