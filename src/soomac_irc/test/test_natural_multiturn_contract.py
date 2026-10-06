@@ -6,11 +6,14 @@
 import copy
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import is_typeddict
 
+import pytest
 import xgrammar as xgr
 
 import soomac_irc.agent_contract as agent_contract
+import soomac_irc.response_model as response_model
 from soomac_irc.agent_contract import (
     DECISION_SCHEMA,
     DuplicateDecisionKeyError,
@@ -109,6 +112,13 @@ def compiled_sequence(sparse_decisions):
 
 def run(session, decision, state, text="테스트"):
     return compiled_for(decision).invoke(new_turn_state(session, text, state))
+
+
+def session_with_preselected_meat(items):
+    session = new_session_state()
+    session["order"]["toppings"].update(copy.deepcopy(items))
+    session["pending"] = build_preselected_section_confirmation(session, "meat")
+    return session
 
 
 def test_schema_and_session_use_the_v3_contract():
@@ -937,6 +947,139 @@ def test_preselected_future_choice_uses_execution_pending():
     }
 
 
+def test_preselected_pending_adds_order_delta_without_deleting_existing_choice():
+    session = session_with_preselected_meat({"소시지": "high"})
+    result = run(
+        session,
+        {"route": "task", "order": {"toppings": {"게살": "low"}}},
+        robot_state(section="meat"),
+    )
+
+    assert result["session"]["order"]["toppings"] == {
+        "소시지": "high", "게살": "low",
+    }
+    assert result["session"]["pending"]["source"] == "preselected"
+    assert result["session"]["pending"]["items"] == {
+        "소시지": "high", "게살": "low",
+    }
+
+
+def test_preselected_pending_explicit_replacement_uses_final_order():
+    session = session_with_preselected_meat({"소시지": "high"})
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"소시지": "none", "게살": "low"}},
+        },
+        robot_state(section="meat"),
+    )
+
+    assert result["session"]["order"]["toppings"] == {"게살": "low"}
+    assert result["session"]["pending"]["targets"] == ["게살"]
+    assert result["session"]["pending"]["candidate"]["toppings"] == {"게살": "low"}
+
+
+def test_preference_only_mutation_keeps_existing_pending():
+    session = session_with_preselected_meat({"소시지": "high"})
+    original_pending = copy.deepcopy(session["pending"])
+    result = run(
+        session,
+        {"route": "task", "preferences": [{"value": "매콤하게", "action": "add"}]},
+        robot_state(section="meat"),
+    )
+
+    assert result["session"]["pending"] == original_pending
+    assert result["session"]["preferences"] == [{"value": "매콤하게"}]
+
+
+def test_restriction_mutation_refreshes_pending_from_final_order():
+    session = session_with_preselected_meat({"소시지": "high", "게살": "low"})
+    result = run(
+        session,
+        {
+            "route": "task",
+            "restrictions": [
+                {"target": "소시지", "reason": "allergy", "action": "add"},
+            ],
+        },
+        robot_state(section="meat"),
+    )
+
+    assert result["session"]["order"]["toppings"] == {"게살": "low"}
+    assert result["session"]["pending"]["targets"] == ["게살"]
+    assert result["session"]["pending"]["items"] == {"게살": "low"}
+
+
+def test_recommendation_revise_receives_old_pending_then_replaces_it():
+    old_proposal = {
+        "sauce": None, "noodle_type": None, "noodle_portion": None,
+        "toppings": {"양파": "normal"},
+    }
+    new_proposal = {
+        "sauce": None, "noodle_type": None, "noodle_portion": None,
+        "toppings": {"페퍼론치노": "high"},
+    }
+    session = new_session_state()
+    session["pending"] = {
+        "type": "recommendation",
+        "candidate": copy.deepcopy(old_proposal),
+        "reason_tags": ["담백함"],
+    }
+    seen = {}
+
+    def call_decision(_session, _text, _robot_state, _repair):
+        return normalize_decision({"route": "task", "recommendation": {"action": "revise"}})
+
+    def call_recommendation(recommendation_session, *_args):
+        seen["pending"] = copy.deepcopy(recommendation_session["pending"])
+        return {"proposal": copy.deepcopy(new_proposal), "reason_tags": ["매운맛"]}
+
+    graph = build_graph(call_decision, call_recommendation, lambda *_args: "ok")
+    result = graph.invoke(new_turn_state(session, "더 맵게 추천해줘", robot_state()))
+
+    assert seen["pending"]["candidate"] == old_proposal
+    assert seen["pending"]["reason_tags"] == ["담백함"]
+    assert result["session"]["pending"] == {
+        "type": "recommendation",
+        "candidate": new_proposal,
+        "reason_tags": ["매운맛"],
+    }
+
+
+def test_recommendation_reject_removes_pending_without_applying_order():
+    session = new_session_state()
+    candidate = {
+        "sauce": None, "noodle_type": None, "noodle_portion": None,
+        "toppings": {"양파": "normal"},
+    }
+    session["pending"] = {
+        "type": "recommendation", "candidate": candidate, "reason_tags": ["담백함"],
+    }
+    result = run(
+        session,
+        {"route": "task", "confirmation": "reject"},
+        robot_state(),
+    )
+
+    assert result["session"]["pending"] is None
+    assert result["session"]["order"]["toppings"] == {}
+    assert result["policy"]["reason"] == "confirmation_rejected"
+
+
+def test_preselected_reject_removes_only_the_rejected_candidate():
+    session = session_with_preselected_meat({"소시지": "high"})
+    result = run(
+        session,
+        {"route": "task", "confirmation": "reject"},
+        robot_state(section="meat"),
+    )
+
+    assert result["session"]["pending"] is None
+    assert result["session"]["order"]["toppings"] == {}
+    assert result["policy"]["reason"] == "confirmation_rejected"
+
+
 def test_commit_is_model_owned_but_runtime_checks_missing_and_busy():
     ready = new_session_state()
     ready["order"].update({
@@ -992,3 +1135,57 @@ def test_runtime_log_rows_identify_current_contract(tmp_path):
     assert {row["contract_version"] for row in rows} == {
         RUNTIME_CONTRACT_VERSION
     }
+
+
+def test_empty_response_reply_raises_for_existing_node_fallback(monkeypatch):
+    class FakeCompiler:
+        def __init__(self, _tokenizer_info):
+            pass
+
+        def compile_json_schema(self, _schema):
+            return object()
+
+    class FakeInputs(dict):
+        def to(self, _device):
+            return self
+
+    class FakeTokenizer:
+        eos_token_id = 1
+
+        def __len__(self):
+            return 16
+
+        def convert_tokens_to_ids(self, _token):
+            return 2
+
+    class FakeProcessor:
+        tokenizer = FakeTokenizer()
+
+        def apply_chat_template(self, *_args, **_kwargs):
+            return FakeInputs(input_ids=response_model.torch.tensor([[1, 2]]))
+
+        def decode(self, *_args, **_kwargs):
+            return '{"reply":"   "}'
+
+    class FakeModel:
+        device = "cpu"
+
+        def generate(self, **_kwargs):
+            return response_model.torch.tensor([[1, 2, 3]])
+
+    fake_xgrammar = SimpleNamespace(
+        TokenizerInfo=SimpleNamespace(from_huggingface=lambda *_args, **_kwargs: object()),
+        GrammarCompiler=FakeCompiler,
+    )
+    monkeypatch.setattr(response_model, "xgr", fake_xgrammar)
+    monkeypatch.setattr(response_model, "XGrammarLogitsProcessor", lambda _grammar: object())
+    call_response = response_model.make_call_response(FakeModel(), FakeProcessor())
+
+    with pytest.raises(ValueError, match="Response reply is empty"):
+        call_response(
+            "테스트", new_session_state(),
+            {"status": "pass", "reason": "state_update_only", "execute": False},
+            {}, [], None, None, robot_state(), "task",
+        )
+    assert call_response.trace_events[-1]["raw"] == '{"reply":"   "}'
+    assert call_response.trace_events[-1]["error"]["type"] == "ValueError"

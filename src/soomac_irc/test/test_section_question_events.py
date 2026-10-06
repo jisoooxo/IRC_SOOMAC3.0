@@ -134,6 +134,36 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertEqual(node.graph_state["pending"]["type"], "execution")
         self.assertEqual(node.call_response.call_args.args[6]["type"], "execution")
 
+    def test_section_transition_response_has_separate_model_trace_event(self):
+        node = make_node()
+
+        def respond(*args):
+            node.call_response.trace_events.append({
+                "stage": "response",
+                "model_input": {"robot_state": copy.deepcopy(args[7])},
+                "raw": '{"reply":"단계 전환 안내"}',
+                "reply": "단계 전환 안내",
+            })
+            return "단계 전환 안내"
+
+        node.call_response = Mock(side_effect=respond)
+        node.call_response.trace_events = []
+        reply = node._advance_after_section("meat", outcome="completed")
+
+        matching = [
+            call.args[1]
+            for call in node.runtime_log.log_event.call_args_list
+            if call.args[0] == "section_transition_response"
+        ]
+        self.assertEqual(reply, "단계 전환 안내")
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]["transition"]["next_section"], "extra")
+        self.assertEqual(matching[0]["robot_state"]["section"], "extra")
+        self.assertEqual(matching[0]["response_trace"]["stage"], "response")
+        self.assertEqual(matching[0]["response_model_input"]["robot_state"]["section"], "extra")
+        self.assertEqual(matching[0]["response_raw"], '{"reply":"단계 전환 안내"}')
+        self.assertEqual(matching[0]["reply"], "단계 전환 안내")
+
     def test_extra_skip_starts_lid_without_claiming_extra_completion(self):
         # 2026-10-05: extra 다음은 lid(뚜껑)이며 사용자 입력 없이 자동 시작한다.
         node = make_node("extra")

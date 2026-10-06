@@ -592,6 +592,9 @@ class LLMLangGraphNode(Node):
         self.runtime_log.log_event("section_transition", {
             "transition": copy.deepcopy(transition), "robot_state": copy.deepcopy(robot_state),
         })
+        response_trace_buffer = getattr(self.call_response, "trace_events", None)
+        response_trace_start = len(response_trace_buffer) if isinstance(response_trace_buffer, list) else 0
+        response_error = None
         try:
             # 로봇 사건이다. 사용자 명령을 만들거나 Decision을 다시 호출하지 않는다.
             reply = self.call_response(
@@ -604,9 +607,27 @@ class LLMLangGraphNode(Node):
             if not isinstance(reply, str) or not reply.strip():
                 raise ValueError("단계 전환 응답이 비어 있음")
         except Exception as error:
+            response_error = {"type": type(error).__name__, "message": str(error)}
             self.get_logger().error(f"단계 전환 응답 생성 실패: {error}")
             # 생성 실패 시 완료를 추측하지 않고 기존의 다음 단계 안내만 사용한다.
             reply = next_reply
+
+        # 사용자 turn과 섞지 않고 system-driven Response 호출만 별도 runtime event로 남긴다.
+        response_trace = None
+        if isinstance(response_trace_buffer, list) and len(response_trace_buffer) > response_trace_start:
+            response_trace = copy.deepcopy(response_trace_buffer[-1])
+        self.runtime_log.log_event("section_transition_response", {
+            "transition": copy.deepcopy(transition),
+            "robot_state": copy.deepcopy(robot_state),
+            "response_trace": response_trace,
+            "response_model_input": (
+                copy.deepcopy(response_trace.get("model_input"))
+                if isinstance(response_trace, dict) else None
+            ),
+            "response_raw": response_trace.get("raw") if isinstance(response_trace, dict) else None,
+            "reply": reply,
+            "fallback_error": response_error,
+        })
         if self.section not in ("lid", "sauce"):
             self._set_stt_enabled(True)
         # /llm/next처럼 Graph 밖에서 만든 단계 안내도 다음 자연어 턴이 볼 수 있게 기록한다.

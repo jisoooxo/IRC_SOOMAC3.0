@@ -105,6 +105,8 @@ def make_call_response(model, processor, logger=None):
                 "parsed": copy.deepcopy(parsed),
                 "reply": reply,
             })
+            if not reply:
+                raise ValueError("Response reply is empty")
             if logger is not None:
                 logger.info(f"Response raw: {raw}")
             return reply

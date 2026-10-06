@@ -177,16 +177,6 @@ def _pending_prompt(pending: dict | None) -> dict | None:
     return copy.deepcopy(pending)
 
 
-def _has_explicit_new_semantics(decision: _NormalizedDecision) -> bool:
-    # 사용자가 새 주문·제한·취향·추천을 명시했는지 구조화 결과만 보고 판단한다.
-    return bool(
-        _patch_has_values(decision["order_patch"])
-        or decision["restriction_options"]
-        or decision["preference_options"]
-        or decision["recommendation"]["action"] != "none"
-    )
-
-
 def _resolve_pending(
     session: _SessionState,
     decision: _NormalizedDecision,
@@ -203,17 +193,8 @@ def _resolve_pending(
     if pending is None:
         return working, effective, result
 
-    # 새 주문이나 추천 요청이 들어오면 이전 대기 제안은 더 이상 현재 주제가 아니므로 닫는다.
-    if effective["confirmation"] == "none" and _has_explicit_new_semantics(effective):
-        if pending.get("type") == "execution" and pending.get("source") == "preselected":
-            # 미래 미리 선택보다 사용자가 지금 직접 말한 새 선택을 우선한다.
-            working["order"] = _remove_patch_from_order(
-                working["order"], pending.get("candidate", empty_order_patch())
-            )
-        working["pending"] = None
-        return working, effective, result
-
-    # 수락·거절이 아니면 pending을 그대로 다음 턴까지 유지한다.
+    # 수락·거절이 아니면 새 구조화 의미가 함께 있어도 pending을 그대로 둔다.
+    # 주문·제한 변경 뒤의 execution pending은 final order가 확정된 다음 다시 맞춘다.
     if effective["confirmation"] not in ("accept", "reject"):
         return working, effective, result
 
@@ -249,6 +230,30 @@ def _resolve_pending(
         return working, effective, result
 
     return working, effective, result
+
+
+def _refresh_execution_pending(session: _SessionState) -> None:
+    """확정 주문과 execution pending의 대상만 다시 맞춘다.
+
+    Decision이 만든 의미를 해석하지 않고 pending에 적힌 section과 canonical order만 본다.
+    """
+    pending = session.get("pending")
+    if not isinstance(pending, dict) or pending.get("type") != "execution":
+        return
+
+    section = pending.get("section")
+    items = section_execution_items(session["order"], section)
+    if not items:
+        session["pending"] = None
+        return
+
+    if pending.get("source") == "preselected":
+        session["pending"] = build_preselected_section_confirmation(session, section)
+        return
+
+    refreshed = copy.deepcopy(pending)
+    refreshed["targets"] = [item["item"] for item in items]
+    session["pending"] = refreshed
 
 
 #################### LangGraph stage 구성 ####################
@@ -336,7 +341,7 @@ def build_graph(
         previous = copy.deepcopy(state["session"])
         raw_decision = copy.deepcopy(state["decision"])
 
-        # 1. 이전 턴의 실행·추천 pending을 먼저 수락/거절/교체한다.
+        # 1. 이전 턴의 pending은 명시적 수락·거절만 먼저 처리한다.
         session, decision, pending_result = _resolve_pending(previous, raw_decision)
         recommendation_result = None
 
@@ -367,6 +372,11 @@ def build_graph(
             robot_state=state["robot_state"],
         )
         session["order"] = restriction_enforcement["order"]
+
+        # 주문이나 제한이 바뀐 턴만 final order 기준으로 execution pending 대상을 갱신한다.
+        # preference-only와 상태 질문은 기존 pending 객체를 그대로 보존한다.
+        if _patch_has_values(decision["order_patch"]) or decision["restriction_options"]:
+            _refresh_execution_pending(session)
 
         # 4. 서로 다른 validator의 실패를 하나의 issues에 모아 Response가 모두 설명하게 한다.
         # 정상 field는 이미 반영했지만 issue가 하나라도 있으면 같은 턴의 commit은 실행하지 않는다.
