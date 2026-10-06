@@ -474,6 +474,8 @@ def build_graph(
                     "conflicts": [],
                 }
             else:
+                # 새 추천 후보를 만들지 못했으면 이전 후보도 더 이상 확인 대상으로 남기지 않는다.
+                session["pending"] = None
                 policy = {
                     "status": "clarify",
                     "reason": "recommendation_unavailable",

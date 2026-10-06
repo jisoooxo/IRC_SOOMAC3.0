@@ -1068,6 +1068,36 @@ def test_recommendation_revise_receives_old_pending_then_replaces_it():
     }
 
 
+def test_failed_recommendation_revision_clears_old_pending_after_agent_reads_it():
+    session = session_with_recommendation_pending("치즈")
+    seen = {}
+
+    def call_decision(_session, _text, _robot_state, _repair):
+        return normalize_decision({
+            "route": "task",
+            "recommendation": {"action": "revise"},
+        })
+
+    def call_recommendation(recommendation_session, *_args):
+        seen["pending"] = copy.deepcopy(recommendation_session["pending"])
+        return {
+            "proposal": {
+                "sauce": None,
+                "noodle_type": None,
+                "noodle_portion": None,
+                "toppings": {},
+            },
+            "reason_tags": [],
+        }
+
+    graph = build_graph(call_decision, call_recommendation, lambda *_args: "ok")
+    result = graph.invoke(new_turn_state(session, "다른 추천으로 바꿔줘", robot_state()))
+
+    assert seen["pending"] == session["pending"]
+    assert result["policy"]["reason"] == "recommendation_unavailable"
+    assert result["session"]["pending"] is None
+
+
 def test_recommendation_pending_is_removed_after_restriction_change():
     session = session_with_recommendation_pending("치즈")
     result = run(

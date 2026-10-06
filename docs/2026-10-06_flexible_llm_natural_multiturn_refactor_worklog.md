@@ -170,7 +170,11 @@ pending은 별도 state를 여러 개 두지 않고 discriminator로 구분한�
 {"type": "recommendation", "candidate": {}, "reason_tags": []}
 ```
 
-상태 조회처럼 새 mutation이 없는 턴은 기존 pending을 유지한다. 새로운 명시적 주문이나 추천 요청이 들어오면 이전 pending을 닫고 새 의미를 우선한다.
+현재 pending 정책은 종류별로 다르게 처리한다.
+
+- execution pending은 `accept/reject`에서 해소하고, order/restriction 변경 뒤에는 final canonical order 기준으로 대상을 갱신한다. preference-only와 상태 질문은 그대로 유지한다.
+- recommendation pending은 실제 order/restriction/preference 순변화가 생기면 stale 후보로 보고 제거한다. 상태 질문, general conversation, no-op mutation에서는 유지한다.
+- recommendation `request/revise`는 기존 후보를 Recommendation Agent 입력까지 보존한다. 새 proposal이 성공하면 교체하고, 새 유효 후보 생성에 실패하면 이전 pending도 `None`으로 정리한다.
 
 ### 1.5 최종 한 턴 흐름
 
