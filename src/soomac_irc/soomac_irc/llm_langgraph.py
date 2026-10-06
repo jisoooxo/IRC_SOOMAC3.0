@@ -10,7 +10,6 @@ from soomac_irc.llm_policy import (
     build_applied_changes,
     build_future_changes,
     build_turn_action_event,
-    cancel_is_blocked,
     changed_order_keys_from_patch,
     current_section_changed,
     enforce_restrictions,
@@ -40,7 +39,6 @@ class Decision(TypedDict):
     preference_options: list[dict]
     recommendation: dict
     commit: bool
-    cancel: bool
     confirmation: str
 
 
@@ -199,13 +197,12 @@ def _call_recommendation_compat(call_recommendation, session, decision, robot_st
 
 
 def _has_explicit_new_semantics(decision: Decision) -> bool:
-    # 사용자가 새 주문·제한·취향·추천·취소를 명시했는지 구조화 결과만 보고 판단한다.
+    # 사용자가 새 주문·제한·취향·추천을 명시했는지 구조화 결과만 보고 판단한다.
     return bool(
         _patch_has_values(decision["order_patch"])
         or decision["restriction_options"]
         or decision["preference_options"]
         or decision["recommendation"]["action"] != "none"
-        or decision["cancel"]
     )
 
 
@@ -316,41 +313,11 @@ def build_graph(
         previous = copy.deepcopy(state["session"])
         raw_decision = copy.deepcopy(state["decision"])
 
-        # 1. 전체 주문 취소 의도는 모델이 내지만, 물리적으로 취소 가능한지는 코드가 결정한다.
-        if raw_decision["cancel"]:
-            if cancel_is_blocked(state["robot_state"]):
-                return {
-                    "session": previous,
-                    "decision": raw_decision,
-                    "recommendation_result": None,
-                    "policy": {
-                        "status": "blocked",
-                        "reason": "cancel_after_start",
-                        "execute": False,
-                        "conflicts": [],
-                    },
-                }
-            session = copy.deepcopy(previous)
-            session["order"] = new_order_state()
-            session["preferences"] = []
-            session["pending"] = None
-            return {
-                "session": session,
-                "decision": raw_decision,
-                "recommendation_result": None,
-                "policy": {
-                    "status": "pass",
-                    "reason": "order_cancelled",
-                    "execute": False,
-                    "conflicts": [],
-                },
-            }
-
-        # 2. 이전 턴의 실행·추천 pending을 먼저 수락/거절/교체한다.
+        # 1. 이전 턴의 실행·추천 pending을 먼저 수락/거절/교체한다.
         session, decision, pending_result = _resolve_pending(previous, raw_decision)
         recommendation_result = None
 
-        # 3. 모델도 의미를 확정하지 못한 턴은 state를 바꾸지 않고 다시 묻는다.
+        # 2. 모델도 의미를 확정하지 못한 턴은 state를 바꾸지 않고 다시 묻는다.
         if decision["understanding"] == "clarify":
             return {
                 "session": session,
@@ -359,7 +326,7 @@ def build_graph(
                 "policy": {"status": "clarify", "reason": "understanding", "execute": False, "conflicts": []},
             }
 
-        # 4. 제한과 취향을 적용한 뒤, 주문 후보를 domain·물리 상태 기준으로 검증한다.
+        # 3. 제한과 취향을 적용한 뒤, 주문 후보를 domain·물리 상태 기준으로 검증한다.
         restriction_validation = validate_restriction_options(
             session["order"], decision["restriction_options"]
         )
@@ -378,7 +345,7 @@ def build_graph(
         )
         session["order"] = restriction_enforcement["order"]
 
-        # 5. 이미 담은 재료에 새 제한이 생겨도 실제로 담긴 주문 기록은 되돌리지 않는다.
+        # 4. 이미 담은 재료에 새 제한이 생겨도 실제로 담긴 주문 기록은 되돌리지 않는다.
         if restriction_enforcement["physical_conflicts"]:
             return {
                 "session": session,
@@ -393,7 +360,7 @@ def build_graph(
                 },
             }
 
-        # 6. 기존 안전 제한과 직접 충돌한 새 주문은 해당 값만 빼고 사용자에게 이유를 알린다.
+        # 5. 기존 안전 제한과 직접 충돌한 새 주문은 해당 값만 빼고 사용자에게 이유를 알린다.
         if restriction_enforcement["requested_conflicts"]:
             return {
                 "session": session,
@@ -408,7 +375,7 @@ def build_graph(
                 },
             }
 
-        # 7. 추천 요청은 원문과 history를 추천 모델이 직접 읽는다.
+        # 6. 추천 요청은 원문과 history를 추천 모델이 직접 읽는다.
         # 추천 결과도 일반 주문과 같은 validator를 통과한 뒤 pending에만 저장한다.
         if decision["recommendation"]["action"] in ("request", "revise"):
             raw = _call_recommendation_compat(
@@ -448,7 +415,7 @@ def build_graph(
                 "policy": policy,
             }
 
-        # 8. 일부 값이 거절돼도 나머지 정상 변경은 유지한다. 단, 같은 턴 자동 실행은 막는다.
+        # 7. 일부 값이 거절돼도 나머지 정상 변경은 유지한다. 단, 같은 턴 자동 실행은 막는다.
         rejected_any = bool(
             order_validation["unsupported"]
             or order_validation["protected"]
@@ -479,7 +446,7 @@ def build_graph(
                 },
             }
 
-        # 9. pending 거절은 state 변경 없이 정상적인 대화 결과로 끝낸다.
+        # 8. pending 거절은 state 변경 없이 정상적인 대화 결과로 끝낸다.
         if pending_result and pending_result.get("type") == "confirmation_rejected":
             return {
                 "session": session,
@@ -488,7 +455,7 @@ def build_graph(
                 "policy": {"status": "pass", "reason": "confirmation_rejected", "execute": False, "conflicts": []},
             }
 
-        # 10. commit 의미는 모델을 믿되 필수 주문과 robot busy는 코드가 마지막으로 확인한다.
+        # 9. commit 의미는 모델을 믿되 필수 주문과 robot busy는 코드가 마지막으로 확인한다.
         if decision["commit"]:
             missing = missing_current_section(session["order"], state["robot_state"]["section"])
             if missing:
@@ -504,7 +471,7 @@ def build_graph(
                 "policy": policy,
             }
 
-        # 11. 현재 section 값만 바뀌었다면 바로 실행하지 않고 execution pending을 만든다.
+        # 10. 현재 section 값만 바뀌었다면 바로 실행하지 않고 execution pending을 만든다.
         applied = build_applied_changes(previous, session)
         section = state["robot_state"]["section"]
         if (
@@ -571,8 +538,6 @@ def build_graph(
         event = build_turn_action_event(applied, future)
         if event is not None:
             session["action_history"].append(event)
-        if reason == "order_cancelled":
-            session["action_history"].append({"type": "order_cancelled"})
         session["history"].append({"role": "user", "content": state["user_text"]})
         session["history"].append({"role": "assistant", "content": reply})
         return {"session": session, "policy": state["policy"], "reply": reply}

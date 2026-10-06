@@ -13,6 +13,7 @@ from soomac_irc.domain import AMOUNTS, RESTRICTION_REASONS
 FLEXIBLE_ORDER_SCHEMA = {
     "type": "object",
     "properties": {
+        # scalar의 none은 선택 해제 의미이다. 실제 주문에는 문자열로 저장하지 않는다.
         "sauce": {"type": "string"},
         "noodle_type": {"type": "string"},
         "noodle_portion": {"type": "string"},
@@ -88,7 +89,6 @@ DECISION_SCHEMA = {
             "additionalProperties": False,
         },
         "commit": {"type": "boolean"},
-        "cancel": {"type": "boolean"},
         "confirmation": {"type": "string", "enum": ["accept", "reject"]},
         "clarify": {"type": "boolean"},
     },
@@ -135,7 +135,6 @@ def new_decision() -> dict:
         "preference_options": [],
         "recommendation": {"action": "none"},
         "commit": False,
-        "cancel": False,
         "confirmation": "none",
     }
 
@@ -171,9 +170,8 @@ def normalize_decision(sparse_decision: dict) -> dict:
     if isinstance(recommendation, dict) and recommendation.get("action") in ("request", "revise"):
         decision["recommendation"] = {"action": recommendation["action"]}
 
-    # commit/cancel/confirmation은 모델의 자연어 판단을 그대로 내부 값으로 옮긴다.
-    # 실제 실행·취소 가능 여부는 Graph와 policy가 별도로 검사한다.
+    # commit/confirmation은 모델의 자연어 판단을 그대로 내부 값으로 옮긴다.
+    # 실제 실행 가능 여부는 Graph와 policy가 별도로 검사한다.
     decision["commit"] = bool(sparse_decision.get("commit", False))
-    decision["cancel"] = bool(sparse_decision.get("cancel", False))
     decision["confirmation"] = sparse_decision.get("confirmation", "none")
     return decision

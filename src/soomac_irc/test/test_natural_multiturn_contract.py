@@ -4,8 +4,13 @@
 삭제한 dialogue_focus·pending_question·pending_confirmation 기반 테스트를 대신한다.
 """
 import copy
+import json
+from pathlib import Path
+
+import xgrammar as xgr
 
 from soomac_irc.agent_contract import DECISION_SCHEMA, normalize_decision
+from soomac_irc.decision_model import DECISION_KEYS_ANY_ORDER
 from soomac_irc.llm_langgraph import (
     DuplicateDecisionKeyError,
     build_graph,
@@ -56,12 +61,59 @@ def test_schema_and_session_use_the_v3_contract():
     properties = DECISION_SCHEMA["properties"]
     assert "mentions" not in properties
     assert "queries" not in properties
-    assert "cancel" in properties
+    assert "cancel" not in properties
     assert "oneOf" not in DECISION_SCHEMA
     assert "maxProperties" not in DECISION_SCHEMA
+    assert "cancel" not in normalize_decision({"route": "task"})
     assert set(new_session_state()) == {
         "order", "preferences", "pending", "history", "action_history"
     }
+
+
+def test_xgrammar_accepts_shuffled_keys_but_keeps_schema_strict():
+    compiler = xgr.GrammarCompiler(xgr.TokenizerInfo(["a"]))
+    grammar = compiler.compile_json_schema(
+        DECISION_SCHEMA,
+        any_order=DECISION_KEYS_ANY_ORDER,
+    )
+
+    accepted_values = [
+        {
+            "commit": True,
+            "preferences": [{"action": "add", "value": "매콤하게"}],
+            "order": {
+                "toppings": {"양파": "high"},
+                "noodle_portion": "normal",
+                "noodle_type": "넓은면",
+                "sauce": "토마토",
+            },
+            "route": "task",
+        },
+        {
+            "restrictions": [
+                {"action": "add", "reason": "allergy", "target": "치즈"}
+            ],
+            "order": {"toppings": {"치즈": "none"}},
+            "route": "task",
+        },
+    ]
+    rejected_values = [
+        {"route": "task", "unknown": True},
+        {"route": "task", "cancel": True},
+        {"route": "task", "commit": "true"},
+        {"route": "task", "order": {"toppings": {"양파": "huge"}}},
+    ]
+
+    for value in accepted_values:
+        matcher = xgr.GrammarMatcher(grammar, terminate_without_stop_token=True)
+        raw = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+        assert matcher.accept_string(raw)
+        assert matcher.is_completed()
+
+    for value in rejected_values:
+        matcher = xgr.GrammarMatcher(grammar, terminate_without_stop_token=True)
+        raw = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+        assert not matcher.accept_string(raw) or not matcher.is_completed()
 
 
 def test_one_decision_applies_multiple_fields_and_semantics_together():
@@ -147,7 +199,7 @@ def test_completed_item_cannot_be_removed():
         session,
         {"route": "task", "order": {"toppings": {"양파": "none"}}},
         robot_state(
-            section="meat",
+            section="veggie",
             completed=[{"class": "양파", "repeat_count": 2}],
             started=True,
         ),
@@ -156,26 +208,132 @@ def test_completed_item_cannot_be_removed():
     assert result["session"]["order"]["toppings"]["양파"] == "normal"
 
 
-def test_cancel_before_start_resets_canonical_state():
+def test_active_scalar_selection_cannot_be_removed():
+    session = new_session_state()
+    session["order"].update({"noodle_type": "넓은면", "noodle_portion": "high"})
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"noodle_type": "none", "noodle_portion": "none"},
+        },
+        robot_state(
+            section="noodle",
+            active={"class": "넓은면", "repeat_count": 3},
+            started=True,
+        ),
+    )
+    assert result["policy"]["reason"] == "physical_state"
+    assert result["session"]["order"]["noodle_type"] == "넓은면"
+    assert result["session"]["order"]["noodle_portion"] == "high"
+
+
+def test_specific_and_current_section_selections_can_be_removed():
     session = new_session_state()
     session["order"]["toppings"]["양파"] = "high"
-    session["preferences"].append({"value": "매콤하게"})
-    result = run(session, {"route": "task", "cancel": True}, robot_state())
-    assert result["policy"]["reason"] == "order_cancelled"
+    session["order"]["toppings"]["버섯"] = "low"
+
+    one_removed = run(
+        session,
+        {"route": "task", "order": {"toppings": {"양파": "none"}}},
+        robot_state(section="veggie"),
+    )
+    assert one_removed["session"]["order"]["toppings"] == {"버섯": "low"}
+
+    all_removed = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"양파": "none", "버섯": "none"}},
+        },
+        robot_state(section="veggie"),
+    )
+    assert all_removed["session"]["order"]["toppings"] == {}
+
+
+def test_scalar_none_becomes_canonical_none_and_clears_noodle_pair():
+    session = new_session_state()
+    session["order"].update({
+        "sauce": "토마토",
+        "noodle_type": "넓은면",
+        "noodle_portion": "high",
+    })
+    result = run(
+        session,
+        {"route": "task", "order": {"sauce": "none", "noodle_type": "none"}},
+        robot_state(section="noodle"),
+    )
+    assert result["session"]["order"]["sauce"] is None
+    assert result["session"]["order"]["noodle_type"] is None
+    assert result["session"]["order"]["noodle_portion"] is None
+
+
+def test_remove_all_and_commit_allows_optional_section_skip():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "high", "버섯": "low"}
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"양파": "none", "버섯": "none"}},
+            "commit": True,
+        },
+        robot_state(section="veggie"),
+    )
     assert result["session"]["order"]["toppings"] == {}
-    assert result["session"]["preferences"] == []
+    assert result["policy"]["reason"] == "execution_allowed"
+    assert result["policy"]["execute"] is True
 
 
-def test_cancel_after_start_is_blocked_without_state_change():
+def test_past_section_removal_is_blocked_without_state_change():
     session = new_session_state()
     session["order"]["toppings"]["양파"] = "high"
     result = run(
         session,
-        {"route": "task", "cancel": True},
+        {"route": "task", "order": {"toppings": {"양파": "none"}}},
         robot_state(section="meat", started=True),
     )
-    assert result["policy"]["reason"] == "cancel_after_start"
+    assert result["policy"]["reason"] == "physical_state"
     assert result["session"]["order"]["toppings"]["양파"] == "high"
+
+
+def test_mixed_removal_addition_and_preference_all_survive():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "high", "버섯": "low"}
+    session["order"]["restrictions"].append({"target": "치즈", "reason": "allergy"})
+    session["preferences"].append({"value": "담백하게"})
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {
+                "toppings": {
+                    "양파": "none",
+                    "버섯": "none",
+                    "소시지": "high",
+                },
+            },
+            "preferences": [{"value": "푸짐하게", "action": "add"}],
+        },
+        robot_state(section="veggie"),
+    )
+    assert result["session"]["order"]["toppings"] == {"소시지": "high"}
+    assert result["session"]["order"]["restrictions"] == [
+        {"target": "치즈", "reason": "allergy"}
+    ]
+    assert result["session"]["preferences"] == [
+        {"value": "담백하게"},
+        {"value": "푸짐하게"},
+    ]
+
+
+def test_reset_topics_and_handlers_remain_in_runtime_node():
+    node_path = Path(__file__).parents[1] / "soomac_irc" / "llm_langgraph_node.py"
+    source = node_path.read_text(encoding="utf-8")
+    assert '"/ui/reset"' in source
+    assert '"/llm/reset"' in source
+    assert "def _process_reset(" in source
+    assert "def _process_finish(" in source
 
 
 def test_new_allergy_removes_editable_future_selection():

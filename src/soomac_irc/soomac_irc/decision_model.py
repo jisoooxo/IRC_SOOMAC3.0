@@ -13,6 +13,7 @@ from soomac_irc.llm_langgraph import Decision, DuplicateDecisionKeyError, Sessio
 DECISION_HISTORY_TURNS = 10
 DECISION_INPUT_MAX_TOKENS = 8192
 DECISION_MAX_TOKENS = 1024
+DECISION_KEYS_ANY_ORDER = True
 
 
 #################### Decision 모델 입력 만들기 ####################
@@ -89,11 +90,11 @@ def make_call_decision(model, processor, logger=None):
     stop_ids = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<turn|>")]
     stop_ids = list(dict.fromkeys(i for i in stop_ids if isinstance(i, int) and i >= 0))
     tokenizer_info = xgr.TokenizerInfo.from_huggingface(tokenizer, vocab_size=len(tokenizer), stop_token_ids=stop_ids)
-    # key 순서는 스키마 순서로 고정하지만 optional field 개수는 제한하지 않는다.
-    # order·restriction·preference·commit 등을 한 JSON에 함께 출력할 수 있다.
+    # JSON key 순서는 의미가 아니므로 top-level과 중첩 객체 모두 자유롭게 출력하게 한다.
+    # 필드 이름·자료형·허용값 검사는 그대로 유지하며 여러 의미를 한 JSON에 함께 담을 수 있다.
     compiled_grammar = xgr.GrammarCompiler(tokenizer_info).compile_json_schema(
         DECISION_SCHEMA,
-        any_order=False,
+        any_order=DECISION_KEYS_ANY_ORDER,
     )
 
     @torch.inference_mode()

@@ -113,16 +113,6 @@ def protected_order_keys(robot_state: dict) -> list[str]:
     return protected
 
 
-def cancel_is_blocked(robot_state: dict) -> bool:
-    """전체 주문 취소는 로봇이 물리 작업을 시작하기 전에만 허용한다."""
-    return bool(
-        robot_state.get("robot_started")
-        or robot_state.get("active_task") is not None
-        or robot_state.get("task_queue")
-        or robot_state.get("completed_tasks")
-    )
-
-
 def compact_order_patch(patch: dict) -> dict:
     # Response나 pending에 넘길 때 의미 없는 null·빈 toppings를 제거한다.
     compact = {
@@ -164,7 +154,12 @@ def validate_order_patch(patch: dict, robot_state: dict) -> dict:
     # scalar 세 필드는 같은 순서로 검사하되, 이유를 잃지 않도록 별도 목록에 기록한다.
     sauce = patch.get("sauce")
     if sauce is not None:
-        if sauce not in SAUCES:
+        if sauce == "none":
+            if "sauce" in protected_keys:
+                protected.append({"field": "sauce", "value": sauce})
+            else:
+                accepted["sauce"] = sauce
+        elif sauce not in SAUCES:
             unsupported.append({"field": "sauce", "value": sauce})
         elif "sauce" in protected_keys:
             protected.append({"field": "sauce", "value": sauce})
@@ -173,7 +168,12 @@ def validate_order_patch(patch: dict, robot_state: dict) -> dict:
 
     noodle_type = patch.get("noodle_type")
     if noodle_type is not None:
-        if noodle_type not in NOODLE_TYPES:
+        if noodle_type == "none":
+            if "noodle_type" in protected_keys:
+                protected.append({"field": "noodle_type", "value": noodle_type})
+            else:
+                accepted["noodle_type"] = noodle_type
+        elif noodle_type not in NOODLE_TYPES:
             unsupported.append({"field": "noodle_type", "value": noodle_type})
         elif "noodle_type" in protected_keys:
             protected.append({"field": "noodle_type", "value": noodle_type})
@@ -182,7 +182,12 @@ def validate_order_patch(patch: dict, robot_state: dict) -> dict:
 
     noodle_portion = patch.get("noodle_portion")
     if noodle_portion is not None:
-        if noodle_portion not in AMOUNTS:
+        if noodle_portion == "none":
+            if "noodle_portion" in protected_keys:
+                protected.append({"field": "noodle_portion", "value": noodle_portion})
+            else:
+                accepted["noodle_portion"] = noodle_portion
+        elif noodle_portion not in AMOUNTS:
             invalid.append({"field": "noodle_portion", "value": noodle_portion})
         elif "noodle_portion" in protected_keys:
             protected.append({"field": "noodle_portion", "value": noodle_portion})
@@ -211,11 +216,15 @@ def validate_order_patch(patch: dict, robot_state: dict) -> dict:
 
 def apply_order_patch(order: dict, patch: dict) -> dict:
     # 검증을 통과한 patch만 주문 복사본에 반영한다.
-    # none은 실제 값으로 저장하지 않고 해당 topping key를 삭제한다.
+    # none은 실제 값으로 저장하지 않고 scalar는 None, topping은 key 삭제로 적용한다.
     updated = copy.deepcopy(order)
     for field in ("sauce", "noodle_type", "noodle_portion"):
         if patch.get(field) is not None:
-            updated[field] = patch[field]
+            updated[field] = None if patch[field] == "none" else patch[field]
+
+    # 면 종류를 지운 턴에는 면 양도 의미가 없으므로 최종 주문의 일관성을 함께 맞춘다.
+    if patch.get("noodle_type") == "none":
+        updated["noodle_portion"] = None
     for item, amount in (patch.get("toppings") or {}).items():
         if amount == "none":
             updated["toppings"].pop(item, None)
