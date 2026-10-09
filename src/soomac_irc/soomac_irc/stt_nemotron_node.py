@@ -1,6 +1,7 @@
 #!/home/roma/miniconda3/envs/gemma4_env/bin/python
 
 import math
+import os
 import queue
 import shutil
 import subprocess
@@ -17,11 +18,6 @@ from transformers import AutoModelForRNNT, AutoProcessor
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
-
-if __package__:
-    from .stt_hotword import normalize_stt_text
-else:
-    from stt_hotword import normalize_stt_text
 
 # 이 노드는 conda 환경을 지키려고 파일로 직접 실행한다.
 #   토픽은 publisher·subscription 생성 위치에서 직접 확인할 수 있게 문자열로 적는다.
@@ -41,11 +37,11 @@ MAX_NEW_TOKENS = 1024
 #   2026-07-31 실측에서 bfloat16 가중치 1,217MiB / 추론 피크 1,290MiB 로 정확도가 같았다.
 MODEL_DTYPE = torch.bfloat16
 
-# PulseAudio 가 USB 마이크를 잡고 있으므로 'default' 로 두는 게 맞다.
+# PulseAudio 소스를 명시적으로 고정해 실행 중 기본 장치 변경이 수음에 섞이지 않게 한다.
 #   plughw:CARD=... 처럼 하드웨어 경로를 직접 지정하면 "Device or resource busy" 로 못 연다.
-#   ⚠ USB 마이크를 안 꽂은 상태에서는 기본 소스가 S/PDIF 출력의 모니터로 떨어져
-#   전부 0인 무음이 잡힌다. 레벨이 -120데시벨로 고정되면 마이크가 안 꽂힌 것이다.
-AUDIO_DEVICE = 'default'
+#   SOOMAC_AUDIO_SOURCE가 비어 있으면 시작 시점의 PulseAudio 기본 소스를 쓴다.
+AUDIO_DEVICE = 'pulse'
+AUDIO_SOURCE_ENV = 'SOOMAC_AUDIO_SOURCE'
 # Nemotron processor 와 Silero VAD 모두 16킬로헤르츠 단일 채널 입력을 기준으로 한다.
 SAMPLE_RATE = 16000
 SAMPLE_WIDTH_BYTES = 2
@@ -78,6 +74,7 @@ SUBSCRIPTION_QUEUE_SIZE = 10
 
 
 ARECORD_WAIT_SEC = 2.0
+PACTL_WAIT_SEC = 2.0
 THREAD_JOIN_TIMEOUT_SEC = 2.0
 DBFS_FLOOR = -120.0
 PCM_FULL_SCALE = float(1 << (SAMPLE_WIDTH_BYTES * 8 - 1))
@@ -134,8 +131,10 @@ class NemotronSttStats:
 
 
 class NemotronSttNode(Node):
-    def __init__(self):
-        super().__init__('soomac_nemotron_stt_node')
+    def __init__(self, node_name='soomac_nemotron_stt_node', engine_name='네모트론'):
+        super().__init__(node_name)
+
+        self.engine_name = engine_name
 
         self.stop_event = threading.Event()
         self.state_lock = threading.Lock()
@@ -161,7 +160,20 @@ class NemotronSttNode(Node):
         self.silero_vad_model = None
         self.arecord_process = None
 
+        try:
+            self._initialize_runtime()
+        except Exception:
+            try:
+                self.destroy_node()
+            except Exception as cleanup_error:
+                print(
+                    f'STT 부분 초기화 자원을 정리하지 못했어요: '
+                    f'{cleanup_error}\n{traceback.format_exc()}')
+            raise
+
+    def _initialize_runtime(self):
         self._validate_constants()
+        self.capture_source = self._resolve_pulse_source()
         self._load_silero_vad()
         self._load_model()
 
@@ -181,18 +193,18 @@ class NemotronSttNode(Node):
 
         self.microphone_thread = threading.Thread(
             target=self._microphone_loop,
-            name='nemotron-microphone',
+            name=f'{self.engine_name}-microphone',
             daemon=True)
         self.worker_thread = threading.Thread(
             target=self._worker_loop,
-            name='nemotron-worker',
+            name=f'{self.engine_name}-worker',
             daemon=True)
 
         self.microphone_thread.start()
         self.worker_thread.start()
 
         self.get_logger().info(
-            '네모트론 STT 준비됐어요. /stt/enable 신호를 기다립니다.')
+            f'{self.engine_name} STT 준비됐어요. /stt/enable 신호를 기다립니다.')
 
     def _validate_constants(self):
         if CHUNK_MS <= 0:
@@ -300,10 +312,62 @@ class NemotronSttNode(Node):
                 f'네모트론 모델을 불러오다가 터졌어요: {error}\n{traceback.format_exc()}')
             raise
 
+    def _resolve_pulse_source(self):
+        pactl_path = shutil.which('pactl')
+        requested_source = os.environ.get(AUDIO_SOURCE_ENV, '').strip()
+        if pactl_path is None:
+            raise RuntimeError(
+                'pactl을 찾지 못해 PulseAudio 입력이 마이크인지 '
+                '검증할 수 없어요.')
+
+        try:
+            sources_result = subprocess.run(
+                [pactl_path, 'list', 'short', 'sources'],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=PACTL_WAIT_SEC)
+            available_sources = {
+                line.split('\t', 2)[1]
+                for line in sources_result.stdout.splitlines()
+                if '\t' in line
+            }
+
+            if requested_source:
+                capture_source = requested_source
+            else:
+                default_result = subprocess.run(
+                    [pactl_path, 'get-default-source'],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=PACTL_WAIT_SEC)
+                capture_source = default_result.stdout.strip()
+
+        except (subprocess.SubprocessError, OSError) as error:
+            raise RuntimeError(
+                f'PulseAudio 입력 장치를 확인하지 못했어요: {error}') from error
+
+        if not capture_source:
+            raise RuntimeError('PulseAudio 입력 장치 이름이 비어 있어요.')
+        if capture_source not in available_sources:
+            raise RuntimeError(
+                f'지정한 입력 장치가 없어요: {capture_source}. '
+                f'마이크 연결과 {AUDIO_SOURCE_ENV}를 확인하세요.')
+        if capture_source.endswith('.monitor'):
+            raise RuntimeError(
+                f'입력이 마이크가 아닌 출력 모니터예요: {capture_source}. '
+                '마이크를 연결한 뒤 `pactl set-default-source <마이크_소스>`를 '
+                f'실행하거나 {AUDIO_SOURCE_ENV}를 지정하세요.')
+
+        return capture_source
+
     def _open_arecord(self):
         arecord_path = shutil.which('arecord')
         if arecord_path is None:
             raise RuntimeError('arecord를 찾지 못했어요. alsa-utils 설치를 확인해 주세요.')
+
+        capture_source = self.capture_source
 
         command = [
             arecord_path,
@@ -321,11 +385,16 @@ class NemotronSttNode(Node):
         ]
 
         try:
+            arecord_environment = os.environ.copy()
+            if capture_source is not None:
+                arecord_environment['PULSE_SOURCE'] = capture_source
+
             self.arecord_process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                bufsize=CHUNK_BYTES * 4)
+                bufsize=CHUNK_BYTES * 4,
+                env=arecord_environment)
 
             if (self.arecord_process.stdout is None
                     or self.arecord_process.stderr is None):
@@ -334,6 +403,9 @@ class NemotronSttNode(Node):
             self.get_logger().info(
                 f'마이크를 {AUDIO_DEVICE} 장치에서 {SAMPLE_RATE}헤르츠, '
                 f'{CHANNELS}채널, {SAMPLE_WIDTH_BYTES * 8}비트로 열었어요.')
+            if capture_source is not None:
+                self.get_logger().info(
+                    f'PulseAudio 입력을 {capture_source}로 고정했어요.')
             self.get_logger().info(
                 f'음성 확률 기준은 {SPEECH_PROBABILITY:.2f}이고 '
                 f'{SILENCE_SECONDS:.1f}초 조용하면 발화를 닫습니다.')
@@ -505,6 +577,7 @@ class NemotronSttNode(Node):
                 with self.state_lock:
                     gate_reopened = self._update_gate_from_clock_locked()
                     gate_open = self.gate_open
+                    gate_session = self.session
 
                 if gate_reopened:
                     self.get_logger().info('가드 시간이 끝났어요. 다시 듣고 있습니다.')
@@ -518,7 +591,8 @@ class NemotronSttNode(Node):
 
                 with self.state_lock:
                     # 확률 계산 중 문이 닫혔다면 이 청크가 새 세션에 들어가지 않게 버린다.
-                    if not self.gate_open:
+                    if (not self.gate_open
+                            or gate_session != self.session):
                         continue
 
                     if should_log_level:
@@ -535,7 +609,8 @@ class NemotronSttNode(Node):
                     self.get_logger().info(level_log_text)
                 if speech_started:
                     self.get_logger().info(
-                        f'말이 시작됐어요. 네모트론 세션 {speech_started}번에 담습니다.')
+                        f'말이 시작됐어요. {self.engine_name} '
+                        f'세션 {speech_started}번에 담습니다.')
 
         except Exception as error:
             if not self.stop_event.is_set():
@@ -665,6 +740,10 @@ class NemotronSttNode(Node):
             decoded = processor.decode(
                 output.sequences, skip_special_tokens=True)
             raw_text = decoded[0] if isinstance(decoded, list) else decoded
+            if __package__:
+                from .stt_hotword import normalize_stt_text
+            else:
+                from stt_hotword import normalize_stt_text
             final_text = normalize_stt_text(raw_text)
             stats.mark_inference_finished()
 

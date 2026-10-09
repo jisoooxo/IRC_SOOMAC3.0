@@ -6,6 +6,7 @@ import torch
 import xgrammar as xgr
 from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
+from soomac_irc.adapter_runtime import activate_adapter
 from soomac_irc.agent_contract import (
     DECISION_SCHEMA,
     DuplicateDecisionKeyError,
@@ -89,7 +90,7 @@ def _parse_sparse_decision(raw: str) -> dict:
 
 #################### 실제 Decision 추론 함수 만들기 ####################
 
-def make_call_decision(model, processor, logger=None):
+def make_call_decision(model, processor, logger=None, adapter_name: str | None = None):
     # 모델과 tokenizer마다 stop token이 다를 수 있어 유효한 id만 중복 없이 사용한다.
     tokenizer = processor.tokenizer
     stop_ids = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<turn|>")]
@@ -123,6 +124,9 @@ def make_call_decision(model, processor, logger=None):
             messages, inputs, model_input = build_decision_inputs(session, user_text, robot_state, processor, repair)
             inputs = inputs.to(model.device)
             prompt_tokens = inputs["input_ids"].shape[1]
+
+            # 직전 Response 호출이 어떤 Adapter를 남겼든 Decision LoRA로 되돌린다.
+            activate_adapter(model, adapter_name)
 
             # sampling 없이 같은 입력은 같은 Decision이 나오게 하고, XGrammar로 JSON 모양을 보장한다.
             output = model.generate(

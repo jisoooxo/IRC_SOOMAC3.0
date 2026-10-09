@@ -6,6 +6,7 @@ import torch
 import xgrammar as xgr
 from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
+from soomac_irc.adapter_runtime import activate_adapter
 from soomac_irc.agent_contract import RESPONSE_SCHEMA, SessionState
 from soomac_irc.agent_prompts import GENERAL_RESPONSE_SYSTEM, MIXED_RESPONSE_SYSTEM, TASK_RESPONSE_SYSTEM
 from soomac_irc.llm_policy import section_execution_items
@@ -21,7 +22,7 @@ RESPONSE_SYSTEM_BY_ROUTE = {
 
 #################### 최종 사용자 응답 모델 호출 함수 만들기 ####################
 
-def make_call_response(model, processor, logger=None):
+def make_call_response(model, processor, logger=None, adapter_name: str | None = None):
     # Response는 답변 문자열 하나만 내도록 JSON 문법 객체를 미리 만든다.
     tokenizer = processor.tokenizer
     stop_ids = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<turn|>")]
@@ -89,8 +90,11 @@ def make_call_response(model, processor, logger=None):
                 "logits_processor": [XGrammarLogitsProcessor(compiled_grammar)],
             }
 
-            # Decision Adapter가 응답 문체에 섞이지 않도록 base model로 답변만 생성한다.
-            if hasattr(model, "disable_adapter"):
+            # 학습된 Response Adapter가 있으면 해당 LoRA로 답변을 생성한다.
+            # adapter_name을 생략한 기존 호출은 종전처럼 Base Model을 사용한다.
+            if activate_adapter(model, adapter_name):
+                output = model.generate(**generate_args)
+            elif hasattr(model, "disable_adapter"):
                 with model.disable_adapter():
                     output = model.generate(**generate_args)
             else:

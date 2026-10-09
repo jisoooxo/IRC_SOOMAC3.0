@@ -14,7 +14,14 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Bool, Int16, String
 
-from soomac_irc.model_runtime import DECISION_ADAPTER_PATH, load_model, make_call_vlm
+from soomac_irc.model_runtime import (
+    DECISION_ADAPTER_NAME,
+    DECISION_ADAPTER_PATH,
+    RESPONSE_ADAPTER_NAME,
+    RESPONSE_ADAPTER_PATH,
+    load_model,
+    make_call_vlm,
+)
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.agent_contract import new_session_state, new_turn_state
 from soomac_irc.llm_langgraph import (
@@ -84,10 +91,23 @@ class LLMLangGraphNode(Node):
         if call_decision is None:
             # Decision, Recommendation, Response, VLM은 같은 base model을 순차적으로 사용
             self.get_logger().info("Agentic LLM base model 로딩중")
-            self.model, self.processor = load_model(DECISION_ADAPTER_PATH)
-            call_decision = make_call_decision(self.model, self.processor, self.get_logger())
+            self.model, self.processor = load_model(
+                DECISION_ADAPTER_PATH,
+                RESPONSE_ADAPTER_PATH,
+            )
+            call_decision = make_call_decision(
+                self.model,
+                self.processor,
+                self.get_logger(),
+                adapter_name=DECISION_ADAPTER_NAME,
+            )
             call_recommendation = make_call_recommendation(self.model, self.processor, self.get_logger())
-            call_response = make_call_response(self.model, self.processor, self.get_logger())
+            call_response = make_call_response(
+                self.model,
+                self.processor,
+                self.get_logger(),
+                adapter_name=RESPONSE_ADAPTER_NAME,
+            )
             self.get_logger().info("Agentic LLM base model 로딩 완료")
         else:
             call_recommendation = getattr(call_decision, "call_recommendation", None)

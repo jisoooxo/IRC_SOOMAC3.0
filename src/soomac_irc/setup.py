@@ -27,6 +27,7 @@ setup(
         'console_scripts': [
             'stt_node = soomac_irc.stt_node:main',
             'stt_nemotron_node = soomac_irc.stt_nemotron_node:main',
+            'stt_qwen3_asr_node = soomac_irc.stt_qwen3_asr_node:main',
             'tts_node = soomac_irc.tts_node:main',
             'llm_node = soomac_irc.llm_langgraph_node:main',
             'llm_debug = soomac_irc.llm_langgraph_debug:main',

@@ -12,7 +12,10 @@ except ImportError:
 
 # 모델 경로
 MODEL_PATH = "/home/roma/Desktop/sLLM/gemma-4-12B-it"
-DECISION_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/decision_adapter_epoch6_best"
+DECISION_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/decision_adapter_v3_best_epoch3"
+RESPONSE_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/response_adapter_v1_best_epoch1"
+DECISION_ADAPTER_NAME = "decision"
+RESPONSE_ADAPTER_NAME = "response"
 MODEL_QUANTIZATION = "nf4" # int8, nf4(qlora), bf16(원본)
 
 VLM_MAX_TOKENS = 1024
@@ -148,8 +151,8 @@ def make_call_vlm(model, processor, logger=None):
     return call_vlm        
 
 
-def load_model(adapter_path=None):
-    # gemma4를 한번에 로딩하고, adapter는 차후에 ㅇㅇ
+def load_model(adapter_path=None, response_adapter_path=None):
+    # Base Model은 한 번만 올리고 Decision/Response LoRA를 이름별로 붙인다.
 
     processor = AutoProcessor.from_pretrained(MODEL_PATH, local_files_only=True)
     # processor = tokenizer(텍스트) + image processor(이미지) + feature extractor(오디오) 묶음
@@ -216,8 +219,37 @@ def load_model(adapter_path=None):
     model.eval() # dropout 등 추론 모드로
 
     if adapter_path is not None:
-        model = PeftModel.from_pretrained(model, adapter_path, is_trainable=False) # LoRA adapter 읽기 전용으로 붙임
-        model.eval() # PeftModel로 새로 감쌌으니 한번 더
+        model = PeftModel.from_pretrained(
+            model,
+            adapter_path,
+            adapter_name=DECISION_ADAPTER_NAME,
+            is_trainable=False,
+        )
+
+    if response_adapter_path is not None:
+        if isinstance(model, PeftModel):
+            model.load_adapter(
+                response_adapter_path,
+                adapter_name=RESPONSE_ADAPTER_NAME,
+                is_trainable=False,
+            )
+        else:
+            model = PeftModel.from_pretrained(
+                model,
+                response_adapter_path,
+                adapter_name=RESPONSE_ADAPTER_NAME,
+                is_trainable=False,
+            )
+
+    if isinstance(model, PeftModel):
+        # 첫 Agent 호출은 Decision이므로 기본 활성 Adapter도 Decision으로 맞춘다.
+        initial_adapter = (
+            DECISION_ADAPTER_NAME
+            if adapter_path is not None
+            else RESPONSE_ADAPTER_NAME
+        )
+        model.set_adapter(initial_adapter)
+        model.eval()
 
     return model, processor
 
