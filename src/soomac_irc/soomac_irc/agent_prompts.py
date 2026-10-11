@@ -139,6 +139,7 @@ Python이 확정한 최신 사실과 자연어 history를 보고 한국어 한�
 - policy.reason=completed_restriction_conflict이면 제한 대상 재료가 이미 물리적으로 담겨 되돌릴 수 없다는 사실을 분명히 알려준다.
 - policy.reason=missing_order이면 부족한 주문 정보를 묻는다.
 - execution_authorized=false인데 실행을 시작했다고 말하지 않는다.
+- execution_authorized=true이면 실행 확인을 다시 묻거나 확인이 남아 있다고 말하지 않는다. starting_now에 있는 항목을 지금 시작한다고 말한다.
 - 이전 assistant 말보다 최신 structured state를 우선한다.
 - 새로운 메뉴/질문/실행을 임의로 만들어내지 않는다.'''+COMMON_JSON_ONLY_RULE
 

@@ -28,6 +28,7 @@ from soomac_irc.agent_contract import (
 from soomac_irc.agent_prompts import DECISION_SYSTEM
 from soomac_irc.decision_model import DECISION_KEYS_ANY_ORDER, build_decision_model_input
 from soomac_irc.llm_langgraph import (
+    build_execution_started_reply,
     build_graph,
     build_preselected_section_confirmation,
     find_structural_decision_errors,
@@ -900,6 +901,83 @@ def test_current_update_creates_execution_pending_then_accept_executes():
     assert accepted["session"]["pending"] is None
 
 
+def test_execution_pending_commit_without_confirmation_is_consumed():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "low", "버섯": "high"}
+    session["pending"] = {
+        "type": "execution",
+        "source": "current_update",
+        "section": "veggie",
+        "targets": ["양파", "버섯"],
+    }
+
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"버섯": "low"}},
+            "commit": True,
+        },
+        robot_state(section="veggie"),
+    )
+
+    assert result["policy"]["reason"] == "execution_allowed"
+    assert result["policy"]["execute"] is True
+    assert result["session"]["pending"] is None
+    assert result["session"]["order"]["toppings"] == {"양파": "low", "버섯": "low"}
+
+
+def test_execution_confirmation_cannot_apply_to_a_different_section():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "low"}
+    session["pending"] = {
+        "type": "execution",
+        "source": "current_update",
+        "section": "veggie",
+        "targets": ["양파"],
+    }
+
+    result = run(
+        session,
+        {"route": "task", "confirmation": "accept"},
+        robot_state(section="meat"),
+        text="어 진행해",
+    )
+
+    assert result["policy"]["reason"] == "stale_execution_confirmation"
+    assert result["policy"]["execute"] is False
+
+
+def test_structured_execution_started_reply_ignores_stale_history():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "low", "버섯": "high"}
+    session["history"] = [
+        {"role": "assistant", "content": "실행 확인이 남아 있어요. 담을까요?"},
+    ]
+
+    assert build_execution_started_reply(session, "veggie") == (
+        "양파 적게, 버섯 많이 담기를 시작해요."
+    )
+
+
+def test_execution_allowed_bypasses_response_model():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "low"}
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("실행 허용 턴에서 Response 모델을 호출하면 안 됨")
+
+    graph = compiled_for(
+        {"route": "task", "commit": True},
+        response=fail_if_called,
+    )
+    result = graph.invoke(new_turn_state(session, "바로 담아", robot_state(section="veggie")))
+
+    assert result["policy"]["execute"] is True
+    assert result["reply"] == "양파 적게 담기를 시작해요."
+    assert result["session"]["history"][-1]["content"] == "양파 적게 담기를 시작해요."
+
+
 def test_status_turn_keeps_execution_pending():
     session = new_session_state()
     session["order"]["toppings"]["양파"] = "normal"
@@ -1166,6 +1244,23 @@ def test_recommendation_pending_survives_noop_preference_mutation():
     assert result["session"]["pending"] == original_pending
 
 
+def test_unresolved_recommendation_pending_blocks_bare_commit_and_survives():
+    session = session_with_recommendation_pending("버섯", "normal")
+    original_pending = copy.deepcopy(session["pending"])
+
+    result = run(
+        session,
+        {"route": "task", "order": {"toppings": {"양파": "none"}}, "commit": True},
+        robot_state(section="veggie"),
+        text="양파만 빼고 바로 해줘",
+    )
+
+    assert result["policy"]["reason"] == "pending_confirmation_required"
+    assert result["policy"]["execute"] is False
+    assert result["session"]["pending"] == original_pending
+    assert result["session"]["order"]["toppings"] == {}
+
+
 def test_recommendation_reject_removes_pending_without_applying_order():
     session = new_session_state()
     candidate = {
@@ -1221,6 +1316,20 @@ def test_commit_is_model_owned_but_runtime_checks_missing_and_busy():
     )
     assert busy["policy"]["reason"] == "robot_busy"
     assert busy["policy"]["execute"] is False
+
+
+def test_bare_commit_cannot_skip_an_empty_optional_section():
+    session = new_session_state()
+    result = run(
+        session,
+        {"route": "task", "commit": True},
+        robot_state(section="meat"),
+        text="어 진행해",
+    )
+
+    assert result["policy"]["reason"] == "empty_section_commit"
+    assert result["policy"]["execute"] is False
+    assert result["session"]["pending"] is None
 
 
 def test_duplicate_decision_key_falls_back_without_mutating_state():

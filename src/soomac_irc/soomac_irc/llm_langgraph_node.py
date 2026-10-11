@@ -25,11 +25,12 @@ from soomac_irc.model_runtime import (
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.agent_contract import new_session_state, new_turn_state
 from soomac_irc.llm_langgraph import (
+    build_execution_started_reply,
     build_graph,
     build_preselected_confirmation_reply,
     build_preselected_section_confirmation,
 )
-from soomac_irc.llm_policy import build_applied_changes, section_execution_items
+from soomac_irc.llm_policy import section_execution_items
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
 from soomac_irc.recommendation_model import make_call_recommendation
 from soomac_irc.response_model import make_call_response
@@ -612,35 +613,11 @@ class LLMLangGraphNode(Node):
         self.runtime_log.log_event("section_transition", {
             "transition": copy.deepcopy(transition), "robot_state": copy.deepcopy(robot_state),
         })
-        response_trace_buffer = getattr(self.call_response, "trace_events", None)
-        response_trace_start = len(response_trace_buffer) if isinstance(response_trace_buffer, list) else 0
-        response_error = None
-        if self.section in ("lid", "sauce"):
-            reply = next_reply
-        else:
-            try:
-                # 사용자 선택이 필요한 단계만 Response 모델로 자연스럽게 안내한다.
-                reply = self.call_response(
-                    "", copy.deepcopy(self.graph_state),
-                    {"status": "pass", "reason": "section_transition", "execute": False,
-                     "conflicts": []},
-                    build_applied_changes(self.graph_state, self.graph_state),
-                    [], None, next_prompt, robot_state, "task",
-                )
-                if not isinstance(reply, str) or not reply.strip():
-                    raise ValueError("단계 전환 응답이 비어 있음")
-            except Exception as error:
-                response_error = {
-                    "type": type(error).__name__,
-                    "message": str(error),
-                }
-                self.get_logger().error(f"단계 전환 응답 생성 실패: {error}")
-                reply = next_reply
-
-        # 사용자 turn과 섞지 않고 system-driven Response 호출만 별도 runtime event로 남긴다.
+        # 사용자 입력이 없는 상태 전환은 이미 계산한 structured 안내를 그대로 사용한다.
+        # Response history가 새 section 안내를 직전 문장으로 덮어쓰지 못하게 한다.
+        reply = next_reply
         response_trace = None
-        if isinstance(response_trace_buffer, list) and len(response_trace_buffer) > response_trace_start:
-            response_trace = copy.deepcopy(response_trace_buffer[-1])
+        response_error = None
         self.runtime_log.log_event("section_transition_response", {
             "transition": copy.deepcopy(transition),
             "robot_state": copy.deepcopy(robot_state),
@@ -1245,28 +1222,55 @@ class LLMLangGraphNode(Node):
 
         try:
             if not result["policy"]["execute"]:
-                if result["reply"]:
-                    published_reply = result["reply"]
+                reply = result["reply"]
+                if result["policy"].get("reason") == "empty_section_commit":
+                    reply = self._section_prompt()
+                    if self.graph_state["history"] and self.graph_state["history"][-1]["role"] == "assistant":
+                        self.graph_state["history"][-1]["content"] = reply
+                    else:
+                        self.graph_state["history"].append({"role": "assistant", "content": reply})
+
+                if reply:
+                    published_reply = reply
                     self._publish_reply(published_reply)
 
                 self._set_stt_enabled(True)
                 write_turn("completed")
                 return
 
+            unresolved_pending = self.graph_state.get("pending")
+            if unresolved_pending is not None:
+                if unresolved_pending.get("type") == "execution":
+                    targets = ", ".join(unresolved_pending.get("targets", [])) or "현재 선택한 재료"
+                    published_reply = f"{targets} 담기를 진행할지 먼저 확인해 주세요."
+                else:
+                    published_reply = "추천 내용을 아직 확정하지 않았어요. 추천을 사용할지 먼저 말씀해 주세요."
+                if self.graph_state["history"] and self.graph_state["history"][-1]["role"] == "assistant":
+                    self.graph_state["history"][-1]["content"] = published_reply
+                else:
+                    self.graph_state["history"].append({"role": "assistant", "content": published_reply})
+                self._publish_reply(published_reply)
+                self._set_stt_enabled(True)
+                write_turn("pending_blocked")
+                return
+
             if self._start_current_section():
-                if result["reply"]:
-                    published_reply = result["reply"]
-                    self._publish_reply(published_reply)
+                published_reply = build_execution_started_reply(self.graph_state, self.section)
+                if self.graph_state["history"] and self.graph_state["history"][-1]["role"] == "assistant":
+                    self.graph_state["history"][-1]["content"] = published_reply
+                else:
+                    self.graph_state["history"].append({"role": "assistant", "content": published_reply})
+                self._publish_reply(published_reply)
 
                 write_turn("execution_started")
                 return
 
             # 선택 재료가 없는 optional section은 로봇 작업 없이 바로 다음 section으로 이동한다.
             if self.section in ("veggie", "meat", "extra"):
-                reply = self._advance_after_section(self.section, outcome="skipped")
-
+                # Graph가 실행 전 만든 임시 응답은 실제 전환 결과가 아니므로 history에서 제거한다.
                 if self.graph_state["history"] and self.graph_state["history"][-1]["role"] == "assistant":
-                    self.graph_state["history"][-1]["content"] = reply
+                    self.graph_state["history"].pop()
+                reply = self._advance_after_section(self.section, outcome="skipped")
 
                 published_reply = reply
                 self._publish_reply(reply)

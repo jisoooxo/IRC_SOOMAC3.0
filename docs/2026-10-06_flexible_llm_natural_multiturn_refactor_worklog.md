@@ -2196,6 +2196,459 @@ Cause: 로그 백업과 수정 코드를 한 커밋에 넣으면 수정 전 재�
 
 Effect: GitHub에 원본 실패 세션을 먼저 고정한 뒤, runtime 패치의 효과를 같은 로그 기반 회귀 테스트로 독립 검증할 수 있다.
 
+### 23.9 비재학습 runtime 패치 적용 결과
+
+수정 전 증거는 다음 커밋으로 먼저 GitHub에 보존했다.
+
+```text
+commit: 5483fd2
+message: 로그 백업 및 터지는 부분 수정 예정
+remote: origin/flexible_llm
+```
+
+그 뒤 재학습 없이 다음 runtime 패치를 적용했다.
+
+| 적용 위치 | 적용 결과 |
+|---|---|
+| `llm_langgraph.py`, `_resolve_pending()` | execution pending 뒤 `commit=true`이고 confirmation이 누락되어 `none`이어도 실행 수락으로 소비한다. 명시적 reject는 유지하며, 다른 section의 오래된 확인은 실행하지 않는다. |
+| `llm_langgraph.py`, commit policy | unresolved pending과 빈 optional section의 bare commit을 `execute=false`로 차단한다. |
+| `llm_langgraph.py`, `generate_response()` | `execute=true`이면 Response 모델을 호출하지 않고 현재 section 작업 목록으로 시작 문장을 만든다. |
+| `llm_langgraph_node.py`, `_process_turn()` | 실제 task 시작 성공 뒤 같은 deterministic 문장을 발행하고 history도 교체한다. Graph 오류가 있어 pending이 남으면 node가 한 번 더 실행을 차단한다. |
+| `llm_langgraph_node.py`, `_advance_after_section()` | veggie·meat·extra·lid·sauce 전부 기존 `next_reply`를 직접 사용하고 전환 Response 모델 호출을 제거했다. |
+
+현재 동작은 다음처럼 달라졌다.
+
+```text
+변경 + 바로 실행
+→ pending 소비
+→ 실제 current section task 계산
+→ "양파 적게, 버섯 많이 담기를 시작해요."
+→ Response 모델 미호출
+
+야채 완료
+→ history 내용과 무관하게 육류 안내 직접 발행
+
+빈 meat에서 "어 진행해"
+→ meat 유지
+→ 육류 선택 안내 다시 발행
+→ extra로 자동 skip하지 않음
+```
+
+재학습 전 임시 제한도 있다. 선택과 pending이 모두 없는 optional section에서는 bare commit을 막으므로, Decision이 명시적 skip을 별도 구조로 표현하지 못하면 `다음 단계로 넘어가`도 현재 section 안내를 다시 받을 수 있다. 기존 선택 재료를 `none`으로 명시적으로 제거하면서 commit한 경우는 current-section 변경 사실이 있으므로 정상 skip을 허용한다.
+
+검증 결과는 다음과 같다.
+
+```text
+section/node regression: 14 passed
+natural multiturn contract: 59 passed
+전체 src/soomac_irc/test: 96 passed
+py_compile: PASS
+git diff --check: PASS
+```
+
+Cause: 안전에 직접 영향을 주는 실행·전환 문장을 생성 모델에서 제거하고, pending과 section의 일치 여부를 실행 직전에 다시 검사했다.
+
+Effect: 오늘 발생한 `거짓 실행 확인 → 후속 진행 답변 → 다음 section skip` 경로가 코드와 회귀 테스트 양쪽에서 차단된다.
+
+---
+
+## 24. 2026-10-11 최신 세션: 취향은 기억했지만 추천 질문에 같은 답을 반복한 문제
+
+참고 로그: `logs/llm/2026-10-11/session_20261011_135637_747313_pid87462/agent_turns.jsonl`
+
+→ 추가 재료 단계에서 `매운 것 못 먹음` 취향은 structured state에 정상 보존됐지만, Decision·Recommendation·Response가 각각 다른 방식으로 실패하면서 같은 과거 요약이 세 번 반복되었다.
+
+### 24.1 실제 대화와 관측 결과
+
+```text
+사용자: 나 매운 거 못 먹어.
+로봇:   매운 것을 못 드시는 취향을 저장했어요.
+
+사용자: 뭘뭘 하든.
+로봇:   지금까지 얇은면과 양파, 버섯, 소시지, 게살을 담았고
+        매운 것을 못 드시는 취향을 저장했어요.
+
+사용자: 그럼 토핑 뭐 담아?
+로봇:   지금까지 얇은면과 양파, 버섯, 소시지, 게살을 담았고
+        매운 것을 못 드시는 취향을 저장했어요.
+
+사용자: 매운 거 못 먹는데 토핑 뭐 넣을까?
+로봇:   지금까지 얇은면과 양파, 버섯, 소시지, 게살을 담았고
+        매운 것을 못 드시는 취향을 저장했어요.
+```
+
+문제가 발생한 시점에 실제로 전달된 state는 다음과 같았다.
+
+```json
+{
+  "preferences": [{"value": "매운 것 못 먹음"}],
+  "robot_state": {"section": "extra"}
+}
+```
+
+도메인 정의상 `extra` 단계에서 선택 가능한 항목은 `치즈`, `페퍼론치노`이고, 그 뒤에는 자동 작업인 `lid`와 아직 실행되지 않은 `sauce`가 있다. 현재 입력에는 현재 단계부터 미래 단계까지의 선택 가능 범위를 나타내는 별도 field가 없고, 전체 topping 목록과 `section=extra`만 따로 전달되었다.
+
+`preferences`는 Decision, Recommendation, Response 입력에 모두 전달되었다. 따라서 이 현상은 **기억이 삭제된 문제가 아니다. 저장된 취향을 현재 단계의 추천 판단에 사용하지 못한 의미 연결 실패**이다.
+
+Cause: 세 모델 모두 취향 state를 입력으로 받았지만, `매운 것 못 먹음 → extra 단계 → 페퍼론치노 제외 → 치즈 추천` 연결을 안정적으로 수행하지 못했다.
+
+Effect: 사용자 입장에서는 앞에서 말한 내용을 잊은 것처럼 보였고, 같은 과거 요약만 반복됐다.
+
+### 24.2 `그럼 토핑 뭐 담아?`에서 발생한 Decision 실패
+
+실제 Decision 출력은 다음과 같았다.
+
+```json
+{"route":"task"}
+```
+
+이 출력에는 `recommendation={"action":"request"}`가 없었다. Graph는 이를 추천 질문이 아닌 변경 없는 task로 받아 `policy.reason=state_update_only`를 만들었다. Response는 명확한 다음 행동이 없는 상태에서 과거 주문을 요약했다.
+
+정상 Decision은 다음이어야 한다.
+
+```json
+{"route":"task","recommendation":{"action":"request"}}
+```
+
+Cause: 현재 Decision 학습과 프롬프트가 `추천해 줘` 같은 직접 표현보다 `뭐 담아?`, `뭐 넣을까?` 같은 간접 추천 질문을 안정적으로 분류하지 못한다.
+
+Effect: Recommendation Agent 자체가 호출되지 않아 현재 단계에 맞는 제안을 만들 기회가 사라졌다.
+
+### 24.3 `매운 거 못 먹는데 토핑 뭐 넣을까?`의 의미
+
+이 턴에서는 Decision이 추천 요청을 정상 인식했다. 문제는 그 다음 Recommendation 출력이었다.
+
+```json
+{
+  "proposal": {
+    "sauce": "크림",
+    "noodle_type": "얇은면",
+    "noodle_portion": "low",
+    "toppings": {
+      "버섯": "low",
+      "양파": "low",
+      "소시지": "low",
+      "게살": "low"
+    }
+  },
+  "reason_tags": ["매운맛 배제", "기존 선택 유지"]
+}
+```
+
+당시 로봇은 `extra` 단계였으므로 새로 선택할 수 있는 것은 `치즈`, `페퍼론치노`뿐이었다. 그러나 모델은 이미 지나간 단계에서 담은 재료를 다시 추천했고, 정작 현재 가능한 치즈는 출력하지 않았다.
+
+Python validator는 물리적으로 다시 선택할 수 없는 필드를 모두 거절했다.
+
+```text
+Recommendation의 accepted_fields = []
+policy.reason = recommendation_unavailable
+pending = null
+```
+
+여기서 `recommendation_unavailable`은 **추천 기능이 없다는 뜻이 아니다. 모델이 낸 후보 중 지금 적용 가능한 후보가 하나도 남지 않았다는 뜻**이다. 마지막으로 Response 프롬프트에 이 policy 전용 처리 규칙이 없어, 모델은 다시 과거 상태 요약을 출력했다.
+
+Cause: Recommendation 입력에는 전체 지원 메뉴와 `section=extra`가 들어갔지만, 현재 단계 선택지만 별도 필드로 강제하지 않아 모델이 이미 완료한 재료를 재추천했다. Response에는 `recommendation_unavailable` 전용 안내 규칙도 없었다.
+
+Effect: 안전 validator는 잘못된 재추천을 막았지만, 사용자에게는 실패 이유나 가능한 선택지를 알려주지 못했다.
+
+### 24.4 프롬프트 즉시 보강안
+
+프롬프트 보강은 재학습 전 오답률을 낮추는 임시 조치로 적용할 가치가 있다. 다음 규칙을 각 Agent prompt에 추가한다.
+
+Decision prompt 추가안:
+
+```text
+- 특정 문구만 보고 추천 요청으로 고정하지 않는다. current message, recent_history,
+  robot_state.section, 직전 assistant 질문을 함께 읽고 질문의 목적을 판단한다.
+- "뭐 담을 수 있어?", "여기서 고를 수 있는 게 뭐야?"는 현재 선택지 조회이다.
+  추천 요청으로 만들지 않고 현재 section의 가능한 항목을 설명한다.
+- "뭐가 좋아?", "뭘 넣는 게 나아?", "매운 거 못 먹는데 뭐 넣을까?"는
+  선택 조언을 요구하므로 recommendation={"action":"request"}로 출력한다.
+- "지금 뭐 담고 있어?", "아까 뭐 담았어?"는 실행/완료 상태 조회이다.
+  recommendation을 만들지 않고 robot_state와 action history를 조회한다.
+- "뭐 담아?"처럼 문장만으로 여러 의미가 가능하면 직전 대화로 해석한다.
+  직전 대화까지 읽어도 선택지 조회·추천·진행 상태 중 하나로 정할 수 없을 때만 clarify=true를 출력한다.
+```
+
+Recommendation prompt 추가안:
+
+```text
+- 현재 section부터 아직 실행되지 않은 미래 section까지를 추천 가능 범위로 본다.
+- 이미 완료했거나 지나간 section은 추천 범위에서 제외한다.
+- 자동 실행 section인 lid는 사용자 선택 후보로 만들지 않는다.
+- 제공된 recommendation_scope 안에서 current_user_text와 recent_history를 읽고
+  어떤 section과 항목을 제안할지는 모델이 판단한다.
+- 사용자가 현재 단계의 토핑만 물었다면 미래 소스까지 불필요하게 추천하지 않는다.
+- 이미 선택된 값을 그대로 proposal에 반복하지 않는다. 다른 값으로 바꾸는 추천은
+  해당 section이 아직 실행 전이고 사용자가 변경·대안을 요구한 경우에만 만든다.
+- 현재 section이 extra이고 사용자가 매운 것을 못 먹는다고 하면
+  페퍼론치노를 추천하지 않고 치즈를 우선 검토한다.
+- 적용 가능한 새 후보가 있으면 최소 한 개를 proposal에 포함한다.
+```
+
+Response prompt 추가안:
+
+```text
+- policy.reason=recommendation_unavailable이면 과거 주문 요약을 반복하지 않는다.
+- 현재 단계에서 추천 가능한 후보를 만들지 못했다고 알리고,
+  현재 선택 가능한 항목을 다시 안내한다.
+```
+
+Recommendation이 현재 단계와 취향을 올바르게 해석했을 때의 기대 문장은 다음과 같다.
+
+```text
+지금은 추가 재료 단계예요. 매운 것을 못 드시면 페퍼론치노 대신 치즈를 추천해요. 치즈를 담을까요?
+```
+
+여기서 필요한 값은 `current_section_options`보다 범위가 넓은 `recommendation_scope`이다. 자연어 의미를 대신 판단하는 keyword 규칙이 아니라, runtime이 현재 단계부터 미래의 사용자 선택 단계까지 물리적으로 변경 가능한 범위를 계산해 모델 입력에 넣는 structured fact이다.
+
+```json
+{
+  "current_section": "extra",
+  "recommendation_scope": [
+    {
+      "section": "extra",
+      "options": ["치즈", "페퍼론치노"],
+      "selected": []
+    },
+    {
+      "section": "sauce",
+      "options": ["오일", "토마토", "크림"],
+      "selected": ["크림"]
+    }
+  ],
+  "excluded_past_sections": ["noodle", "veggie", "meat"]
+}
+```
+
+`lid`는 자동 실행 단계이므로 선택 후보에서 빠진다. 이 값의 역할은 질문 분류가 끝난 뒤 모델이 검토할 수 있는 물리적 범위를 제한하는 것이다. 어느 section을 실제 답에 사용할지는 모델이 사용자 질문으로 판단한다.
+
+```text
+extra에서 "토핑 뭘 넣는 게 좋아?" → extra 후보만 검토
+extra에서 "앞으로 뭐 고를 수 있어?" → extra와 아직 실행 전인 sauce 안내
+extra에서 "소스 바꾸는 게 좋을까?" → 미래 sauce 후보 검토
+extra에서 이미 끝난 "버섯 바꿀까?" → past section이므로 추천하지 않음
+```
+
+`recommendation_unavailable` 고정 멘트는 정상 추천을 대신하는 하드코딩이 아니다. Recommendation이 또 지나간 재료만 출력하여 validator가 후보를 전부 거절했을 때, Response 모델이 과거 답을 반복하지 않도록 사용하는 마지막 실패 안내이다. 이때 취향을 임의 해석해 특정 재료를 확정하지 않고 현재 선택지만 안내한다.
+
+```text
+추천 후보를 만들지 못했어요. 지금 고를 수 있는 재료는 치즈와 페퍼론치노예요. 이후 소스도 바꿀 수 있어요.
+```
+
+현재 `validate_recommendation_proposal()`은 사용자가 이미 확정한 값이면, 아직 실행되지 않은 미래 section이어도 `already_selected`로 거절한다. 따라서 scope만 현재 이후로 넓혀도 `크림 → 오일` 같은 미래 소스 변경 추천은 막힌다. 추천은 pending 후보로만 저장되고 사용자가 수락하기 전에는 주문을 바꾸지 않으므로, 향후에는 **동일 값을 반복한 no-op은 거절하되 아직 실행 전인 미래 값의 대안 제안은 허용**하는 방향으로 validator를 조정할 수 있다.
+
+### 24.5 재학습 필요 판단
+
+**재학습이 필요하다.** 이번 문제는 단순히 예외 문장 하나가 빠진 것만이 아니라 자연어 의미 분류와 단계 기반 추천이 함께 실패한 사례이다. 프롬프트만 추가하면 같은 표현에는 나아질 수 있지만, 표현이 바뀌면 다시 실패할 가능성이 있다.
+
+재학습 데이터에는 다음 세 failure family를 보강한다.
+
+| Agent | 보강할 의미 | 정답 예시 |
+|---|---|---|
+| Decision | 선택지 조회·추천·진행 상태 구분 | `뭘 넣는 게 좋아?` → recommendation request, `뭐 담을 수 있어?` → 선택지 조회, `지금 뭐 담고 있어?` → 진행 조회 |
+| Recommendation | 현재 section과 취향을 함께 반영 | extra + 매운맛 회피 → 치즈 제안, 페퍼론치노 제외 |
+| Response | 추천 실패 policy 설명 | `recommendation_unavailable` → 반복 요약 금지, 현재 선택지 안내 |
+
+현재 Recommendation Agent는 `recommendation_model.py`에서 Decision Adapter를 비활성화하고 base model로 추론한다. 따라서 **기존 Decision/Response Adapter만 다시 학습해도 Recommendation 오답은 직접 고쳐지지 않는다.** Recommendation까지 학습으로 해결하려면 전용 학습 데이터와 Adapter를 새로 연결해야 한다. 그 전에는 현재 이후의 `recommendation_scope` 명시, prompt 보강, validator, deterministic fallback을 함께 사용한다.
+
+실제 평가 문장 자체를 그대로 train에 복사하지 않고, 의미가 같은 다양한 표현으로 targeted supplement를 만든다. 현재 로그 원문은 frozen regression으로 남겨 재학습 뒤 동일 실패가 사라졌는지 확인한다.
+
+프롬프트와 재학습만으로 안전을 맡기지는 않는다. runtime에도 현재 이후의 `recommendation_scope`를 Recommendation 입력으로 명시하고, `recommendation_unavailable`에는 deterministic fallback을 둔다.
+
+```text
+1차: Decision/Recommendation이 자연스럽게 의미를 해석한다.
+2차: validator가 지나간 단계의 후보를 거절한다.
+3차: 후보가 모두 거절돼도 deterministic 문장으로 현재 선택지를 안내한다.
+```
+
+Cause: 의미 다양성은 모델 학습 대상이고, 현재 물리 단계와 실패 시 사용자 안내는 deterministic runtime 책임이다.
+
+Effect: 재학습 후에는 다양한 추천 질문을 이해하고, 모델이 다시 틀리더라도 같은 과거 답변을 반복하지 않게 된다.
+
+### 24.6 미래 section 추천과 진입 시 재확인
+
+사용자가 현재보다 뒤 section의 추천안을 수락하면 추천 후보는 canonical order에 미리 저장된다. 이후 로봇이 해당 section에 도착했을 때의 동작은 section별로 다르다.
+
+| 도착 section | 현재 동작 | 재확인 여부 |
+|---|---|---|
+| `veggie` | 미리 선택한 양파·버섯을 execution pending으로 다시 만든다. | 확인 후 실행 |
+| `meat` | 미리 선택한 소시지·게살을 execution pending으로 다시 만든다. | 확인 후 실행 |
+| `extra` | 미리 선택한 치즈·페퍼론치노를 execution pending으로 다시 만든다. | 확인 후 실행 |
+| `lid` | 사용자 선택 항목이 아닌 자동 작업이다. | 즉시 실행 |
+| `sauce` | 주문 초기에 선택된 소스를 마지막 단계에서 자동 시작한다. | 재확인 없음 |
+
+현재 deterministic 확인 문장은 다음 형식이다.
+
+```text
+치즈이(가) 미리 선택되어 있어요. 이대로 진행할까요?
+```
+
+따라서 “미래 값을 미리 추천·확정하되, 실제 section에 왔을 때 다시 알려주고 실행 확인을 받는다”는 흐름은 `veggie`, `meat`, `extra`에 이미 구현되어 있다. 소스도 같은 정책을 적용하려면 `build_preselected_section_confirmation()`의 대상과 `_advance_after_section()`의 sauce 자동 시작 경로를 조정해야 한다.
+
+`already_selected`는 로봇이 이미 재료를 물리적으로 담았다는 뜻이 아니다. canonical order에 값이 이미 들어 있다는 뜻이다. 현재 Recommendation validator는 두 경우를 구분하지 않는다.
+
+```text
+현재 extra, sauce는 아직 실행 전, order.sauce="크림"
+
+Recommendation이 "크림" 제안
+→ 기존 값과 동일한 no-op
+→ already_selected 거절이 맞음
+
+Recommendation이 "오일" 제안
+→ 아직 실행 전인 미래 값의 대안
+→ 현재 코드도 order.sauce가 이미 채워졌다는 이유로 already_selected 거절
+```
+
+두 번째 경우는 과도한 차단이다. 추천은 즉시 반영되지 않고 recommendation pending으로 남으며, 사용자가 수락해야 canonical order가 바뀐다. 따라서 다음 정책이 적절하다.
+
+```text
+기존 값과 동일한 추천                 → no-op 거절
+실행 전 current/future 값의 다른 대안 → recommendation pending 허용
+실행 중·완료·과거 값의 변경 추천      → 물리 보호로 거절
+```
+
+이 흐름을 runtime에서 계산하고 재확인하는 부분은 재학습이 필요하지 않다. 반면 모델이 `recommendation_scope`를 읽고 사용자 질문에 맞는 현재·미래 section만 골라 자연스럽게 추천하려면 Recommendation 전용 학습이 필요하다. 기존 Decision/Response Adapter 재학습만으로는 base model로 실행되는 Recommendation Agent가 바뀌지 않는다.
+
+Cause: 기존 코드는 미래 토핑의 section 진입 재확인은 구현했지만, Recommendation validator가 “동일 값 반복”과 “아직 실행 전인 값의 대안”을 모두 `already_selected`로 묶었다.
+
+Effect: validator를 구분해서 고치면 미래 추천을 안전하게 pending으로 보관하고, 실제 section 도착 시 한 번 더 사용자 확인을 받은 뒤 실행할 수 있다.
+
+### 24.7 적용 예정 패치
+
+이번 패치는 자연어 판단을 Python keyword 규칙으로 옮기지 않는다. runtime은 물리적으로 가능한 범위와 확정 상태만 만들고, 사용자가 어느 범위를 묻는지와 어떤 항목이 적절한지는 모델이 판단한다.
+
+#### 24.7.1 현재 이후 추천 범위 생성
+
+`llm_policy.py`에 현재 section부터 미래의 사용자 선택 section까지를 계산하는 helper를 추가한다. 지나간 section과 실행 중·완료된 항목은 제외하고, 자동 작업인 `lid`도 추천 후보에서 제외한다.
+
+```json
+{
+  "current_section": "extra",
+  "recommendation_scope": [
+    {
+      "section": "extra",
+      "options": ["치즈", "페퍼론치노"],
+      "selected": []
+    },
+    {
+      "section": "sauce",
+      "options": ["오일", "토마토", "크림"],
+      "selected": ["크림"]
+    }
+  ],
+  "excluded_past_sections": ["noodle", "veggie", "meat"]
+}
+```
+
+이 구조를 `recommendation_model.py`와 `response_model.py` 입력에 전달한다. Recommendation은 추천 범위로 사용하고, Response는 선택지 조회와 추천 실패 안내에 사용한다.
+
+#### 24.7.2 Agent prompt 보강
+
+`agent_prompts.py`를 다음 책임으로 보강한다.
+
+```text
+Decision:
+- 선택지 조회, 추천 요청, 진행 상태 조회를 문구 하나가 아니라 문맥으로 구분한다.
+- 끝까지 모호한 "뭐 담아?"만 clarify로 보낸다.
+
+Recommendation:
+- recommendation_scope 밖의 과거 항목은 제안하지 않는다.
+- scope 전체를 무조건 채우지 않고 사용자 질문과 취향에 필요한 항목만 고른다.
+- 현재 토핑 질문에는 미래 소스를 불필요하게 끼워 넣지 않는다.
+
+Response:
+- 선택지 조회에는 scope를 설명한다.
+- recommendation_unavailable이면 과거 요약을 반복하지 않는다.
+```
+
+프롬프트는 오답률을 낮추는 장치이며 물리 보호를 대신하지 않는다.
+
+#### 24.7.3 Recommendation validator 수정
+
+`llm_policy.py`의 `validate_recommendation_proposal()`에서 `already_selected`를 다음처럼 나눈다.
+
+```text
+기존 값과 제안 값이 같음
+→ no-op으로 거절
+
+기존 값과 다르고 해당 section이 아직 실행 전임
+→ recommendation pending 후보로 허용
+
+해당 field가 과거·실행 중·완료 상태임
+→ 기존 physical protection으로 거절
+```
+
+추천 후보는 즉시 주문을 덮어쓰지 않는다. 사용자가 recommendation pending을 수락한 뒤에만 기존 검증 경로를 다시 통과해 canonical order에 반영한다.
+
+#### 24.7.4 미래 선택의 section 진입 재확인
+
+`veggie`, `meat`, `extra`는 기존 `build_preselected_section_confirmation()` 경로를 유지한다. 미래 추천을 수락해 주문에 저장했더라도 해당 section에 도착하면 execution pending으로 바꿔 다시 확인한다.
+
+```text
+미래 추천 수락
+→ canonical order에 미리 저장
+→ 해당 section 도착
+→ "미리 고른 치즈를 담을까요?"
+→ accept 뒤 실제 로봇 실행
+```
+
+기존 `치즈이(가) 미리 선택되어 있어요` 문장은 조사 문제가 없도록 item 목록 기반 문장으로 교체한다.
+
+소스는 현재 section 도착 즉시 자동 실행된다. 일관된 확인 정책을 적용하기 위해 `build_preselected_section_confirmation()`이 sauce도 만들 수 있게 확장하고, `_advance_after_section()`의 sauce 자동 시작을 execution pending 생성으로 바꾼다.
+
+```text
+현재: sauce 도착 → 즉시 실행
+변경: sauce 도착 → "미리 고른 크림 소스를 올릴까요?" → accept → 실행
+```
+
+이 방식은 선택 출처가 추천인지 직접 선택인지와 무관하게, 실제 실행 직전에 최종 확인을 한 번 받는다. 별도의 추천 출처 추적 state를 추가하지 않아 canonical state를 단순하게 유지한다.
+
+#### 24.7.5 deterministic fallback과 회귀 테스트
+
+`llm_langgraph.py`는 `recommendation_unavailable`일 때 Response 모델의 자유 생성을 사용하지 않고 scope 기반 실패 안내를 만든다. 특정 재료를 임의로 추천하지 않고 현재 이후의 가능한 범위를 안내한다.
+
+```text
+추천 가능한 후보를 만들지 못했어요. 현재 단계부터 선택 가능한 항목을 다시 알려드릴게요.
+```
+
+추가할 회귀 테스트는 다음과 같다.
+
+| 테스트 | 기대 결과 |
+|---|---|
+| extra의 recommendation scope | 과거 noodle·veggie·meat 제외, extra·sauce 포함, lid 제외 |
+| 기존 크림에 크림 추천 | no-op 거절 |
+| 실행 전 크림에 오일 대안 추천 | recommendation pending 허용 |
+| 완료된 버섯 변경 추천 | physical protection 거절 |
+| 미래 치즈를 수락하고 extra 진입 | 치즈 실행 전 재확인 |
+| sauce 진입 | 소스 실행 전 재확인 |
+| 추천 후보 전부 거절 | 과거 답 반복 없이 deterministic fallback |
+
+검증 순서는 targeted unit test, 전체 `src/soomac_irc/test`, `py_compile`, `git diff --check`이다.
+
+#### 24.7.6 재학습 범위
+
+runtime 패치는 학습 없이 적용할 수 있다. 다만 모델이 새 `recommendation_scope`를 다양한 사용자 표현과 함께 안정적으로 사용하는 것은 별도 학습 대상이다.
+
+```text
+Decision Adapter 재학습:
+선택지 조회 / 추천 요청 / 진행 상태 조회 대조 데이터
+
+Response Adapter 재학습:
+추천 성공 / 추천 실패 / 선택지 안내 대조 데이터
+
+Recommendation 전용 Adapter 신규 학습:
+현재~미래 scope 중 질문에 필요한 section 선택
+취향·제한을 후보에 반영
+과거 항목 재추천 금지
+```
+
+기존 학습 pipeline은 Decision과 Response Adapter만 다룬다. Recommendation은 base model로 실행되므로 Recommendation 문제를 학습으로 해결하려면 전용 dataset, Adapter, runtime activation 경로가 추가로 필요하다.
+
+Cause: runtime 변경은 가능한 범위와 실행 확인을 결정하지만, scope 안에서 사용자의 의도를 일반화하는 일은 모델 학습의 책임이다.
+
+Effect: 먼저 runtime 패치로 과거 항목 재추천과 무응답 반복을 차단하고, 후속 재학습으로 표현이 달라져도 올바른 현재·미래 추천을 만들 수 있다.
+
 ---
 
 ## 용어 정리

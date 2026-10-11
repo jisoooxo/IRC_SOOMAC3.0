@@ -155,6 +155,22 @@ def build_preselected_confirmation_reply(pending: dict) -> str:
     return f"{names}이(가) 미리 선택되어 있어요. 이대로 진행할까요?"
 
 
+def build_execution_started_reply(session: _SessionState, section: str) -> str:
+    """실제로 시작된 현재 section 작업만으로 결정적인 안내 문장을 만든다."""
+    amount_word = {"low": "적게", "normal": "보통", "high": "많이"}
+    items = section_execution_items(session["order"], section)
+    if not items:
+        raise ValueError(f"{section}에서 시작 안내를 만들 작업이 없음")
+
+    descriptions = [
+        f"{entry['item']} {amount_word[entry['amount']]}"
+        if entry.get("amount") in amount_word
+        else str(entry["item"])
+        for entry in items
+    ]
+    return f"{', '.join(descriptions)} 담기를 시작해요."
+
+
 def _pending_prompt(pending: dict | None) -> dict | None:
     # Response Agent에는 내부 pending 전체가 아니라 사용자에게 물을 사실만 전달한다.
     if pending is None:
@@ -193,6 +209,19 @@ def _resolve_pending(
     if pending is None:
         return working, effective, result
 
+    ptype = pending.get("type")
+
+    # execution pending 뒤의 명시적 commit은 confirmation field가 누락되어도 실행 수락과 같다.
+    # 이렇게 해야 execute=true와 unresolved execution pending이 같은 Response 입력에 공존하지 않는다.
+    if ptype == "execution" and effective["commit"] and effective["confirmation"] == "none":
+        working["pending"] = None
+        result = {
+            "type": "execution_accepted",
+            "source": pending.get("source", "current_update"),
+            "section": pending.get("section"),
+        }
+        return working, effective, result
+
     # 수락·거절이 아니면 새 구조화 의미가 함께 있어도 pending을 그대로 둔다.
     # 주문·제한 변경 뒤의 execution pending은 final order가 확정된 다음 다시 맞춘다.
     if effective["confirmation"] not in ("accept", "reject"):
@@ -201,13 +230,15 @@ def _resolve_pending(
     accepted = effective["confirmation"] == "accept"
     effective["confirmation"] = "none"
     working["pending"] = None
-    ptype = pending.get("type")
-
     # 실행 확인 수락은 commit으로 바꾸고, 거절은 실행 대기만 닫는다.
     if ptype == "execution":
         if accepted:
             effective["commit"] = True
-            result = {"type": "execution_accepted", "source": pending.get("source", "current_update")}
+            result = {
+                "type": "execution_accepted",
+                "source": pending.get("source", "current_update"),
+                "section": pending.get("section"),
+            }
         else:
             if pending.get("source") == "preselected":
                 working["order"] = _remove_patch_from_order(
@@ -501,8 +532,33 @@ def build_graph(
 
         # 7. commit 의미는 모델을 믿되 필수 주문과 robot busy는 코드가 마지막으로 확인한다.
         if decision["commit"]:
-            missing = missing_current_section(session["order"], state["robot_state"]["section"])
-            if missing:
+            section = state["robot_state"]["section"]
+            missing = missing_current_section(session["order"], section)
+            unresolved_pending = session.get("pending")
+            explicit_current_change = current_section_changed(applied, section)
+            current_items = section_execution_items(session["order"], section)
+            accepted_section = (
+                pending_result.get("section")
+                if pending_result and pending_result.get("type") == "execution_accepted"
+                else None
+            )
+            if accepted_section is not None and accepted_section != section:
+                policy = {
+                    "status": "clarify", "reason": "stale_execution_confirmation",
+                    "execute": False, "conflicts": [],
+                }
+            elif unresolved_pending is not None:
+                policy = {
+                    "status": "clarify", "reason": "pending_confirmation_required",
+                    "execute": False, "conflicts": [],
+                }
+            elif section in ("veggie", "meat", "extra") and not current_items and not explicit_current_change:
+                # 학습된 skip_current 계약이 생기기 전에는 bare commit으로 빈 선택 단계를 넘기지 않는다.
+                policy = {
+                    "status": "clarify", "reason": "empty_section_commit",
+                    "execute": False, "conflicts": [],
+                }
+            elif missing:
                 policy = {"status": "clarify", "reason": "missing_order", "execute": False, "missing": missing, "conflicts": []}
             elif state["robot_state"].get("active_task") is not None or state["robot_state"].get("task_queue"):
                 policy = {"status": "blocked", "reason": "robot_busy", "execute": False, "conflicts": []}
@@ -568,17 +624,29 @@ def build_graph(
         elif reason == "completed_restriction_conflict":
             next_prompt = {"type": "completed_restriction_conflict", "conflicts": copy.deepcopy(state["policy"].get("conflicts", []))}
 
-        reply = call_response(
-            state["user_text"],
-            copy.deepcopy(state["session"]),
-            copy.deepcopy(state["policy"]),
-            copy.deepcopy(applied),
-            copy.deepcopy(future),
-            copy.deepcopy(state.get("recommendation_result")),
-            copy.deepcopy(next_prompt),
-            copy.deepcopy(state["robot_state"]),
-            state["decision"]["route"],
-        )
+        if state["policy"].get("execute"):
+            # 실행 허용 상태는 Response 생성보다 실제 section 작업 목록을 단일 진실로 사용한다.
+            # 빈 optional section의 명시적 제거+commit은 node가 section 전환 문장으로 교체한다.
+            starting_items = section_execution_items(
+                state["session"]["order"], state["robot_state"]["section"]
+            )
+            reply = (
+                build_execution_started_reply(state["session"], state["robot_state"]["section"])
+                if starting_items
+                else ""
+            )
+        else:
+            reply = call_response(
+                state["user_text"],
+                copy.deepcopy(state["session"]),
+                copy.deepcopy(state["policy"]),
+                copy.deepcopy(applied),
+                copy.deepcopy(future),
+                copy.deepcopy(state.get("recommendation_result")),
+                copy.deepcopy(next_prompt),
+                copy.deepcopy(state["robot_state"]),
+                state["decision"]["route"],
+            )
 
         # 실제 변경 event와 자연어 대화를 session history에 마지막으로 기록한다.
         session = copy.deepcopy(state["session"])

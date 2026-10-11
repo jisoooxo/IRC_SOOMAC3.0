@@ -15,7 +15,8 @@ from unittest.mock import Mock
 from soomac_irc.domain import SECTION_ORDER
 from soomac_irc.agent_contract import new_session_state, new_turn_state
 from soomac_irc.llm_langgraph import (
-    build_preselected_confirmation_reply, build_preselected_section_confirmation,
+    build_execution_started_reply, build_preselected_confirmation_reply,
+    build_preselected_section_confirmation,
 )
 from soomac_irc.llm_policy import build_applied_changes
 
@@ -93,30 +94,25 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertFalse(node._publish_next_task())
         self.assertEqual(node.graph_state, before)
 
-    def test_skipped_and_completed_send_distinct_facts(self):
+    def test_skipped_and_completed_use_deterministic_next_prompt(self):
         for outcome in ("skipped", "completed"):
             with self.subTest(outcome=outcome):
                 node = make_node()
                 self.assertEqual(node._advance_after_section("meat", outcome=outcome),
-                                 "모델이 만든 단계 전환 안내")
-                args = node.call_response.call_args.args
-                self.assertEqual(args[7]["section_transition"]["outcome"], outcome)
-                self.assertEqual(args[7]["section_transition"]["section"], "meat")
-                self.assertEqual(args[6]["type"], "section_prompt")
-                self.assertEqual(args[6]["section"], "extra")
+                                 "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요.")
                 self.assertIsNone(node.graph_state["pending"])
                 self.assertEqual(node.graph_state["action_history"][-1]["outcome"], outcome)
-                self.assertFalse(args[2]["execute"])
                 self.assertEqual(node.completed_tasks, [])
+                node.call_response.assert_not_called()
                 node.rail_move_ahead_pub.publish.assert_called_once()
 
-    def test_failed_response_only_announces_next_step(self):
+    def test_transition_does_not_call_failing_response_model(self):
         node = make_node()
         node.call_response.side_effect = RuntimeError("모의 모델 실패")
         reply = node._advance_after_section("meat", outcome="skipped")
         self.assertNotIn("다 담", reply)
         self.assertIn("추가 재료", reply)
-        node.get_logger().error.assert_called_once()
+        node.call_response.assert_not_called()
         node._set_stt_enabled.assert_called_with(True)
 
     def test_lid_completion_starts_sauce_with_deterministic_reply(self):
@@ -145,22 +141,12 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node._advance_after_section("meat", outcome="skipped")
         self.assertEqual(node.graph_state["pending"]["items"], {"치즈": "low"})
         self.assertEqual(node.graph_state["pending"]["type"], "execution")
-        self.assertEqual(node.call_response.call_args.args[6]["type"], "execution")
+        self.assertEqual(node.graph_state["history"][-1]["content"],
+                         "치즈이(가) 미리 선택되어 있어요. 이대로 진행할까요?")
+        node.call_response.assert_not_called()
 
-    def test_section_transition_response_has_separate_model_trace_event(self):
+    def test_section_transition_response_event_records_deterministic_reply(self):
         node = make_node()
-
-        def respond(*args):
-            node.call_response.trace_events.append({
-                "stage": "response",
-                "model_input": {"robot_state": copy.deepcopy(args[7])},
-                "raw": '{"reply":"단계 전환 안내"}',
-                "reply": "단계 전환 안내",
-            })
-            return "단계 전환 안내"
-
-        node.call_response = Mock(side_effect=respond)
-        node.call_response.trace_events = []
         reply = node._advance_after_section("meat", outcome="completed")
 
         matching = [
@@ -168,14 +154,15 @@ class TestSectionQuestionEvents(unittest.TestCase):
             for call in node.runtime_log.log_event.call_args_list
             if call.args[0] == "section_transition_response"
         ]
-        self.assertEqual(reply, "단계 전환 안내")
+        self.assertIn("추가 재료", reply)
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0]["transition"]["next_section"], "extra")
         self.assertEqual(matching[0]["robot_state"]["section"], "extra")
-        self.assertEqual(matching[0]["response_trace"]["stage"], "response")
-        self.assertEqual(matching[0]["response_model_input"]["robot_state"]["section"], "extra")
-        self.assertEqual(matching[0]["response_raw"], '{"reply":"단계 전환 안내"}')
-        self.assertEqual(matching[0]["reply"], "단계 전환 안내")
+        self.assertIsNone(matching[0]["response_trace"])
+        self.assertIsNone(matching[0]["response_model_input"])
+        self.assertIsNone(matching[0]["response_raw"])
+        self.assertEqual(matching[0]["reply"], reply)
+        node.call_response.assert_not_called()
 
     def test_extra_skip_starts_lid_with_deterministic_reply(self):
         node = make_node("extra")
@@ -205,10 +192,84 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node.graph.invoke.return_value = {"session": session, "policy": {"execute": True},
                                           "reply": "이전 응답"}
         node._process_turn("바로 진행해")
-        self.assertEqual(node.call_response.call_args.args[7]["section_transition"]["outcome"], "skipped")
-        node._publish_reply.assert_called_once_with("모델이 만든 단계 전환 안내")
-        self.assertEqual(node.graph_state["history"][-1]["content"], "모델이 만든 단계 전환 안내")
+        self.assertEqual(node.section, "extra")
+        node.call_response.assert_not_called()
+        self.assertIn("추가 재료", node._publish_reply.call_args.args[0])
+        self.assertIn("추가 재료", node.graph_state["history"][-1]["content"])
+        self.assertEqual(len(node.graph_state["history"]), 2)
         self.assertEqual(node.runtime_log.log_turn.call_args.args[0]["status"], "section_advanced")
+
+    def test_started_task_replaces_model_reply_with_structured_message(self):
+        node = make_node("veggie")
+        session = new_session_state()
+        session["order"]["toppings"] = {"양파": "low", "버섯": "high"}
+        session["history"] = [
+            {"role": "user", "content": "버섯을 바꿔서 바로 담아"},
+            {"role": "assistant", "content": "실행 확인이 남아 있어요. 담을까요?"},
+        ]
+        node.graph = Mock()
+        node.graph.invoke.return_value = {
+            "session": session,
+            "policy": {"execute": True, "reason": "execution_allowed"},
+            "reply": "실행 확인이 남아 있어요. 담을까요?",
+        }
+        node._start_current_section.return_value = True
+
+        node._process_turn("버섯을 바꿔서 바로 담아")
+
+        expected = "양파 적게, 버섯 많이 담기를 시작해요."
+        node._publish_reply.assert_called_once_with(expected)
+        self.assertEqual(node.graph_state["history"][-1]["content"], expected)
+        self.assertEqual(node.runtime_log.log_turn.call_args.args[0]["status"], "execution_started")
+
+    def test_empty_optional_commit_repeats_current_section_prompt(self):
+        node = make_node("meat")
+        session = new_session_state()
+        session["history"] = [
+            {"role": "user", "content": "어 진행해"},
+            {"role": "assistant", "content": "지금 담기를 진행해요."},
+        ]
+        node.graph = Mock()
+        node.graph.invoke.return_value = {
+            "session": session,
+            "policy": {"execute": False, "reason": "empty_section_commit"},
+            "reply": "지금 담기를 진행해요.",
+        }
+
+        node._process_turn("어 진행해")
+
+        reply = node._publish_reply.call_args.args[0]
+        self.assertIn("육류", reply)
+        self.assertEqual(node.section, "meat")
+        self.assertEqual(node.graph_state["history"][-1]["content"], reply)
+
+    def test_unresolved_pending_blocks_node_execution_as_last_defense(self):
+        node = make_node("veggie")
+        session = new_session_state()
+        session["pending"] = {
+            "type": "recommendation",
+            "candidate": {
+                "sauce": None, "noodle_type": None, "noodle_portion": None,
+                "toppings": {"버섯": "normal"},
+            },
+            "reason_tags": [],
+        }
+        session["history"] = [
+            {"role": "user", "content": "바로 해줘"},
+            {"role": "assistant", "content": "지금 시작해요."},
+        ]
+        node.graph = Mock()
+        node.graph.invoke.return_value = {
+            "session": session,
+            "policy": {"execute": True, "reason": "execution_allowed"},
+            "reply": "지금 시작해요.",
+        }
+
+        node._process_turn("바로 해줘")
+
+        node._start_current_section.assert_not_called()
+        self.assertIn("추천", node._publish_reply.call_args.args[0])
+        self.assertEqual(node.runtime_log.log_turn.call_args.args[0]["status"], "pending_blocked")
 
 
 if __name__ == "__main__":
