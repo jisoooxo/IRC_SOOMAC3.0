@@ -1808,6 +1808,8 @@ Effect: 기존 데이터와 runtime을 건드리지 않고, 실제 실패 proven
 
 ## 21. 현재 기준 상태와 아직 하지 않은 작업
 
+> 이 절은 2026-10-10 targeted candidate 생성 직후의 상태이다. 학습·선정·실물 로봇 검증까지 반영한 최신 상태는 22절을 따른다.
+
 ### 21.1 현재 runtime 기준
 
 ```text
@@ -1846,6 +1848,353 @@ READY FOR DEMO 판정
 Cause: LLM-only 평가와 targeted dataset 생성까지만 완료했고, 새 candidate 학습과 실제 로봇 물리 검증은 별도 단계이다.
 
 Effect: 현재 운영 기준과 다음 학습 후보를 혼동하지 않고, v3.1+Response v1은 실행 가능한 baseline으로, v3.2+Response v1.1은 미학습 candidate로 구분한다.
+
+---
+
+## 22. 2026-10-11 실물 로봇 통합 검증과 자동 전환 응답 고정
+
+참고 코드: [Qwen3-ASR 노드](../src/soomac_irc/soomac_irc/stt_qwen3_asr_node.py), [공통 STT 수음·게이트](../src/soomac_irc/soomac_irc/stt_nemotron_node.py), [단계 전환](../src/soomac_irc/soomac_irc/llm_langgraph_node.py), [단계 전환 회귀 테스트](../src/soomac_irc/test/test_section_question_events.py)
+
+→ 실제 마이크·TTS·VLM·로봇을 연결한 한 주문을 끝까지 실행하고, 수음 경로와 뚜껑·소스 자동 전환 응답을 점검한 기록이다.
+
+참고 로그: [12턴 실물 로봇 세션의 Agent turn](../logs/llm/2026-10-11/session_20261011_123013_105237_pid26271/agent_turns.jsonl), [같은 세션의 runtime event](../logs/llm/2026-10-11/session_20261011_123013_105237_pid26271/runtime_events.jsonl), [선정 Adapter 스모크 보고서](../training_v3_2_v1_1/SELECTED_PAIR_12TURN_SMOKE_REPORT.md)
+
+→ 자연어 입력, 확정 상태, 로봇 작업, 단계 전환, VLM 판정과 실제 발행 응답을 같은 세션 ID로 추적할 수 있다.
+
+### 22.1 최신 runtime 기준
+
+```text
+Git HEAD: b17f54f
+Git branch: flexible_llm
+Remote sync: origin/flexible_llm과 동일
+Decision runtime Adapter: decision_adapter_v3_2_best_epoch4
+Response runtime Adapter: response_adapter_v1_best_epoch1
+Qwen3-ASR: Qwen3-ASR-1.7B-hf, bfloat16, CUDA
+```
+
+Decision v3.2 epoch 4는 채택했다. Response v1.1 epoch 4는 targeted train-fit은 개선했지만 frozen RED 2건과 long-horizon 실패 54건으로 회귀하여 채택하지 않았다. 따라서 실제 로봇 세션은 **Decision v3.2 + Response v1** 조합으로 수행했다.
+
+### 22.2 수음 개선 완료 상태
+
+Qwen3-ASR 노드는 Nemotron STT의 ROS 토픽, Silero 음성 활동 검출(voice activity detection, VAD), TTS 게이트와 세션 무효화 구조를 재사용하고 추론부만 교체한다.
+
+실제 시작 로그에서 다음 상태를 확인했다.
+
+```text
+Silero VAD load: 0.03 s, CPU
+Qwen3-ASR load: 1.18 s, CUDA, bfloat16
+GPU memory: allocated 3.80 GiB / reserved 3.80 GiB
+Capture: PulseAudio, 16,000 Hz, mono, 16-bit
+Source: alsa_input.usb-MATA_MATA_STUDIO_C10-00.analog-stereo
+Speech probability threshold: 0.50
+Utterance close silence: 0.8 s
+```
+
+`SOOMAC_AUDIO_SOURCE`를 지정하면 해당 PulseAudio source를 사용한다. 지정하지 않으면 시작 시점의 default source를 조회한다. source가 없거나 출력 monitor이면 조용히 잘못된 장치를 쓰지 않고 시작을 실패시킨다.
+
+TTS가 시작되면 STT 세션 번호를 올리고 gate를 닫는다. 추론이 끝나더라도 캡처 당시 세션과 현재 세션이 다르면 결과를 버린다. 실제 로봇 작업 중에는 TTS 종료 뒤에도 STT를 다시 열지 않았다.
+
+**현장 확인 결과 USB 마이크 수음, 발화 시작·종료 검출, TTS 잔향 차단과 로봇 작업 중 수음 차단이 정상 동작했다.**
+
+(내가 의역해보자면 이제 “어떤 마이크를 듣고 있는가”와 “지금 들어도 되는가”가 둘 다 명시적인 상태가 되었다.)
+
+Cause: 기본 입력 장치에 의존하면 USB 연결 상태나 PulseAudio 설정에 따라 출력 monitor 또는 다른 입력을 잡을 수 있었다.
+
+Effect: 지정한 MATA USB 마이크만 사용하고, TTS·로봇 작업 중 들어온 음성이나 늦은 추론 결과가 다음 대화 세션을 오염시키지 않는다.
+
+### 22.3 실물 로봇 한 사이클 결과
+
+12개 사용자 turn으로 다음 작업을 완료했다.
+
+```text
+얇은면 2회
+버섯 1회
+소시지 3회
+치즈 3회 — 첫 VLM fail 뒤 robot_retry, 두 번째 pass
+페퍼론치노 3회
+뚜껑 1회 — VLM pass
+토마토 소스 1회 — VLM pass
+최종 session_end 정상 발행
+```
+
+로봇 작업 순서, task queue, VLM 재시도, 완료 기록과 최종 종료는 정상 동작했다. 치즈 첫 판정 실패도 오류로 묻히지 않고 같은 작업을 한 번 재시도하여 통과했다.
+
+대화 의미에서는 두 failure를 확인했다.
+
+| 위치 | 실제 입력·상태 | 문제 |
+|---|---|---|
+| Turn 1 | STT 결과 `저 먹어를 수 있어요.` | 근거 없는 `게살 cannot_eat`을 Decision이 생성했다. 대상이 불명확하므로 clarify가 맞다. |
+| Turn 5 | `바로 시작해 줘`, `execution_authorized=true`, `starting_now=[버섯 low]` | Response가 실제 실행과 반대로 `실행 확인이 남아 있어요`라고 말했다. |
+
+이 두 건은 로봇 상태 머신이나 수음 gate 문제가 아니다. Turn 1의 근거 없는 대상 생성은 Decision 재학습과 grounding 검사가 필요하다. 반면 Turn 5는 후속 전수 감사에서 **실행이 이미 시작된 안전 상태를 Response가 반대로 말한 runtime 정합성 문제**로 확인되었다. 이 문제는 재학습만으로 맡기지 않고 상태 기반 응답으로 막아야 한다. 자세한 연쇄 원인과 수정 지점은 23절에 기록한다.
+
+### 22.4 뚜껑·소스 자동 전환 응답 고정
+
+추가 재료 완료 뒤 뚜껑을 시작할 때와 뚜껑 완료 뒤 소스를 시작할 때는 사용자의 새 발화를 받지 않는다. STT도 계속 닫혀 있고 다음 robot task가 이미 확정되어 있다.
+
+수정 전에는 이 두 전환도 Response Adapter를 호출했다.
+
+```text
+extra → lid
+예상: 이제 뚜껑을 닫을게요.
+실제: 직전 치즈·페퍼론치노 실행 문장 반복
+
+lid → sauce
+예상: 마지막으로 고르신 소스를 올릴게요.
+실제: 같은 직전 실행 문장 반복
+```
+
+Decision/Response train·validation과 targeted candidate에는 `lid`, `cover`, `뚜껑` 전환 행이 0개였다. 그러나 이 구간은 사용자 의미를 생성할 필요가 없는 deterministic transition이므로 학습 행을 추가하는 것보다 runtime 소유권을 명확히 하는 편이 맞다.
+
+`LLMLangGraphNode._advance_after_section(completed_section, outcome="completed")`은 이제 다음처럼 동작한다.
+
+```text
+next section = lid
+→ cover task 시작
+→ "이제 뚜껑을 닫을게요." 직접 발행
+→ Response 모델 호출 안 함
+
+next section = sauce
+→ 선택된 sauce task 시작
+→ "마지막으로 고르신 소스를 올릴게요." 직접 발행
+→ Response 모델 호출 안 함
+
+next section = veggie / meat / extra
+→ 기존 next_prompt 구성
+→ Response 모델 호출 유지
+```
+
+실패 fallback으로만 존재하던 `next_reply`를 뚜껑·소스의 정상 경로로 사용했다. runtime event와 history 기록, task 시작, VLM, STT gate는 기존 경로를 유지한다.
+
+직전 실측에서 두 Response 호출은 각각 3.978초와 3.967초였다. 따라서 모델 추론만 기준으로 주문 한 건당 약 **7.945초**를 줄인다. TTS 재생 시간과 실제 로봇 동작 시간은 이 수치에 포함하지 않는다.
+
+회귀 테스트는 다음 계약을 고정한다.
+
+```text
+extra → lid: 정확한 고정 문구, call_response 미호출, STT 미개방
+lid → sauce: 정확한 고정 문구, call_response 미호출, STT 미개방
+veggie / meat / extra: 기존 Response model 호출 유지
+target test: 11 passed
+git diff --check: PASS
+```
+
+Cause: 이미 다음 작업과 안내 문구가 확정된 자동 전환까지 생성 모델에 맡겼다.
+
+Effect: 로봇 상태와 음성 안내가 항상 일치하고, stale 대화 반복 가능성과 GPU 추론 2회가 제거된다.
+
+### 22.5 향후 계획
+
+| 우선순위 | 작업 | 완료 기준 |
+|---|---|---|
+| P0 | 실제 task 시작 응답과 모든 system-driven section 전환 응답을 structured state 기반으로 고정한다. | `execute=true`이면 확인 질문이 나오지 않고, 전환 시 새 section 안내만 한 번 기록된다. |
+| P0 | unresolved pending과 빈 optional section의 bare commit을 차단한다. | pending 후보가 사라지지 않으며 `진행해`만으로 선택 없는 다음 section을 건너뛰지 않는다. |
+| P1 | Decision/Recommendation 실패 family를 relabel하고 독립 train 행으로 보강한다. | 불명확한 발화가 메뉴 대상을 만들지 않고, 추천 후보 부분 수정이 나머지 후보를 보존한다. |
+| P1 | 수정된 runtime과 새 모델로 동일 물리 시나리오를 다시 실행한다. | 실행 확인, section 전이, VLM retry, lid/sauce와 최종 session_end가 한 로그에서 일치한다. |
+| P2 | 실제 로봇 세션 로그를 세션 단위로 계속 보존한다. | `agent_turns.jsonl`과 `runtime_events.jsonl`이 같은 session ID로 GitHub에 추적된다. |
+
+뚜껑·소스뿐 아니라 사용자 입력 없이 발생하는 모든 section 전환 안내는 다음 재학습 범위에서 제외한다. 해당 문구는 모델 일반화 문제가 아니라 이미 결정된 상태를 알리는 deterministic UI/TTS 계약이기 때문이다.
+
+(여기서 hardcoding이 필요한 경계가 보인다. 사용자 의미나 메뉴 선택은 모델이 맡지만, 이미 확정된 로봇 단계의 상태 안내는 코드가 맡는다.)
+
+## 23. 2026-10-11 주문 흐름 꼬임 전수 감사
+
+참고 로그:
+
+- `logs/llm/2026-10-11/session_20261011_122351_025654_pid14055/agent_turns.jsonl`
+- `logs/llm/2026-10-11/session_20261011_123013_105237_pid26271/agent_turns.jsonl`
+- `logs/llm/2026-10-11/session_20261011_130433_286854_pid47658/agent_turns.jsonl`
+- `logs/llm/2026-10-11/session_20261011_131341_544954_pid55977/agent_turns.jsonl`
+- `logs/llm/2026-10-11/session_20261011_132944_155638_pid65476/agent_turns.jsonl`
+
+→ **핵심은 실행 확인 상태가 사라진 것이 아니라, 이미 실행된 뒤에도 Response가 “확인이 남았다”고 거짓 안내하고 그 문장이 다음 단계까지 복제된 것이다.**
+
+주문·시나리오에 직접 영향을 주지 않은 잡음 발화와 일반대화는 이번 감사 범위에서 제외했다.
+
+### 23.1 가장 쉽게 설명한 실제 고장 순서
+
+정상이라면 다음 순서여야 한다.
+
+```text
+사용자: 양파 조금, 버섯 많이 줘
+시스템: 선택을 저장하고 실행 확인 pending 생성
+사용자: 버섯을 조금으로 바꿔서 바로 담아
+시스템: pending 수락 → 양파·버섯 실행 → pending 종료
+로봇: 야채 완료 → 육류 선택 안내
+```
+
+실제로는 다음처럼 진행되었다.
+
+```text
+1. 사용자가 "버섯 조금으로 바꿔서 바로 담아"라고 말했다.
+2. structured state는 요청을 정상 처리했다.
+   - policy.execute = true
+   - pending = null
+   - 양파 task 시작, 버섯 task queue 등록
+3. Response만 반대로 "실행 확인이 남아 있어요. 담기를 진행할까요?"라고 말했다.
+4. 로봇은 이미 야채를 담고 육류 단계로 이동했다.
+5. 사용자는 방금 들은 질문에 답하려고 "어 진행해"라고 말했다.
+6. 시스템은 이 말을 육류 단계의 새 commit으로 해석했다.
+7. 선택된 육류가 없어서 육류를 통째로 건너뛰고 추가 재료 단계로 이동했다.
+```
+
+(내가 의역해보자면 로봇의 실제 장부에는 “이미 실행함”이라고 적혀 있었는데, 입으로는 “아직 확인 안 됨”이라고 말했다. 사용자가 그 입말에 답하자 시스템은 이미 다음 페이지로 넘어간 장부에 답을 적용했다.)
+
+Cause: structured state와 사용자에게 읽어 주는 Response 문장이 서로 다른 사실을 말했다.
+
+Effect: 정상적인 `어 진행해`가 다음 section의 실행 명령으로 오해되어 육류 단계가 건너뛰어졌다.
+
+### 23.2 문제 1 — 실행 중인데 다시 실행 확인을 요구함
+
+같은 failure가 세 세션에서 재현되었다.
+
+| 세션 | state와 실제 동작 | 잘못된 응답 |
+|---|---|---|
+| `122351`, Turn 5 | `execute=true`, 버섯 task 시작 | `버섯 조금 담기를 진행할까요?` |
+| `123013`, Turn 5 | `execute=true`, `pending=null`, 버섯 task 시작 | `실행 확인이 남아 있어요` |
+| `131341`, Turn 5 | `execute=true`, 양파 시작·버섯 queue, `pending=null` | `실행 확인이 남아 있어요` |
+
+`response_model.py`는 Response 입력에 다음 사실을 정확히 넣고 있다.
+
+```text
+execution_authorized = true
+starting_now = 현재 실제로 시작할 재료 목록
+```
+
+그러나 `agent_prompts.py`에는 `execution_authorized=false`일 때 시작했다고 말하지 말라는 규칙만 있다. `true`일 때 확인 질문을 금지하는 대칭 규칙과 runtime 출력 검사가 없다.
+
+**수정 위치와 내용**
+
+| 위치 | 수정할 내용 |
+|---|---|
+| `src/soomac_irc/soomac_irc/llm_langgraph_node.py`, `_process_turn()`의 `_start_current_section()` 성공 분기 | Graph의 자유 생성 문장을 그대로 발행하지 말고, 실제 `active_task`와 `task_queue`로 시작 멘트를 만든다. |
+| 같은 분기의 `graph_state["history"]` | Graph가 미리 기록한 assistant 응답도 실제 시작 멘트로 교체하여 다음 턴에 거짓 질문이 남지 않게 한다. |
+| `src/soomac_irc/soomac_irc/agent_prompts.py`, `TASK_RESPONSE_SYSTEM` | 보조 방어선으로 `execution_authorized=true`이면 확인 질문과 `확인이 남아 있다`는 표현을 금지한다. |
+
+Cause: 실제 task 시작 여부가 확정되기 전에 Response 모델이 문장을 만들고, 노드는 그 문장을 사후 검증 없이 발행한다.
+
+Effect: 실제 시작 task 기반 deterministic 응답을 사용하면 로봇 동작과 TTS가 반드시 일치한다.
+
+### 23.3 문제 2 — section 전환 모델이 새 안내 대신 직전 문장을 복사함
+
+`LLMLangGraphNode._advance_after_section()`은 이미 정확한 `next_reply`를 만든다.
+
+```text
+미리 고른 재료가 있음 → build_preselected_confirmation_reply(pending)
+미리 고른 재료가 없음 → _section_prompt()
+```
+
+하지만 현재는 lid와 sauce에서만 이 값을 직접 사용한다. veggie, meat, extra 전환은 `user_text=""`로 Response 모델을 다시 호출한다. 문제가 발생한 세션에서는 모델이 `next_prompt=meat` 또는 `next_prompt=extra`보다 recent history의 잘못된 실행 확인 문장을 따라 했다.
+
+또한 `_advance_after_section()`은 그 잘못된 문장을 history에 다시 append한다. 빈 section을 skip하는 `_process_turn()` 경로에서도 Graph의 임시 응답과 전환 응답이 둘 다 history에 남을 수 있다.
+
+**수정 위치와 내용**
+
+| 위치 | 수정할 내용 |
+|---|---|
+| `llm_langgraph_node.py`, `_advance_after_section()`의 `if self.section in ("lid", "sauce")` 분기 | 조건을 없애고 모든 system-driven 전환에서 `reply = next_reply`를 사용한다. |
+| 같은 함수의 `call_response(...)` 경로 | 정상 경로에서는 제거한다. 자연화가 꼭 필요하면 새 section/type 검증에 통과한 출력만 채택한다. |
+| `_process_turn()`의 optional section skip 분기 | `_advance_after_section()` 호출 전에 Graph가 history에 넣은 임시 assistant 응답을 제거하고, 전환 응답 하나만 남긴다. |
+
+Cause: 이미 정답이 있는 상태 전환을 history 영향을 받는 생성 모델에 다시 물었다.
+
+Effect: 야채·육류·추가 재료·뚜껑·소스 전환이 모두 현재 section과 일치하며 stale 문장이 다음 턴으로 전파되지 않는다.
+
+### 23.4 문제 3 — unresolved recommendation이 section skip과 함께 사라짐
+
+`130433` 세션에서는 추천 pending에 양파와 버섯이 들어 있었다. 사용자는 `양파만 빼고 바로 해줘`라고 말했다. 의도는 **추천 후보에서 양파만 제거하고 버섯을 실행하는 것**이다.
+
+Decision은 `양파=none`, `commit=true`를 만들었지만 `confirmation=accept`를 누락했다. 따라서 추천 후보의 버섯은 canonical order로 이동하지 않았다. 그 상태에서 commit이 승인되었고, 현재 야채 task가 0개라 veggie 전체가 skip되었다. section 전환 시 pending도 `null`로 제거되었다.
+
+**수정 위치와 내용**
+
+| 위치 | 수정할 내용 |
+|---|---|
+| `src/soomac_irc/soomac_irc/llm_langgraph.py`, `_resolve_pending()` | execution pending에서 `commit=true`가 명확하면 실행 수락으로 정규화한다. recommendation pending은 `confirmation=accept` 없이 실행하지 않는다. |
+| 같은 파일 `process_task()`의 commit 분기 | unresolved recommendation pending이 있으면 `execute=false`로 두고 후보 수락·수정 여부를 다시 확인한다. |
+| `llm_langgraph_node.py`, optional section skip 직전 | `graph_state.pending is not None`이면 section을 이동하지 않는 마지막 가드를 둔다. |
+
+Cause: commit 경로가 unresolved pending 존재 여부를 검사하지 않고, section 전환이 pending을 무조건 제거한다.
+
+Effect: 추천 후보의 일부만 수정해도 나머지 후보가 보존되며, 확인되지 않은 추천 때문에 section 전체가 사라지지 않는다.
+
+### 23.5 문제 4 — 선택 없는 optional section에서 bare commit이 skip으로 바뀜
+
+현재 veggie, meat, extra는 필수값이 없다. 따라서 해당 section에 선택 재료가 없어도 `missing_current_section()`은 빈 목록을 반환한다. Decision이 어떤 이유로든 `commit=true`를 만들면 policy는 실행을 허용하고, node는 task가 없다는 이유로 section을 자동 skip한다.
+
+이 구조는 다음 두 상황을 구분하지 못한다.
+
+```text
+"어 진행해"              → 앞의 실행 확인 질문에 답한 것일 수 있음
+"아무것도 안 넣고 넘어가" → 현재 section을 명시적으로 skip한 것임
+```
+
+**수정 위치와 내용**
+
+| 위치 | 수정할 내용 |
+|---|---|
+| Decision contract와 학습데이터 | `commit`과 별도로 명시적 section skip 의미를 표현하는 `skip_current` 계열 field를 추가한다. |
+| `llm_langgraph.py`, commit 분기 | order 변경 없는 bare commit은 현재 section과 일치하는 execution pending이 있을 때만 허용한다. |
+| `llm_langgraph_node.py`, optional skip 분기 | 명시적 skip이거나 검증된 skip policy일 때만 `_advance_after_section(..., outcome="skipped")`를 호출한다. |
+
+Cause: 실행 승인과 현재 단계 생략을 하나의 `commit` 의미로 처리한다.
+
+Effect: 불명확한 `진행해`나 약한 ASR 결과 한 번으로 재료 단계가 사라지거나 뚜껑이 시작되지 않는다.
+
+### 23.6 재학습이 필요한 부분과 하드코딩할 부분
+
+| 구분 | 처리 | 이유 |
+|---|---|---|
+| 실제 task 시작 멘트 | runtime deterministic | 이미 시작한 task라는 단일 사실만 전달한다. 틀리면 실제 동작과 음성이 충돌한다. |
+| system-driven section 전환 | runtime deterministic | `next_reply`가 이미 계산되어 있고 새 사용자 의미가 없다. |
+| 불명확한 발화의 메뉴 target 생성 | Decision 재학습 + grounding 검사 | `저 먹어를 수 있어요`에서 게살 제한을 만든 사례처럼 의미 판단이 필요하다. |
+| 추천 후보 부분 수정 | Decision/Recommendation 재학습 + pending guard | `양파만 빼고` 같은 참조 해석은 모델이 필요하지만 후보 유실은 코드가 막아야 한다. |
+| 자연스러운 주문 설명 | Response 재학습 | 크림 추천 수락을 답변에서 누락한 것처럼 안전 상태를 바꾸지 않는 표현 품질 문제이다. |
+
+Response v1의 전체 split 1,225건에서 실행 허용 예제 61건과 section 전환 예제 16건은 모두 `recent_history=[]`이다. `주문 변경 + 즉시 실행 + 기존 실행 확인 history` 조합은 0건이다. v1.1 candidate에도 같은 공백이 있으므로 Adapter만 교체해서는 이번 문제가 해결되지 않는다.
+
+(여기서 모델 재학습과 하드코딩의 경계가 명확해진다. **사용자의 뜻을 알아내는 일은 모델이 하고, 이미 확정된 로봇의 실제 상태를 말하는 일은 코드가 한다.**)
+
+### 23.7 필수 회귀 테스트
+
+1. stale history에 `실행 확인이 남아 있어요`가 있어도 `execute=true`이면 실제 시작 재료만 말한다.
+2. veggie 완료 뒤에는 history 내용과 무관하게 meat 안내, meat 완료·skip 뒤에는 extra 안내를 말한다.
+3. recommendation pending `{양파, 버섯}`에서 `양파만 빼고 바로 해줘`는 버섯을 보존하며, 확인이 불명확하면 section을 유지한다.
+4. pending 없는 빈 meat/extra에서 `어 진행해`만으로 section을 skip하지 않는다.
+5. `아무것도 안 넣고 다음 단계로 넘어가`는 명시적 skip으로 정상 처리한다.
+
+정상 대조군인 `session_20261011_132944_155638_pid65476`의 5개 turn은 STT, Decision, pending 생성·소비, 실제 실행이 모두 일치했다. 따라서 전체 상태 머신이 항상 실패하는 문제가 아니라 **변경과 즉시 실행이 한 문장에 있고, 오염된 history 또는 unresolved pending이 함께 있는 경계 조건 문제**이다.
+
+Cause: 학습데이터에 단순한 단일 턴은 있지만 실제 장기 대화에서 생기는 `변경 + 즉시 실행 + 기존 확인 + section 전환` 조합이 없다.
+
+Effect: 위 5개 회귀 시나리오를 고정하면 모델 교체와 runtime 수정 뒤에도 오늘의 연쇄 오류가 다시 발생하는지 자동 검출할 수 있다.
+
+### 23.8 적용 순서와 커밋 경계
+
+이번 수정은 로그 원본 보존과 runtime 패치를 분리한다. 그래야 문제를 재현한 원본 로그와 문제를 고친 코드를 같은 커밋에서 섞지 않고 비교할 수 있다.
+
+```text
+1. 이 문서와 2026-10-11 실물 로그를 먼저 커밋한다.
+2. 커밋 메시지는 "로그 백업 및 터지는 부분 수정 예정"으로 남긴다.
+3. 해당 커밋을 GitHub에 push하여 수정 전 증거를 원격에 보존한다.
+4. 재학습을 제외한 runtime 안전 패치와 회귀 테스트를 적용한다.
+5. 테스트 결과를 확인한 뒤 패치 커밋·push 여부를 별도로 결정한다.
+```
+
+이번 비재학습 패치 범위는 다음과 같다.
+
+| 순서 | 패치 | 이번 완료 기준 |
+|---|---|---|
+| 1 | execution pending과 `commit=true` 정규화 | 실행 승인과 pending이 동시에 남지 않는다. |
+| 2 | unresolved recommendation 실행 차단 | 추천 후보가 확인 없이 실행·skip·삭제되지 않는다. |
+| 3 | 실제 task 기반 실행 시작 멘트 | `execute=true` 뒤 재확인 질문이 발행되지 않는다. |
+| 4 | 모든 system-driven section 전환을 `next_reply`로 고정 | stale history가 다음 section 안내를 덮지 않는다. |
+| 5 | 빈 optional section의 bare commit 차단과 history 중복 제거 | `어 진행해`만으로 section이 넘어가지 않고 전환 응답은 한 번만 남는다. |
+
+명시적 `skip_current` contract 추가와 Decision·Recommendation·Response Adapter 재학습은 이번 패치에서 제외한다. 새 contract를 학습하지 않은 현재 Decision 모델은 해당 field를 안정적으로 생성할 수 없기 때문이다. 재학습 전 임시 안전 정책은 **선택도 execution pending도 없는 optional section의 bare commit을 실행하지 않고 현재 section에 머무르는 것**이다. 이 정책에서는 명시적 자연어 skip도 새 contract가 도입되기 전까지 다시 물을 수 있지만, 의도하지 않은 재료 단계 생략과 뚜껑 실행을 우선 차단한다.
+
+Cause: 로그 백업과 수정 코드를 한 커밋에 넣으면 수정 전 재현 증거와 수정 결과의 경계가 흐려진다.
+
+Effect: GitHub에 원본 실패 세션을 먼저 고정한 뒤, runtime 패치의 효과를 같은 로그 기반 회귀 테스트로 독립 검증할 수 있다.
 
 ---
 
