@@ -33,7 +33,11 @@ from soomac_irc.llm_langgraph import (
     build_preselected_section_confirmation,
     find_structural_decision_errors,
 )
-from soomac_irc.llm_policy import validate_restriction_options
+from soomac_irc.llm_policy import (
+    build_recommendation_scope,
+    validate_recommendation_proposal,
+    validate_restriction_options,
+)
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
 
 
@@ -1026,6 +1030,99 @@ def test_recommendation_stays_pending_until_acceptance():
         robot_state(),
     )
     assert accepted["session"]["order"]["toppings"] == {"양파": "normal"}
+
+
+def test_recommendation_scope_contains_current_and_future_but_not_past_or_lid():
+    session = new_session_state()
+    session["order"]["sauce"] = "크림"
+
+    scope = build_recommendation_scope(session, robot_state(section="extra"))
+
+    assert scope["current_section"] == "extra"
+    assert [entry["section"] for entry in scope["sections"]] == ["extra", "sauce"]
+    assert scope["excluded_past_sections"] == ["noodle", "veggie", "meat"]
+    assert scope["sections"][0]["options"] == ["치즈", "페퍼론치노"]
+    assert scope["sections"][1]["selected"] == {"sauce": "크림"}
+
+
+def test_recommendation_scope_excludes_restricted_options():
+    session = new_session_state()
+    session["order"]["restrictions"] = [
+        {"target": "페퍼론치노", "reason": "cannot_eat"},
+    ]
+
+    scope = build_recommendation_scope(session, robot_state(section="extra"))
+
+    extra = next(entry for entry in scope["sections"] if entry["section"] == "extra")
+    assert extra["options"] == ["치즈"]
+
+
+def test_recommendation_validator_rejects_same_value_but_allows_future_alternative():
+    session = new_session_state()
+    session["order"]["sauce"] = "크림"
+    state = robot_state(section="extra")
+
+    same = validate_recommendation_proposal(
+        session,
+        {"sauce": "크림", "noodle_type": None, "noodle_portion": None, "toppings": {}},
+        state,
+    )
+    alternative = validate_recommendation_proposal(
+        session,
+        {"sauce": "오일", "noodle_type": None, "noodle_portion": None, "toppings": {}},
+        state,
+    )
+
+    assert same["accepted_fields"] == []
+    assert same["rejected_fields"] == [
+        {"field": "sauce", "value": "크림", "reason": "no_change"}
+    ]
+    assert alternative["proposal"]["sauce"] == "오일"
+    assert alternative["accepted_fields"] == ["sauce"]
+
+
+def test_recommendation_validator_still_rejects_past_section_alternative():
+    session = new_session_state()
+    session["order"]["toppings"]["버섯"] = "low"
+    result = validate_recommendation_proposal(
+        session,
+        {"sauce": None, "noodle_type": None, "noodle_portion": None,
+         "toppings": {"버섯": "high"}},
+        robot_state(section="extra"),
+    )
+
+    assert result["accepted_fields"] == []
+    assert result["rejected_fields"] == [
+        {"field": "toppings.버섯", "value": "high", "item": "버섯"}
+    ]
+
+
+def test_recommendation_unavailable_bypasses_response_model_and_lists_scope():
+    session = new_session_state()
+    session["order"]["sauce"] = "크림"
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("추천 완전 실패에서 Response 모델을 호출하면 안 됨")
+
+    graph = compiled_for(
+        {"route": "task", "recommendation": {"action": "request"}},
+        recommendation={
+            "proposal": {
+                "sauce": "크림", "noodle_type": None,
+                "noodle_portion": None, "toppings": {},
+            },
+            "reason_tags": ["기존 값 반복"],
+        },
+        response=fail_if_called,
+    )
+    result = graph.invoke(new_turn_state(
+        session, "매운 거 못 먹는데 토핑 뭐 넣을까?", robot_state(section="extra")
+    ))
+
+    assert result["policy"]["reason"] == "recommendation_unavailable"
+    assert "추가 재료: 치즈, 페퍼론치노" in result["reply"]
+    assert "소스: 오일, 토마토, 크림" in result["reply"]
+    assert result["session"]["history"][-1]["content"] == result["reply"]
 
 
 def test_preselected_future_choice_uses_execution_pending():

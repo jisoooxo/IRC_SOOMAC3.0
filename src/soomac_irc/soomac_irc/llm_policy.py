@@ -113,6 +113,102 @@ def protected_order_keys(robot_state: dict) -> list[str]:
     return protected
 
 
+def build_recommendation_scope(session: dict, robot_state: dict) -> dict:
+    """현재부터 미래까지 실제로 변경 가능한 사용자 선택 범위를 만든다.
+
+    자연어 의도나 추천 우선순위는 판단하지 않는다. 지나간 section과 실행 중·완료된
+    field만 제외하고, 모델이 읽을 수 있는 선택지·현재 선택값을 구조화한다.
+    """
+    current_section = robot_state.get("section")
+    if current_section not in SECTION_ORDER:
+        return {
+            "current_section": current_section,
+            "sections": [],
+            "excluded_past_sections": [],
+        }
+
+    current_index = SECTION_ORDER.index(current_section)
+    protected = set(protected_order_keys(robot_state))
+    order = session["order"]
+    section_specs = (
+        ("noodle", ("noodle_type", "noodle_portion"), list(NOODLE_TYPES)),
+        ("veggie", ("toppings.양파", "toppings.버섯"), ["양파", "버섯"]),
+        ("meat", ("toppings.소시지", "toppings.게살"), ["소시지", "게살"]),
+        ("extra", ("toppings.치즈", "toppings.페퍼론치노"), ["치즈", "페퍼론치노"]),
+        ("sauce", ("sauce",), list(SAUCES)),
+    )
+
+    sections = []
+    excluded_past = []
+    for section, fields, options in section_specs:
+        section_index = SECTION_ORDER.index(section)
+        if section_index < current_index:
+            excluded_past.append(section)
+            continue
+
+        available_fields = [field for field in fields if field not in protected]
+        if not available_fields:
+            continue
+        safe_options = [
+            option
+            for option in options
+            if strongest_restriction_for_item(order, option) is None
+        ]
+        if not safe_options:
+            continue
+
+        selected = {}
+        for field in available_fields:
+            if field.startswith("toppings."):
+                item = field.split(".", 1)[1]
+                value = order.get("toppings", {}).get(item)
+                if value is not None:
+                    selected[item] = value
+            else:
+                value = order.get(field)
+                if value is not None:
+                    selected[field] = value
+
+        entry = {
+            "section": section,
+            "fields": available_fields,
+            "options": copy.deepcopy(safe_options),
+            "selected": selected,
+        }
+        if section in ("noodle", "veggie", "meat", "extra"):
+            entry["amount_options"] = list(AMOUNTS)
+        sections.append(entry)
+
+    return {
+        "current_section": current_section,
+        "sections": sections,
+        "excluded_past_sections": excluded_past,
+    }
+
+
+def build_recommendation_unavailable_reply(scope: dict) -> str:
+    """추천 후보가 모두 거절됐을 때 모델 없이 실제 선택 범위만 안내한다."""
+    sections = scope.get("sections") or []
+    if not sections:
+        return "추천 후보를 만들지 못했어요. 지금은 새로 선택하거나 바꿀 수 있는 항목이 없어요."
+
+    labels = {
+        "noodle": "면",
+        "veggie": "야채",
+        "meat": "육류",
+        "extra": "추가 재료",
+        "sauce": "소스",
+    }
+    descriptions = []
+    for entry in sections:
+        options = ", ".join(str(option) for option in entry.get("options", []))
+        if options:
+            descriptions.append(f"{labels.get(entry.get('section'), entry.get('section'))}: {options}")
+    if not descriptions:
+        return "추천 후보를 만들지 못했어요. 지금은 새로 선택하거나 바꿀 수 있는 항목이 없어요."
+    return f"추천 후보를 만들지 못했어요. 현재부터 선택 가능한 항목은 {'; '.join(descriptions)}입니다."
+
+
 def changed_order_keys_from_patch(patch: dict) -> list[str]:
     # patch에 실제로 들어온 값만 평평한 key 목록으로 바꾼다.
     # restriction 충돌이 이번 사용자 요청 때문인지 구분할 때 사용한다.
@@ -518,14 +614,19 @@ def validate_recommendation_proposal(session: dict, proposal: dict, robot_state:
     validation = validate_order_patch(proposal, robot_state)
     accepted = validation["accepted_patch"]
 
-    # 추천이 사용자가 이미 확정한 값을 조용히 덮어쓰지 못하게 한다.
+    # 기존 값과 완전히 같은 제안만 no-op으로 제거한다. 다른 값은 아직 실행 전이면
+    # recommendation pending으로 제안할 수 있고, 실제 변경은 사용자 수락 뒤에 일어난다.
     for field in ("sauce", "noodle_type", "noodle_portion"):
-        if accepted.get(field) is not None and session["order"].get(field) is not None:
-            validation["protected"].append({"field": field, "value": accepted[field], "reason": "already_selected"})
+        proposed = accepted.get(field)
+        normalized = None if proposed == "none" else proposed
+        if proposed is not None and session["order"].get(field) == normalized:
+            validation["protected"].append({"field": field, "value": proposed, "reason": "no_change"})
             accepted[field] = None
     for item in list(accepted.get("toppings", {})):
-        if item in session["order"].get("toppings", {}):
-            validation["protected"].append({"field": f"toppings.{item}", "value": accepted["toppings"][item], "reason": "already_selected"})
+        proposed = accepted["toppings"][item]
+        normalized = None if proposed == "none" else proposed
+        if session["order"].get("toppings", {}).get(item) == normalized:
+            validation["protected"].append({"field": f"toppings.{item}", "value": proposed, "reason": "no_change"})
             accepted["toppings"].pop(item, None)
 
     temp_order = apply_order_patch(session["order"], accepted)

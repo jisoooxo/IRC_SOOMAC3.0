@@ -124,6 +124,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
 
         self.assertEqual(node.section, "sauce")
         self.assertEqual(reply, "마지막으로 고르신 소스를 올릴게요.")
+        self.assertIsNone(node.graph_state["pending"])
         node._start_current_section.assert_called_once()
         node.call_response.assert_not_called()
         node._set_stt_enabled.assert_not_called()
@@ -142,7 +143,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertEqual(node.graph_state["pending"]["items"], {"치즈": "low"})
         self.assertEqual(node.graph_state["pending"]["type"], "execution")
         self.assertEqual(node.graph_state["history"][-1]["content"],
-                         "치즈이(가) 미리 선택되어 있어요. 이대로 진행할까요?")
+                         "미리 고른 치즈를 적게 담을까요?")
         node.call_response.assert_not_called()
 
     def test_section_transition_response_event_records_deterministic_reply(self):

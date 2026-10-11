@@ -10,12 +10,13 @@ from soomac_irc.agent_contract import (
     new_decision,
 )
 from soomac_irc.llm_policy import (
-    allowed_order_fields,
     apply_order_patch,
     apply_preference_options,
     apply_restriction_options,
     build_applied_changes,
     build_future_changes,
+    build_recommendation_scope,
+    build_recommendation_unavailable_reply,
     build_turn_action_event,
     changed_order_keys_from_patch,
     current_section_changed,
@@ -130,29 +131,44 @@ def build_preselected_section_confirmation(session: _SessionState, section: str)
     """미리 고른 미래 section 재료를 execution pending 하나로 묶는다."""
     if section not in ("veggie", "meat", "extra"):
         return None
-    items = {}
-    for key in allowed_order_fields(section):
-        item = key.split(".", 1)[1]
-        amount = session["order"]["toppings"].get(item)
-        if amount is not None:
-            items[item] = amount
+    execution_items = section_execution_items(session["order"], section)
+    items = {entry["item"]: entry.get("amount") for entry in execution_items}
     if not items:
         return None
+    candidate = empty_order_patch()
+    candidate["toppings"] = copy.deepcopy(items)
     return {
         "type": "execution",
         "source": "preselected",
         "section": section,
         "targets": list(items),
         "items": items,
-        "candidate": {"sauce": None, "noodle_type": None, "noodle_portion": None, "toppings": items},
+        "candidate": candidate,
     }
+
+
+def _with_object_particle(word: str) -> str:
+    """한글 단어에 목적격 조사를 붙이고 그 외 문자열은 안전한 병기형을 쓴다."""
+    if not word:
+        return word
+    code = ord(word[-1])
+    if 0xAC00 <= code <= 0xD7A3:
+        return f"{word}{'을' if (code - 0xAC00) % 28 else '를'}"
+    return f"{word}을(를)"
 
 
 def build_preselected_confirmation_reply(pending: dict) -> str:
     # Graph 밖에서 section이 바뀔 때 사용할 안전한 기본 확인 문장이다.
     items = pending.get("items") or pending.get("candidate", {}).get("toppings", {})
-    names = ", ".join(items) if items else "미리 선택한 재료"
-    return f"{names}이(가) 미리 선택되어 있어요. 이대로 진행할까요?"
+    amount_word = {"low": "적게", "normal": "보통", "high": "많이"}
+    descriptions = []
+    for name, amount in items.items():
+        description = _with_object_particle(str(name))
+        if amount in amount_word:
+            description = f"{description} {amount_word[amount]}"
+        descriptions.append(description)
+    target = ", ".join(descriptions) if descriptions else "미리 고른 재료를"
+    return f"미리 고른 {target} 담을까요?"
 
 
 def build_execution_started_reply(session: _SessionState, section: str) -> str:
@@ -634,6 +650,12 @@ def build_graph(
                 build_execution_started_reply(state["session"], state["robot_state"]["section"])
                 if starting_items
                 else ""
+            )
+        elif reason == "recommendation_unavailable":
+            # 추천 후보가 전부 거절된 실패 턴은 Response 모델이 과거 답변을 반복하지 못하게 한다.
+            # 사용자의 취향을 새로 해석하지 않고 현재부터 물리적으로 가능한 선택 범위만 안내한다.
+            reply = build_recommendation_unavailable_reply(
+                build_recommendation_scope(state["session"], state["robot_state"])
             )
         else:
             reply = call_response(

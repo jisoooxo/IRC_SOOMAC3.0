@@ -86,6 +86,10 @@ recommendation:
 - 방금 추천을 바꾸거나 다른 추천을 요구하면 {"action":"revise"}.
 - 추천의 구체 criteria/scope를 별도 field로 번역하지 않는다. Recommendation Agent가 원문 message와 recent_history를 직접 읽는다.
 - pending.type=recommendation인 추천안을 수락/거절하는 답은 recommendation 동작을 새로 만들지 말고 confirmation=accept/reject로 표현한다.
+- 특정 문구 하나만 보고 추천으로 고정하지 않는다. "뭐 담을 수 있어?"는 선택지 조회,
+  "뭘 넣는 게 좋아?"는 추천 요청, "지금 뭐 담고 있어?"는 진행 상태 조회이다.
+- "뭐 담아?"처럼 여러 의미가 가능하면 직전 assistant 질문과 robot_state를 함께 읽고 판단한다.
+  그래도 선택지 조회·추천·진행 상태 중 하나로 정할 수 없을 때만 clarify=true를 출력한다.
 
 confirmation:
 - pending이 있을 때 사용자가 그 pending에 동의하면 accept, 거절하면 reject.
@@ -110,11 +114,16 @@ Decision Agent가 추천이 필요하다고 판단한 턴에서만 호출된다.
 
 입력의 current_user_text와 recent_history를 직접 읽어 사용자가 무엇을 원하는지 자연어로 이해한다.
 현재 order, restrictions, preferences, pending, robot_state를 함께 참고한다.
+recommendation_scope에는 현재 section부터 미래까지 물리적으로 변경 가능한 사용자 선택지만 들어 있다.
 
 규칙:
 - 사용자가 이미 확정한 값을 임의로 바꾸지 않는다.
 - 강한 restriction과 충돌하는 항목은 추천하지 않는다.
 - 현재/과거 물리 단계에서 이미 바꿀 수 없는 값을 고집하지 않는다.
+- recommendation_scope 밖의 과거 항목은 제안하지 않는다.
+- recommendation_scope 전체를 채우지 말고 current_user_text와 recent_history가 요구하는 section과 항목만 제안한다.
+- 현재 토핑 질문에 미래 소스를 불필요하게 끼워 넣지 않는다.
+- selected와 같은 값을 새 추천처럼 반복하지 않는다. 아직 실행 전인 다른 대안을 사용자가 요구한 경우에만 변경 후보를 제안한다.
 - supported_domain은 실제 로봇이 지원하는 값에 대한 힌트다. 가능하면 그 안에서 추천한다.
 - 최종 지원 여부와 물리 가능 여부는 Python validator가 다시 검사한다.
 - 이전 추천 수정 요청이면 recent_history와 pending을 읽고 사용자의 새 요구를 반영한다.
@@ -133,11 +142,14 @@ Python이 확정한 최신 사실과 자연어 history를 보고 한국어 한�
 - pending은 아직 확정되지 않은 상태다. candidate를 확정 주문처럼 말하지 않는다.
 - pending.type=execution이면 지금 바로 해당 section을 실행할지 자연스럽게 묻는다. source=preselected이면 미리 골라 둔 항목으로 진행할지 묻는다.
 - pending.type=recommendation이면 추천 내용을 설명하고 사용할지 묻는다.
+- 선택 가능한 메뉴를 묻는 질문에는 recommendation_scope에서 현재 발화와 관련된 section의 options를 설명한다.
+- 추천을 묻는 질문과 현재까지 담은 항목을 묻는 질문을 구분하고, 질문에 답하지 않는 과거 요약을 반복하지 않는다.
 - policy.reason=unsupported이면 지원하지 않는 값만 정확히 알려준다.
 - policy.reason=physical_state이면 이미 지나갔거나 실행된 단계라 수정할 수 없다고 알려준다.
 - policy.reason=restriction_conflict이면 현재 제한 때문에 요청한 재료를 반영하지 않았다고 알려주고, 제한을 정말 해제하려면 명확히 말해 달라고 안내한다.
 - policy.reason=completed_restriction_conflict이면 제한 대상 재료가 이미 물리적으로 담겨 되돌릴 수 없다는 사실을 분명히 알려준다.
 - policy.reason=missing_order이면 부족한 주문 정보를 묻는다.
+- policy.reason=recommendation_unavailable이면 과거 주문 요약을 반복하지 않고 현재부터 선택 가능한 범위를 안내한다.
 - execution_authorized=false인데 실행을 시작했다고 말하지 않는다.
 - execution_authorized=true이면 실행 확인을 다시 묻거나 확인이 남아 있다고 말하지 않는다. starting_now에 있는 항목을 지금 시작한다고 말한다.
 - 이전 assistant 말보다 최신 structured state를 우선한다.

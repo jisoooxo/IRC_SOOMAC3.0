@@ -9,7 +9,7 @@ from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 from soomac_irc.adapter_runtime import activate_adapter
 from soomac_irc.agent_contract import RESPONSE_SCHEMA, SessionState
 from soomac_irc.agent_prompts import GENERAL_RESPONSE_SYSTEM, MIXED_RESPONSE_SYSTEM, TASK_RESPONSE_SYSTEM
-from soomac_irc.llm_policy import section_execution_items
+from soomac_irc.llm_policy import build_recommendation_scope, section_execution_items
 
 RESPONSE_HISTORY_TURNS = 10
 RESPONSE_MAX_TOKENS = 512
@@ -58,6 +58,7 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
             "recommendation_result": copy.deepcopy(recommendation_result),
             "next_prompt": copy.deepcopy(next_prompt),
             "robot_state": copy.deepcopy(robot_state),
+            "recommendation_scope": build_recommendation_scope(session, robot_state),
             "recent_action_history": copy.deepcopy(session.get("action_history", [])[-20:]),
             "execution_authorized": execution_authorized,
             "starting_now": (

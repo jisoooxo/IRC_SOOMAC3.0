@@ -2404,20 +2404,25 @@ Recommendation이 현재 단계와 취향을 올바르게 해석했을 때의 �
 
 ```json
 {
-  "current_section": "extra",
-  "recommendation_scope": [
-    {
-      "section": "extra",
-      "options": ["치즈", "페퍼론치노"],
-      "selected": []
-    },
-    {
-      "section": "sauce",
-      "options": ["오일", "토마토", "크림"],
-      "selected": ["크림"]
-    }
-  ],
-  "excluded_past_sections": ["noodle", "veggie", "meat"]
+  "recommendation_scope": {
+    "current_section": "extra",
+    "sections": [
+      {
+        "section": "extra",
+        "fields": ["toppings.치즈", "toppings.페퍼론치노"],
+        "options": ["치즈", "페퍼론치노"],
+        "selected": {},
+        "amount_options": ["low", "normal", "high"]
+      },
+      {
+        "section": "sauce",
+        "fields": ["sauce"],
+        "options": ["오일", "토마토", "크림"],
+        "selected": {"sauce": "크림"}
+      }
+    ],
+    "excluded_past_sections": ["noodle", "veggie", "meat"]
+  }
 }
 ```
 
@@ -2524,20 +2529,25 @@ Effect: validator를 구분해서 고치면 미래 추천을 안전하게 pendin
 
 ```json
 {
-  "current_section": "extra",
-  "recommendation_scope": [
-    {
-      "section": "extra",
-      "options": ["치즈", "페퍼론치노"],
-      "selected": []
-    },
-    {
-      "section": "sauce",
-      "options": ["오일", "토마토", "크림"],
-      "selected": ["크림"]
-    }
-  ],
-  "excluded_past_sections": ["noodle", "veggie", "meat"]
+  "recommendation_scope": {
+    "current_section": "extra",
+    "sections": [
+      {
+        "section": "extra",
+        "fields": ["toppings.치즈", "toppings.페퍼론치노"],
+        "options": ["치즈", "페퍼론치노"],
+        "selected": {},
+        "amount_options": ["low", "normal", "high"]
+      },
+      {
+        "section": "sauce",
+        "fields": ["sauce"],
+        "options": ["오일", "토마토", "크림"],
+        "selected": {"sauce": "크림"}
+      }
+    ],
+    "excluded_past_sections": ["noodle", "veggie", "meat"]
+  }
 }
 ```
 
@@ -2581,9 +2591,18 @@ Response:
 
 추천 후보는 즉시 주문을 덮어쓰지 않는다. 사용자가 recommendation pending을 수락한 뒤에만 기존 검증 경로를 다시 통과해 canonical order에 반영한다.
 
-#### 24.7.4 미래 선택의 section 진입 재확인
+#### 24.7.4 현재·미래 값 반영과 section 진입 재확인
 
-`veggie`, `meat`, `extra`는 기존 `build_preselected_section_confirmation()` 경로를 유지한다. 미래 추천을 수락해 주문에 저장했더라도 해당 section에 도착하면 execution pending으로 바꿔 다시 확인한다.
+현재보다 뒤 section의 값은 추천을 통해서만 넣을 수 있는 것이 아니다. 일반 주문 변경도 아직 실행되지 않은 current/future field라면 validator를 통과해 canonical order에 미리 반영할 수 있다.
+
+```text
+현재 veggie에서 "소시지 조금, 치즈 많이로 해줘"
+→ meat.소시지=low, extra.치즈=high를 미래 값으로 저장
+→ meat 도착 시 소시지 재확인
+→ extra 도착 시 치즈 재확인
+```
+
+`veggie`, `meat`, `extra`는 기존 `build_preselected_section_confirmation()` 경로를 유지한다. 미래 직접 선택이나 미래 추천 수락으로 주문에 저장된 값이 있으면 해당 section에 도착했을 때 execution pending으로 바꿔 다시 확인한다.
 
 ```text
 미래 추천 수락
@@ -2595,16 +2614,58 @@ Response:
 
 기존 `치즈이(가) 미리 선택되어 있어요` 문장은 조사 문제가 없도록 item 목록 기반 문장으로 교체한다.
 
-소스는 현재 section 도착 즉시 자동 실행된다. 일관된 확인 정책을 적용하기 위해 `build_preselected_section_confirmation()`이 sauce도 만들 수 있게 확장하고, `_advance_after_section()`의 sauce 자동 시작을 execution pending 생성으로 바꾼다.
+소스는 기존 자동 실행 정책을 유지한다. 추천이나 직접 변경으로 미래 소스 값이 바뀌면 최종 `order.sauce`에 저장하고, 뚜껑 완료 뒤 별도 재확인 없이 그 최종 값을 실행한다.
 
 ```text
-현재: sauce 도착 → 즉시 실행
-변경: sauce 도착 → "미리 고른 크림 소스를 올릴까요?" → accept → 실행
+sauce 변경 확정: 크림 → 오일
+→ 최종 order.sauce="오일"
+→ lid 완료
+→ "마지막으로 고르신 소스를 올릴게요."
+→ 오일 소스 자동 실행
 ```
 
-이 방식은 선택 출처가 추천인지 직접 선택인지와 무관하게, 실제 실행 직전에 최종 확인을 한 번 받는다. 별도의 추천 출처 추적 state를 추가하지 않아 canonical state를 단순하게 유지한다.
+`lid`와 `sauce` 전환은 사용자의 새 발화를 받지 않는 기존 구간이다. 두 전환 모두 Response 모델을 호출하지 않고 deterministic 문장 하나만 발행하며 STT를 다시 열지 않는다.
 
-#### 24.7.5 deterministic fallback과 회귀 테스트
+#### 24.7.5 단일 응답 소유권
+
+과거에는 한 상태 전환에서 Response 모델 문장과 runtime 하드코딩 문장이 모두 만들어지거나, 모델이 이전 history를 복사한 문장이 section 안내와 충돌할 수 있었다. 이번 패치는 한 event의 사용자 발화 문장을 한 경로만 소유하게 한다.
+
+```text
+정상 추천·일반 질의
+→ Response 모델만 문장 생성
+→ runtime은 추가 멘트를 붙이지 않음
+
+실행 시작·section 진입 확인·추천 완전 실패
+→ deterministic renderer만 문장 생성
+→ Response 모델 호출 금지
+```
+
+하드코딩 문장은 추천 의미를 대신 결정하지 않는다. 이미 structured state로 확정된 사실만 읽어 표현한다.
+
+```text
+pending.section = "extra"
+pending.items = {"치즈": "high"}
+→ "미리 고른 치즈 많이를 담을까요?"
+
+recommendation_unavailable + recommendation_scope
+→ 적용 실패 사실과 가능한 범위만 안내
+→ 특정 재료를 임의 추천하지 않음
+```
+
+다음 불변조건을 회귀 테스트로 고정한다.
+
+```text
+한 event당 publish된 assistant reply는 정확히 하나
+deterministic reply를 사용한 event에서는 call_response 호출 0회
+history의 마지막 assistant reply == 실제 published reply
+execution 확인 문장의 대상 == pending의 section/items
+```
+
+Cause: 충돌은 하드코딩 자체보다 같은 event에서 모델과 runtime이 동시에 답변을 소유했기 때문에 발생했다.
+
+Effect: 안전 관련 문장은 structured state에서 한 번만 만들고, 모델 답변과 결합하거나 덮어쓰지 않아 서로 모순될 경로가 사라진다.
+
+#### 24.7.6 deterministic fallback과 회귀 테스트
 
 `llm_langgraph.py`는 `recommendation_unavailable`일 때 Response 모델의 자유 생성을 사용하지 않고 scope 기반 실패 안내를 만든다. 특정 재료를 임의로 추천하지 않고 현재 이후의 가능한 범위를 안내한다.
 
@@ -2621,12 +2682,12 @@ Response:
 | 실행 전 크림에 오일 대안 추천 | recommendation pending 허용 |
 | 완료된 버섯 변경 추천 | physical protection 거절 |
 | 미래 치즈를 수락하고 extra 진입 | 치즈 실행 전 재확인 |
-| sauce 진입 | 소스 실행 전 재확인 |
+| sauce 진입 | 최종 `order.sauce` 자동 실행, Response 미호출, STT 미개방 |
 | 추천 후보 전부 거절 | 과거 답 반복 없이 deterministic fallback |
 
 검증 순서는 targeted unit test, 전체 `src/soomac_irc/test`, `py_compile`, `git diff --check`이다.
 
-#### 24.7.6 재학습 범위
+#### 24.7.7 재학습 범위
 
 runtime 패치는 학습 없이 적용할 수 있다. 다만 모델이 새 `recommendation_scope`를 다양한 사용자 표현과 함께 안정적으로 사용하는 것은 별도 학습 대상이다.
 
@@ -2648,6 +2709,52 @@ Recommendation 전용 Adapter 신규 학습:
 Cause: runtime 변경은 가능한 범위와 실행 확인을 결정하지만, scope 안에서 사용자의 의도를 일반화하는 일은 모델 학습의 책임이다.
 
 Effect: 먼저 runtime 패치로 과거 항목 재추천과 무응답 반복을 차단하고, 후속 재학습으로 표현이 달라져도 올바른 현재·미래 추천을 만들 수 있다.
+
+### 24.8 runtime 패치 적용 결과
+
+재학습을 제외한 runtime 패치를 적용했다.
+
+| 적용 위치 | 적용 결과 |
+|---|---|
+| `llm_policy.py` | 현재부터 미래까지의 안전한 `recommendation_scope`를 만들며 과거·완료·실행 중·restriction 충돌 항목과 자동 `lid`를 제외한다. |
+| `recommendation_model.py`, `response_model.py` | 동일한 scope를 모델 입력에 전달한다. |
+| `agent_prompts.py` | 선택지 조회·추천 요청·진행 상태 조회를 문맥으로 구분하고 scope 밖 과거 항목을 추천하지 않게 보강했다. |
+| `validate_recommendation_proposal()` | 같은 값 반복은 `no_change`로 거절하고, 실행 전 current/future의 다른 대안은 recommendation pending 후보로 허용한다. |
+| `llm_langgraph.py` | 추천 후보가 전부 거절되면 Response 모델을 호출하지 않고 scope 기반 deterministic 안내를 한 번만 기록한다. |
+| `llm_langgraph_node.py` | `veggie`, `meat`, `extra`의 기존 재확인을 유지하고, `lid → sauce`는 최종 선택 소스 자동 실행·Response 미호출·STT 미개방인 기존 흐름을 유지한다. |
+
+현재 동작은 다음과 같다.
+
+```text
+extra에서 크림이 미리 선택된 상태
+→ 크림 재추천: no_change 거절
+→ 오일 대안 추천: pending 허용
+
+extra 완료 후 lid 진입
+→ "이제 뚜껑을 닫을게요."
+→ STT 미개방
+
+lid 완료 후 sauce 진입
+→ "마지막으로 고르신 소스를 올릴게요."
+→ 최종 order.sauce 자동 실행
+→ STT 미개방
+
+Recommendation 후보 전부 거절
+→ Response 모델 호출 0회
+→ 현재~미래의 안전한 선택 범위만 안내
+```
+
+검증 결과는 다음과 같다.
+
+```text
+전체 src/soomac_irc/test: 101 passed
+py_compile: PASS
+git diff --check: PASS
+```
+
+Cause: 물리적으로 가능한 범위와 실행 확인은 runtime이 확정하고, 범위 안에서 무엇을 추천할지는 모델에 남겼다.
+
+Effect: 과거 재료 재추천은 validator가 막고 미래 대안은 pending으로 제안할 수 있다. 미래 토핑은 section 진입 시 재확인하며, 뚜껑과 소스는 모델 멘트와 충돌 없이 기존 자동 실행 흐름을 유지한다.
 
 ---
 

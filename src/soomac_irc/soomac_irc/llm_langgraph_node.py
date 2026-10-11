@@ -592,7 +592,6 @@ class LLMLangGraphNode(Node):
                 raise RuntimeError("선택된 소스 작업을 만들지 못함")
             next_reply = "마지막으로 고르신 소스를 올릴게요."
             next_prompt = None
-
         else:
             pending = build_preselected_section_confirmation(self.graph_state, self.section)
             if pending is not None:

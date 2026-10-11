@@ -13,6 +13,7 @@ from soomac_irc.agent_contract import (
 )
 from soomac_irc.agent_prompts import RECOMMENDATION_SYSTEM
 from soomac_irc.domain import AMOUNTS, NOODLE_TYPES, SAUCES, TOPPINGS
+from soomac_irc.llm_policy import build_recommendation_scope
 
 RECOMMENDATION_MAX_TOKENS = 1024
 RECOMMENDATION_HISTORY_TURNS = 10
@@ -47,6 +48,7 @@ def make_call_recommendation(model, processor, logger=None):
             "pending": copy.deepcopy(session.get("pending")),
             "recommendation_action": decision["recommendation"]["action"],
             "robot_state": copy.deepcopy(robot_state),
+            "recommendation_scope": build_recommendation_scope(session, robot_state),
             "supported_domain": {
                 "sauces": list(SAUCES),
                 "noodle_types": list(NOODLE_TYPES),
