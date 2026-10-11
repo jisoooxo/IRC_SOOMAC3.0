@@ -615,22 +615,27 @@ class LLMLangGraphNode(Node):
         response_trace_buffer = getattr(self.call_response, "trace_events", None)
         response_trace_start = len(response_trace_buffer) if isinstance(response_trace_buffer, list) else 0
         response_error = None
-        try:
-            # 로봇 사건이다. 사용자 명령을 만들거나 Decision을 다시 호출하지 않는다.
-            reply = self.call_response(
-                "", copy.deepcopy(self.graph_state),
-                {"status": "pass", "reason": "section_transition", "execute": False,
-                 "conflicts": []},
-                build_applied_changes(self.graph_state, self.graph_state),
-                [], None, next_prompt, robot_state, "task",
-            )
-            if not isinstance(reply, str) or not reply.strip():
-                raise ValueError("단계 전환 응답이 비어 있음")
-        except Exception as error:
-            response_error = {"type": type(error).__name__, "message": str(error)}
-            self.get_logger().error(f"단계 전환 응답 생성 실패: {error}")
-            # 생성 실패 시 완료를 추측하지 않고 기존의 다음 단계 안내만 사용한다.
+        if self.section in ("lid", "sauce"):
             reply = next_reply
+        else:
+            try:
+                # 사용자 선택이 필요한 단계만 Response 모델로 자연스럽게 안내한다.
+                reply = self.call_response(
+                    "", copy.deepcopy(self.graph_state),
+                    {"status": "pass", "reason": "section_transition", "execute": False,
+                     "conflicts": []},
+                    build_applied_changes(self.graph_state, self.graph_state),
+                    [], None, next_prompt, robot_state, "task",
+                )
+                if not isinstance(reply, str) or not reply.strip():
+                    raise ValueError("단계 전환 응답이 비어 있음")
+            except Exception as error:
+                response_error = {
+                    "type": type(error).__name__,
+                    "message": str(error),
+                }
+                self.get_logger().error(f"단계 전환 응답 생성 실패: {error}")
+                reply = next_reply
 
         # 사용자 turn과 섞지 않고 system-driven Response 호출만 별도 runtime event로 남긴다.
         response_trace = None

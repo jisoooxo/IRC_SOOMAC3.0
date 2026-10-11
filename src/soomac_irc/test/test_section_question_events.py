@@ -119,6 +119,19 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node.get_logger().error.assert_called_once()
         node._set_stt_enabled.assert_called_with(True)
 
+    def test_lid_completion_starts_sauce_with_deterministic_reply(self):
+        node = make_node("lid")
+        node.graph_state["order"]["sauce"] = "토마토"
+        node._start_current_section.return_value = True
+
+        reply = node._advance_after_section("lid", outcome="completed")
+
+        self.assertEqual(node.section, "sauce")
+        self.assertEqual(reply, "마지막으로 고르신 소스를 올릴게요.")
+        node._start_current_section.assert_called_once()
+        node.call_response.assert_not_called()
+        node._set_stt_enabled.assert_not_called()
+
     def test_empty_response_uses_same_safe_fallback(self):
         node = make_node()
         node.call_response.return_value = ""
@@ -164,15 +177,16 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertEqual(matching[0]["response_raw"], '{"reply":"단계 전환 안내"}')
         self.assertEqual(matching[0]["reply"], "단계 전환 안내")
 
-    def test_extra_skip_starts_lid_without_claiming_extra_completion(self):
-        # 2026-10-05: extra 다음은 lid(뚜껑)이며 사용자 입력 없이 자동 시작한다.
+    def test_extra_skip_starts_lid_with_deterministic_reply(self):
         node = make_node("extra")
         node._start_current_section.return_value = True
-        node._advance_after_section("extra", outcome="skipped")
+
+        reply = node._advance_after_section("extra", outcome="skipped")
+
         self.assertEqual(node.section, "lid")
+        self.assertEqual(reply, "이제 뚜껑을 닫을게요.")
         node._start_current_section.assert_called_once()
-        self.assertIsNone(node.call_response.call_args.args[6])
-        self.assertEqual(node.call_response.call_args.args[7]["section_transition"]["outcome"], "skipped")
+        node.call_response.assert_not_called()
         node._set_stt_enabled.assert_not_called()
 
     def test_invalid_outcome_does_not_move_stage(self):
