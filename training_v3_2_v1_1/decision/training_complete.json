@@ -1,0 +1,23 @@
+{
+  "stage": "decision",
+  "global_step": 1302,
+  "local_step": 1302,
+  "train_loss": 0.0786429056316577,
+  "samples_seen": 20790,
+  "tokens_seen": 45457620,
+  "training_seconds": 39459.838124776375,
+  "skipped_updates": 0,
+  "peak_allocated_gib": 21.102,
+  "peak_reserved_gib": 22.602,
+  "gradient_check": {
+    "seen": 104960,
+    "finite": true,
+    "nonzero": true
+  },
+  "safety_gate_passed": true,
+  "completed_epoch": 6.0,
+  "best_checkpoint": "/checkpoints/decision/checkpoint-868",
+  "best_adapter_dir": "/checkpoints/decision/best_adapter",
+  "final_checkpoint": "/checkpoints/decision/checkpoint-1302",
+  "final_adapter_dir": "/checkpoints/decision/epoch_6_adapter"
+}

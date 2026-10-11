@@ -1,0 +1,38 @@
+{
+  "training_image_spec": "2.9",
+  "task": "decision_v3_1_adapter",
+  "dataset": "natural_multiturn_v3_plus_targeted_supplement",
+  "epochs": 6,
+  "learning_rate": 0.0001,
+  "train_rows": 3015,
+  "validation_rows": 285,
+  "planned_optimizer_steps": 1134,
+  "gradient_accumulation_steps": 16,
+  "source": {
+    "train": "/home/roma/Downloads/decision_v3_1_train.jsonl",
+    "candidate_zip": "/home/roma/Downloads/decision_v3_1_candidate_dataset.zip",
+    "validation": "data_natural_multiturn_v3_rebuild/decision_v3/validation.jsonl"
+  },
+  "source_sha256": {
+    "train": "d011cff5dc0460ec55bfd4c7b458fcc88b184064dab69ae0e3e4a963b7f895c4",
+    "candidate_zip": "bc31fe6e253a4c6beaac0fbfb3f0c3bc0c9e107622b3373b1754089b44a654b6",
+    "validation": "c87ab3908b34c22d8f765a5771187f6557fa98268521ab49841330157bb321df"
+  },
+  "contamination": {
+    "train_validation_id_overlap": 0,
+    "train_validation_message_overlap": 0
+  },
+  "sha256": {
+    "decision/records/train.jsonl": "d011cff5dc0460ec55bfd4c7b458fcc88b184064dab69ae0e3e4a963b7f895c4",
+    "decision/records/validation.jsonl": "c87ab3908b34c22d8f765a5771187f6557fa98268521ab49841330157bb321df",
+    "contract/decision_system.txt": "faf924411a906b6a1678a2c2773f6118048de21bdf550bd6a0d579f1f6001ef4",
+    "contract/decision_schema.json": "8d78c078d23380982888681e32801512f02e85b09694e1ea6ccb7189e6a16ff1",
+    "provenance/supplement_train.jsonl": "9d52d9bf853eeecd180440c0c0f6ca688732ce2ba76857ddca6c3be22f07cfa9",
+    "provenance/supplement_provenance.jsonl": "44f7df8fe7d78fcfbac77624e11b1df5fece568c3ceb619f8220189de8c86e22",
+    "provenance/supplement_design.md": "824aefb42f2caabb85cc3f2e0294634b8df229c66e04e0f3b7d9ec3d870290dd",
+    "provenance/validation_report.json": "4a3762c7147e8cf63caedf1e08f74323490d43336e7267b338141b63043ed0a9",
+    "provenance/source_manifest.json": "aa7659d02c047f24ec39431b4491eb4d6696e28a749b724db0caf2e2ecf33440",
+    "provenance/README.md": "00f3e2094a72f47391b29d78714f25e33ad0990a3dfdc8e82341c70b9a46ca19",
+    "provenance/SHA256SUMS.txt": "01db6f1c0a253bdca5d5ce78ed938623d4779a9bd8bd82ad9fc48b1d6fe38771"
+  }
+}

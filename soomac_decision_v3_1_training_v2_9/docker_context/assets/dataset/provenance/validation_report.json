@@ -1,0 +1,31 @@
+{
+  "rows": 420,
+  "schema_valid": 420,
+  "unique_ids": 420,
+  "unique_inputs": 420,
+  "unique_messages": 420,
+  "base_train_id_overlap": 0,
+  "base_train_message_overlap": 0,
+  "base_train_input_overlap": 0,
+  "family_counts": {
+    "pending_confirmation_vs_order": 60,
+    "question_vs_mutation": 55,
+    "description_vs_request": 45,
+    "preference_vs_grounding": 60,
+    "ambiguous_reference": 45,
+    "order_field_category": 55,
+    "noncanonical_amount": 35,
+    "unsupported_preservation": 45,
+    "general_interlude_return": 10,
+    "compound_spillover": 10
+  },
+  "frozen_split_counts": {
+    "validation": 285,
+    "test": 285,
+    "challenge": 495,
+    "holdout": 377
+  },
+  "frozen_message_overlap": 0,
+  "frozen_input_overlap": 0,
+  "training_started": false
+}

@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "model": {
+    "required": true,
+    "default": {
+      "repo_id": "google/gemma-4-12B-it",
+      "revision": "main",
+      "model_type": "base",
+      "model_family": "gemma4"
+    },
+    "subdir": ".",
+    "required_files": [
+      "config.json",
+      "model.safetensors",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "processor_config.json",
+      "chat_template.jinja"
+    ]
+  },
+  "dataset": {
+    "required": true,
+    "subdir": ".",
+    "required_files": [
+      "decision/records/train.jsonl",
+      "decision/records/validation.jsonl",
+      "response/records/train.jsonl",
+      "response/records/validation.jsonl",
+      "contract/decision_system.txt",
+      "contract/decision_schema.json",
+      "contract/response_schema.json",
+      "contract/response_system_by_route.json",
+      "decision_token_length_report.json",
+      "response_token_length_report.json",
+      "SHA256SUMS",
+      "manifest.json"
+    ],
+    "embedded": {
+      "path": "/app/assets/dataset",
+      "required_files": [
+        "decision/records/train.jsonl",
+        "decision/records/validation.jsonl",
+        "response/records/train.jsonl",
+        "response/records/validation.jsonl",
+        "contract/decision_system.txt",
+        "contract/decision_schema.json",
+        "contract/response_schema.json",
+        "contract/response_system_by_route.json",
+        "decision_token_length_report.json",
+        "response_token_length_report.json",
+        "SHA256SUMS",
+        "manifest.json"
+      ]
+    }
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "type": "object",
+  "properties": {
+    "route": {
+      "type": "string",
+      "enum": [
+        "task",
+        "general",
+        "mixed"
+      ]
+    },
+    "order": {
+      "type": "object",
+      "properties": {
+        "sauce": {
+          "type": "string"
+        },
+        "noodle_type": {
+          "type": "string"
+        },
+        "noodle_portion": {
+          "type": "string"
+        },
+        "toppings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "none"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "restrictions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "dislike",
+              "cannot_eat",
+              "allergy",
+              "dietary_rule"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "reason",
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "preferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ]
+          }
+        },
+        "required": [
+          "value",
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "request",
+            "revise"
+          ]
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "commit": {
+      "type": "boolean"
+    },
+    "confirmation": {
+      "type": "string",
+      "enum": [
+        "accept",
+        "reject"
+      ]
+    },
+    "clarify": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "route"
+  ],
+  "additionalProperties": false
+}

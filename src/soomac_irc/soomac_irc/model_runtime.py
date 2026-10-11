@@ -12,7 +12,7 @@ except ImportError:
 
 # 모델 경로
 MODEL_PATH = "/home/roma/Desktop/sLLM/gemma-4-12B-it"
-DECISION_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/decision_adapter_v3_best_epoch3"
+DECISION_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/decision_adapter_v3_2_best_epoch4"
 RESPONSE_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/response_adapter_v1_best_epoch1"
 DECISION_ADAPTER_NAME = "decision"
 RESPONSE_ADAPTER_NAME = "response"

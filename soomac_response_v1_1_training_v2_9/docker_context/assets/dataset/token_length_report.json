@@ -1,0 +1,96 @@
+{
+  "task": "response_v1_1_adapter",
+  "model": "/home/roma/Desktop/sLLM/gemma-4-12B-it",
+  "max_length": 4096,
+  "chat_template": "AutoProcessor.apply_chat_template(enable_thinking=False)",
+  "splits": {
+    "train": {
+      "input_tokens": {
+        "count": 1098,
+        "mean": 702.947,
+        "median": 746.0,
+        "p90": 858,
+        "p95": 909,
+        "p99": 935,
+        "max": 941
+      },
+      "output_tokens": {
+        "count": 1098,
+        "mean": 28.156,
+        "median": 28.0,
+        "p90": 39,
+        "p95": 43,
+        "p99": 48,
+        "max": 53
+      },
+      "total_tokens_raw": {
+        "count": 1098,
+        "mean": 731.103,
+        "median": 766.0,
+        "p90": 892,
+        "p95": 946,
+        "p99": 984,
+        "max": 994
+      },
+      "total_tokens_after_training_trim": {
+        "count": 1098,
+        "mean": 731.103,
+        "median": 766.0,
+        "p90": 892,
+        "p95": 946,
+        "p99": 984,
+        "max": 994
+      },
+      "rows_over_max_before_trim": 0,
+      "rows_requiring_history_trim": 0,
+      "rows_over_max_after_trim": 0,
+      "truncation_rate_after_trim": 0.0,
+      "trimmed_row_ids": [],
+      "irreducible_row_ids": []
+    },
+    "validation": {
+      "input_tokens": {
+        "count": 101,
+        "mean": 814.465,
+        "median": 844,
+        "p90": 869,
+        "p95": 912,
+        "p99": 935,
+        "max": 941
+      },
+      "output_tokens": {
+        "count": 101,
+        "mean": 27.921,
+        "median": 27,
+        "p90": 34,
+        "p95": 41,
+        "p99": 51,
+        "max": 53
+      },
+      "total_tokens_raw": {
+        "count": 101,
+        "mean": 842.386,
+        "median": 871,
+        "p90": 901,
+        "p95": 946,
+        "p99": 986,
+        "max": 994
+      },
+      "total_tokens_after_training_trim": {
+        "count": 101,
+        "mean": 842.386,
+        "median": 871,
+        "p90": 901,
+        "p95": 946,
+        "p99": 986,
+        "max": 994
+      },
+      "rows_over_max_before_trim": 0,
+      "rows_requiring_history_trim": 0,
+      "rows_over_max_after_trim": 0,
+      "truncation_rate_after_trim": 0.0,
+      "trimmed_row_ids": [],
+      "irreducible_row_ids": []
+    }
+  }
+}

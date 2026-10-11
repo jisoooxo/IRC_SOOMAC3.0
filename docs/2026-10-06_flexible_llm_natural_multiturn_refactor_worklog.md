@@ -1002,6 +1002,853 @@ Effect: Response 1,225행은 현재 Graph와 ROS Node가 실제 생성할 수 �
 
 ---
 
+## 15. Decision v3 + Response v1 Dual Adapter 학습 패키지 제작
+
+### 15.1 작업 목적
+
+Natural Multiturn V3 runtime contract와 semantic cleanup이 끝난 뒤, Decision과 Response를 같은 원격 학습 작업에서 순차 학습할 수 있는 Docker image를 제작했다.
+
+이번 패키지의 핵심은 **하나의 base model을 사용하되 Decision LoRA와 Response LoRA를 서로 독립적으로 학습하는 것**이다.
+
+```text
+Gemma 4 12B base
+├── Decision Adapter: base에서 독립 학습
+└── Response Adapter: base에서 독립 학습
+```
+
+Decision 학습 결과를 Response 학습의 초기값으로 사용하지 않았다. 두 Adapter가 서로의 역할을 섞어 배우지 않도록 각 학습 단계가 끝날 때 모델과 CUDA cache를 해제하고, 같은 base model에서 새 LoRA를 붙였다.
+
+### 15.2 학습 입력
+
+| Adapter | train | validation | epoch | learning rate |
+|---|---:|---:|---:|---:|
+| Decision v3 | 2,595 | 285 | 6 | `1e-4` |
+| Response v1 | 898 | 101 | 4 | `5e-5` |
+
+공통 LoRA 설정은 다음과 같다.
+
+```text
+Quantization: NF4 4-bit
+Batch size: 1
+Gradient accumulation: 16
+LoRA rank: 16
+LoRA alpha: 32
+LoRA dropout: 0.05
+Target: language model attention + MLP projection
+```
+
+optimizer step은 Decision 978, Response 228, 총 1,206 step으로 계산했다.
+
+### 15.3 원격 학습 이미지 구조
+
+생성한 작업 디렉터리와 TAR은 다음과 같다.
+
+```text
+soomac_dual_adapter_training_v2_9/
+soomac_decision_response_dual_v2_9.tar
+soomac_decision_response_dual_v2_9.tar.sha256
+```
+
+최종 TAR SHA-256은 다음과 같다.
+
+```text
+c1d8d4413c907dbb471163d90474594a50ee29de29a045f9a2b39cf5869ef92c
+```
+
+이미지는 Training Image Spec 2.9의 progress와 resume 계약을 구현했다.
+
+```text
+/checkpoints/
+├── decision/
+│   ├── checkpoint-*
+│   ├── epoch_1_adapter/ ... epoch_6_adapter/
+│   └── best_adapter/
+├── response/
+│   ├── checkpoint-*
+│   ├── epoch_1_adapter/ ... epoch_4_adapter/
+│   └── best_adapter/
+├── dual_training_complete.json
+└── .lab-monitor/
+    ├── progress.json
+    └── resume.json
+```
+
+각 epoch마다 배포 가능한 Adapter를 별도로 저장하고, `checkpoint-*`에는 Adapter뿐 아니라 optimizer, scheduler, Trainer state, RNG state를 함께 저장하도록 했다.
+
+Decision이 끝난 뒤 Response 단계에서 실패하면 완료된 Decision을 다시 학습하지 않는다. Response checkpoint가 있으면 해당 optimizer step부터 복원한다.
+
+### 15.4 입력 contract 고정
+
+`prepare_bundle.py`가 다음 항목을 runtime 정본에서 직접 복사하고 hash를 manifest에 기록하도록 했다.
+
+- Decision/Response train과 validation JSONL
+- `DECISION_SYSTEM`
+- route별 `TASK_RESPONSE_SYSTEM`
+- Decision/Response JSON schema
+
+따라서 원격 학습 시 로컬 runtime과 다른 prompt나 schema가 조용히 섞이지 않는다.
+
+Cause: Decision과 Response는 같은 base model을 공유하지만 학습 목적과 출력 계약이 다르다.
+
+Effect: 원격 작업 한 번으로 두 Adapter를 연속 학습하되, 각 Adapter는 base model에서 독립적으로 생성된다.
+
+---
+
+## 16. Decision v3 + Response v1 Adapter 반영과 Offline GPU 평가
+
+### 16.1 Adapter 추출 및 runtime 구성
+
+원격 학습 결과에서 다음 Adapter를 로컬에 배치했다.
+
+```text
+models/decision_adapter_v3_best_epoch3
+models/response_adapter_v1_best_epoch1
+```
+
+실제 runtime은 한 base model에 두 LoRA를 등록하고 호출 단계마다 이름으로 전환하도록 구성했다.
+
+```text
+Decision node       → decision Adapter
+Recommendation node → base model
+Response node       → response Adapter
+```
+
+이 구성은 Decision의 JSON 출력 성향이 Response 문장 생성에 섞이거나, Response의 자연어 출력 성향이 Decision schema 출력을 오염시키는 문제를 막는다.
+
+### 16.2 평가 환경
+
+초기 dual Adapter 평가 기준은 다음과 같다.
+
+```text
+Git HEAD: 509be6035b7732b8f0d6258dc2f73a465936da2a
+Base model: gemma-4-12B-it
+Quantization: NF4
+GPU: NVIDIA RTX PRO 4500 Blackwell, 32623 MiB
+Decision: decision_adapter_v3_best_epoch3
+Response: response_adapter_v1_best_epoch1
+```
+
+평가 산출물은 `evaluation_dual_adapter/`에 저장했다.
+
+```text
+decision_predictions.jsonl
+decision_metrics.json
+response_predictions.jsonl
+response_metrics.json
+e2e_sessions.jsonl
+e2e_turns.jsonl
+adapter_switch_report.json
+latency_report.json
+E2E_EVALUATION_REPORT.md
+```
+
+### 16.3 Decision frozen split 결과
+
+학습에 사용하지 않은 test/challenge/holdout 1,157행을 실제 GPU로 추론했다.
+
+| 지표 | 결과 |
+|---|---:|
+| Schema valid | 100% |
+| Route accuracy | 100% |
+| Order precision | 90.49% |
+| Order recall | 96.34% |
+| Order value accuracy | 98.83% |
+| Restriction precision / recall | 98.96% / 98.96% |
+| Recommendation accuracy | 99.91% |
+| Confirmation accuracy | 99.57% |
+| Commit accuracy | 99.57% |
+| Clarify accuracy | 96.46% |
+
+주요 Decision 실패 family는 질문·설명 경계, compound intent, unsupported target, reference였다.
+
+### 16.4 Response 결과
+
+Response deterministic 평가에서는 RED failure가 없었다.
+
+```text
+fact consistency       100%
+next_prompt correctness 100%
+pending correctness    100%
+execution correctness  100%
+hallucination free     100%
+naturalness average    3.0 / 3.0
+```
+
+자연스러움 점수는 같은 base model judge를 사용한 보조 지표이다. 사실성, pending, execution 관련 항목은 별도 deterministic 검사도 통과했다.
+
+### 16.5 E2E와 Adapter switching
+
+```text
+sessions: 50
+turns: 150
+완전 성공 session: 49 / 50
+성공 turn: 149 / 150
+Decision failure: 1
+Policy/runtime failure: 0
+Response failure: 0
+```
+
+Adapter 전환 event 1,921회를 검사했고 잘못된 Adapter 활성화는 0회였다.
+
+```text
+Response → Decision         PASS
+Recommendation → Response  PASS
+VLM → Decision              PASS
+```
+
+### 16.6 Latency
+
+| 구간 | median | p95 |
+|---|---:|---:|
+| Decision | 1,807.97 ms | 2,178.45 ms |
+| Response | 1,552.92 ms | 2,283.35 ms |
+| Recommendation | 4,046.18 ms | 4,287.37 ms |
+| 전체 model turn | 3,447.85 ms | 7,549.79 ms |
+
+Offline 판정은 `READY FOR ROBOT TEST`였다. 이는 실제 로봇 시연 완료가 아니라 **로봇에 연결해 제한된 smoke test를 시작할 수 있는 상태**라는 뜻이다.
+
+Cause: schema 단위 정확도만으로는 두 Adapter가 한 프로세스에서 서로 오염되지 않는지 확인할 수 없다.
+
+Effect: 실제 GPU에서 Decision/Response 전환 1,921회와 150턴 E2E를 통과해 dual Adapter runtime 구성을 검증했다.
+
+---
+
+## 17. Long-Horizon 30세션 평가와 Evaluator 교정
+
+### 17.1 로봇 전체 대신 LLM-only 평가를 먼저 수행한 이유
+
+35세션 이상의 물리 로봇 회귀 계획을 세웠으나, runtime과 Adapter의 의미 오류를 먼저 저비용으로 분리하기 위해 **로봇 전체를 켜지 않고 LLM graph만 실행하는 long-horizon 평가**를 우선했다.
+
+이 단계에서는 ROS motor 실행, VLM 물리 결과, 실제 재료 투입 성공을 검증하지 않았다. 따라서 `READY FOR DEMO` 판정을 내리지 않았다.
+
+### 17.2 평가 규모
+
+```text
+sessions: 30
+turns: 360
+평가 대상: Decision + Policy + Recommendation + Response + 누적 state
+물리 로봇 실행: 미수행
+```
+
+multi-turn에서 이전 오류가 뒤 턴 상태에 누적되므로 다음 두 점수를 분리했다.
+
+- strict turn success: 이전 턴 오류가 남긴 state 차이까지 포함한다.
+- root-cause clean turn: 현재 턴에서 새로 발생한 직접 오류만 본다.
+
+### 17.3 기존 evaluator의 contract 오류 수정
+
+초기 평가 결과를 그대로 재학습 근거로 쓰지 않고, 현재 runtime contract와 맞지 않는 gold/evaluator 기준부터 교정했다.
+
+| 교정 항목 | 행 |
+|---|---:|
+| 명확한 unsupported 주문 gold | 3 |
+| 허용 가능한 `confirmation=accept + commit=true` | 12 |
+| Recommendation criteria gold | 1 |
+| 자유 preference 표면형 정규화 | 1 |
+
+초기 fake/extra mutation 후보 70건은 다음과 같이 재분류했다.
+
+```text
+TRUE_FAILURE      34
+CONTRACT_CORRECT  30
+AMBIGUOUS_EVAL     6
+```
+
+unsupported target은 Decision이 사용자 표현을 보존하고, Policy/final validator가 실제 반영과 실행을 막는 것이 현재 계약이다. 이를 Decision 단계에서 target을 지우지 않았다는 이유로 실패 처리하지 않도록 수정했다.
+
+### 17.4 교정된 Decision v3 baseline
+
+| 지표 | 결과 |
+|---|---:|
+| 완전 성공 session | 14 / 30 |
+| strict turn success | 283 / 360 |
+| root-cause clean turn | 326 / 360 |
+| Order precision | 91.0714% |
+| Order recall | 100.0000% |
+| Order value accuracy | 100.0000% |
+| Fake mutation turn | 14 |
+| Missed mutation turn | 5 |
+| Over-clarify / Under-clarify | 1 / 0 |
+| Reference failure | 0 |
+| Pending failure | 0 |
+| State drift | 0 |
+| Policy failure | 0 |
+
+실제 over-mutation 원인은 다음 네 family로 좁혀졌다.
+
+```text
+pending 거절 → stale order field까지 삭제       5
+preference grounding → extra order mutation     4
+question → fake mutation                         3
+description/impression → fake mutation           2
+```
+
+Response 오류 20건 중 11건은 앞선 Decision 오류의 downstream 결과로 재분류했다. Response Adapter 자체의 직접 실패는 9건, Recommendation Agent 자체 실패는 6건이었다.
+
+### 17.5 Decision v3.1 candidate 생성
+
+교정된 실제 실패만 보강하기 위해 Decision v3 train 2,595행은 그대로 두고 targeted supplement 420행을 만들었다.
+
+```text
+base train: 2,595
+targeted supplement: 420
+candidate train: 3,015
+```
+
+주요 family는 pending confirmation, question/description boundary, preference grounding, ambiguous reference, category field, noncanonical amount, unsupported substitution, general interlude이다.
+
+검증 결과는 다음과 같다.
+
+```text
+Decision schema                    420 / 420 PASS
+supplement id/input/message 중복   0
+base train overlap                 0
+frozen split overlap               0
+한국어 조사·양 표현 오류           0
+training started                   false
+```
+
+산출물은 `evaluation_long_horizon_corrected/decision_v3_1_candidate/`에 저장했다.
+
+Cause: 기존 evaluator가 contract-correct 출력을 실패로 계산하면 잘못된 정답을 재학습하게 된다.
+
+Effect: 평가 오류 36건을 실제 Decision 오류와 분리하고, 실제 실패 family만 담은 420행 supplement를 만들었다.
+
+---
+
+## 18. Decision v3.1 원격 재학습 TAR 제작
+
+### 18.1 학습 범위 결정
+
+Decision v3.1 candidate는 Decision 오류만 보강하므로 이번 TAR은 Decision만 재학습하도록 만들었다. Response v1은 새 데이터로 재학습하지 않고 기존 Adapter를 유지했다.
+
+```text
+Decision v3.1 → 새로 학습
+Response v1   → 기존 best epoch 1 유지
+```
+
+### 18.2 최종 학습 설정
+
+```text
+Base model: google/gemma-4-12B-it
+Train / validation: 3,015 / 285
+Quantization: NF4 4-bit
+Epochs: 6
+Optimizer steps: 1,134 (epoch당 189)
+Learning rate: 1e-4
+Batch size: 1
+Gradient accumulation: 16
+LoRA: r=16, alpha=32, dropout=0.05
+Checkpoint/evaluation: 매 epoch
+```
+
+기존 Decision v3 Adapter에서 이어 학습하지 않고 Gemma 4 12B base에서 새 LoRA를 만들었다. v3와 v3.1 비교에서 초기 Adapter 차이가 개입하지 않게 하기 위함이다.
+
+### 18.3 입력 hash와 산출물
+
+```text
+Decision v3.1 train SHA-256:
+d011cff5dc0460ec55bfd4c7b458fcc88b184064dab69ae0e3e4a963b7f895c4
+
+Frozen validation SHA-256:
+c87ab3908b34c22d8f765a5771187f6557fa98268521ab49841330157bb321df
+
+Candidate ZIP SHA-256:
+bc31fe6e253a4c6beaac0fbfb3f0c3bc0c9e107622b3373b1754089b44a654b6
+```
+
+독립 `decision_v3_1_train.jsonl`과 candidate ZIP 내부 `train.jsonl`의 hash가 같은지 확인했다.
+
+최종 원격 학습 파일은 다음과 같다.
+
+```text
+soomac_decision_v3_1_training_v2_9.tar
+size: 6.6 GiB
+SHA-256: fe146c1f4702cf0ab18034fb8f5c4c5a4f8c1f8a5a24f4047da7477393a1fb3f
+```
+
+### 18.4 실제 이미지 GPU 저장·실패·재개 시험
+
+TAR을 만들기 전에 빌드된 image 자체를 RTX PRO 4500 32GB에서 실행했다.
+
+```text
+1차 실행: step 1 → 5
+checkpoint-5 저장
+의도적 실패
+
+2차 실행: checkpoint-5 복원
+step 6 → 10
+checkpoint-10 저장
+```
+
+| 검사 | 결과 |
+|---|---:|
+| NF4 model load | PASS |
+| LoRA trainable parameter | 65,568,768 |
+| finite loss / gradient | PASS |
+| nonzero gradient | PASS |
+| skipped optimizer update | 0 |
+| checkpoint-5 checksum 불변 | PASS |
+| checkpoint-10 전체 상태 | PASS |
+| 재개 후 train loss | 0.1836494857 |
+| 재개 후 eval loss | 0.1590311080 |
+| peak reserved VRAM | 22.494 GiB |
+
+Spec 2.9 label, entrypoint, linux/amd64, UID:GID 1000 import, dataset preflight, Python unit test 5/5, `compileall`, `git diff --check`를 모두 통과했다.
+
+Cause: 원격 학습은 중간 실패 시 epoch 1부터 다시 시작하면 시간과 비용 손실이 크다.
+
+Effect: 실제 GPU에서 checkpoint 저장, 의도적 실패, optimizer/scheduler/RNG 포함 재개가 이어지는 것을 확인한 TAR을 전달했다.
+
+---
+
+## 19. Decision v3.1 결과 Adapter 추출·비교·채택
+
+### 19.1 원격 결과 수신과 학습 완료 확인
+
+수신한 원격 결과 TAR은 다음과 같다.
+
+```text
+/home/roma/Downloads/f77bddde4aca432dacf8ec5434698cf4-result.tar
+size: 10,920,173,056 bytes
+SHA-256: 36124ce7046db9de108a35a5683cf717d08447a4d3051e0fbbe391ede80bb644
+OCI image: local/training-result:fc3c4385674ca4b93a5e
+```
+
+원격 학습 완료 상태는 다음과 같다.
+
+```text
+global/local step: 1,134
+completed epochs: 6
+train loss: 0.024848956466711276
+samples seen: 18,090
+tokens seen: 39,539,568
+training time: 37,224.4998 seconds
+skipped optimizer update: 0
+peak allocated VRAM: 21.102 GiB
+peak reserved VRAM: 22.582 GiB
+gradient finite/nonzero: PASS
+safety gate: PASS
+```
+
+validation loss가 가장 낮은 checkpoint는 `checkpoint-567`, 즉 epoch 3이었다. 마지막 checkpoint는 `checkpoint-1134`, 즉 epoch 6이었다.
+
+전체 checkpoint를 로컬에 중복 추출하지 않고 배포에 필요한 best Adapter만 꺼냈다.
+
+```text
+models/decision_adapter_v3_1_best_epoch3
+adapter_model SHA-256:
+050bd821cdbb8feb1ad8cefcb6492fd5b070e32e1c921efa96182cee35bff5e0
+```
+
+기존 Response Adapter는 그대로 유지했다.
+
+```text
+models/response_adapter_v1_best_epoch1
+adapter_model SHA-256:
+be64d1512f231873468a80eb5cf7cad54b33c11e973879af340c2add5503ab96
+```
+
+학습 image는 PEFT 0.21.0, 로컬 runtime은 PEFT 0.19.1이었다. 로컬에서 미래 config field 일부를 무시한다는 warning은 있었지만, 실제 LoRA tensor 656개를 읽고 GPU 추론과 Adapter 전환까지 성공했다.
+
+### 19.2 실제 GPU smoke test
+
+격리된 runner `evaluation_decision_v3_1/run_evaluation.py`로 다음 순서를 실행했다.
+
+```text
+Decision → Response → Decision → Response
+```
+
+검증 시나리오는 다음과 같다.
+
+```text
+"양파 많이 넣어줘"
+→ Decision: 양파 high
+→ execution pending 생성
+→ Response: 실행 확인 질문
+
+"아니 실행은 취소해"
+→ Decision: confirmation reject
+→ pending 제거
+→ 실행 미승인
+```
+
+두 named Adapter 등록, 네 번의 Adapter activation, order mutation, pending 생성과 거절을 모두 통과했다.
+
+### 19.3 Frozen split에서 v3와 v3.1 비교
+
+| 지표 | v3 | v3.1 | 변화 |
+|---|---:|---:|---:|
+| Schema valid | 100.00% | 100.00% | 유지 |
+| Route accuracy | 100.00% | 98.70% | -1.30%p |
+| Order precision | 90.49% | 93.67% | +3.18%p |
+| Order recall | 96.34% | 97.75% | +1.41%p |
+| Order value accuracy | 98.83% | 98.85% | +0.02%p |
+| Fake mutation | 70 | 47 | -23 |
+| Missed mutation | 26 | 16 | -10 |
+| Wrong reference | 12 | 9 | -3 |
+
+v3.1 route 오류 15건은 전부 다음과 같은 동일 synthetic template family였다.
+
+```text
+"오일 활용이 시작된 배경을 알려줘"
+"양파 활용이 시작된 배경을 알려줘"
+"새우 활용이 시작된 배경을 알려줘"
+```
+
+gold는 `general`이지만 v3.1은 mutation 없는 `task`를 출력했다. 이 오류는 route 분류 오류이지만 order mutation이나 물리 실행으로 이어지지 않았다.
+
+### 19.4 Long-horizon에서 v3와 v3.1 비교
+
+| 지표 | v3 | v3.1 | 변화 |
+|---|---:|---:|---:|
+| 완전 성공 session | 14 / 30 | 12 / 30 | -2 |
+| strict turn success | 283 / 360 | 314 / 360 | +31 |
+| root-cause clean turn | 326 / 360 | 330 / 360 | +4 |
+| Decision 직접 실패 | 34 | 10 | -24 |
+| Fake mutation turn | 14 | 4 | -10 |
+| Missed mutation turn | 5 | 2 | -3 |
+| Order precision | 91.07% | 96.19% | +5.12%p |
+| Order recall | 100.00% | 99.02% | -0.98%p |
+| Order value accuracy | 100.00% | 100.00% | 유지 |
+| Wrong reference | 0 | 0 | 유지 |
+| Pending failure | 0 | 0 | 유지 |
+| State drift | 0 | 0 | 유지 |
+| Policy failure | 0 | 0 | 유지 |
+
+완전 성공 session 수는 2개 줄었지만 개별 turn 성공은 31개 늘었다. session 지표는 한 턴 실패만 있어도 전체 session을 실패로 잡으므로, 실제 개선 정도는 direct failure와 turn 단위 지표를 함께 봤다.
+
+Preference persistence mismatch 8건은 독립 오류 8개가 아니다. Recommendation revise 한 턴에서 `매콤하게` preference를 한 번 놓친 뒤 같은 session의 뒤 7턴에 state 차이가 이어진 결과이다.
+
+### 19.5 남은 Decision 직접 실패 10건
+
+```text
+pending accept에서 기존 order field 불필요 반복       4
+recommendation revise에서 preference 누락             1
+recommendation pending reject를 clarify로 처리         3
+compound/preselected에서 recommendation spillover      2
+```
+
+Response 직접 실패는 v3 baseline 9건에서 v3.1 조합 15건으로 늘었다. 대부분 pending을 유지한 채 일반/status 질문에 답한 뒤 실행·추천 확인 질문을 다시 붙이지 않은 경우였다. Response Adapter는 동일하므로 이 결과는 다음 Response targeted supplement 대상으로 분리했다.
+
+Recommendation Agent 실패는 5건이었다.
+
+### 19.6 채택 결정과 runtime 변경
+
+최종 결정은 다음과 같다.
+
+```text
+ADOPT DECISION V3.1
+KEEP RESPONSE V1
+READY FOR LLM-ONLY / ROBOT SMOKE TEST
+```
+
+`src/soomac_irc/soomac_irc/model_runtime.py`의 기본 Decision Adapter 경로를 다음과 같이 변경했다.
+
+```text
+decision_adapter_v3_best_epoch3
+→ decision_adapter_v3_1_best_epoch3
+```
+
+`models/MODEL_MANIFEST.md`에는 평가 당시 Git HEAD, GPU/library 버전, 두 Adapter 경로와 hash, generation 설정을 기록했다.
+
+검증 결과는 다음과 같다.
+
+```text
+actual GPU smoke                 PASS
+safetensors integrity           PASS, 656 tensors
+adapter switching               PASS
+manual runtime routing assert   PASS
+compileall                      PASS
+git diff --check                PASS
+pytest                          SKIP
+```
+
+`pytest`는 사용 가능한 `gemma4_env`와 `ros_env` 모두에 설치되어 있지 않아 실행하지 못했다. 대신 실제 GPU graph smoke와 명시적 assertion으로 Adapter routing과 artifact 경로를 확인했다.
+
+Cause: v3.1은 route 15건이 퇴행했지만 핵심 목표인 과잉 mutation, 누락 mutation, Decision 직접 실패를 크게 줄였고 safety/state 지표를 유지했다.
+
+Effect: runtime 기본 Decision은 v3.1 epoch 3을 사용하며 Response는 검증된 v1 epoch 1을 계속 사용한다.
+
+---
+
+## 20. Decision v3.2 + Response v1.1 Targeted Dataset 생성
+
+### 20.1 작업 범위
+
+Decision v3.1 평가에서 남은 실패와 Response v1의 pending reminder 실패만 보강했다.
+
+이번 단계에서는 다음을 변경하지 않았다.
+
+```text
+runtime source
+Decision/Response prompt
+Decision/Response schema
+현재 Adapter
+기존 base dataset
+```
+
+학습도 시작하지 않았다. 별도 후보 데이터셋만 `data_targeted_upgrade/`에 생성했다.
+
+### 20.2 공통 생성 원칙
+
+새 문장을 무작위로 늘리지 않고 실제 평가 failure ID를 provenance에 연결했다.
+
+```text
+실제 failure family 확인
+→ family별 positive/negative contrast 설계
+→ supplement 생성
+→ schema/runtime lifecycle 검사
+→ base/frozen contamination 검사
+→ 고위험 행 층화 검토
+→ base + supplement candidate 생성
+```
+
+candidate의 행 순서는 기존 base 전체 뒤에 supplement를 붙이는 방식으로 고정했다. 기존 학습 표본을 수정하거나 다시 섞지 않았다.
+
+### 20.3 Decision v3.2 candidate
+
+```text
+base: 3,015
+supplement: 450
+candidate: 3,465
+route task/general: 351 / 99
+preference target rows: 45
+unsupported rows: 65
+```
+
+family 배분은 다음과 같다.
+
+| family | 행 |
+|---|---:|
+| general question vs task | 90 |
+| pending accept/reject boundary | 70 |
+| recommendation confirmation/reject | 55 |
+| recommendation revise + preference | 45 |
+| question vs mutation | 45 |
+| description/impression vs mutation | 35 |
+| ambiguous reference | 35 |
+| compound intent spillover | 25 |
+| field/category/amount | 20 |
+| regression preservation | 30 |
+
+`semantic_review.jsonl`에는 고위험 220행을 family와 subtype별로 층화해 담았다. 단순히 생성 파일 앞 220행을 고른 것이 아니라 general, pending, recommendation, question, description, reference, compound intent를 고르게 포함했다.
+
+### 20.4 Decision 생성 중 발견하고 고친 데이터 오류
+
+첫 생성 검사에서 한국어 조사와 양 표현 오류 14건을 잡았다.
+
+```text
+버섯를
+게살를
+페퍼론치노이니
+많이로
+```
+
+조사 선택 helper와 자연스러운 양 표현으로 수정한 뒤 전체를 다시 생성했다.
+
+수동 검토에서는 다음 semantic 오류도 수정했다.
+
+- 양을 말한 explicit noodle request에 `noodle_portion`이 빠진 사례
+- pending reject와 별도 topping 삭제의 의미가 섞인 문장
+- noncanonical amount를 부자연스럽게 설명한 문장
+- reset 예시의 current order가 비어 있어 실제 삭제를 검증하지 못한 사례
+- 고위험 검토 표본이 앞쪽 family에 편중된 사례
+
+reset 예시는 current order가 실제로 채워진 상태에서 order scalar와 topping에 `none` mutation을 출력하고 restriction/preference는 유지하도록 구성했다.
+
+### 20.5 Decision 검증 결과
+
+```text
+schema invalid                         0
+legacy field                           0
+id/input/message/input+target duplicate 0
+base overlap                           0
+frozen overlap                         0
+malformed Korean                       0
+unsupported preservation violation     0
+general/task semantic error            0
+pending semantic error                 0
+semantic suspicious                    0
+near-template excess cluster           0
+near-template max cluster size          5
+```
+
+hash는 다음과 같다.
+
+```text
+base train:
+d011cff5dc0460ec55bfd4c7b458fcc88b184064dab69ae0e3e4a963b7f895c4
+
+supplement:
+c81fbca9ecbdf990cd46fba38fb8f2c53ebced8060df629aa7513cbbc9539c3c
+
+candidate train:
+76b2123c0183fcb703163cc5cc0e937d8c97e070c9d0efa3ee417b245e0a5060
+```
+
+### 20.6 Response v1.1 candidate
+
+```text
+base: 898
+supplement: 200
+candidate: 1,098
+```
+
+family 배분은 다음과 같다.
+
+| family | 행 |
+|---|---:|
+| pending + general question | 70 |
+| pending + status question | 35 |
+| pending + unrelated explanation | 25 |
+| pending + preference statement | 20 |
+| pending recommendation context | 20 |
+| no-pending control | 20 |
+| active/completed execution control | 10 |
+
+핵심 positive target은 **pending이 남아 있는 일반 질문에 먼저 정확히 답하고, 같은 응답 안에서 아직 필요한 확인을 자연스럽게 다시 묻는 것**이다.
+
+반대로 pending이 없거나 task가 이미 active/completed인 control에서는 불필요한 확인 질문을 붙이지 않도록 negative pair를 넣었다.
+
+`semantic_review.jsonl`에는 family별로 층화한 120행을 담았다.
+
+### 20.7 Response runtime contract 검증
+
+Response 입력은 새 임의 validator가 아니라 기존 정본을 직접 재사용했다.
+
+```text
+data_natural_multiturn_v3_rebuild/
+scripts/validate_response_runtime_contract.py:row_failures
+```
+
+추가로 completed/active/pending 모순과 관련 evidence 존재 여부를 기존 lifecycle validator와 같은 기준으로 확인했다.
+
+```text
+invalid structured input     0
+empty reply                  0
+runtime contract failure     0
+fact failure                 0
+pending failure              0
+execution failure            0
+next_prompt failure          0
+duplicate                    0
+base/frozen overlap          0
+malformed Korean             0
+near-template excess         0
+near-template max cluster     5
+```
+
+hash는 다음과 같다.
+
+```text
+base train:
+b258566aa4ebcdc4ac18b106d1dbc2fabf454f8b75bf1606fc64d435354a9f45
+
+supplement:
+e7f7faa056a48d6c34533cb06308bb17e01c26398832044666350fa631d8965d
+
+candidate train:
+e16b007a0a3c78711951e8b061322fb656f4c09be410f361522aba6d1803d558
+```
+
+### 20.8 생성 파일
+
+두 candidate는 동일한 파일 구성을 가진다.
+
+```text
+data_targeted_upgrade/
+├── build_targeted_upgrade.py
+├── generation_summary.json
+├── DATASET_GENERATION_REPORT.md
+├── decision_v3_2_candidate/
+│   ├── train.jsonl
+│   ├── supplement_train.jsonl
+│   ├── supplement_provenance.jsonl
+│   ├── supplement_design.md
+│   ├── validation_report.json
+│   ├── manifest.json
+│   └── semantic_review.jsonl
+└── response_v1_1_candidate/
+    ├── train.jsonl
+    ├── supplement_train.jsonl
+    ├── supplement_provenance.jsonl
+    ├── supplement_design.md
+    ├── validation_report.json
+    ├── manifest.json
+    └── semantic_review.jsonl
+```
+
+candidate train이 정확히 `base + supplement` 순서인지, manifest hash가 실제 파일과 일치하는지, provenance source ID가 실제 v3.1 평가 failure인지 독립적으로 다시 확인했다.
+
+```text
+Decision v3.2 validation     PASS
+Response v1.1 validation     PASS
+manifest/hash verification  PASS
+provenance verification     PASS
+review row count/status      PASS
+compileall                   PASS
+git diff --check             PASS
+training_started             false
+```
+
+최종 판정은 다음과 같다.
+
+```text
+Decision v3.2 candidate: READY
+Response v1.1 candidate: READY
+Training: NOT STARTED
+```
+
+Cause: v3.1의 남은 오류는 전체 architecture 문제가 아니라 route/pending/recommendation 경계와 Response pending reminder에 집중되어 있었다.
+
+Effect: 기존 데이터와 runtime을 건드리지 않고, 실제 실패 provenance를 가진 Decision 450행과 Response 200행 supplement를 별도 후보로 만들었다.
+
+---
+
+## 21. 현재 기준 상태와 아직 하지 않은 작업
+
+### 21.1 현재 runtime 기준
+
+```text
+Git HEAD: 9332c069fa22bad8db49db27ba6ee13a12aac4ee
+Decision runtime Adapter: decision_adapter_v3_1_best_epoch3
+Response runtime Adapter: response_adapter_v1_best_epoch1
+Decision v3.2 training: NOT STARTED
+Response v1.1 training: NOT STARTED
+```
+
+현재 working tree에는 Adapter 평가 산출물, 학습 TAR, targeted dataset과 `model_runtime.py`의 v3.1 경로 변경이 아직 commit되지 않은 상태로 존재한다.
+
+### 21.2 검증된 범위
+
+```text
+Decision/Response dual Adapter GPU load
+Adapter switching
+frozen split inference
+30-session / 360-turn LLM-only graph
+Decision v3.1 runtime path
+v3.2 / Response v1.1 dataset static validation
+```
+
+### 21.3 아직 검증하지 않은 범위
+
+```text
+Decision v3.2 Adapter 학습
+Response v1.1 Adapter 학습
+새 두 Adapter의 GPU regression
+35-session 실제 물리 로봇 regression
+READY FOR DEMO 판정
+```
+
+`physical_robot_evaluation/rosbag_first_pass/`에는 초기 rosbag scaffold가 있으나, 요구된 규모의 물리 로봇 테스트 결과로 간주하지 않는다.
+
+Cause: LLM-only 평가와 targeted dataset 생성까지만 완료했고, 새 candidate 학습과 실제 로봇 물리 검증은 별도 단계이다.
+
+Effect: 현재 운영 기준과 다음 학습 후보를 혼동하지 않고, v3.1+Response v1은 실행 가능한 baseline으로, v3.2+Response v1.1은 미학습 candidate로 구분한다.
+
+---
+
 ## 용어 정리
 
 ### Sparse Decision
@@ -1043,6 +1890,38 @@ runtime이 최종 사실로 보관하는 표준 상태이다. 삭제 의미인 �
 ### Physical protection
 
 이미 완료했거나 현재 실행 중이거나 지나간 section의 값을 소프트웨어 state에서 거짓으로 되돌리지 않는 규칙이다.
+
+### Adapter
+
+하나의 base model에 붙여 특정 역할을 학습시키는 작은 추가 가중치이다. 현재 Decision과 Response는 같은 Gemma 4 12B를 쓰지만 서로 다른 Adapter를 활성화한다.
+
+### QLoRA
+
+양자화된 base model에 LoRA를 붙여 GPU memory 사용량을 줄이는 미세조정 방식이다. 이번 학습은 NF4 4-bit base와 rank 16 LoRA를 사용했다.
+
+### Checkpoint
+
+학습을 중단한 지점부터 재개하기 위한 저장본이다. Adapter 외에도 optimizer, scheduler, Trainer state, RNG state가 있어야 동일 step에서 안전하게 이어갈 수 있다.
+
+### Frozen split
+
+학습 데이터에 넣지 않고 모델 세대 간 성능 비교를 위해 고정한 validation/test/challenge/holdout 자료이다.
+
+### Root-cause clean turn
+
+이전 턴 오류의 누적 영향은 제외하고 현재 턴에서 Decision, Recommendation, Response의 새 직접 오류가 생겼는지만 보는 지표이다.
+
+### Downstream failure
+
+현재 단계 자체의 잘못이 아니라 앞 단계의 오류가 입력 state에 남아서 뒤 단계 결과까지 틀어진 경우이다.
+
+### Targeted supplement
+
+전체 데이터를 다시 만들지 않고 실제 실패 family만 보강한 추가 학습 자료이다. 원본 base 뒤에 붙여 candidate train을 만든다.
+
+### Contamination
+
+평가용 frozen 문장이나 동일 입력이 학습 자료에 섞여 성능이 실제보다 높게 측정되는 문제이다.
 
 ### Contract version
 

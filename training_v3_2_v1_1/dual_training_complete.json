@@ -1,0 +1,58 @@
+{
+  "training_image_spec": "2.9",
+  "mode": "full",
+  "quantization": "int4",
+  "total_optimizer_steps": 1578,
+  "stage_steps": {
+    "decision": 1302,
+    "response": 276
+  },
+  "results": {
+    "decision": {
+      "stage": "decision",
+      "global_step": 1302,
+      "local_step": 1302,
+      "train_loss": 0.0786429056316577,
+      "samples_seen": 20790,
+      "tokens_seen": 45457620,
+      "training_seconds": 39459.838124776375,
+      "skipped_updates": 0,
+      "peak_allocated_gib": 21.102,
+      "peak_reserved_gib": 22.602,
+      "gradient_check": {
+        "seen": 104960,
+        "finite": true,
+        "nonzero": true
+      },
+      "safety_gate_passed": true,
+      "completed_epoch": 6.0,
+      "best_checkpoint": "/checkpoints/decision/checkpoint-868",
+      "best_adapter_dir": "/checkpoints/decision/best_adapter",
+      "final_checkpoint": "/checkpoints/decision/checkpoint-1302",
+      "final_adapter_dir": "/checkpoints/decision/epoch_6_adapter"
+    },
+    "response": {
+      "stage": "response",
+      "global_step": 1578,
+      "local_step": 276,
+      "train_loss": 0.36820176120955445,
+      "samples_seen": 4392,
+      "tokens_seen": 3211004,
+      "training_seconds": 2767.619095746428,
+      "skipped_updates": 0,
+      "peak_allocated_gib": 19.373,
+      "peak_reserved_gib": 20.537,
+      "gradient_check": {
+        "seen": 104960,
+        "finite": true,
+        "nonzero": true
+      },
+      "safety_gate_passed": true,
+      "completed_epoch": 4.0,
+      "best_checkpoint": "/checkpoints/response/checkpoint-69",
+      "best_adapter_dir": "/checkpoints/response/best_adapter",
+      "final_checkpoint": "/checkpoints/response/checkpoint-276",
+      "final_adapter_dir": "/checkpoints/response/epoch_4_adapter"
+    }
+  }
+}

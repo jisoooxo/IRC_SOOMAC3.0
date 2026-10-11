@@ -1,0 +1,6 @@
+{
+  "best_epoch": 4,
+  "checkpoint": "/home/roma/IRC_SOOMAC3.0/training_v3_2_v1_1/response/adapters/epoch_4_adapter",
+  "validation_loss": 1.66291451,
+  "selection_reason": "validation RED 0건과 모든 semantic gate 100%; loss best epoch1보다 semantic 우선"
+}

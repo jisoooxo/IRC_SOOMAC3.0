@@ -1,0 +1,16 @@
+{
+  "kind": "response",
+  "adopted": false,
+  "selected_epoch": 4,
+  "path": "/home/roma/IRC_SOOMAC3.0/training_v3_2_v1_1/response/adapters/epoch_4_adapter",
+  "runtime_copy": "/home/roma/IRC_SOOMAC3.0/models/response_adapter_v1_1_best_epoch4",
+  "adapter_model_sha256": "1bf60dd07c128223a773119b92a6a26bc02b8228ce9c8f65cc66f033e34a8188",
+  "adapter_model_bytes": 262373216,
+  "base_model": "/model",
+  "lora": {
+    "r": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "target_modules": "model\\.language_model\\.layers\\.\\d+\\.(self_attn\\.(q_proj|k_proj|v_proj|o_proj)|mlp\\.(gate_proj|up_proj|down_proj))"
+  }
+}

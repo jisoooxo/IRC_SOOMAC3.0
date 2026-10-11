@@ -1,0 +1,9 @@
+transformers==5.13.0
+peft==0.21.0
+accelerate==1.14.0
+bitsandbytes==0.50.2
+jsonschema==4.26.0
+sentencepiece==0.2.1
+protobuf==6.32.1
+safetensors==0.8.0
+

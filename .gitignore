@@ -36,6 +36,27 @@ env/
 *.onnx
 *.engine
 
+# 학습 전달용 TAR와 로컬 Adapter 산출물
+*.tar
+*.tar.sha256
+/models/*_adapter*/
+/training_v3_2_v1_1/decision/adapters/
+/training_v3_2_v1_1/response/adapters/
+
+# Adapter 평가 원시 출력 (최종 요약 보고서와 JSON은 추적 가능)
+/training_v3_2_v1_1/decision/epoch_eval/
+/training_v3_2_v1_1/response/epoch_eval/
+/training_v3_2_v1_1/evaluation/*_combination/
+/training_v3_2_v1_1/evaluation/long_horizon*/
+/training_v3_2_v1_1/evaluation/targeted_response/
+/evaluation_decision_v3_1/
+/evaluation_dual_adapter/
+/evaluation_long_horizon/
+/evaluation_long_horizon_corrected/
+
+# 실제 로봇 검증의 rosbag 원본
+/physical_robot_evaluation/rosbag_first_pass/
+
 # 런타임 디버깅 기록
 debug_logs/
 runtime_logs/

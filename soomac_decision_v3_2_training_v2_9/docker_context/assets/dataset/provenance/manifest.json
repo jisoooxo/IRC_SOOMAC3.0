@@ -1,0 +1,20 @@
+{
+  "base_train_path": "/home/roma/IRC_SOOMAC3.0/evaluation_long_horizon_corrected/decision_v3_1_candidate/train.jsonl",
+  "base_train_rows": 3015,
+  "base_train_sha256": "d011cff5dc0460ec55bfd4c7b458fcc88b184064dab69ae0e3e4a963b7f895c4",
+  "supplement_path": "/home/roma/IRC_SOOMAC3.0/data_targeted_upgrade/decision_v3_2_candidate/supplement_train.jsonl",
+  "supplement_rows": 450,
+  "supplement_sha256": "c81fbca9ecbdf990cd46fba38fb8f2c53ebced8060df629aa7513cbbc9539c3c",
+  "candidate_train_path": "/home/roma/IRC_SOOMAC3.0/data_targeted_upgrade/decision_v3_2_candidate/train.jsonl",
+  "candidate_train_rows": 3465,
+  "candidate_train_sha256": "76b2123c0183fcb703163cc5cc0e937d8c97e070c9d0efa3ee417b245e0a5060",
+  "frozen_evaluation": {
+    "validation": "/home/roma/IRC_SOOMAC3.0/data_natural_multiturn_v3_rebuild/decision_v3/validation.jsonl",
+    "test": "/home/roma/IRC_SOOMAC3.0/data_natural_multiturn_v3_rebuild/decision_v3/test.jsonl",
+    "challenge": "/home/roma/IRC_SOOMAC3.0/data_natural_multiturn_v3_rebuild/decision_v3/challenge.jsonl",
+    "holdout": "/home/roma/IRC_SOOMAC3.0/data_natural_multiturn_v3_rebuild/decision_v3/holdout.jsonl",
+    "v3_1_evaluation": "/home/roma/IRC_SOOMAC3.0/evaluation_decision_v3_1/decision_predictions.jsonl",
+    "corrected_long_horizon": "/home/roma/IRC_SOOMAC3.0/evaluation_decision_v3_1/long_horizon_corrected/corrected_turns.jsonl"
+  },
+  "training_started": false
+}

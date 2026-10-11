@@ -1,0 +1,192 @@
+{
+  "baseline_v1": {
+    "rows": 226,
+    "red_failures": 0,
+    "fact_consistency": 1.0,
+    "pending_consistency": 1.0,
+    "execution_consistency": 1.0,
+    "next_prompt": 1.0,
+    "followup_appropriate": 1.0,
+    "hallucination_free": 1.0,
+    "naturalness": 3.0,
+    "failure_classes": {},
+    "latency_ms_response_plus_judge": {
+      "count": 226,
+      "mean": 7149.145008849558,
+      "median": 7175.639499999999,
+      "p95": 8015.568,
+      "max": 8763.917,
+      "first": 8308.2,
+      "warm_median": 7175.227
+    }
+  },
+  "candidate_v1_1_epoch4": {
+    "rows": 226,
+    "red_failures": 2,
+    "fact_consistency": 0.995575221238938,
+    "pending_consistency": 1.0,
+    "execution_consistency": 1.0,
+    "next_prompt": 1.0,
+    "followup_appropriate": 1.0,
+    "hallucination_free": 0.995575221238938,
+    "naturalness": 2.9911504424778763,
+    "failure_classes": {
+      "hallucination": 1,
+      "fact_consistency": 1
+    },
+    "latency_ms_response_plus_judge": {
+      "count": 226,
+      "mean": 6502.810889380531,
+      "median": 6516.0244999999995,
+      "p95": 7405.771,
+      "max": 8267.954,
+      "first": 6749.469,
+      "warm_median": 6515.44
+    }
+  },
+  "targeted_train_fit": {
+    "scope_warning": "200 supplement training rows의 train-fit 확인이며 독립 frozen gate로 사용하지 않음",
+    "baseline": {
+      "overall": {
+        "rows": 200,
+        "red_failures": 185,
+        "fact_consistency": 1.0,
+        "pending_consistency": 1.0,
+        "execution_consistency": 1.0,
+        "next_prompt": 0.825,
+        "followup_appropriate": 0.785,
+        "hallucination_free": 1.0,
+        "naturalness": 2.995,
+        "failure_classes": {
+          "missing_followup_question": 105,
+          "inappropriate_followup": 43,
+          "next_prompt_fulfillment": 35,
+          "unauthorized_execution_claim": 2
+        },
+        "latency_ms_response_plus_judge": {
+          "count": 200,
+          "mean": 6867.7082900000005,
+          "median": 6881.738,
+          "p95": 7475.913,
+          "max": 8286.201,
+          "first": 7574.964,
+          "warm_median": 6880.685
+        }
+      },
+      "families": {
+        "execution_completion_control": {
+          "rows": 10,
+          "red_failures": 2,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "no_pending_control": {
+          "rows": 20,
+          "red_failures": 0,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "pending_general_question": {
+          "rows": 70,
+          "red_failures": 70,
+          "next_prompt_accuracy": 0.7142857142857143,
+          "followup_accuracy": 0.6571428571428571
+        },
+        "pending_preference_statement": {
+          "rows": 20,
+          "red_failures": 1,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 0.95
+        },
+        "pending_recommendation_context": {
+          "rows": 20,
+          "red_failures": 5,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "pending_status_question": {
+          "rows": 35,
+          "red_failures": 4,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "pending_unrelated_explanation": {
+          "rows": 25,
+          "red_failures": 25,
+          "next_prompt_accuracy": 0.4,
+          "followup_accuracy": 0.28
+        }
+      }
+    },
+    "candidate": {
+      "overall": {
+        "rows": 200,
+        "red_failures": 2,
+        "fact_consistency": 1.0,
+        "pending_consistency": 1.0,
+        "execution_consistency": 1.0,
+        "next_prompt": 1.0,
+        "followup_appropriate": 1.0,
+        "hallucination_free": 1.0,
+        "naturalness": 3.0,
+        "failure_classes": {
+          "missing_followup_question": 2
+        },
+        "latency_ms_response_plus_judge": {
+          "count": 200,
+          "mean": 7396.95019,
+          "median": 7438.326999999999,
+          "p95": 7928.285,
+          "max": 8649.521,
+          "first": 8649.521,
+          "warm_median": 7437.928
+        }
+      },
+      "families": {
+        "execution_completion_control": {
+          "rows": 10,
+          "red_failures": 0,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "no_pending_control": {
+          "rows": 20,
+          "red_failures": 0,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "pending_general_question": {
+          "rows": 70,
+          "red_failures": 0,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "pending_preference_statement": {
+          "rows": 20,
+          "red_failures": 0,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "pending_recommendation_context": {
+          "rows": 20,
+          "red_failures": 0,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "pending_status_question": {
+          "rows": 35,
+          "red_failures": 2,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        },
+        "pending_unrelated_explanation": {
+          "rows": 25,
+          "red_failures": 0,
+          "next_prompt_accuracy": 1.0,
+          "followup_accuracy": 1.0
+        }
+      }
+    }
+  },
+  "verdict": "KEEP RESPONSE V1"
+}
