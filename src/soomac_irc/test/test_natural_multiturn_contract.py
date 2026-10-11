@@ -905,6 +905,116 @@ def test_current_update_creates_execution_pending_then_accept_executes():
     assert accepted["session"]["pending"] is None
 
 
+def test_execution_reject_without_replacement_only_clears_pending():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "normal"}
+    session["pending"] = {
+        "type": "execution",
+        "source": "current_update",
+        "section": "veggie",
+        "targets": ["양파"],
+    }
+
+    result = run(
+        session,
+        {"route": "task", "confirmation": "reject"},
+        robot_state(section="veggie"),
+        text="아니",
+    )
+
+    assert result["policy"]["reason"] == "confirmation_rejected"
+    assert result["policy"]["execute"] is False
+    assert result["session"]["pending"] is None
+    assert result["session"]["order"]["toppings"] == {"양파": "normal"}
+
+
+def test_execution_reject_with_current_replacement_creates_new_pending():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "normal", "버섯": "normal"}
+    session["pending"] = {
+        "type": "execution",
+        "source": "current_update",
+        "section": "veggie",
+        "targets": ["양파", "버섯"],
+    }
+
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"양파": "low", "버섯": "low"}},
+            "confirmation": "reject",
+        },
+        robot_state(section="veggie"),
+        text="아니 그냥 둘 다 조금만 줘",
+    )
+
+    assert result["policy"]["reason"] == "state_update_only"
+    assert result["policy"]["execute"] is False
+    assert result["session"]["order"]["toppings"] == {"양파": "low", "버섯": "low"}
+    assert result["session"]["pending"] == {
+        "type": "execution",
+        "source": "current_update",
+        "section": "veggie",
+        "targets": ["양파", "버섯"],
+    }
+
+
+def test_execution_reject_with_current_removal_does_not_create_empty_pending():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "normal", "버섯": "normal"}
+    session["pending"] = {
+        "type": "execution",
+        "source": "current_update",
+        "section": "veggie",
+        "targets": ["양파", "버섯"],
+    }
+
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"양파": "none", "버섯": "none"}},
+            "confirmation": "reject",
+        },
+        robot_state(section="veggie"),
+        text="아니 둘 다 빼줘",
+    )
+
+    assert result["policy"]["reason"] == "state_update_only"
+    assert result["policy"]["execute"] is False
+    assert result["session"]["pending"] is None
+    assert result["session"]["order"]["toppings"] == {}
+
+
+def test_execution_reject_with_current_replacement_and_commit_executes_once():
+    session = new_session_state()
+    session["order"]["toppings"] = {"양파": "normal", "버섯": "normal"}
+    session["pending"] = {
+        "type": "execution",
+        "source": "current_update",
+        "section": "veggie",
+        "targets": ["양파", "버섯"],
+    }
+
+    result = run(
+        session,
+        {
+            "route": "task",
+            "order": {"toppings": {"양파": "low", "버섯": "low"}},
+            "confirmation": "reject",
+            "commit": True,
+        },
+        robot_state(section="veggie"),
+        text="아니 둘 다 조금으로 바꿔서 바로 담아",
+    )
+
+    assert result["policy"]["reason"] == "execution_allowed"
+    assert result["policy"]["execute"] is True
+    assert result["session"]["pending"] is None
+    assert result["session"]["order"]["toppings"] == {"양파": "low", "버섯": "low"}
+
+
 def test_execution_pending_commit_without_confirmation_is_consumed():
     session = new_session_state()
     session["order"]["toppings"] = {"양파": "low", "버섯": "high"}

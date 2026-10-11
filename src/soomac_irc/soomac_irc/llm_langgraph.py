@@ -10,6 +10,7 @@ from soomac_irc.agent_contract import (
     new_decision,
 )
 from soomac_irc.llm_policy import (
+    allowed_order_fields,
     apply_order_patch,
     apply_preference_options,
     apply_restriction_options,
@@ -537,8 +538,23 @@ def build_graph(
                 "policy": policy,
             }
 
-        # 6. pending 거절은 state 변경 없이 정상적인 대화 결과로 끝낸다.
-        if pending_result and pending_result.get("type") == "confirmation_rejected":
+        # 6. 단순 거절은 여기서 끝내되, 현재 section을 새 값으로 교체한 복합 발화는
+        # commit 검사 또는 새 execution pending 생성까지 계속 진행한다.
+        section = state["robot_state"]["section"]
+        direct_current_fields = (
+            set(changed_order_keys_from_patch(accepted_patch))
+            & set(allowed_order_fields(section))
+        )
+        has_direct_current_replacement = (
+            bool(direct_current_fields)
+            and current_section_changed(applied, section)
+        )
+        rejected_without_current_replacement = (
+            pending_result
+            and pending_result.get("type") == "confirmation_rejected"
+            and not has_direct_current_replacement
+        )
+        if rejected_without_current_replacement:
             return {
                 "session": session,
                 "decision": decision,
@@ -548,7 +564,6 @@ def build_graph(
 
         # 7. commit 의미는 모델을 믿되 필수 주문과 robot busy는 코드가 마지막으로 확인한다.
         if decision["commit"]:
-            section = state["robot_state"]["section"]
             missing = missing_current_section(session["order"], section)
             unresolved_pending = session.get("pending")
             explicit_current_change = current_section_changed(applied, section)
@@ -588,7 +603,6 @@ def build_graph(
             }
 
         # 8. 현재 section 값만 바뀌었다면 바로 실행하지 않고 execution pending을 만든다.
-        section = state["robot_state"]["section"]
         if (
             session.get("pending") is None
             and current_section_changed(applied, section)
