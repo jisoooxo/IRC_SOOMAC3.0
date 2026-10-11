@@ -5,7 +5,8 @@ import numpy as np
 
 DOF = 6
 
-SPOON_PICK_POSITION = np.array([0.249, 0.275, 0.3], dtype=float)
+# SPOON_PICK_POSITION = np.array([0.249, 0.275, 0.35], dtype=float)
+SPOON_PICK_POSITION = np.array([0.253, 0.275, 0.345], dtype=float) ## 확정
 SPOON_Q6 = math.radians(-90.0)
 
 class CPMotion:
@@ -21,7 +22,10 @@ class CPMotion:
         )
 
         q_spoon_pre_pick = q_spoon_pick.copy()
-        q_spoon_pre_pick[0] -= math.radians(18.0)
+        q_spoon_pre_pick[0] += math.radians(18.0)
+
+        q_spoon_pre_pick_2 = q_spoon_pick.copy()
+        q_spoon_pre_pick_2[0] -= math.radians(18.0)
 
         # 숟가락 잡은 후 lift
         spoon_lift_position = SPOON_PICK_POSITION.copy()
@@ -33,8 +37,8 @@ class CPMotion:
 
         # 치즈 / 페퍼론치노 접근
         if class_name == 'cheese':
-            q_approach_lift = np.deg2rad([3.5, -1.4, 0.0, 85.0, 91.5, 0.0])
-            q_approach = np.deg2rad([3.5, 1.2, 0.0, 101.0, 73.0, 0.0])
+            q_approach_lift = np.deg2rad([1.5, -1.4, 0.0, 87.0, 91.5, 0.0])
+            q_approach = np.deg2rad([1.5, 1.2, 0.0, 102.5, 73.0, 0.0])
         else:
             q_approach_lift = np.deg2rad([1.5, 2.6, 0.0, 85.0, 66.0, 0.0])
             q_approach = np.deg2rad([1.5, 15.4, 0.0, 85.0, 62.7, 0.0])
@@ -110,7 +114,7 @@ class CPMotion:
         commands.extend([
             ('motion', [q_spoon_lift, q_spoon_pick]),
             ('gripper', 'spoon_place:spoon', q_spoon_pick),
-            ('motion', [q_spoon_pre_pick])
+            ('motion', [q_spoon_pre_pick_2])
         ])
 
         return commands

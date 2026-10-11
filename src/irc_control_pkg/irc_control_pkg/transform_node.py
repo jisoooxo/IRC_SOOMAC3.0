@@ -236,12 +236,22 @@ class TransformNode(Node):
             'class_name': class_name,
             'x': float(p_base[0]) + 0.01,
             'y': float(p_base[1]),
-            'z': float(p_base[2]) - 0.01,
+            'z': float(p_base[2]) - 0.005,
             'yaw': -yaw_camera_deg,
             'frame_id': 'base',
         }
 
-        if class_name == 'cover':
+        if class_name in {'onion', 'mushroom'}:
+            output = {
+                    'class_name': class_name,
+                    'x': float(p_base[0]) + 0.01,
+                    'y': float(p_base[1]),
+                    'z': float(p_base[2]) - 0.01,
+                    'yaw': -yaw_camera_deg,
+                    'frame_id': 'base',
+                }
+
+        elif class_name == 'cover':
             output = {
                 'class_name': class_name,
                 'x': float(p_base[0]) - 0.02,

@@ -9,7 +9,8 @@
 -----
 이미지 퍼블리시 raw로 변경(이름그대로)
 욜로 디텍 안 됐을 때 이전 걸로. 
-+ 
+-----
+default_bbox_cord.py -> 혹시나 안될경우 이 좌표로 bbox
 '''
 
 import cv2
@@ -30,7 +31,7 @@ from cv_bridge import CvBridge
 from rclpy.qos import qos_profile_sensor_data
 from collections import deque
 
-try:  # 한글 라벨용 (없으면 영문 cv2.putText로 대체). Image는 sensor_msgs.msg.Image와 겹치므로 별칭 사용
+try:  
     from PIL import Image as PILImage, ImageDraw, ImageFont
 except ImportError:
     PILImage = ImageDraw = ImageFont = None
@@ -39,6 +40,7 @@ pc = "JISU"  # "JUNMI" or "JISU"
 
 if pc == "JISU":
     from irc_control_pkg.cover_detect import get_best_cover 
+    from irc_control_pkg.default_bbox_cord import get_default_obb
     YOLO_PT_PATH = '/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_15.pt'
 
     # SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_b+.yaml"         # 세번째로 작은 모델
@@ -49,6 +51,7 @@ if pc == "JISU":
 
 elif pc == "JUNMI":
     from cover_detect import get_best_cover  # 뚜껑
+    from default_bbox_cord import get_default_obb
     # ros2 run으로 실행할거라면 
     #from vision.cover_detect import get_best_cover 
     YOLO_PT_PATH = "/home/leejunmi/IRC_SOOMAC3.0/src/irc_control_pkg/irc_control_pkg/best_14.pt"  
@@ -807,6 +810,7 @@ def main(args=None):
 
                 # YOLO가 이번 프레임에 못 잡으면 직전 OBB 재사용 (토픽 직후엔 캐시가 비어 있어
                 # 첫 누적 프레임은 항상 실시간 YOLO 결과). 카메라 고정이라 한도 없이 다음 토픽까지 유지.
+                # 토픽 이후 한 번도 못 잡았으면(캐시 없음) default_bbox_cord.py에 지정한 기본 박스 사용.
                 # 클래스 매칭은 noodle로, 나머지 조회는 cls_name(thick/thin)으로
                 yolo_target = "noodle" if current_target in ("noodle_thick", "noodle_thin") else current_target
                 best_obb = find_best_obb(yolo_result, yolo_model.names, yolo_target)
@@ -818,6 +822,12 @@ def main(args=None):
                     obb_reused = True
                     cv2.putText(overlay, "OBB REUSE", (10,10 + 24),
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, OBB_REUSE_COLOR, 2, cv2.LINE_AA)
+                else:
+                    best_obb = get_default_obb(current_target)
+                    if best_obb is not None:
+                        obb_reused = True
+                        cv2.putText(overlay, "OBB DEFAULT", (10,10 + 24),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, OBB_REUSE_COLOR, 2, cv2.LINE_AA)
                 obb_color = OBB_REUSE_COLOR if obb_reused else (255, 255, 0)
 
                 # mushroom / cheese / onion
@@ -1048,4 +1058,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
