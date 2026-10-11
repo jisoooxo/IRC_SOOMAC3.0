@@ -1,0 +1,11 @@
+exact_accuracy=44/45=0.9778
+atom_precision=0.9839 atom_recall=0.9839
+multi_intent_completeness=13/13=1.0000
+clarify_precision=1.0000 clarify_recall=1.0000
+clarify_to_mutation_error=0/2=0.0000
+commit_accuracy=7/7=1.0000
+restriction_exact=1/1=1.0000
+query_exact=2/3=0.6667
+
+family_exact:
+real_runtime_holdout: 44/45=0.978

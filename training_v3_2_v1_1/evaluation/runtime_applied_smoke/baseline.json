@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-11T07:05:33+0900",
-  "git_head": "9332c069fa22bad8db49db27ba6ee13a12aac4ee",
+  "recorded_at": "2026-10-11T11:32:35+0900",
+  "git_head": "2e5ff90fece90799360912cb0062a7f6f3947ecc",
   "base_model_path": "/home/roma/Desktop/sLLM/gemma-4-12B-it",
   "quantization": "nf4",
   "adapters": {

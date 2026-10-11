@@ -1,0 +1,58 @@
+W0930 17:41:32.073000 2802319 site-packages/torch/utils/_pytree.py:630] <enum 'KernelPreference'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+W0930 17:41:32.082000 2802319 site-packages/torch/utils/_pytree.py:630] <enum 'ScaleCalculationMode'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+Loading weights:   0%|          | 0/677 [00:00<?, ?it/s]/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:213: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+Loading weights:   0%|          | 3/677 [00:00<00:41, 16.38it/s]Loading weights:   5%|▌         | 36/677 [00:00<00:04, 151.30it/s]Loading weights:  11%|█▏        | 77/677 [00:00<00:02, 247.34it/s]Loading weights:  17%|█▋        | 117/677 [00:00<00:01, 294.82it/s]Loading weights:  23%|██▎       | 155/677 [00:00<00:01, 321.96it/s]Loading weights:  28%|██▊       | 190/677 [00:00<00:01, 323.85it/s]Loading weights:  34%|███▍      | 229/677 [00:00<00:01, 340.27it/s]Loading weights:  40%|███▉      | 269/677 [00:00<00:01, 352.57it/s]Loading weights:  45%|████▌     | 307/677 [00:01<00:01, 360.07it/s]Loading weights:  51%|█████     | 344/677 [00:01<00:00, 355.87it/s]Loading weights:  56%|█████▋    | 381/677 [00:01<00:00, 357.09it/s]Loading weights:  62%|██████▏   | 421/677 [00:01<00:00, 363.54it/s]Loading weights:  68%|██████▊   | 459/677 [00:01<00:00, 367.07it/s]Loading weights:  73%|███████▎  | 496/677 [00:01<00:00, 355.92it/s]Loading weights:  79%|███████▊  | 532/677 [00:01<00:00, 344.45it/s]Loading weights:  84%|████████▍ | 567/677 [00:01<00:00, 339.46it/s]Loading weights:  89%|████████▉ | 602/677 [00:01<00:00, 328.52it/s]Loading weights:  95%|█████████▍| 643/677 [00:01<00:00, 343.33it/s]Loading weights: 100%|██████████| 677/677 [00:02<00:00, 328.47it/s]
+/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:468: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+OK  v223h1001_01 hard_multiturn_dense
+OK  v223h1002_01 hard_multiturn_dense
+OK  v223h1003_01 hard_multiturn_dense
+OK  v223h1004_01 hard_multiturn_dense
+OK  v223h1005_01 hard_multiturn_dense
+OK  v223h1006_01 hard_multiturn_dense
+OK  v223h1007_01 hard_multiturn_dense
+OK  v223h1008_01 hard_multiturn_dense
+OK  v223h1009_01 hard_multiturn_dense
+OK  v223h1010_01 hard_multiturn_dense
+OK  v223h1011_01 hard_multiturn_dense
+OK  v223h1012_01 hard_multiturn_dense
+OK  v223h2001_01 hard_multiturn_dense
+OK  v223h2002_01 hard_multiturn_dense
+OK  v223h2003_01 hard_multiturn_dense
+OK  v223h2004_01 hard_multiturn_dense
+OK  v223h2005_01 hard_multiturn_dense
+OK  v223h2006_01 hard_multiturn_dense
+OK  v223h2007_01 hard_multiturn_dense
+OK  v223h2008_01 hard_multiturn_dense
+OK  v223h2009_01 hard_multiturn_dense
+OK  v223h2010_01 hard_multiturn_dense
+OK  v223h2011_01 hard_multiturn_dense
+OK  v223h2012_01 hard_multiturn_dense
+ERR v223h3001_01 hard_clarify_dense
+ERR v223h3002_01 hard_clarify_dense
+OK  v223h3003_01 hard_clarify_dense
+OK  v223h3004_01 hard_clarify_dense
+OK  v223h3005_01 hard_clarify_dense
+ERR v223h3006_01 hard_clarify_dense
+OK  v223h3007_01 hard_clarify_dense
+OK  v223h3008_01 hard_clarify_dense
+OK  v223h3009_01 hard_clarify_dense
+OK  v223h3010_01 hard_clarify_dense
+OK  v223h3011_01 hard_clarify_dense
+OK  v223h3012_01 hard_clarify_dense
+OK  v223h3013_01 hard_clarify_dense
+OK  v223h3014_01 hard_clarify_dense
+OK  v223h3015_01 hard_clarify_dense
+OK  v223h3016_01 hard_clarify_dense
+OK  v223h3017_01 hard_clarify_dense
+OK  v223h3018_01 hard_clarify_dense
+OK  v223h3019_01 hard_clarify_dense
+OK  v223h3020_01 hard_clarify_dense
+OK  v223h3021_01 hard_clarify_dense
+OK  v223h3022_01 hard_clarify_dense
+OK  v223h3023_01 hard_clarify_dense
+OK  v223h3024_01 hard_clarify_dense
+accuracy=45/48=0.9375
+hard_clarify_dense: 21/24=0.875
+hard_multiturn_dense: 24/24=1.000

@@ -1,0 +1,112 @@
+W0930 17:43:36.331000 2804243 site-packages/torch/utils/_pytree.py:630] <enum 'KernelPreference'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+W0930 17:43:36.340000 2804243 site-packages/torch/utils/_pytree.py:630] <enum 'ScaleCalculationMode'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+Loading weights:   0%|          | 0/677 [00:00<?, ?it/s]/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:213: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+Loading weights:   0%|          | 3/677 [00:00<00:41, 16.36it/s]Loading weights:   5%|▌         | 36/677 [00:00<00:04, 151.51it/s]Loading weights:  11%|█▏        | 77/677 [00:00<00:02, 249.21it/s]Loading weights:  17%|█▋        | 117/677 [00:00<00:01, 297.96it/s]Loading weights:  23%|██▎       | 155/677 [00:00<00:01, 325.12it/s]Loading weights:  28%|██▊       | 190/677 [00:00<00:01, 325.44it/s]Loading weights:  34%|███▍      | 229/677 [00:00<00:01, 343.00it/s]Loading weights:  40%|███▉      | 269/677 [00:00<00:01, 356.04it/s]Loading weights:  45%|████▌     | 307/677 [00:01<00:01, 362.11it/s]Loading weights:  51%|█████     | 344/677 [00:01<00:00, 358.11it/s]Loading weights:  56%|█████▋    | 381/677 [00:01<00:00, 360.29it/s]Loading weights:  62%|██████▏   | 421/677 [00:01<00:00, 366.47it/s]Loading weights:  68%|██████▊   | 459/677 [00:01<00:00, 369.45it/s]Loading weights:  73%|███████▎  | 497/677 [00:01<00:00, 360.21it/s]Loading weights:  79%|███████▉  | 534/677 [00:01<00:00, 331.45it/s]Loading weights:  85%|████████▍ | 574/677 [00:01<00:00, 346.77it/s]Loading weights:  90%|█████████ | 610/677 [00:01<00:00, 340.91it/s]Loading weights:  95%|█████████▌| 645/677 [00:01<00:00, 331.78it/s]Loading weights: 100%|██████████| 677/677 [00:02<00:00, 330.77it/s]
+/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:468: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+OK  v225h0001_01 hard_compound_order
+OK  v225h0002_01 hard_compound_order
+OK  v225h0003_01 hard_compound_order
+OK  v225h0004_01 hard_compound_order
+OK  v225h0005_01 hard_compound_order
+OK  v225h0006_01 hard_compound_order
+OK  v225h0007_01 hard_compound_order
+OK  v225h0008_01 hard_compound_order
+OK  v225h0009_01 hard_compound_order
+OK  v225h0010_01 hard_compound_order
+OK  v225h0011_01 hard_compound_order
+OK  v225h0012_01 hard_compound_order
+OK  v225h0013_01 hard_compound_order
+OK  v225h0014_01 hard_compound_order
+OK  v225h0015_01 hard_compound_order
+OK  v225h0016_01 hard_compound_order
+OK  v225h0017_01 hard_compound_confirmation
+OK  v225h0018_01 hard_compound_confirmation
+OK  v225h0019_01 hard_compound_confirmation
+OK  v225h0020_01 hard_compound_confirmation
+OK  v225h0021_01 hard_compound_confirmation
+OK  v225h0022_01 hard_compound_confirmation
+OK  v225h0023_01 hard_compound_confirmation
+OK  v225h0024_01 hard_compound_confirmation
+OK  v225h0025_01 hard_compound_mixed
+OK  v225h0026_01 hard_compound_mixed
+OK  v225h0027_01 hard_compound_mixed
+OK  v225h0028_01 hard_compound_mixed
+OK  v225h0029_01 hard_compound_mixed
+OK  v225h0030_01 hard_compound_mixed
+OK  v225h0031_01 hard_compound_mixed
+OK  v225h0032_01 hard_compound_mixed
+OK  v225h0033_01 hard_state_cancel
+OK  v225h0034_01 hard_state_cancel
+OK  v225h0035_01 hard_state_cancel
+OK  v225h0036_01 hard_state_cancel
+OK  v225h0037_01 hard_state_cancel
+OK  v225h0038_01 hard_state_cancel
+OK  v225h0039_01 hard_state_cancel
+OK  v225h0040_01 hard_state_cancel
+OK  v225h0041_01 hard_state_cancel
+OK  v225h0042_01 hard_state_cancel
+OK  v225h0043_01 hard_state_cancel
+OK  v225h0044_01 hard_state_cancel
+OK  v225h0045_01 hard_state_cancel
+OK  v225h0046_01 hard_state_cancel
+OK  v225h0047_01 hard_state_cancel
+OK  v225h0048_01 hard_state_cancel
+OK  v225h0049_01 hard_state_cancel
+OK  v225h0050_01 hard_state_cancel
+OK  v225h0051_01 hard_state_cancel
+OK  v225h0052_01 hard_state_cancel
+OK  v225h0053_01 hard_state_cancel
+OK  v225h0054_01 hard_state_cancel
+OK  v225h0055_01 hard_state_cancel
+OK  v225h0056_01 hard_state_cancel
+OK  v225h0057_01 hard_stt_surface
+OK  v225h0058_01 hard_stt_surface
+OK  v225h0059_01 hard_stt_surface
+OK  v225h0060_01 hard_stt_surface
+OK  v225h0061_01 hard_stt_surface
+OK  v225h0062_01 hard_stt_surface
+OK  v225h0063_01 hard_stt_surface
+OK  v225h0064_01 hard_stt_surface
+OK  v225h0065_01 hard_stt_surface
+OK  v225h0066_01 hard_stt_surface
+OK  v225h0067_01 hard_stt_surface
+ERR v225h0068_01 hard_stt_surface
+OK  v225h0069_01 hard_stt_surface
+OK  v225h0070_01 hard_stt_surface
+OK  v225h0071_01 hard_stt_surface
+OK  v225h0072_01 hard_stt_surface
+OK  v225h0073_01 hard_positional_semantics
+OK  v225h0074_01 hard_positional_semantics
+OK  v225h0075_01 hard_positional_semantics
+OK  v225h0076_01 hard_positional_semantics
+OK  v225h0077_01 hard_positional_semantics
+OK  v225h0078_01 hard_positional_semantics
+OK  v225h0079_01 hard_positional_semantics
+OK  v225h0080_01 hard_positional_semantics
+OK  v225h0081_01 hard_scope_preservation
+OK  v225h0082_01 hard_scope_preservation
+OK  v225h0083_01 hard_scope_preservation
+OK  v225h0084_01 hard_scope_preservation
+OK  v225h0085_01 hard_scope_preservation
+OK  v225h0086_01 hard_scope_preservation
+OK  v225h0087_01 hard_scope_preservation
+OK  v225h0088_01 hard_scope_preservation
+OK  v225h0089_01 hard_semantic_boundary
+OK  v225h0090_01 hard_semantic_boundary
+OK  v225h0091_01 hard_semantic_boundary
+OK  v225h0092_01 hard_semantic_boundary
+OK  v225h0093_01 hard_semantic_boundary
+OK  v225h0094_01 hard_semantic_boundary
+OK  v225h0095_01 hard_semantic_boundary
+OK  v225h0096_01 hard_semantic_boundary
+accuracy=95/96=0.9896
+hard_compound_confirmation: 8/8=1.000
+hard_compound_mixed: 8/8=1.000
+hard_compound_order: 16/16=1.000
+hard_positional_semantics: 8/8=1.000
+hard_scope_preservation: 8/8=1.000
+hard_semantic_boundary: 8/8=1.000
+hard_state_cancel: 24/24=1.000
+hard_stt_surface: 15/16=0.938

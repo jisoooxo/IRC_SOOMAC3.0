@@ -1,0 +1,13 @@
+exact_accuracy=23/24=0.9583
+atom_precision=0.9677 atom_recall=0.9677
+multi_intent_completeness=5/5=1.0000
+clarify_precision=1.0000 clarify_recall=0.9167
+clarify_to_mutation_error=1/12=0.0833
+confirmation_accuracy=2/2=1.0000
+commit_accuracy=3/3=1.0000
+restriction_exact=2/2=1.0000
+query_exact=1/1=1.0000
+
+family_exact:
+hard_clarify: 11/12=0.917
+hard_multiturn: 12/12=1.000

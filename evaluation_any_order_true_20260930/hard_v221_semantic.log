@@ -1,0 +1,12 @@
+exact_accuracy=16/16=1.0000
+atom_precision=1.0000 atom_recall=1.0000
+multi_intent_completeness=7/7=1.0000
+clarify_precision=1.0000 clarify_recall=1.0000
+clarify_to_mutation_error=0/0=0.0000
+confirmation_accuracy=8/8=1.0000
+commit_accuracy=5/5=1.0000
+query_exact=8/8=1.0000
+
+family_exact:
+confirmation_partial: 8/8=1.000
+robot_failure: 8/8=1.000

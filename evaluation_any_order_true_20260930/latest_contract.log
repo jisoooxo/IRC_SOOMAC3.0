@@ -1,0 +1,64 @@
+W0930 17:39:04.165000 2799945 site-packages/torch/utils/_pytree.py:630] <enum 'KernelPreference'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+W0930 17:39:04.175000 2799945 site-packages/torch/utils/_pytree.py:630] <enum 'ScaleCalculationMode'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+Loading weights:   0%|          | 0/677 [00:00<?, ?it/s]/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:213: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+Loading weights:   0%|          | 3/677 [00:00<00:40, 16.44it/s]Loading weights:   5%|▌         | 36/677 [00:00<00:04, 152.20it/s]Loading weights:  11%|█▏        | 77/677 [00:00<00:02, 249.29it/s]Loading weights:  17%|█▋        | 117/677 [00:00<00:01, 297.44it/s]Loading weights:  23%|██▎       | 155/677 [00:00<00:01, 322.78it/s]Loading weights:  28%|██▊       | 190/677 [00:00<00:01, 324.12it/s]Loading weights:  34%|███▍      | 229/677 [00:00<00:01, 341.70it/s]Loading weights:  40%|███▉      | 269/677 [00:00<00:01, 354.29it/s]Loading weights:  45%|████▌     | 307/677 [00:01<00:01, 360.40it/s]Loading weights:  51%|█████     | 344/677 [00:01<00:00, 356.05it/s]Loading weights:  56%|█████▋    | 381/677 [00:01<00:00, 358.40it/s]Loading weights:  62%|██████▏   | 421/677 [00:01<00:00, 365.96it/s]Loading weights:  68%|██████▊   | 459/677 [00:01<00:00, 369.65it/s]Loading weights:  73%|███████▎  | 497/677 [00:01<00:00, 349.80it/s]Loading weights:  79%|███████▊  | 533/677 [00:01<00:00, 327.83it/s]Loading weights:  84%|████████▍ | 570/677 [00:01<00:00, 337.26it/s]Loading weights:  89%|████████▉ | 605/677 [00:01<00:00, 324.60it/s]Loading weights:  95%|█████████▌| 644/677 [00:02<00:00, 334.09it/s]Loading weights: 100%|██████████| 677/677 [00:02<00:00, 327.39it/s]
+/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:468: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+OK  v22g9001_01 robot_status
+OK  v22g9002_01 robot_status
+OK  v22g9003_01 robot_status
+OK  v22g9004_01 robot_status
+OK  v22g9005_01 robot_status
+OK  v22g9006_01 robot_status
+OK  v22g9007_01 robot_completed
+OK  v22g9008_01 robot_completed
+OK  v22g9009_01 robot_completed
+OK  v22g9010_01 robot_completed
+OK  v22g9011_01 robot_completed
+OK  v22g9012_01 robot_completed
+OK  v22g9013_01 robot_failure
+OK  v22g9014_01 robot_failure
+OK  v22g9015_01 robot_failure
+OK  v22g9016_01 robot_failure
+OK  v22g9017_01 robot_failure
+OK  v22g9018_01 robot_failure
+OK  v22g9019_01 recommendation_select_commit
+OK  v22g9020_01 recommendation_select_commit
+OK  v22g9021_01 recommendation_select_commit
+OK  v22g9022_01 recommendation_select_commit
+OK  v22g9023_01 recommendation_select_commit
+OK  v22g9024_01 recommendation_select_commit
+OK  v22g9025_01 recommendation_runtime_edges
+OK  v22g9026_01 recommendation_runtime_edges
+OK  v22g9027_01 recommendation_runtime_edges
+OK  v22g9028_01 recommendation_runtime_edges
+OK  v22g9029_01 recommendation_runtime_edges
+OK  v22g9030_01 recommendation_runtime_edges
+OK  v22g9031_01 unsupported_clarify
+OK  v22g9032_01 unsupported_clarify
+OK  v22g9033_01 unsupported_clarify
+OK  v22g9034_01 unsupported_clarify
+OK  v22g9035_01 unsupported_clarify
+OK  v22g9036_01 unsupported_clarify
+OK  v22g9037_01 confirmation_partial
+ERR v22g9038_01 confirmation_partial
+ERR v22g9039_01 confirmation_partial
+OK  v22g9040_01 confirmation_partial
+OK  v22g9041_01 confirmation_partial
+OK  v22g9042_01 confirmation_partial
+OK  v22g9043_01 query_order_compound
+OK  v22g9044_01 query_order_compound
+OK  v22g9045_01 query_order_compound
+OK  v22g9046_01 query_order_compound
+OK  v22g9047_01 query_order_compound
+OK  v22g9048_01 query_order_compound
+accuracy=46/48=0.9583
+confirmation_partial: 4/6=0.667
+query_order_compound: 6/6=1.000
+recommendation_runtime_edges: 6/6=1.000
+recommendation_select_commit: 6/6=1.000
+robot_completed: 6/6=1.000
+robot_failure: 6/6=1.000
+robot_status: 6/6=1.000
+unsupported_clarify: 6/6=1.000

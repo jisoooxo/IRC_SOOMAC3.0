@@ -1,0 +1,80 @@
+W0930 12:50:34.776000 2528276 site-packages/torch/utils/_pytree.py:630] <enum 'KernelPreference'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+W0930 12:50:34.786000 2528276 site-packages/torch/utils/_pytree.py:630] <enum 'ScaleCalculationMode'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+Loading weights:   0%|          | 0/677 [00:00<?, ?it/s]/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:213: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+Loading weights:   0%|          | 3/677 [00:00<00:40, 16.54it/s]Loading weights:   5%|▌         | 36/677 [00:00<00:04, 153.31it/s]Loading weights:  12%|█▏        | 78/677 [00:00<00:02, 247.09it/s]Loading weights:  17%|█▋        | 118/677 [00:00<00:01, 299.14it/s]Loading weights:  23%|██▎       | 159/677 [00:00<00:01, 334.57it/s]Loading weights:  29%|██▉       | 197/677 [00:00<00:01, 348.33it/s]Loading weights:  35%|███▍      | 234/677 [00:00<00:01, 353.71it/s]Loading weights:  40%|████      | 271/677 [00:00<00:01, 346.98it/s]Loading weights:  46%|████▌     | 312/677 [00:01<00:01, 364.77it/s]Loading weights:  52%|█████▏    | 352/677 [00:01<00:00, 372.91it/s]Loading weights:  58%|█████▊    | 391/677 [00:01<00:00, 377.42it/s]Loading weights:  64%|██████▎   | 430/677 [00:01<00:00, 366.83it/s]Loading weights:  69%|██████▉   | 467/677 [00:01<00:00, 364.83it/s]Loading weights:  74%|███████▍  | 504/677 [00:01<00:00, 363.97it/s]Loading weights:  80%|███████▉  | 541/677 [00:01<00:00, 353.78it/s]Loading weights:  85%|████████▌ | 577/677 [00:01<00:00, 340.33it/s]Loading weights:  91%|█████████ | 616/677 [00:01<00:00, 345.09it/s]Loading weights:  97%|█████████▋| 657/677 [00:01<00:00, 359.43it/s]Loading weights: 100%|██████████| 677/677 [00:02<00:00, 337.51it/s]
+/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:468: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+ERR g00217_01 restriction_add
+ERR g00217_02 restriction_add
+ERR g00217_03 restriction_add
+ERR g00217_04 restriction_add
+ERR g00217_05 restriction_add
+OK  g00219_01 restriction_replace
+OK  g00219_02 restriction_replace
+OK  g00219_03 restriction_replace
+OK  g00219_04 restriction_replace
+OK  g00223_01 restriction_replace
+OK  g00223_02 restriction_replace
+OK  g00223_03 restriction_replace
+OK  g00223_04 restriction_replace
+OK  g00226_01 restriction_replace
+OK  g00226_02 restriction_replace
+OK  g00226_03 restriction_replace
+OK  g00226_04 restriction_replace
+OK  g00231_01 restriction_replace
+OK  g00231_02 restriction_replace
+OK  g00231_03 restriction_replace
+OK  g00231_04 restriction_replace
+OK  g00234_01 restriction_replace
+OK  g00234_02 restriction_replace
+OK  g00234_03 restriction_replace
+OK  g00234_04 restriction_replace
+ERR g00282_01 confirmation_compound
+ERR g00282_02 confirmation_compound
+ERR g00282_03 confirmation_compound
+ERR g00282_04 confirmation_compound
+ERR g00284_01 confirmation_compound
+ERR g00284_02 confirmation_compound
+ERR g00284_03 confirmation_compound
+ERR g00284_04 confirmation_compound
+ERR g00285_01 confirmation_compound
+ERR g00285_02 confirmation_compound
+ERR g00285_03 confirmation_compound
+ERR g00285_04 confirmation_compound
+ERR g00287_01 confirmation_compound
+ERR g00287_02 confirmation_compound
+ERR g00287_03 confirmation_compound
+ERR g00287_04 confirmation_compound
+OK  g00310_01 reference
+OK  g00310_02 reference
+OK  g00310_03 reference
+OK  g00310_04 reference
+OK  g00314_01 reference
+OK  g00314_02 reference
+OK  g00314_03 reference
+OK  g00314_04 reference
+OK  g00322_01 reference_ambiguous
+OK  g00322_02 reference_ambiguous
+OK  g00322_03 reference_ambiguous
+OK  g00322_04 reference_ambiguous
+OK  g00331_01 timing
+OK  g00331_02 timing
+OK  g00331_03 timing
+OK  g00331_04 timing
+OK  g00343_01 clarify
+OK  g00343_02 clarify
+OK  g00343_03 clarify
+OK  g00358_01 multi_intent
+ERR g00358_02 multi_intent
+OK  g00358_03 multi_intent
+OK  g00358_04 multi_intent
+accuracy=42/64=0.6562
+clarify: 3/3=1.000
+confirmation_compound: 0/16=0.000
+multi_intent: 3/4=0.750
+reference: 8/8=1.000
+reference_ambiguous: 4/4=1.000
+restriction_add: 0/5=0.000
+restriction_replace: 20/20=1.000
+timing: 4/4=1.000

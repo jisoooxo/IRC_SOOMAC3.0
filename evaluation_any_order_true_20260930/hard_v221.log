@@ -1,0 +1,26 @@
+W0930 17:40:19.328000 2801079 site-packages/torch/utils/_pytree.py:630] <enum 'KernelPreference'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+W0930 17:40:19.337000 2801079 site-packages/torch/utils/_pytree.py:630] <enum 'ScaleCalculationMode'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+Loading weights:   0%|          | 0/677 [00:00<?, ?it/s]/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:213: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+Loading weights:   0%|          | 3/677 [00:00<00:41, 16.44it/s]Loading weights:   5%|▌         | 36/677 [00:00<00:04, 151.72it/s]Loading weights:  11%|█▏        | 77/677 [00:00<00:02, 248.45it/s]Loading weights:  17%|█▋        | 117/677 [00:00<00:01, 296.36it/s]Loading weights:  23%|██▎       | 155/677 [00:00<00:01, 323.49it/s]Loading weights:  28%|██▊       | 190/677 [00:00<00:01, 312.03it/s]Loading weights:  34%|███▍      | 229/677 [00:00<00:01, 333.67it/s]Loading weights:  40%|███▉      | 269/677 [00:00<00:01, 347.68it/s]Loading weights:  45%|████▌     | 306/677 [00:01<00:01, 354.26it/s]Loading weights:  51%|█████     | 343/677 [00:01<00:00, 346.95it/s]Loading weights:  56%|█████▋    | 381/677 [00:01<00:00, 352.40it/s]Loading weights:  62%|██████▏   | 421/677 [00:01<00:00, 359.03it/s]Loading weights:  68%|██████▊   | 458/677 [00:01<00:00, 361.92it/s]Loading weights:  73%|███████▎  | 495/677 [00:01<00:00, 346.57it/s]Loading weights:  78%|███████▊  | 530/677 [00:01<00:00, 343.72it/s]Loading weights:  83%|████████▎ | 565/677 [00:01<00:00, 329.26it/s]Loading weights:  89%|████████▉ | 601/677 [00:01<00:00, 332.20it/s]Loading weights:  94%|█████████▍| 637/677 [00:01<00:00, 337.25it/s]Loading weights: 100%|██████████| 677/677 [00:02<00:00, 325.23it/s]
+/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:468: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+OK  v221h90001_01 robot_failure
+OK  v221h90002_01 robot_failure
+OK  v221h90003_01 robot_failure
+OK  v221h90004_01 robot_failure
+OK  v221h90005_01 robot_failure
+OK  v221h90006_01 robot_failure
+OK  v221h90007_01 robot_failure
+OK  v221h90008_01 robot_failure
+OK  v221h91001_01 confirmation_partial
+OK  v221h91002_01 confirmation_partial
+OK  v221h91003_01 confirmation_partial
+OK  v221h91004_01 confirmation_partial
+OK  v221h91005_01 confirmation_partial
+OK  v221h91006_01 confirmation_partial
+OK  v221h91007_01 confirmation_partial
+OK  v221h91008_01 confirmation_partial
+accuracy=16/16=1.0000
+confirmation_partial: 8/8=1.000
+robot_failure: 8/8=1.000

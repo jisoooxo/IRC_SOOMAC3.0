@@ -1,0 +1,17 @@
+exact_accuracy=42/64=0.6562
+atom_precision=0.7965 atom_recall=0.7965
+multi_intent_completeness=23/45=0.5111
+clarify_precision=0.2917 clarify_recall=1.0000
+clarify_to_mutation_error=0/7=0.0000
+confirmation_accuracy=16/16=1.0000
+restriction_exact=29/29=1.0000
+
+family_exact:
+clarify: 3/3=1.000
+confirmation_compound: 0/16=0.000
+multi_intent: 3/4=0.750
+reference: 8/8=1.000
+reference_ambiguous: 4/4=1.000
+restriction_add: 0/5=0.000
+restriction_replace: 20/20=1.000
+timing: 4/4=1.000
