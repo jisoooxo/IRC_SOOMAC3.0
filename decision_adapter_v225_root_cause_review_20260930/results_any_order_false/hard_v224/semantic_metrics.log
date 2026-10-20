@@ -1,9 +1,0 @@
-exact_accuracy=35/36=0.9722
-atom_precision=0.9722 atom_recall=0.9722
-multi_intent_completeness=0/0=1.0000
-clarify_precision=1.0000 clarify_recall=0.9167
-clarify_to_mutation_error=1/12=0.0833
-
-family_exact:
-hard_near_neighbor_unsupported: 11/12=0.917
-hard_positional_reference: 24/24=1.000

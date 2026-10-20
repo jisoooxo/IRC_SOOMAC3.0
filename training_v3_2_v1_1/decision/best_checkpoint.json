@@ -1,6 +1,0 @@
-{
-  "best_epoch": 4,
-  "checkpoint": "/home/roma/IRC_SOOMAC3.0/training_v3_2_v1_1/decision/adapters/epoch_4_adapter",
-  "validation_loss": 0.00590202026,
-  "selection_reason": "schema/route 100%, fake mutation 최소 1건, precision/recall 99.37%로 semantic 우선순위 최상"
-}

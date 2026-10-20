@@ -17,6 +17,8 @@ from std_msgs.msg import Bool, Int16, String
 from soomac_irc.model_runtime import (
     DECISION_ADAPTER_NAME,
     DECISION_ADAPTER_PATH,
+    RECOMMENDATION_ADAPTER_NAME,
+    RECOMMENDATION_ADAPTER_PATH,
     RESPONSE_ADAPTER_NAME,
     RESPONSE_ADAPTER_PATH,
     load_model,
@@ -95,6 +97,7 @@ class LLMLangGraphNode(Node):
             self.model, self.processor = load_model(
                 DECISION_ADAPTER_PATH,
                 RESPONSE_ADAPTER_PATH,
+                RECOMMENDATION_ADAPTER_PATH,
             )
             call_decision = make_call_decision(
                 self.model,
@@ -102,7 +105,16 @@ class LLMLangGraphNode(Node):
                 self.get_logger(),
                 adapter_name=DECISION_ADAPTER_NAME,
             )
-            call_recommendation = make_call_recommendation(self.model, self.processor, self.get_logger())
+            call_recommendation = make_call_recommendation(
+                self.model,
+                self.processor,
+                self.get_logger(),
+                adapter_name=(
+                    RECOMMENDATION_ADAPTER_NAME
+                    if RECOMMENDATION_ADAPTER_PATH is not None
+                    else None
+                ),
+            )
             call_response = make_call_response(
                 self.model,
                 self.processor,
@@ -566,74 +578,108 @@ class LLMLangGraphNode(Node):
         if next_index >= len(SECTION_ORDER):
             raise ValueError(f"{completed_section} 다음 section이 없음")
 
-        self.section = SECTION_ORDER[next_index] # 다음거 ㅇㅇ
-        self.graph_state["pending"] = None
+        next_section = SECTION_ORDER[next_index]
+        snapshot = {
+            "section": self.section,
+            "graph_state": copy.deepcopy(self.graph_state),
+            "task_queue": copy.deepcopy(self.task_queue),
+            "active_task": copy.deepcopy(self.active_task),
+            "completed_tasks": copy.deepcopy(self.completed_tasks),
+            "robot_started": self.robot_started,
+            "vlm_confirmed": self.vlm_confirmed,
+        }
+        external_execution_started = False
+
+        try:
+            self.section = next_section
+            self.graph_state["pending"] = None
 
 ###################### 레일 먼저 선수 이동 치도록 일단 추가 #######################
 
-        if self.section == "veggie":
-            self.rail_move_ahead_pub.publish(String(data=json.dumps({"class" : "onion"}, ensure_ascii=False)))
+            if self.section == "veggie":
+                self.rail_move_ahead_pub.publish(String(data=json.dumps({"class" : "onion"}, ensure_ascii=False)))
 
-        elif self.section == "meat":
-            self.rail_move_ahead_pub.publish(String(data=json.dumps({"class" : "sausage"}, ensure_ascii=False)))
+            elif self.section == "meat":
+                self.rail_move_ahead_pub.publish(String(data=json.dumps({"class" : "sausage"}, ensure_ascii=False)))
 
-        elif self.section == "extra":
-            self.rail_move_ahead_pub.publish(String(data=json.dumps({"class" : "cheese"}, ensure_ascii=False)))
+            elif self.section == "extra":
+                self.rail_move_ahead_pub.publish(String(data=json.dumps({"class" : "cheese"}, ensure_ascii=False)))
 
 ##############################################################################
 
-        if self.section == "lid":
-            if not self._start_current_section():
-                raise RuntimeError("lid 작업을 만들지 못함")
-            next_reply = "이제 뚜껑을 닫을게요."
-            next_prompt = None
-        elif self.section == "sauce":
-            if not self._start_current_section():
-                raise RuntimeError("선택된 소스 작업을 만들지 못함")
-            next_reply = "마지막으로 고르신 소스를 올릴게요."
-            next_prompt = None
-        else:
-            pending = build_preselected_section_confirmation(self.graph_state, self.section)
-            if pending is not None:
-                self.graph_state["pending"] = pending
-                next_reply = build_preselected_confirmation_reply(pending)
-                next_prompt = {"type": "execution", "source": "preselected", "section": self.section,
-                               "targets": copy.deepcopy(pending.get("targets", [])),
-                               "items": copy.deepcopy(pending["items"])}
+            if self.section == "lid":
+                if not self._start_current_section():
+                    raise RuntimeError("lid 작업을 만들지 못함")
+                external_execution_started = True
+                next_reply = "이제 뚜껑을 닫을게요."
+                next_prompt = None
+            elif self.section == "sauce":
+                if not self._start_current_section():
+                    raise RuntimeError("선택된 소스 작업을 만들지 못함")
+                external_execution_started = True
+                next_reply = "마지막으로 고르신 소스를 올릴게요."
+                next_prompt = None
             else:
-                next_reply = self._section_prompt()
-                next_prompt = {"type": "section_prompt", "section": self.section, "text": next_reply}
+                pending = build_preselected_section_confirmation(self.graph_state, self.section)
+                if pending is not None:
+                    self.graph_state["pending"] = pending
+                    next_reply = build_preselected_confirmation_reply(pending)
+                    next_prompt = {"type": "execution", "source": "preselected", "section": self.section,
+                                   "targets": copy.deepcopy(pending.get("targets", [])),
+                                   "items": copy.deepcopy(pending["items"])}
+                else:
+                    next_reply = self._section_prompt()
+                    next_prompt = {"type": "section_prompt", "section": self.section, "text": next_reply}
 
-        transition = {"type": "section_transition", "section": completed_section,
-                      "outcome": outcome, "next_section": self.section}
-        self.graph_state["action_history"].append(copy.deepcopy(transition))
-        robot_state = self._build_robot_state()
-        robot_state["section_transition"] = transition
-        self.runtime_log.log_event("section_transition", {
-            "transition": copy.deepcopy(transition), "robot_state": copy.deepcopy(robot_state),
-        })
+            transition = {"type": "section_transition", "section": completed_section,
+                          "outcome": outcome, "next_section": self.section}
+            self.graph_state["action_history"].append(copy.deepcopy(transition))
+            robot_state = self._build_robot_state()
+            robot_state["section_transition"] = transition
+            try:
+                self.runtime_log.log_event("section_transition", {
+                    "transition": copy.deepcopy(transition), "robot_state": copy.deepcopy(robot_state),
+                })
+            except Exception as error:
+                self.get_logger().error(f"section transition 로그 실패: {error}")
         # 사용자 입력이 없는 상태 전환은 이미 계산한 structured 안내를 그대로 사용한다.
         # Response history가 새 section 안내를 직전 문장으로 덮어쓰지 못하게 한다.
-        reply = next_reply
-        response_trace = None
-        response_error = None
-        self.runtime_log.log_event("section_transition_response", {
-            "transition": copy.deepcopy(transition),
-            "robot_state": copy.deepcopy(robot_state),
-            "response_trace": response_trace,
-            "response_model_input": (
-                copy.deepcopy(response_trace.get("model_input"))
-                if isinstance(response_trace, dict) else None
-            ),
-            "response_raw": response_trace.get("raw") if isinstance(response_trace, dict) else None,
-            "reply": reply,
-            "fallback_error": response_error,
-        })
-        if self.section not in ("lid", "sauce"):
-            self._set_stt_enabled(True)
+            reply = next_reply
+            response_trace = None
+            response_error = None
+            try:
+                self.runtime_log.log_event("section_transition_response", {
+                    "transition": copy.deepcopy(transition),
+                    "robot_state": copy.deepcopy(robot_state),
+                    "response_trace": response_trace,
+                    "response_model_input": (
+                        copy.deepcopy(response_trace.get("model_input"))
+                        if isinstance(response_trace, dict) else None
+                    ),
+                    "response_raw": response_trace.get("raw") if isinstance(response_trace, dict) else None,
+                    "reply": reply,
+                    "fallback_error": response_error,
+                })
+            except Exception as error:
+                self.get_logger().error(f"section transition response 로그 실패: {error}")
+            if self.section not in ("lid", "sauce"):
+                self._set_stt_enabled(True)
         # /llm/next처럼 Graph 밖에서 만든 단계 안내도 다음 자연어 턴이 볼 수 있게 기록한다.
-        self.graph_state["history"].append({"role": "assistant", "content": reply})
-        return reply
+            self.graph_state["history"].append({"role": "assistant", "content": reply})
+            return reply
+        except Exception:
+            # plan이 발행되기 전 실패만 완전히 rollback한다. 이미 실행이 시작된 뒤 상태를
+            # 되돌리면 같은 물리 작업이 다시 발행될 수 있으므로 실행 state를 보존한다.
+            if not external_execution_started and self.active_task is None:
+                self.section = snapshot["section"]
+                self.graph_state = snapshot["graph_state"]
+                self.task_queue = snapshot["task_queue"]
+                self.active_task = snapshot["active_task"]
+                self.completed_tasks = snapshot["completed_tasks"]
+                self.robot_started = snapshot["robot_started"]
+                self.vlm_confirmed = snapshot["vlm_confirmed"]
+                self._set_stt_enabled(True)
+            raise
 
 
 #################### llm next 받으면 지금 task 끝내고 다음거 넘김 ####################
@@ -1086,9 +1132,20 @@ class LLMLangGraphNode(Node):
         if self.active_task is not None or not self.task_queue:
             return False
 
-        task = self.task_queue.pop(0)
+        task = copy.deepcopy(self.task_queue[0])
         task_class = task["class"]
 
+        plan = {
+            "class": TOPIC_CLASS_NAMES[task_class],
+            "repeat_count": task["repeat_count"],
+        }
+
+        # publish가 실패하면 queue와 canonical state를 그대로 보존한다.
+        self.plan_pub.publish(
+            String(data=json.dumps(plan, ensure_ascii=False))
+        )
+
+        self.task_queue.pop(0)
         self.active_task = copy.deepcopy(task)
         # 실제 실행이 시작되면 대기 중인 제안이나 확인은 끝난 것으로 본다.
         self.graph_state["pending"] = None
@@ -1100,23 +1157,18 @@ class LLMLangGraphNode(Node):
                 self.latest_camera_message = None
                 self.vlm_camera_messages.clear()
 
-        plan = {
-            "class": TOPIC_CLASS_NAMES[task_class],
-            "repeat_count": task["repeat_count"],
-        }
-
-        self.plan_pub.publish(
-            String(data=json.dumps(plan, ensure_ascii=False))
-        )
-        self.runtime_log.log_event(
-            "robot_task_started",
-            {
-                "section": self.section,
-                "task": copy.deepcopy(task),
-                "plan": copy.deepcopy(plan),
-                "robot_state": self._build_robot_state(),
-            },
-        )
+        try:
+            self.runtime_log.log_event(
+                "robot_task_started",
+                {
+                    "section": self.section,
+                    "task": copy.deepcopy(task),
+                    "plan": copy.deepcopy(plan),
+                    "robot_state": self._build_robot_state(),
+                },
+            )
+        except Exception as error:
+            self.get_logger().error(f"robot task started 로그 실패: {error}")
         self.get_logger().info(f"/llm/plan 발행 : {plan}")
         return True
 
@@ -1134,9 +1186,17 @@ class LLMLangGraphNode(Node):
             self.get_logger().warning(f"{self.section}에서 실행할 작업이 없음")
             return False
 
+        previous_queue = copy.deepcopy(self.task_queue)
         self.task_queue.extend(copy.deepcopy(tasks)) # 여기서 current section의 task를 반환 받음
-        self._set_stt_enabled(False)
-        return self._publish_next_task()
+        try:
+            self._set_stt_enabled(False)
+            started = self._publish_next_task()
+        except Exception:
+            self.task_queue = previous_queue
+            raise
+        if not started:
+            self.task_queue = previous_queue
+        return started
 
 #################### 사용자 한 턴을 graph에 넣고 결과를 실제 session에 반영 ####################
 

@@ -1,0 +1,16 @@
+{
+  "active": true,
+  "all_gates_pass": true,
+  "labels": {
+    "decision": "decision_v3_4_epoch4",
+    "recommendation": "recommendation_v2_epoch4",
+    "response": "response_v1_3_epoch3"
+  },
+  "selected": {
+    "decision": "models/runtime_adapters/decision_v3_4_epoch4",
+    "recommendation": "models/runtime_adapters/recommendation_v2_epoch4",
+    "response": "models/runtime_adapters/response_v1_3_epoch3"
+  },
+  "source_evaluation": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/full_rebuild_v4/FINAL_AUDITED_RETRAIN_REPORT.md",
+  "candidate_status": "rejected_keep_previous"
+}

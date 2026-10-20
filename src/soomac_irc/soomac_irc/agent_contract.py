@@ -13,7 +13,7 @@ from soomac_irc.domain import AMOUNTS, RESTRICTION_REASONS
 
 # 과거 runtime 로그와 현재 자연어 우선 계약의 로그를 dataset 생성 시 구분한다.
 RUNTIME_LOG_SCHEMA_VERSION = 2
-RUNTIME_CONTRACT_VERSION = "natural_multiturn_v3"
+RUNTIME_CONTRACT_VERSION = "natural_multiturn_v4"
 
 
 #################### 핵심 internal runtime 타입 ####################
@@ -28,6 +28,7 @@ class NormalizedDecision(TypedDict):
     preference_options: list[dict]
     recommendation: dict
     commit: bool
+    skip_current: bool
     confirmation: str
 
 
@@ -148,6 +149,7 @@ DECISION_SCHEMA = {
             "additionalProperties": False,
         },
         "commit": {"type": "boolean"},
+        "skip_current": {"type": "boolean"},
         "confirmation": {"type": "string", "enum": ["accept", "reject"]},
         "clarify": {"type": "boolean"},
     },
@@ -216,6 +218,7 @@ def new_decision() -> NormalizedDecision:
         "preference_options": [],
         "recommendation": {"action": "none"},
         "commit": False,
+        "skip_current": False,
         "confirmation": "none",
     }
 
@@ -251,9 +254,10 @@ def normalize_decision(sparse_decision: dict) -> NormalizedDecision:
     if isinstance(recommendation, dict) and recommendation.get("action") in ("request", "revise"):
         decision["recommendation"] = {"action": recommendation["action"]}
 
-    # commit/confirmation은 모델의 자연어 판단을 그대로 내부 값으로 옮긴다.
+    # commit/skip_current/confirmation은 모델의 자연어 판단을 그대로 내부 값으로 옮긴다.
     # 실제 실행 가능 여부는 Graph와 policy가 별도로 검사한다.
     decision["commit"] = bool(sparse_decision.get("commit", False))
+    decision["skip_current"] = bool(sparse_decision.get("skip_current", False))
     decision["confirmation"] = sparse_decision.get("confirmation", "none")
     return decision
 

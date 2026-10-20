@@ -94,6 +94,24 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertFalse(node._publish_next_task())
         self.assertEqual(node.graph_state, before)
 
+    def test_plan_publish_failure_preserves_queue_pending_and_active_state(self):
+        node = make_node()
+        node.graph_state["pending"] = {
+            "type": "execution", "source": "current_update",
+            "section": "meat", "targets": ["소시지"],
+        }
+        node.task_queue = [{"class": "소시지", "repeat_count": 2}]
+        before = copy.deepcopy(node.graph_state)
+        node.plan_pub.publish.side_effect = RuntimeError("plan publisher failure")
+
+        with self.assertRaisesRegex(RuntimeError, "plan publisher failure"):
+            node._publish_next_task()
+
+        self.assertEqual(node.graph_state, before)
+        self.assertEqual(node.task_queue, [{"class": "소시지", "repeat_count": 2}])
+        self.assertIsNone(node.active_task)
+        self.assertFalse(node.robot_started)
+
     def test_skipped_and_completed_use_deterministic_next_prompt(self):
         for outcome in ("skipped", "completed"):
             with self.subTest(outcome=outcome):
@@ -184,6 +202,77 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertEqual(node.section, "meat")
         node.rail_move_ahead_pub.publish.assert_not_called()
 
+    def test_rail_failure_rolls_back_section_pending_and_history(self):
+        node = make_node("meat")
+        node.graph_state["pending"] = {
+            "type": "execution", "source": "current_update",
+            "section": "meat", "targets": ["소시지"],
+        }
+        before = copy.deepcopy(node.graph_state)
+        node.rail_move_ahead_pub.publish.side_effect = RuntimeError("rail publisher failure")
+
+        with self.assertRaisesRegex(RuntimeError, "rail publisher failure"):
+            node._advance_after_section("meat")
+
+        self.assertEqual(node.section, "meat")
+        self.assertEqual(node.graph_state, before)
+        self.assertIsNone(node.active_task)
+        self.assertEqual(node.task_queue, [])
+        node._set_stt_enabled.assert_called_with(True)
+
+    def test_lid_task_failure_rolls_back_transition(self):
+        node = make_node("extra")
+        before = copy.deepcopy(node.graph_state)
+        node._start_current_section.return_value = False
+
+        with self.assertRaisesRegex(RuntimeError, "lid 작업"):
+            node._advance_after_section("extra")
+
+        self.assertEqual(node.section, "extra")
+        self.assertEqual(node.graph_state, before)
+        self.assertIsNone(node.active_task)
+
+    def test_sauce_task_failure_rolls_back_transition(self):
+        node = make_node("lid")
+        node.graph_state["order"]["sauce"] = "토마토"
+        before = copy.deepcopy(node.graph_state)
+        node._start_current_section.return_value = False
+
+        with self.assertRaisesRegex(RuntimeError, "소스 작업"):
+            node._advance_after_section("lid")
+
+        self.assertEqual(node.section, "lid")
+        self.assertEqual(node.graph_state, before)
+        self.assertIsNone(node.active_task)
+
+    def test_history_write_failure_rolls_back_nonexecuting_transition(self):
+        class FailingHistory(list):
+            def append(self, _value):
+                raise RuntimeError("history write failure")
+
+        node = make_node("meat")
+        node.graph_state["history"] = FailingHistory()
+
+        with self.assertRaisesRegex(RuntimeError, "history write failure"):
+            node._advance_after_section("meat")
+
+        self.assertEqual(node.section, "meat")
+        self.assertIsNone(node.graph_state["pending"])
+        self.assertEqual(node.task_queue, [])
+        self.assertIsNone(node.active_task)
+
+    def test_transition_log_failures_do_not_rollback_valid_transition(self):
+        node = make_node("meat")
+        node.runtime_log.log_event.side_effect = RuntimeError("log failure")
+
+        reply = node._advance_after_section("meat")
+
+        self.assertEqual(node.section, "extra")
+        self.assertIn("추가 재료", reply)
+        self.assertEqual(node.graph_state["action_history"][-1]["next_section"], "extra")
+        self.assertEqual(node.task_queue, [])
+        self.assertIsNone(node.active_task)
+
     def test_empty_section_runtime_path_passes_skipped(self):
         node = make_node()
         session = new_session_state()
@@ -199,6 +288,30 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertIn("추가 재료", node.graph_state["history"][-1]["content"])
         self.assertEqual(len(node.graph_state["history"]), 2)
         self.assertEqual(node.runtime_log.log_turn.call_args.args[0]["status"], "section_advanced")
+
+    def test_reply_publish_failure_keeps_committed_transition_without_duplicate_task(self):
+        node = make_node("meat")
+        session = new_session_state()
+        session["history"] = [
+            {"role": "user", "content": "육류는 넘어가"},
+            {"role": "assistant", "content": ""},
+        ]
+        node.graph = Mock()
+        node.graph.invoke.return_value = {
+            "session": session,
+            "policy": {"execute": True, "reason": "section_skip_allowed"},
+            "reply": "",
+        }
+        node._publish_reply.side_effect = RuntimeError("reply publish failure")
+
+        with self.assertRaisesRegex(RuntimeError, "reply publish failure"):
+            node._process_turn("육류는 넘어가")
+
+        self.assertEqual(node.section, "extra")
+        self.assertEqual(node.task_queue, [])
+        self.assertIsNone(node.active_task)
+        self.assertEqual(node.graph_state["action_history"][-1]["next_section"], "extra")
+        node._set_stt_enabled.assert_called_with(True)
 
     def test_started_task_replaces_model_reply_with_structured_message(self):
         node = make_node("veggie")

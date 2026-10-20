@@ -40,6 +40,8 @@ env/
 *.tar
 *.tar.sha256
 /models/*_adapter*/
+/models/runtime_adapters/
+/upgrade_v4/
 /training_v3_2_v1_1/decision/adapters/
 /training_v3_2_v1_1/response/adapters/
 

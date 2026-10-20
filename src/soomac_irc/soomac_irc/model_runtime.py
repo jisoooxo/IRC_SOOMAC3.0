@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import torch
 from peft import PeftModel
 from transformers import AutoProcessor, BitsAndBytesConfig
@@ -12,9 +15,59 @@ except ImportError:
 
 # 모델 경로
 MODEL_PATH = "/home/roma/Desktop/sLLM/gemma-4-12B-it"
-DECISION_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/decision_adapter_v3_2_best_epoch4"
-RESPONSE_ADAPTER_PATH = "/home/roma/IRC_SOOMAC3.0/models/response_adapter_v1_best_epoch1"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+RUNTIME_ADAPTER_ROOT = REPO_ROOT / "models/runtime_adapters"
+ROLLBACK_DECISION_ADAPTER_PATH = str(RUNTIME_ADAPTER_ROOT / "decision_v3_4_epoch4")
+ROLLBACK_RESPONSE_ADAPTER_PATH = str(RUNTIME_ADAPTER_ROOT / "response_v1_3_epoch3")
+ROLLBACK_RECOMMENDATION_ADAPTER_PATH = str(
+    RUNTIME_ADAPTER_ROOT / "recommendation_v2_epoch4"
+)
+RUNTIME_ADOPTION_MANIFEST = REPO_ROOT / "config/llm_active_stack.json"
+
+
+def _resolve_manifest_adapter_path(value: str) -> str:
+    path = Path(value)
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    return str(path.resolve())
+
+
+def _resolve_runtime_adapter_paths() -> tuple[str, str, str | None, str | None]:
+    rollback = (
+        ROLLBACK_DECISION_ADAPTER_PATH,
+        ROLLBACK_RESPONSE_ADAPTER_PATH,
+        ROLLBACK_RECOMMENDATION_ADAPTER_PATH,
+        None,
+    )
+    errors = []
+    for manifest_path in (RUNTIME_ADOPTION_MANIFEST,):
+        if not manifest_path.is_file():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest.get("active") is not True or manifest.get("all_gates_pass") is not True:
+                continue
+            selected = manifest["selected"]
+            decision = _resolve_manifest_adapter_path(selected["decision"])
+            response = _resolve_manifest_adapter_path(selected["response"])
+            recommendation = _resolve_manifest_adapter_path(selected["recommendation"])
+            for adapter in (decision, response, recommendation):
+                if not (Path(adapter) / "adapter_model.safetensors").is_file():
+                    raise FileNotFoundError(f"selected adapter incomplete: {adapter}")
+            return decision, response, recommendation, "; ".join(errors) or None
+        except Exception as exc:
+            errors.append(f"{manifest_path}: {type(exc).__name__}: {exc}")
+    return (*rollback[:3], "; ".join(errors) or None)
+
+
+(
+    DECISION_ADAPTER_PATH,
+    RESPONSE_ADAPTER_PATH,
+    RECOMMENDATION_ADAPTER_PATH,
+    RUNTIME_ADOPTION_ERROR,
+) = _resolve_runtime_adapter_paths()
 DECISION_ADAPTER_NAME = "decision"
+RECOMMENDATION_ADAPTER_NAME = "recommendation"
 RESPONSE_ADAPTER_NAME = "response"
 MODEL_QUANTIZATION = "nf4" # int8, nf4(qlora), bf16(원본)
 
@@ -151,8 +204,8 @@ def make_call_vlm(model, processor, logger=None):
     return call_vlm        
 
 
-def load_model(adapter_path=None, response_adapter_path=None):
-    # Base Model은 한 번만 올리고 Decision/Response LoRA를 이름별로 붙인다.
+def load_model(adapter_path=None, response_adapter_path=None, recommendation_adapter_path=None):
+    # Base Model은 한 번만 올리고 세 Agent LoRA를 이름별로 붙인다.
 
     processor = AutoProcessor.from_pretrained(MODEL_PATH, local_files_only=True)
     # processor = tokenizer(텍스트) + image processor(이미지) + feature extractor(오디오) 묶음
@@ -241,12 +294,31 @@ def load_model(adapter_path=None, response_adapter_path=None):
                 is_trainable=False,
             )
 
+    if recommendation_adapter_path is not None:
+        if isinstance(model, PeftModel):
+            model.load_adapter(
+                recommendation_adapter_path,
+                adapter_name=RECOMMENDATION_ADAPTER_NAME,
+                is_trainable=False,
+            )
+        else:
+            model = PeftModel.from_pretrained(
+                model,
+                recommendation_adapter_path,
+                adapter_name=RECOMMENDATION_ADAPTER_NAME,
+                is_trainable=False,
+            )
+
     if isinstance(model, PeftModel):
         # 첫 Agent 호출은 Decision이므로 기본 활성 Adapter도 Decision으로 맞춘다.
         initial_adapter = (
             DECISION_ADAPTER_NAME
             if adapter_path is not None
-            else RESPONSE_ADAPTER_NAME
+            else (
+                RESPONSE_ADAPTER_NAME
+                if response_adapter_path is not None
+                else RECOMMENDATION_ADAPTER_NAME
+            )
         )
         model.set_adapter(initial_adapter)
         model.eval()

@@ -1,54 +1,0 @@
-W0930 13:02:55.055000 2542849 site-packages/torch/utils/_pytree.py:630] <enum 'KernelPreference'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
-W0930 13:02:55.064000 2542849 site-packages/torch/utils/_pytree.py:630] <enum 'ScaleCalculationMode'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
-Loading weights:   0%|          | 0/677 [00:00<?, ?it/s]/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:213: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
-  torch._check_is_size(blocksize)
-Loading weights:   0%|          | 3/677 [00:00<00:40, 16.51it/s]Loading weights:   5%|▌         | 36/677 [00:00<00:04, 153.52it/s]Loading weights:  11%|█▏        | 77/677 [00:00<00:02, 249.84it/s]Loading weights:  17%|█▋        | 117/677 [00:00<00:01, 301.34it/s]Loading weights:  23%|██▎       | 155/677 [00:00<00:01, 327.56it/s]Loading weights:  28%|██▊       | 190/677 [00:00<00:01, 328.77it/s]Loading weights:  34%|███▍      | 229/677 [00:00<00:01, 347.77it/s]Loading weights:  40%|███▉      | 269/677 [00:00<00:01, 360.03it/s]Loading weights:  45%|████▌     | 308/677 [00:00<00:01, 368.46it/s]Loading weights:  51%|█████     | 346/677 [00:01<00:00, 360.86it/s]Loading weights:  57%|█████▋    | 383/677 [00:01<00:00, 358.07it/s]Loading weights:  62%|██████▏   | 422/677 [00:01<00:00, 361.45it/s]Loading weights:  68%|██████▊   | 463/677 [00:01<00:00, 370.47it/s]Loading weights:  74%|███████▍  | 501/677 [00:01<00:00, 358.89it/s]Loading weights:  79%|███████▉  | 538/677 [00:01<00:00, 341.30it/s]Loading weights:  85%|████████▍ | 574/677 [00:01<00:00, 343.45it/s]Loading weights:  90%|████████▉ | 609/677 [00:01<00:00, 336.78it/s]Loading weights:  95%|█████████▌| 644/677 [00:01<00:00, 339.79it/s]Loading weights: 100%|██████████| 677/677 [00:02<00:00, 332.53it/s]
-/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:468: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
-  torch._check_is_size(blocksize)
-OK  real_runtime_001 real_runtime_holdout
-OK  real_runtime_002 real_runtime_holdout
-OK  real_runtime_003 real_runtime_holdout
-OK  real_runtime_004 real_runtime_holdout
-OK  real_runtime_005 real_runtime_holdout
-OK  real_runtime_006 real_runtime_holdout
-OK  real_runtime_007 real_runtime_holdout
-OK  real_runtime_008 real_runtime_holdout
-OK  real_runtime_009 real_runtime_holdout
-OK  real_runtime_010 real_runtime_holdout
-OK  real_runtime_011 real_runtime_holdout
-OK  real_runtime_012 real_runtime_holdout
-OK  real_runtime_013 real_runtime_holdout
-OK  real_runtime_014 real_runtime_holdout
-ERR real_runtime_015 real_runtime_holdout
-ERR real_runtime_016 real_runtime_holdout
-ERR real_runtime_017 real_runtime_holdout
-OK  real_runtime_018 real_runtime_holdout
-OK  real_runtime_019 real_runtime_holdout
-OK  real_runtime_020 real_runtime_holdout
-OK  real_runtime_021 real_runtime_holdout
-OK  real_runtime_022 real_runtime_holdout
-OK  real_runtime_023 real_runtime_holdout
-OK  real_runtime_024 real_runtime_holdout
-OK  real_runtime_025 real_runtime_holdout
-OK  real_runtime_026 real_runtime_holdout
-OK  real_runtime_027 real_runtime_holdout
-OK  real_runtime_028 real_runtime_holdout
-OK  real_runtime_029 real_runtime_holdout
-OK  real_runtime_030 real_runtime_holdout
-OK  real_runtime_031 real_runtime_holdout
-OK  real_runtime_032 real_runtime_holdout
-OK  real_runtime_033 real_runtime_holdout
-OK  real_runtime_034 real_runtime_holdout
-OK  real_runtime_035 real_runtime_holdout
-OK  real_runtime_036 real_runtime_holdout
-OK  real_runtime_037 real_runtime_holdout
-OK  real_runtime_038 real_runtime_holdout
-OK  real_runtime_039 real_runtime_holdout
-ERR real_runtime_040 real_runtime_holdout
-OK  real_runtime_041 real_runtime_holdout
-OK  real_runtime_042 real_runtime_holdout
-OK  real_runtime_043 real_runtime_holdout
-OK  real_runtime_044 real_runtime_holdout
-OK  real_runtime_045 real_runtime_holdout
-accuracy=41/45=0.9111
-real_runtime_holdout: 41/45=0.911

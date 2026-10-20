@@ -6,6 +6,7 @@ import torch
 import xgrammar as xgr
 from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 
+from soomac_irc.adapter_runtime import activate_adapter
 from soomac_irc.agent_contract import (
     RECOMMENDATION_SCHEMA,
     NormalizedDecision,
@@ -21,7 +22,7 @@ RECOMMENDATION_HISTORY_TURNS = 10
 
 #################### 추천 모델 호출 함수 만들기 ####################
 
-def make_call_recommendation(model, processor, logger=None):
+def make_call_recommendation(model, processor, logger=None, adapter_name: str | None = None):
     # 추천 결과는 항상 완성된 proposal 모양으로 나오게 XGrammar를 한 번만 준비한다.
     tokenizer = processor.tokenizer
     stop_ids = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<turn|>")]
@@ -80,9 +81,11 @@ def make_call_recommendation(model, processor, logger=None):
                 "logits_processor": [XGrammarLogitsProcessor(compiled_grammar)],
             }
 
-            # Decision 전용 LoRA가 붙어 있으면 추천에는 base model을 사용한다.
-            # 추천 후보는 뒤에서 Python validator를 다시 통과하므로 여기서는 state를 수정하지 않는다.
-            if hasattr(model, "disable_adapter"):
+            # A/B를 통과한 Recommendation Adapter가 있으면 이를 사용한다.
+            # adapter_name이 없으면 종전처럼 Base Model을 사용한다.
+            if activate_adapter(model, adapter_name):
+                output = model.generate(**generate_args)
+            elif hasattr(model, "disable_adapter"):
                 with model.disable_adapter():
                     output = model.generate(**generate_args)
             else:

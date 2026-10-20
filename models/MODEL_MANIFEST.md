@@ -1,23 +1,28 @@
-# Dual Adapter Model Manifest
+# Runtime Adapter Model Manifest
 
-- Git HEAD at evaluation: `9332c069fa22bad8db49db27ba6ee13a12aac4ee`
+- 기준일: 2026-10-20
+- 작업 브랜치/HEAD: `flexible_llm` / `1637e57`
 - Base: `/home/roma/Desktop/sLLM/gemma-4-12B-it` (`nf4`)
-- GPU: `NVIDIA RTX PRO 4500 Blackwell, 580.178.04, 32623 MiB`
-- Torch / CUDA: `2.12.1+cu130` / `13.0`
-- Transformers / PEFT: `5.13.1` / `0.19.1`
+- Runtime 선택 정본: `config/llm_active_stack.json`
+- 평가 보고서: `/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/full_rebuild_v4/FINAL_AUDITED_RETRAIN_REPORT.md`
 
-## Adapters
+## 활성 Adapter
 
-- Decision: `/home/roma/IRC_SOOMAC3.0/models/decision_adapter_v3_2_best_epoch4`
-  - SHA256: `4ab6483b120a69b2aab2c9f9e361dbd3eb59880515be067be73ca74e4922d9ac`
-  - Rollback: `/home/roma/IRC_SOOMAC3.0/models/decision_adapter_v3_1_best_epoch3`
-- Response: `/home/roma/IRC_SOOMAC3.0/models/response_adapter_v1_best_epoch1`
-  - SHA256: `be64d1512f231873468a80eb5cf7cad54b33c11e973879af340c2add5503ab96`
-  - Rejected candidate: `/home/roma/IRC_SOOMAC3.0/models/response_adapter_v1_1_best_epoch4`
-  - Candidate SHA256: `1bf60dd07c128223a773119b92a6a26bc02b8228ce9c8f65cc66f033e34a8188`
+| 구성요소 | 경로 | SHA-256 |
+|---|---|---|
+| Decision | `models/runtime_adapters/decision_v3_4_epoch4` | `d0d0ce5ad598dc67ee1cf0a4250b07dca307c76f2e5389a7c8c8c5561f344fd9` |
+| Recommendation | `models/runtime_adapters/recommendation_v2_epoch4` | `65b213714dfa3524a02a479066197a443a2ec3795c6ed1b883c8a5a4709913ad` |
+| Response | `models/runtime_adapters/response_v1_3_epoch3` | `83fade2b72d3d444e3f1370fb3ec3a1af8d979912ff39084933516d92ee5e043` |
 
-## Generation
+## 2026-10-20 재학습 판정
 
-- Decision: greedy, max_new_tokens=1024, XGrammar any_order=true
-- Recommendation: base model, greedy, max_new_tokens=1024
-- Response: greedy, max_new_tokens=512
+- Decision 후보: `decision_v3_7_state_coverage_audited_epoch4`
+- Recommendation: `recommendation_v2_epoch4` 유지
+- Response 후보: `response_v1_4_audited_epoch2`
+- 판정: `rejected_keep_previous`
+- 원인: 1,000턴 장기 평가에서 166턴의 모델 state 오류가 발생했다.
+- 결과: 위 활성 Adapter 세 개를 계속 사용한다.
+
+## Runtime 독립성
+
+Runtime은 외부 학습 워크스페이스의 checkpoint나 adoption manifest를 읽지 않는다. `config/llm_active_stack.json`이 없거나 손상되면 동일한 검증 Adapter 세 개를 rollback 경로로 사용한다.
