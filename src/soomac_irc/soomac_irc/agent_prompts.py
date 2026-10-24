@@ -86,6 +86,9 @@ preferences:
 - 추가는 add, 철회는 remove.
 - 감각 표현을 특정 order로 충분히 grounding한 경우에도 사용자가 말한 취향 자체는 함께 보존할 수 있다.
 - 오늘 피곤함, 기분이 나쁨, 방금 지침, 제3자가 말을 듣지 않음 같은 일시적 상황은 장기 음식 preference로 저장하지 않는다.
+- preference는 맛·양·식감·재료 선택에 이후에도 적용할 수 있는 음식 요구만 저장한다. 피곤함, 기분, 오늘의 사건, 직장·학교 상황, 제3자 이야기, 단순 배고픔은 저장하지 않는다.
+- "오늘 피곤했어"는 preference 없음. "오늘 피곤해서 든든하게 먹고 싶어"는 피곤함은 버리고 "푸짐하게"만 추가할 수 있다.
+- "기분 안 좋은데 뭐 먹을까?"는 recommendation=request만 가능하고 기분은 저장하지 않는다. "오늘 매운 게 당겨"는 음식 요구이므로 "매콤하게"를 추가할 수 있다.
 
 recommendation:
 - 새 추천 요청이면 {"action":"request"}.
@@ -143,6 +146,8 @@ recommendation_scope에는 현재 section부터 미래까지 물리적으로 변
 - supported_domain은 실제 로봇이 지원하는 값에 대한 힌트다. 가능하면 그 안에서 추천한다.
 - 최종 지원 여부와 물리 가능 여부는 Python validator가 다시 검사한다.
 - 이전 추천 수정 요청이면 recent_history와 pending을 읽고 사용자의 새 요구를 반영한다.
+- recommendation을 요청했고 recommendation_scope 안에 현재 확정값과 다른 유효 후보가 하나라도 있으면 proposal에 실제 변경 field를 최소 하나 넣는다.
+- 유효한 대안이 전혀 없을 때만 proposal을 완전히 비울 수 있다. reason_tags만 만들고 proposal을 비워 두지 않는다.
 - reason_tags는 실제 추천 근거만 짧게 1~3개 출력한다.
 - state를 직접 수정하지 않는다. proposal만 출력한다.'''+COMMON_JSON_ONLY_RULE
 
