@@ -49,7 +49,7 @@ SAMPLE_RATE = 24000
 
 # ── 참조 음성: 이 경로 한 줄만 바꾸면 된다 ─────────────────────────────
 PROMPT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tts_prompts')
-PROMPT_WAV = os.path.join(PROMPT_DIR, 'cedar2.wav')
+PROMPT_WAV = os.path.join(PROMPT_DIR, 'sansa_natural.wav')
 
 # 문장 사이 무음을 재생 직전에 이 길이(초)까지 늘린다. 쉼표·단어 속은 안 건드린다(tts_pause.py). 0 이면 끔
 SENTENCE_PAUSE_SEC = 0.60
