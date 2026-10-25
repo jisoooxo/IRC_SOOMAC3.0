@@ -279,7 +279,7 @@ Docker 과거 문제: tokenizer_config hash mismatch, main과 고정revision 캐
 
 ### 11.1 새 계정에 붙여넣을 시작 프롬프트
 
-**Goal 모드 시작/재개는 [IRC LLM Final goals](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final goals.md>) §4 프롬프트를 우선 사용한다.** GL01만 먼저 시작하며 다음 Goal을 자동 실행하지 않는다. 해당 문서에는 GL01~15의 분할 범위, 사용량을 알 수 없을 때의 중단 조건, 작업 전후 STATE/WORKLOG/NEXT 저장 규칙이 있다. 아래는 전체 맥락을 전달하는 참고 프롬프트이며 전체 작업의 무제한 Goal 실행 지시가 아니다.
+**Goal 모드 시작/재개는 [IRC LLM Final goals](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final goals.md>) §4 프롬프트를 우선 사용한다.** 최신 지시는 Goal 3개씩 순차 진행이다. BATCH01(GL01→GL02→GL03)부터 시작하고 묶음 내 선행 Goal 완료 후 다음으로 이어가되, 다음 묶음은 자동 시작하지 않는다. 사용량 중단·작업 전후 STATE/WORKLOG/NEXT 저장·별도 승인 경계는 유지한다. 아래는 전체 맥락용 참고 프롬프트이며 전체 작업의 무제한 Goal 실행 지시가 아니다.
 
 ```text
 /home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final handoff.md를 처음부터 읽고,

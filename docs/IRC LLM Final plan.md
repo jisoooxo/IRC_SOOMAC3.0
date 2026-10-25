@@ -450,7 +450,7 @@ Docker는 모델 revision/cache identity/hash를 맞춘다. `tokenizer_config.js
 
 ## 11. 작업 패키지 — 다른 Agent가 그대로 실행할 목록
 
-**실제 Goal 실행 단위는 [IRC LLM Final goals](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final goals.md>)의 GL01~15를 따른다.** W0~W9는 작업 영역이며 한 번에 전체를 Goal로 시작하지 않는다. 사용량 확인 불가를 포함한 중단 조건·작업 전후 체크포인트·재개 프롬프트를 그 문서에 명시했다. 계정 한도를 예측 가능하다고 가정하지 않는다. 최종 G0~G4 기준과 승인 경계는 그대로 유지한다.
+**실제 Goal 실행 단위는 [IRC LLM Final goals](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final goals.md>)의 GL01~15와 BATCH01~05를 따른다.** 사용자 최신 지시에 따라 한 묶음의 Goal 3개를 순차 진행하고 선행 완료 시 묶음 안의 다음 Goal로 이어간다. 세 번째 완료 후 다음 묶음은 자동 시작하지 않는다. W0~W9는 작업 영역이며 전체를 무제한 Goal로 시작하지 않는다. 사용량 중단 조건·작업 전후 저장은 유지하며 세 개 완료를 위해 우회하지 않는다. 최종 G0~G4 기준과 별도 승인 경계도 그대로 유지한다.
 
 아래 시간은 착수 후 작업량 추정이며 GPU 학습 시간은 제외한다. 실파일 규모와 새 로그 수 확인 후 갱신한다. 작업 상태는 모두 TODO이며 이번 문서 작성과 혼동하지 않는다.
 
