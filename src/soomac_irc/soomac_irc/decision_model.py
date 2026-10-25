@@ -40,14 +40,21 @@ def build_decision_model_input(session: SessionState, user_text: str, robot_stat
     return model_input
 
 
-def build_decision_inputs(session: SessionState, user_text: str, robot_state: dict, processor, repair: dict | None = None):
+def build_decision_inputs(
+    session: SessionState,
+    user_text: str,
+    robot_state: dict,
+    processor,
+    repair: dict | None = None,
+    system_prompt: str | None = None,
+):
     # processor가 만든 실제 token 수를 기준으로 입력 길이를 맞춘다.
     # 길면 가장 오래된 user/assistant 한 쌍부터 제거하고 현재 state와 message는 끝까지 보존한다.
     model_input = build_decision_model_input(session, user_text, robot_state, repair)
 
     while True:
         messages = [
-            {"role": "system", "content": DECISION_SYSTEM},
+            {"role": "system", "content": system_prompt or DECISION_SYSTEM},
             {"role": "user", "content": json.dumps(model_input, ensure_ascii=False, separators=(",", ":"))},
         ]
         inputs = processor.apply_chat_template(
@@ -90,7 +97,13 @@ def _parse_sparse_decision(raw: str) -> dict:
 
 #################### 실제 Decision 추론 함수 만들기 ####################
 
-def make_call_decision(model, processor, logger=None, adapter_name: str | None = None):
+def make_call_decision(
+    model,
+    processor,
+    logger=None,
+    adapter_name: str | None = None,
+    system_prompt: str | None = None,
+):
     # 모델과 tokenizer마다 stop token이 다를 수 있어 유효한 id만 중복 없이 사용한다.
     tokenizer = processor.tokenizer
     stop_ids = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<turn|>")]
@@ -121,7 +134,14 @@ def make_call_decision(model, processor, logger=None, adapter_name: str | None =
             "robot_state": copy.deepcopy(robot_state),
         }
         try:
-            messages, inputs, model_input = build_decision_inputs(session, user_text, robot_state, processor, repair)
+            messages, inputs, model_input = build_decision_inputs(
+                session,
+                user_text,
+                robot_state,
+                processor,
+                repair,
+                system_prompt=system_prompt,
+            )
             inputs = inputs.to(model.device)
             prompt_tokens = inputs["input_ids"].shape[1]
 

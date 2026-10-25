@@ -380,6 +380,12 @@ def index():
     return render_template('index.html')
 
 
+# 2026-10 화면 개편 전 디자인. 새 화면에 문제가 생기면 같은 서버에서 바로 되돌려 볼 수 있다.
+@app.route('/old')
+def index_old():
+    return render_template('index_old.html')
+
+
 @socketio.on('connect')
 def handle_connect():
     client_id = request.sid

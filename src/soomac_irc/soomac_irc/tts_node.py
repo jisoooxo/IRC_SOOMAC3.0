@@ -39,13 +39,32 @@ from cosyvoice.cli.cosyvoice import AutoModel
 
 MODEL_DIR = '/home/roma/models/audio/tts/Fun-CosyVoice3-0.5B-2512'
 OUTPUT_DIR = '/home/roma/ros2_ws/src/soomac_ai/src/tts_out'
-PROMPT_WAV = os.path.join(OUTPUT_DIR, 'prompt_5p5s.wav')
 LAST_WAV = os.path.join(OUTPUT_DIR, 'last.wav')
 SAMPLE_RATE = 24000
-PROMPT_TEXT = (
-    'You are a helpful assistant.<|endofprompt|>'
-    '반갑습니다. 산사의 아침 공기가 참으로 맑고 고요하지요?'
-)
+
+# 참조 음성 = (WAV, 그 WAV 에서 실제로 말한 문장). 둘이 어긋나면 안 된다.
+#   PROMPT_TEXT 는 생성하고 싶은 문장이 아니라 참조 WAV 의 전사다.
+#   TTS_PROMPT 환경변수로 고른다. 되돌릴 때: TTS_PROMPT=sansa
+PROMPT_PRESETS = {
+    'sansa': (
+        os.path.join(OUTPUT_DIR, 'prompt_5p5s.wav'),
+        '반갑습니다. 산사의 아침 공기가 참으로 맑고 고요하지요?'),
+    'cedar_short': (
+        os.path.join(OUTPUT_DIR, 'irc_cedar_short_pauses_24k.wav'),
+        '안녕하세요! 주문 확인했습니다. 요청하신 재료부터 차례대로 준비해 드릴게요.'),
+    'cedar_original': (
+        os.path.join(OUTPUT_DIR, 'irc_cedar_original_24k.wav'),
+        '안녕하세요! 주문 확인했습니다. 요청하신 재료부터 차례대로 준비해 드릴게요.'),
+    # cedar_short 의 끝 무음 0.09 초만 잘라 정확히 5.00 초로 맞춘 것.
+    #   첫 청크 = token_hop_len + (참조 토큰 수를 25 의 배수로 채우는 양) 이다(cosyvoice/cli/model.py 345행).
+    #   토큰은 초당 25개라 5.00 초(125개)면 채울 게 없어 첫 소리가 가장 빨리 나온다.
+    'cedar_short_5s': (
+        os.path.join(OUTPUT_DIR, 'irc_cedar_short_pauses_5s_24k.wav'),
+        '안녕하세요! 주문 확인했습니다. 요청하신 재료부터 차례대로 준비해 드릴게요.'),
+}
+PROMPT_NAME = os.environ.get('TTS_PROMPT') or 'cedar_short_5s'
+PROMPT_WAV, _prompt_transcript = PROMPT_PRESETS[PROMPT_NAME]
+PROMPT_TEXT = 'You are a helpful assistant.<|endofprompt|>' + _prompt_transcript
 
 OUT_SR = 48000 # resampleing Hz
 # 'sysdefault' 는 card 0(ALC897 아날로그 = 헤드폰)에 고정이다.
@@ -195,6 +214,7 @@ class TTSNode(Node):
         super().__init__('soomac_tts_node')
 
         self.get_logger().info('김도현 박지수 이준미 주재영 파이팅')
+        self.get_logger().info(f'참조 음성 {PROMPT_NAME}: {PROMPT_WAV}')
 
         self.cosyvoice_tts = AutoModel(model_dir=MODEL_DIR, fp16=False, load_trt=False) # tts 모델 객체!
 

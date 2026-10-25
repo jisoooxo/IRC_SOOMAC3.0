@@ -56,6 +56,14 @@ env/
 /evaluation_long_horizon/
 /evaluation_long_horizon_corrected/
 
+# Learning-first v4.3 training/audit workspace (canonical archive: SOOMAC_TRAINING_WORKSPACE)
+/training/learning_first_v43/
+/evaluation/v4_3/
+/docs/2026-10-24_llm_final_learning_first_goal.md
+/docs/2026-10-24_llm_final_phase1_3_audit.md
+/docs/2026-10-24_llm_final_phase4_5_docker_report.md
+/docs/2026-10-25_llm_final_3agent_dataset_audit.md
+
 # 실제 로봇 검증의 rosbag 원본
 /physical_robot_evaluation/rosbag_first_pass/
 

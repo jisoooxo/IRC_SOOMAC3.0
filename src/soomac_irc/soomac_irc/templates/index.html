@@ -3,95 +3,45 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>손님용 주문 화면 — 대화</title>
+  <title>SOOMAC 키친</title>
   <script>
-    const 가게이름 = '가게 이름';
+    const 가게이름 = 'SOOMAC 파스타 키친';
   </script>
   <style>
-    /* NVIDIA Elements DESIGN.md의 역할 기반 색상 체계만 가져온다.
-       Elements 컴포넌트나 런타임은 사용하지 않으며 아래 토큰은 이 화면의 CSS 계약이다. */
+    /* ============================================================
+       SOOMAC 오픈 키친 테마
+       - 레퍼런스: 따뜻한 펜던트 조명 아래의 어두운 나무·석재 오픈 키친
+       - 용기(트레이) 칸 위치·색·디자인은 기존 CSS 를 그대로 가져온다
+       - 상태 색: 작업 중=호박색, 확인 완료=바질 초록, 실패=토마토 빨강
+       ============================================================ */
     :root {
-      --ground:      #F0F2F4;
-      --ground:      oklch(95% .006 248);
-      --surface:     #FFFFFF;
-      --surface-2:   #F8F9FA;
-      --surface-2:   oklch(98% .003 248);
-      --line:        #D5D8DC;
-      --line-strong: #AEB3B9;
-      --ink:         #242528;
-      --ink:         oklch(20% .008 248);
-      --ink-soft:    #6D7177;
-      --ink-soft:    oklch(53% .01 248);
-      --ink-faint:   #92969C;
-      --accent:      #76B900;
-      --accent:      oklch(66% .18 127);
-      --accent-ink:  #101400;
-      --accent-weak: #EFF8DC;
-      --live:        #2F8F4E;
-      --info:        #2869D8;
-      --danger:      #CF3851;
-      --focus:       #242528;
+      --bg-0: #110c09;
+      --bg-1: #1b1410;
+      --panel: rgba(36, 27, 21, .86);
+      --panel-2: rgba(48, 37, 29, .9);
+      --line: rgba(232, 190, 140, .13);
+      --line-strong: rgba(232, 190, 140, .28);
+      --cream: #f4ead9;
+      --cream-soft: #d8cab5;
+      --cream-faint: #b3a28b;
+      --copper: #c9874b;
+      --amber: #f2a649;
+      --basil: #8fc46a;
+      --tomato: #e4604c;
+      --mustard: #d9a93a;
+      --slate: #86a6d4;
 
-      --radius-sm: 6px;
-      --radius-md: 8px;
-      --radius-lg: 14px;
-      --shadow-raised: 0 1px 2px rgb(18 22 26 / .06), 0 12px 32px rgb(18 22 26 / .07);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --pad: clamp(16px, 1.5vw, 28px);
 
-      --shell: 100vw;
-      --pad: clamp(16px, 2.4vw, 32px);
-
-      /* 손님은 팔 길이에서 흘끗 본다. 본문이 데스크톱 기준보다 훨씬 커야 한다 */
-      --t-say:   clamp(30px, 4.4vw, 54px);
-      --t-heard: clamp(19px, 2.4vw, 28px);
-      --t-past:  clamp(16px, 1.9vw, 21px);
-      --t-label: clamp(11px, 1.15vw, 13px);
-
-      --kr: 'Pretendard', 'Pretendard Variable', 'Noto Sans KR',
-            'Noto Sans CJK KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-
-      color-scheme: light;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --ground:      #101214;
-        --surface:     #1B1E21;
-        --surface-2:   #24282C;
-        --line:        #3C4146;
-        --line-strong: #656B72;
-        --ink:         #F5F7F8;
-        --ink-soft:    #ADB3B9;
-        --ink-faint:   #7F868D;
-        --accent:      #93D529;
-        --accent-ink:  #101400;
-        --accent-weak: #29351C;
-        --live:        #63D987;
-        --info:        #75A7FF;
-        --danger:      #FF778B;
-        --focus:       #F5F7F8;
-        --shadow-raised: 0 1px 2px rgb(0 0 0 / .24), 0 16px 38px rgb(0 0 0 / .2);
-        color-scheme: dark;
-      }
-    }
-    /* 뷰어의 테마 토글이 미디어쿼리를 양방향으로 이겨야 한다 */
-    :root[data-theme="light"] {
-      --ground: #F0F2F4; --ground: oklch(95% .006 248); --surface: #FFFFFF;
-      --surface-2: #F8F9FA; --surface-2: oklch(98% .003 248);
-      --line: #D5D8DC; --line-strong: #AEB3B9;
-      --ink: #242528; --ink: oklch(20% .008 248); --ink-soft: #6D7177; --ink-faint: #92969C;
-      --accent: #76B900; --accent: oklch(66% .18 127); --accent-ink: #101400;
-      --accent-weak: #EFF8DC; --live: #2F8F4E; --info: #2869D8; --danger: #CF3851; --focus: #242528;
-      --shadow-raised: 0 1px 2px rgb(18 22 26 / .06), 0 12px 32px rgb(18 22 26 / .07);
-      color-scheme: light;
-    }
-    :root[data-theme="dark"] {
-      --ground: #101214; --surface: #1B1E21; --surface-2: #24282C;
-      --line: #3C4146; --line-strong: #656B72;
-      --ink: #F5F7F8; --ink-soft: #ADB3B9; --ink-faint: #7F868D;
-      --accent: #93D529; --accent-ink: #101400; --accent-weak: #29351C;
-      --live: #63D987; --info: #75A7FF; --danger: #FF778B; --focus: #F5F7F8;
-      --shadow-raised: 0 1px 2px rgb(0 0 0 / .24), 0 16px 38px rgb(0 0 0 / .2);
+      --kr: 'Pretendard', 'Noto Sans CJK KR', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
       color-scheme: dark;
+
+      /* 기존 대시보드 CSS 가 참조하는 이름. 작업 중 빨강을 호박색으로 바꾼다 */
+      --dash-red: var(--amber);
+      --dash-green: var(--basil);
     }
 
     * { box-sizing: border-box; }
@@ -100,25 +50,40 @@
       margin: 0;
       height: 100vh;
       height: 100dvh;
-      background: var(--ground);
-      color: var(--ink);
+      overflow: hidden;
+      color: var(--cream);
       font-family: var(--kr);
       -webkit-font-smoothing: antialiased;
-      display: flex;
-      justify-content: center;
-      overflow: hidden;
+      /* 한국어는 단어 중간에서 줄을 바꾸지 않는다 ("소/스는" 방지) */
+      word-break: keep-all;
+      overflow-wrap: break-word;
+      background:
+        /* 펜던트 조명이 용기 위로 떨어지는 빛 */
+        radial-gradient(ellipse 30% 34% at 35% 2%, rgba(255, 178, 96, .20), transparent 72%),
+        radial-gradient(ellipse 18% 20% at 12% 0%, rgba(255, 178, 96, .10), transparent 70%),
+        radial-gradient(ellipse 18% 20% at 58% 0%, rgba(255, 178, 96, .10), transparent 70%),
+        linear-gradient(180deg, #1e1712 0%, var(--bg-0) 100%);
+    }
+    /* 석재 질감. 아주 옅게 깔아서 단색 화면 티를 없앤다 */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .22;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .4 0 0 0 0 .3 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
     .shell {
-      width: var(--shell);
+      position: relative;
+      width: 100vw;
       height: 100vh;
       height: 100dvh;
-      min-height: 0;
       padding: var(--pad);
       display: grid;
-      /* 사용자가 정한 세로 7:3 비율: 대화 / 주문·작업 진행. */
-      grid-template-rows: auto minmax(0, 7fr) minmax(220px, 3fr) auto;
-      gap: clamp(12px, 1.5vw, 20px);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(12px, 1.1vw, 18px);
     }
 
     /* ── 머리글 ───────────────────────────────────────────────── */
@@ -126,619 +91,111 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--line);
+      gap: 20px;
+      min-height: 56px;
     }
-
-    .top-main {
-      min-width: 0;
-      display: flex;
-      align-items: center;
-      gap: clamp(12px, 1.5vw, 20px);
-    }
-
-    .nav-actions {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-
+    .brand-wrap { display: flex; align-items: center; gap: 18px; min-width: 0; }
+    .nav-actions { display: flex; gap: 8px; }
     .nav-btn {
       min-height: 48px;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 11px;
-      color: var(--ink-soft);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
+      gap: 8px;
+      padding: 8px 14px;
+      color: var(--cream-soft);
+      background: transparent;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
       font: inherit;
-      font-size: clamp(12px, 1.15vw, 14px);
-      font-weight: 680;
+      font-size: 15px;
+      font-weight: 600;
       cursor: pointer;
       transition: color .15s ease, border-color .15s ease, background-color .15s ease;
     }
-    .nav-btn:hover { color: var(--ink); border-color: var(--line-strong); }
-    .nav-btn:active { background: var(--surface-2); }
-    .nav-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-    .nav-btn:disabled { color: var(--ink-faint); cursor: not-allowed; opacity: .55; }
-    .nav-icon { font-size: 1.3em; line-height: 1; }
+    .nav-btn:hover { color: var(--cream); border-color: var(--copper); }
+    .nav-btn:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+    .nav-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .nav-icon { font-size: 1.2em; line-height: 1; }
 
     .store {
-      font-size: var(--t-heard);
-      font-weight: 620;
-      letter-spacing: -0.02em;
       margin: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-size: clamp(24px, 1.7vw, 32px);
+      font-weight: 800;
+      letter-spacing: -.02em;
+      color: var(--cream);
     }
-
-    .store .tbd {
-      color: var(--ink-faint);
-      font-weight: 450;
-      font-size: 0.62em;
-      letter-spacing: 0;
-      margin-left: 8px;
+    .store .tbd { display: none; }
+    .store::before {
+      content: '';
+      align-self: center;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 0 4px rgba(242, 166, 73, .16), 0 0 18px rgba(242, 166, 73, .6);
     }
-
+    .brand-copy {
+      color: var(--cream-faint);
+      font-size: clamp(15px, 1.05vw, 19px);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .top-right { display: flex; align-items: center; gap: 22px; }
     .step {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: var(--t-label);
-      font-weight: 650;
-      letter-spacing: 0.05em;
-      color: var(--ink-soft);
-      font-variant-numeric: tabular-nums;
+      color: var(--cream-faint);
+      font-size: 14px;
+      font-weight: 600;
       white-space: nowrap;
     }
-
     .step::before {
       content: '';
-      width: 8px;
-      height: 8px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
-      background: var(--line-strong);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--line-strong) 14%, transparent);
+      background: var(--cream-faint);
     }
-    .step[data-status="connected"] { color: var(--live); }
-    .step[data-status="connected"]::before { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 14%, transparent); }
-    .step[data-status="error"] { color: var(--danger); }
-    .step[data-status="error"]::before { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent); }
+    .step[data-status="connected"] { color: var(--basil); }
+    .step[data-status="connected"]::before { background: var(--basil); box-shadow: 0 0 10px rgba(143, 196, 106, .7); }
+    .step[data-status="error"] { color: var(--tomato); }
+    .step[data-status="error"]::before { background: var(--tomato); }
+    .clock { text-align: right; color: var(--cream-faint); font-size: 14px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+    .clock strong { display: block; margin-top: 2px; color: var(--cream); font-size: clamp(22px, 1.6vw, 28px); font-weight: 700; }
 
-    /* ── 대화 ─────────────────────────────────────────────────── */
-    .talk {
-      display: flex;
-      flex-direction: column;
-      gap: clamp(14px, 1.9vw, 26px);
-      min-height: 0;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      scrollbar-gutter: stable;
-      scrollbar-width: thin;
-      scrollbar-color: var(--line-strong) transparent;
-      padding: 4px clamp(10px, 1.3vw, 18px) 8px 2px;
-      scroll-behavior: smooth;
-    }
-
-    /* 대화가 적을 때는 아래에 붙이고, 많아지면 오른쪽 스크롤바로 이전 대화를 읽는다. */
-    .talk::before { content: ''; flex: 1 0 0; }
-    .talk::-webkit-scrollbar { width: 9px; }
-    .talk::-webkit-scrollbar-track { background: transparent; }
-    .talk::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
-
-    .turn { display: flex; flex: 0 0 auto; }
-    .turn.me { justify-content: flex-end; }
-
-    /* 지난 발화는 작아지고 흐려진다. 손님이 되돌아 읽을 일이 없고,
-       최신 한 쌍만 또렷하면 흘끗 봐도 지금 상황을 안다 */
-    .turn.past .bubble,
-    .turn.past .say { font-size: var(--t-past); color: var(--ink-soft); }
-    .turn.past .bubble { box-shadow: none; }
-
-    .say {
-      max-width: 22ch;
-      font-size: var(--t-say);
-      font-weight: 650;
-      line-height: 1.28;
-      letter-spacing: -0.025em;
-      text-wrap: balance;
-      margin: 0;
-    }
-
-    .say .em { color: var(--live); }
-
-    .bubble {
-      max-width: 26ch;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-lg);
-      padding: 12px 18px;
-      font-size: var(--t-heard);
-      line-height: 1.4;
-      margin: 0;
-      box-shadow: 0 1px 2px rgb(18 22 26 / .04);
-    }
-
-    .turn.me .bubble {
-      border-radius: var(--radius-lg) var(--radius-sm) var(--radius-lg) var(--radius-lg);
-      background: var(--surface-2);
-      border-color: transparent;
-      box-shadow: none;
-    }
-
-    /* 알아들은 말임을 밝힌다. 오인식이 났을 때 손님이 바로 알아채는 유일한 단서다 */
-    .heard-label {
-      display: block;
-      font-size: var(--t-label);
-      letter-spacing: 0.13em;
-      text-transform: uppercase;
-      color: var(--ink-faint);
-      margin-bottom: 5px;
-      text-align: right;
-    }
-
-    .turn.past .heard-label { display: none; }
-
-    .enter { animation: rise .34s cubic-bezier(.2,.7,.3,1) both; }
-    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
-
-    /* ── 주문·작업 진행: 화면 높이의 아래 30% ───────────────── */
-    .progress-panel {
-      min-height: 0;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-      gap: 12px;
-      padding: clamp(14px, 1.5vw, 20px);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-raised);
-      overflow: hidden;
-    }
-
-    .progress-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .progress-title {
-      margin: 0;
-      font-size: clamp(16px, 1.5vw, 20px);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .phase-badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      padding: 5px 10px;
-      border-radius: 999px;
-      color: var(--ink-soft);
-      background: var(--surface-2);
-      border: 1px solid var(--line);
-      font-size: var(--t-label);
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .phase-badge[data-phase="running"] { color: var(--info); border-color: color-mix(in srgb, var(--info) 35%, var(--line)); }
-    .phase-badge[data-phase="completed"] { color: var(--live); border-color: color-mix(in srgb, var(--live) 35%, var(--line)); }
-    .phase-badge[data-phase="error"] { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); }
-
-    .progress-grid {
-      min-height: 0;
-      display: grid;
-      grid-template-columns: 1.3fr 1.35fr 1fr 1fr;
-      gap: 10px;
-    }
-
-    .status-card {
-      min-width: 0;
-      min-height: 0;
-      padding: 11px 12px;
-      background: var(--surface-2);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: var(--line-strong) transparent;
-    }
-
-    .status-card h2 {
-      margin: 0 0 9px;
-      color: var(--ink-faint);
-      font-size: var(--t-label);
-      font-weight: 750;
-      letter-spacing: .08em;
-    }
-
-    .empty-state {
-      margin: 0;
-      color: var(--ink-faint);
-      font-size: clamp(12px, 1.15vw, 14px);
-      line-height: 1.45;
-    }
-
-    .selected-chips,
-    .completed-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      max-width: 100%;
-      padding: 6px 9px;
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      color: var(--ink);
-      font-size: clamp(12px, 1.15vw, 14px);
-      font-weight: 620;
-      line-height: 1.25;
-      overflow-wrap: anywhere;
-    }
-    .completed-chips .chip { color: var(--live); border-color: color-mix(in srgb, var(--live) 28%, var(--line)); }
-
-    .target-list {
-      display: grid;
-      gap: 6px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      counter-reset: target;
-    }
-
-    .target-list li {
-      counter-increment: target;
-      display: grid;
-      grid-template-columns: 20px minmax(0, 1fr);
-      align-items: center;
-      gap: 7px;
-      color: var(--ink-soft);
-      font-size: clamp(12px, 1.15vw, 14px);
-      line-height: 1.3;
-    }
-    .target-list li::before {
-      content: counter(target);
-      display: grid;
-      place-items: center;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      color: var(--ink-faint);
-      font-size: 10px;
-      font-weight: 750;
-    }
-    .target-list li.current { color: var(--ink); font-weight: 700; }
-    .target-list li.current::before { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
-    .target-list li.completed { color: var(--ink-faint); text-decoration: line-through; }
-    .target-list li.completed::before { content: '✓'; color: var(--live); border-color: var(--live); }
-    .target-list li.target-empty { display: block; }
-    .target-list li.target-empty::before { display: none; }
-
-    .current-focus {
-      display: grid;
-      align-content: center;
-      min-height: 54px;
-      padding-left: 11px;
-      border-left: 3px solid var(--accent);
-    }
-    .current-focus strong {
-      color: var(--ink);
-      font-size: clamp(16px, 1.55vw, 21px);
-      line-height: 1.28;
-      letter-spacing: -0.02em;
-      overflow-wrap: anywhere;
-    }
-    .current-focus span {
-      margin-top: 4px;
-      color: var(--ink-soft);
-      font-size: var(--t-label);
-    }
-
-    /* ── 마이크 상태 ──────────────────────────────────────────── */
-    .mic {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: clamp(14px, 1.7vw, 20px) clamp(18px, 2vw, 26px);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-raised);
-      transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
-    }
-
-    .mic[data-state="listening"] {
-      border-color: var(--live);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 12%, transparent), var(--shadow-raised);
-    }
-    .mic[data-state="thinking"] { border-color: var(--info); }
-    .mic[data-state="speaking"]  { background: var(--surface-2); border-color: transparent; }
-
-    .meter { display: flex; align-items: center; gap: 4px; height: 30px; }
-    .meter i {
-      display: block;
-      width: 4px;
-      height: 8px;
-      border-radius: 2px;
-      background: var(--ink-faint);
-      transform-origin: center;
-    }
-
-    .mic[data-state="listening"] .meter i {
-      background: var(--live);
-      animation: bounce 1s ease-in-out infinite;
-    }
-    .meter i:nth-child(2) { animation-delay: .12s; }
-    .meter i:nth-child(3) { animation-delay: .24s; }
-    .meter i:nth-child(4) { animation-delay: .36s; }
-    .meter i:nth-child(5) { animation-delay: .48s; }
-    @keyframes bounce { 0%,100% { height: 8px; } 50% { height: 28px; } }
-
-    .mic[data-state="thinking"] .meter i {
-      background: var(--info);
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
-
-    .mic-text { font-size: var(--t-heard); font-weight: 560; letter-spacing: -0.01em; }
-    .mic-hint { font-size: var(--t-label); color: var(--ink-soft); margin-left: auto; text-align: right; }
-
-    /* ── 시작 화면 ────────────────────────────────────────────── */
-    .start {
-      position: fixed;
-      inset: 0;
-      background: var(--ground);
-      display: grid;
-      place-items: center;
-      gap: 0;
-      z-index: 5;
-    }
-    .start::before {
-      content: '';
-      position: absolute;
-      inset: 0 0 auto;
-      height: 5px;
-      background: var(--accent);
-    }
-    .start::after {
-      content: '';
-      position: absolute;
-      width: min(70vw, 760px);
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: color-mix(in srgb, var(--accent) 8%, transparent);
-      filter: blur(90px);
-      pointer-events: none;
-      transform: translateY(28%);
-    }
-    .start[hidden] { display: none; }
-
-    .start-inner {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      display: grid;
-      gap: clamp(28px, 4vw, 48px);
-      padding: var(--pad);
-    }
-
-    .start h1 {
-      margin: 0;
-      font-size: clamp(34px, 5.6vw, 68px);
-      font-weight: 700;
-      letter-spacing: -0.035em;
-      line-height: 1.14;
-      text-wrap: balance;
-    }
-    .start p { margin: 0; font-size: var(--t-heard); color: var(--ink-soft); }
-
-    .start-btn {
-      justify-self: center;
-      font: inherit;
-      font-size: clamp(20px, 2.3vw, 27px);
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      color: var(--accent-ink);
-      background: var(--accent);
-      border: 1px solid color-mix(in srgb, var(--accent) 84%, black);
-      border-radius: var(--radius-lg);
-      padding: clamp(18px, 2vw, 24px) clamp(48px, 6vw, 76px);
-      cursor: pointer;
-      box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 24%, transparent);
-      transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
-    }
-    .start-btn:hover { filter: brightness(1.04); box-shadow: 0 14px 30px color-mix(in srgb, var(--accent) 30%, transparent); }
-    .start-btn:active { transform: translateY(1px) scale(.99); }
-    .start-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
-
-    /* ── 작업 초기화 확인 ─────────────────────────────────────── */
-    .reset-dialog {
-      width: min(480px, calc(100vw - 32px));
-      padding: 0;
-      color: var(--ink);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      box-shadow: 0 24px 70px rgb(0 0 0 / .24);
-    }
-    .reset-dialog::backdrop { background: rgb(12 15 18 / .48); backdrop-filter: blur(3px); }
-    .reset-dialog-inner { display: grid; gap: 18px; padding: 24px; }
-    .reset-dialog h2 { margin: 0; font-size: clamp(21px, 2.1vw, 27px); letter-spacing: -0.025em; }
-    .reset-dialog p { margin: 0; color: var(--ink-soft); font-size: 15px; line-height: 1.55; }
-    .reset-dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .dialog-btn {
-      min-height: 48px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--line);
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .dialog-btn.cancel { color: var(--ink); background: var(--surface); }
-    .dialog-btn.confirm { color: white; background: var(--danger); border-color: var(--danger); }
-    .dialog-btn:disabled { cursor: wait; opacity: .6; }
-    .reset-error { color: var(--danger) !important; font-size: 13px !important; }
-    .reset-error[hidden] { display: none; }
-
-    /* VLM이 실제 판정에 사용한 3분할 snapshot만 표시한다. */
-    .vlm-dialog {
-      width: min(1240px, calc(100vw - 32px));
-      padding: 0;
-      color: var(--ink);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      box-shadow: 0 24px 70px rgb(0 0 0 / .28);
-    }
-    .vlm-dialog::backdrop { background: rgb(12 15 18 / .58); backdrop-filter: blur(4px); }
-    .vlm-dialog-inner { display: grid; gap: 14px; padding: 20px; }
-    .vlm-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .vlm-dialog-head h2 { margin: 0; font-size: clamp(20px, 2vw, 26px); }
-    .vlm-panel-labels {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1px;
-      text-align: center;
-      color: var(--ink-soft);
-      font-size: 13px;
-      font-weight: 800;
-    }
-    .vlm-snapshot-image {
-      display: block;
-      width: 100%;
-      aspect-ratio: 4 / 1;
-      object-fit: contain;
-      background: #1c2026;
-      border-radius: var(--radius-md);
-    }
-    .vlm-snapshot-fallback {
-      min-height: 180px;
-      margin: 0;
-      display: grid;
-      place-items: center;
-      color: var(--ink-soft);
-      background: var(--surface-2);
-      border: 1px dashed var(--line-strong);
-      border-radius: var(--radius-md);
-      font-weight: 700;
-    }
-    .vlm-snapshot-fallback[hidden] { display: none; }
-    .vlm-close-btn {
-      min-width: 84px;
-      min-height: 42px;
-      color: var(--ink);
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .enter, .meter i { animation: none !important; }
-      .start-btn { transition: none; }
-      .talk { scroll-behavior: auto; }
-      .nav-btn { transition: none; }
-    }
-
-    @media (max-width: 800px) {
-      body { height: auto; min-height: 100dvh; overflow-y: auto; }
-      .shell {
-        height: auto;
-        min-height: 100dvh;
-        grid-template-rows: auto minmax(55vh, 7fr) auto auto;
-      }
-      .progress-grid { grid-template-columns: 1fr 1fr; }
-      .status-card { min-height: 120px; }
-      .nav-btn .nav-label { display: none; }
-    }
-
-
-    /* ============================================================
-       2026-09 Dashboard UI
-       - 기존 Socket.IO/주문/초기화 로직은 유지한다.
-       - 화면 표현만: 진행 단계 + 실제 용기 + 우측 채팅 + 작은 마이크 상태로 확장한다.
-       ============================================================ */
-    :root {
-      --dash-red: #ff363b;
-      --dash-red-soft: #fff0f1;
-      --dash-green: #2eb85c;
-      --dash-green-soft: #eefbf3;
-      --dash-bluegray: #7f8da3;
-      --tray: #1f242a;
-      --tray-2: #282e35;
-      --tray-line: #4a525d;
-    }
-
-    body {
-      background:
-        radial-gradient(circle at 72% 18%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 28%),
-        #f5f8fb;
-    }
-
-    .shell {
-      width: 100vw;
-      max-width: none;
-      height: 100vh;
-      height: 100dvh;
-      padding: clamp(14px, 1.6vw, 26px);
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-      gap: clamp(12px, 1.3vw, 18px);
-    }
-
-    .top {
-      min-height: 52px;
-      padding: 0 2px 12px;
-    }
-
-    .brand-wrap { display: flex; align-items: center; gap: 16px; min-width: 0; }
-    .store { display: flex; align-items: center; gap: 8px; font-size: clamp(22px, 2vw, 30px); font-weight: 800; color: #12213b; }
-    .store::before { content: '◆'; color: var(--dash-green); font-size: .72em; transform: rotate(25deg); }
-    .brand-copy { color: #748197; font-size: clamp(14px, 1.25vw, 20px); font-weight: 560; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .top-right { display: flex; align-items: center; gap: 16px; }
-    .clock { text-align: right; color: #748197; font-variant-numeric: tabular-nums; line-height: 1.12; }
-    .clock strong { display: block; color: #12213b; font-size: clamp(18px, 1.75vw, 26px); margin-top: 3px; }
-    .step { font-size: 11px; }
-
+    /* ── 본문 배치 ────────────────────────────────────────────── */
     .dashboard {
       min-height: 0;
       display: grid;
-      grid-template-columns: minmax(0, 2.12fr) minmax(330px, .92fr);
-      gap: clamp(14px, 1.5vw, 22px);
+      grid-template-columns: minmax(0, 2.05fr) minmax(380px, .95fr);
+      gap: clamp(14px, 1.2vw, 22px);
     }
-
     .workspace {
       min-width: 0;
       min-height: 0;
       display: grid;
       grid-template-rows: auto minmax(300px, 1fr) auto;
-      gap: clamp(12px, 1.25vw, 18px);
+      gap: clamp(12px, 1vw, 16px);
     }
-
     .card {
-      background: rgba(255,255,255,.96);
-      border: 1px solid #e6ebf0;
-      border-radius: 18px;
-      box-shadow: 0 8px 28px rgb(27 39 54 / .055);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 230, 200, .04);
+      backdrop-filter: blur(6px);
     }
 
-    /* 전체 진행 상황 */
-    .overall-progress { padding: clamp(14px, 1.35vw, 20px) clamp(14px, 1.6vw, 24px) 12px; }
-    .section-title-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
-    .section-title-row h2 { margin: 0; font-size: clamp(17px, 1.45vw, 22px); letter-spacing: -.03em; }
-    .progress-count { color: #17233a; font-size: clamp(15px, 1.2vw, 18px); font-weight: 750; font-variant-numeric: tabular-nums; }
+    /* ── 진행 단계: 주방 주문 레일 ───────────────────────────── */
+    .overall-progress { padding: 16px 24px 14px; }
+    .section-title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+    .section-title-row h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--cream-soft); }
+    .progress-count { color: var(--amber); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
 
     .stage-track {
       position: relative;
@@ -749,25 +206,27 @@
       margin: 0;
       padding: 0;
     }
+    /* 구리 레일 */
     .stage-track::before {
       content: '';
       position: absolute;
-      top: 23px;
+      top: 21px;
       left: 6.5%;
       right: 6.5%;
-      height: 4px;
+      height: 3px;
       border-radius: 999px;
-      background: #dce2e9;
+      background: linear-gradient(90deg, rgba(201, 135, 75, .25), rgba(201, 135, 75, .4), rgba(201, 135, 75, .25));
     }
     .stage-progress-line {
       position: absolute;
-      top: 23px;
+      top: 21px;
       left: 6.5%;
       width: 0;
-      height: 4px;
+      height: 3px;
       border-radius: 999px;
-      background: var(--dash-green);
-      transition: width .35s ease;
+      background: linear-gradient(90deg, var(--copper), var(--amber));
+      box-shadow: 0 0 12px rgba(242, 166, 73, .55);
+      transition: width .45s ease;
       z-index: 1;
       pointer-events: none;
     }
@@ -776,37 +235,478 @@
       z-index: 2;
       display: grid;
       justify-items: center;
-      gap: 7px;
+      gap: 6px;
       text-align: center;
-      color: #8995a7;
+      color: var(--cream-faint);
       min-width: 0;
     }
     .stage-dot {
-      width: 50px;
-      height: 50px;
+      position: relative;
+      width: 45px;
+      height: 45px;
       display: grid;
       place-items: center;
       border-radius: 50%;
-      background: #f0f3f7;
-      border: 1px solid #e2e7ed;
-      box-shadow: 0 3px 10px rgb(32 43 55 / .04);
-      font-size: 22px;
-      transition: .25s ease;
+      color: var(--cream-faint);
+      background: #2a2019;
+      border: 1.5px solid var(--line-strong);
+      font-size: 17px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      transition: background-color .3s ease, border-color .3s ease, box-shadow .3s ease;
     }
-    .stage-name { color: inherit; font-size: clamp(11px, 1vw, 14px); font-weight: 750; white-space: nowrap; }
-    .stage-state { min-height: 16px; color: #a0a9b7; font-size: 11px; font-weight: 650; }
-    .stage.done { color: #233148; }
-    .stage.done .stage-dot { color: white; background: var(--dash-green); border-color: var(--dash-green); }
-    .stage.done .stage-state { color: var(--dash-green); }
-    .stage.active { color: #18243a; }
+    .stage-name { color: inherit; font-size: 18px; font-weight: 700; white-space: nowrap; }
+    .stage-state { min-height: 22px; color: var(--cream-faint); font-size: 18px; font-weight: 700; }
+
+    .stage.done { color: var(--cream-soft); }
+    .stage.done .stage-dot { font-size: 0; color: #1b130d; background: var(--cream-soft); border-color: var(--cream-soft); }
+    .stage.done .stage-dot::after { content: '✓'; font-size: 20px; font-weight: 900; }
+    .stage.done .stage-state { color: var(--basil); }
+    .stage.skipped .stage-dot { background: #2a2019; border-style: dashed; border-color: var(--cream-faint); color: var(--cream-faint); }
+    .stage.skipped .stage-dot::after { content: '–'; }
+    .stage.skipped .stage-state { color: var(--cream-faint); }
+    .stage.active { color: var(--cream); }
     .stage.active .stage-dot {
-      color: var(--dash-red);
-      background: #ffe8e9;
-      border-color: #ffc8cb;
-      box-shadow: 0 0 0 8px rgba(255,54,59,.06);
+      color: #1b130d;
+      background: var(--amber);
+      border-color: var(--amber);
+      box-shadow: 0 0 0 7px rgba(242, 166, 73, .14), 0 0 28px rgba(242, 166, 73, .55);
     }
-    .stage.active .stage-state { color: var(--dash-red); }
-    .stage.skipped .stage-state { color: #9aa4b2; }
+    .stage.active .stage-state { color: var(--amber); }
+    body:has(.phase-badge[data-tech="vlmfail"]) .stage.active .stage-dot,
+    body:has(.phase-badge[data-tech="error"]) .stage.active .stage-dot {
+      font-size: 0;
+      background: var(--tomato);
+      border-color: var(--tomato);
+      box-shadow: 0 0 0 7px rgba(228, 96, 76, .16), 0 0 26px rgba(228, 96, 76, .5);
+    }
+    body:has(.phase-badge[data-tech="vlmfail"]) .stage.active .stage-dot::after,
+    body:has(.phase-badge[data-tech="error"]) .stage.active .stage-dot::after { content: '!'; font-size: 22px; font-weight: 900; color: #fff; }
+    body:has(.phase-badge[data-tech="vlmfail"]) .stage.active .stage-state,
+    body:has(.phase-badge[data-tech="error"]) .stage.active .stage-state { color: var(--tomato); }
+
+    /* ── 용기가 놓인 나무 조리대 ─────────────────────────────── */
+    .tray-card {
+      position: relative;
+      min-height: 0;
+      padding: clamp(16px, 1.5vw, 24px);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 60% 70% at 50% 0%, rgba(255, 186, 110, .20), transparent 70%),
+        repeating-linear-gradient(90deg, rgba(255, 220, 180, .018) 0 2px, transparent 2px 9px),
+        linear-gradient(180deg, #33241a 0%, #241911 100%);
+    }
+
+    /* ── 현재 작업 ───────────────────────────────────────────── */
+    .current-work-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto minmax(260px, .95fr);
+      align-items: center;
+      gap: 18px 22px;
+      padding: 16px 22px;
+    }
+    .work-heading { grid-column: 1 / -1; margin: 0 0 -6px; font-size: 19px; font-weight: 700; color: var(--cream-soft); }
+    .current-order-summary {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(255, 230, 200, .04);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+    }
+    .current-order-label { margin-right: 6px; color: var(--copper); font-size: 18px; font-weight: 800; }
+    .selected-chips, .completed-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 999px;
+      color: var(--cream);
+      background: rgba(201, 135, 75, .16);
+      border: 1px solid rgba(201, 135, 75, .35);
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .empty-state { margin: 0; color: var(--cream-faint); font-size: 15px; }
+    .ingredient-photo {
+      width: 104px;
+      height: 80px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: var(--radius-md);
+      background: #2a2019;
+      border: 1px solid var(--line);
+      color: var(--cream-faint);
+      font-size: 34px;
+    }
+    .ingredient-photo.has-image { padding: 0; }
+    .current-ingredient-asset { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; user-select: none; }
+    .ingredient-copy strong { display: block; margin-bottom: 4px; color: var(--cream); font-size: clamp(22px, 1.5vw, 27px); font-weight: 800; letter-spacing: -.01em; }
+    .ingredient-copy span { color: var(--cream-soft); font-size: 17px; }
+    .work-divider { width: 1px; height: 56px; background: var(--line-strong); }
+    .work-note { display: flex; align-items: center; gap: 14px; color: var(--cream-soft); font-size: 16px; line-height: 1.5; }
+    .work-note .note-icon {
+      flex: 0 0 auto;
+      width: 4px;
+      height: 44px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--amber), var(--copper));
+    }
+
+    /* ── 오른쪽 대화 ─────────────────────────────────────────── */
+    .chat-panel {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      overflow: hidden;
+    }
+    .chat-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+    .chat-head h2 { margin: 0; font-size: 21px; font-weight: 800; color: var(--cream); }
+
+    .robot-presence {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+    .robot-orb {
+      position: relative;
+      flex: none;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 34%, #fff1d2 0%, #f6b866 30%, #c9874b 62%, #6b3f1d 100%);
+      box-shadow: 0 0 30px rgba(242, 166, 73, .45), inset 0 -6px 12px rgba(0, 0, 0, .25);
+      transition: box-shadow .3s ease;
+    }
+    /* 일하는 중: 구슬 둘레를 천천히 도는 빛 */
+    .robot-orb::after {
+      content: '';
+      position: absolute;
+      inset: -7px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: var(--amber);
+      opacity: 0;
+      transition: opacity .3s ease;
+    }
+    .chat-panel:has(.phase-badge[data-tech="working"]) .robot-orb::after { opacity: 1; animation: orb-spin 1.8s linear infinite; }
+    .chat-panel:has(.mic[data-state="speaking"]) .robot-orb { animation: orb-pulse 1.2s ease-in-out infinite; }
+    .chat-panel:has(.mic[data-state="listening"]) .robot-orb { box-shadow: 0 0 0 6px rgba(143, 196, 106, .25), 0 0 36px rgba(143, 196, 106, .55); }
+    /* 실패·오류: 구슬도 토마토색으로, 움직임은 멈춘다 */
+    .chat-panel:has(.phase-badge[data-tech="vlmfail"]) .robot-orb,
+    .chat-panel:has(.phase-badge[data-tech="error"]) .robot-orb {
+      background: radial-gradient(circle at 38% 34%, #ffd9cf 0%, #f08a74 30%, #c94f3c 62%, #5e2016 100%);
+      box-shadow: 0 0 32px rgba(228, 96, 76, .55), inset 0 -6px 12px rgba(0, 0, 0, .25);
+      animation: none;
+    }
+    .chat-panel:has(.phase-badge[data-tech="vlmfail"]) .robot-orb::after,
+    .chat-panel:has(.phase-badge[data-tech="error"]) .robot-orb::after { opacity: 0; animation: none; }
+    @keyframes orb-spin { to { transform: rotate(360deg); } }
+    @keyframes orb-pulse { 50% { transform: scale(1.08); box-shadow: 0 0 46px rgba(242, 166, 73, .75), inset 0 -6px 12px rgba(0, 0, 0, .25); } }
+    .robot-caption { margin: 0; color: var(--cream); font-size: clamp(19px, 1.25vw, 23px); font-weight: 700; line-height: 1.4; }
+
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 6px 13px;
+      border-radius: 999px;
+      color: var(--cream-soft);
+      background: rgba(255, 230, 200, .06);
+      border: 1px solid var(--line);
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .phase-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--cream-faint); }
+    .phase-badge[data-tech="working"] { color: var(--amber); border-color: rgba(242, 166, 73, .4); }
+    .phase-badge[data-tech="working"]::before { background: var(--amber); animation: pulse-dot 1.1s infinite; }
+    .phase-badge[data-tech="workdone"] { color: var(--cream); }
+    .phase-badge[data-tech="workdone"]::before { background: var(--cream-soft); }
+    .phase-badge[data-tech="verifying"] { color: var(--basil); border-color: rgba(143, 196, 106, .4); }
+    .phase-badge[data-tech="verifying"]::before { background: var(--basil); animation: pulse-dot 1.1s infinite; }
+    .phase-badge[data-tech="verified"] { color: var(--basil); border-color: rgba(143, 196, 106, .4); }
+    .phase-badge[data-tech="verified"]::before { background: var(--basil); }
+    .phase-badge[data-tech="error"],
+    .phase-badge[data-tech="vlmfail"] { color: var(--tomato); border-color: rgba(228, 96, 76, .45); }
+    .phase-badge[data-tech="error"]::before,
+    .phase-badge[data-tech="vlmfail"]::before { background: var(--tomato); }
+    .phase-badge[data-tech="retried"] { color: var(--slate); }
+    .phase-badge[data-tech="retried"]::before { background: var(--slate); }
+    .phase-badge[data-tech="uncertain"] { color: var(--mustard); }
+    .phase-badge[data-tech="uncertain"]::before { background: var(--mustard); animation: pulse-dot 1.1s infinite; }
+    @keyframes pulse-dot { 50% { opacity: .35; transform: scale(.8); } }
+
+    .talk {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 22px 22px 14px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-strong) transparent;
+      scroll-behavior: smooth;
+    }
+    /* 대화가 적을 때는 아래(마이크 쪽)에 붙인다 */
+    .talk::before { content: ''; flex: 1 0 0; }
+    .turn { display: flex; align-items: flex-start; gap: 12px; flex: 0 0 auto; }
+    .turn.bot { padding-right: 8%; }
+    .turn.me { justify-content: flex-end; padding-left: 14%; }
+
+    /* 로봇 얼굴 대신 빛나는 점 하나. 사람 흉내를 내지 않는다 */
+    .turn.bot::before {
+      content: '';
+      flex: 0 0 auto;
+      width: 12px;
+      height: 12px;
+      margin-top: 14px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 14px rgba(242, 166, 73, .75);
+    }
+    .turn.bot.past::before { background: var(--cream-faint); box-shadow: none; }
+    .chat-panel:has(.mic[data-state="speaking"]) .turn.bot:not(.past)::before { animation: breathe 1.4s ease-in-out infinite; }
+    @keyframes breathe { 50% { transform: scale(1.45); box-shadow: 0 0 26px rgba(242, 166, 73, .95); } }
+
+    .say, .bubble {
+      margin: 0;
+      max-width: 100%;
+      color: var(--cream);
+      font-size: clamp(20px, 1.35vw, 25px);
+      font-weight: 600;
+      line-height: 1.45;
+      letter-spacing: -.01em;
+      text-wrap: pretty;
+    }
+    .say {
+      padding: 10px 0 0;
+    }
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 18px 6px 18px 18px;
+      background: rgba(201, 135, 75, .18);
+      border: 1px solid rgba(201, 135, 75, .32);
+    }
+    .heard-label {
+      display: block;
+      margin: 0 4px 6px 0;
+      text-align: right;
+      color: var(--cream-faint);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .turn.past .say, .turn.past .bubble { font-size: 17px; color: var(--cream-faint); }
+    .turn.past .bubble { background: rgba(255, 230, 200, .04); border-color: var(--line); }
+    .turn.past .heard-label { display: none; }
+    .enter { animation: rise .36s cubic-bezier(.2, .7, .3, 1) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+    /* ── 마이크: 언제 말해야 하는지가 가장 잘 보여야 한다 ─────── */
+    .mic {
+      margin: 0 18px 18px;
+      min-height: 84px;
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr);
+      grid-template-rows: auto auto;
+      column-gap: 14px;
+      row-gap: 2px;
+      align-items: center;
+      border-radius: 18px;
+      background: rgba(255, 230, 200, .05);
+      border: 1px solid var(--line);
+      transition: background-color .25s ease, border-color .25s ease;
+    }
+    .mic::before {
+      content: '';
+      grid-column: 1;
+      grid-row: 1 / 3;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background-color: rgba(255, 230, 200, .08);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f4ead9' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 26px;
+      transition: background-color .25s ease, box-shadow .25s ease;
+    }
+    .meter { display: none; }
+    .mic-text { grid-column: 2; color: var(--cream-soft); font-size: clamp(20px, 1.3vw, 24px); font-weight: 800; }
+    .mic-hint { grid-column: 2; margin: 0; color: var(--cream-soft); font-size: 16px; text-align: left; }
+
+    .mic[data-state="listening"] { background: rgba(143, 196, 106, .12); border-color: rgba(143, 196, 106, .5); }
+    .mic[data-state="listening"]::before { background-color: var(--basil); animation: listen-ring 1.3s ease-in-out infinite; }
+    .mic[data-state="listening"] .mic-text { color: var(--basil); }
+    @keyframes listen-ring {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(143, 196, 106, .45); }
+      50% { box-shadow: 0 0 0 12px rgba(143, 196, 106, 0); }
+    }
+    .mic[data-state="speaking"] { background: rgba(242, 166, 73, .10); border-color: rgba(242, 166, 73, .4); }
+    .mic[data-state="speaking"]::before { background-color: rgba(242, 166, 73, .35); }
+    .mic[data-state="speaking"] .mic-text { color: var(--amber); }
+    .mic[data-state="thinking"] .mic-text { color: var(--cream); }
+    .mic[data-state="thinking"]::before { animation: pulse-dot 1.4s ease-in-out infinite; }
+
+    /* 기존 데이터 노드는 JS 호환성을 위해 유지하되 화면에서는 숨긴다 */
+    .legacy-progress-state { display: none !important; }
+
+    /* ── 시작 화면 ───────────────────────────────────────────── */
+    .start {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      background:
+        radial-gradient(ellipse 34% 46% at 50% 0%, rgba(255, 178, 96, .30), transparent 72%),
+        radial-gradient(ellipse 20% 30% at 18% 0%, rgba(255, 178, 96, .12), transparent 70%),
+        radial-gradient(ellipse 20% 30% at 82% 0%, rgba(255, 178, 96, .12), transparent 70%),
+        linear-gradient(180deg, #1e1712 0%, var(--bg-0) 100%);
+    }
+    .start[hidden] { display: none; }
+    /* 펜던트 조명 세 개: 어두운 구리 갓 + 갓 안쪽 전구 */
+    .pendants {
+      position: absolute;
+      inset: 0 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0 calc(18vw - 60px);
+      pointer-events: none;
+    }
+    .pendant { position: relative; width: 120px; height: 17vh; }
+    .pendant.main { height: 21vh; transform: scale(1.12); transform-origin: top center; }
+    .pendant::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 2px;
+      height: calc(100% - 54px);
+      background: rgba(201, 135, 75, .5);
+    }
+    .pendant::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 120px;
+      height: 56px;
+      border-radius: 120px 120px 8px 8px;
+      background:
+        radial-gradient(ellipse 34% 52% at 50% 100%, #fff3d6 0%, #f5b562 40%, transparent 72%),
+        linear-gradient(180deg, #8a5a33 0%, #3e2414 100%);
+      border: 1px solid rgba(255, 214, 160, .35);
+      box-shadow: 0 28px 64px rgba(255, 178, 96, .45);
+    }
+    .start-inner {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: clamp(26px, 3vw, 42px);
+      padding: var(--pad);
+      margin-top: 12vh;
+      text-align: center;
+    }
+    .start-kicker { margin: 0; color: var(--copper); font-size: 18px; font-weight: 700; letter-spacing: .32em; }
+    .start h1 {
+      margin: 0;
+      color: var(--cream);
+      font-size: clamp(42px, 4.4vw, 76px);
+      font-weight: 800;
+      line-height: 1.16;
+      letter-spacing: -.03em;
+      text-wrap: balance;
+    }
+    .start-steps {
+      display: flex;
+      gap: 14px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--cream-soft);
+      font-size: 19px;
+      font-weight: 600;
+    }
+    .start-steps li { display: flex; align-items: center; gap: 14px; }
+    .start-steps li + li::before { content: ''; width: 34px; height: 1px; background: var(--copper); }
+    .start-steps b { color: var(--amber); font-weight: 800; margin-right: 6px; }
+    .start p { margin: 0; color: var(--cream-faint); font-size: 20px; }
+    .start-btn {
+      font: inherit;
+      font-size: clamp(22px, 1.6vw, 28px);
+      font-weight: 800;
+      color: #1b130d;
+      background: linear-gradient(180deg, #f6b866, var(--amber));
+      border: 0;
+      border-radius: 999px;
+      padding: 20px 64px;
+      cursor: pointer;
+      box-shadow: 0 14px 40px rgba(242, 166, 73, .35);
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .start-btn:hover { box-shadow: 0 18px 50px rgba(242, 166, 73, .5); }
+    .start-btn:active { transform: translateY(1px) scale(.99); }
+    .start-btn:focus-visible { outline: 3px solid var(--cream); outline-offset: 4px; }
+
+    /* ── 대화상자 ────────────────────────────────────────────── */
+    .reset-dialog, .vlm-dialog {
+      padding: 0;
+      color: var(--cream);
+      background: #241b15;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+    }
+    .reset-dialog { width: min(520px, calc(100vw - 32px)); }
+    .reset-dialog::backdrop, .vlm-dialog::backdrop { background: rgba(10, 7, 5, .62); backdrop-filter: blur(4px); }
+    .reset-dialog-inner { display: grid; gap: 18px; padding: 28px; }
+    .reset-dialog h2 { margin: 0; font-size: 26px; }
+    .reset-dialog p { margin: 0; color: var(--cream-soft); font-size: 17px; line-height: 1.55; }
+    .reset-dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .dialog-btn { min-height: 52px; border-radius: 999px; border: 1px solid var(--line-strong); font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
+    .dialog-btn.cancel { color: var(--cream); background: transparent; }
+    .dialog-btn.confirm { color: #1b130d; background: var(--amber); border-color: var(--amber); }
+    .dialog-btn:disabled { cursor: wait; opacity: .6; }
+    .reset-error { color: var(--tomato) !important; font-size: 15px !important; }
+    .reset-error[hidden] { display: none; }
+
+    .vlm-dialog { width: min(1240px, calc(100vw - 32px)); }
+    .vlm-dialog-inner { display: grid; gap: 14px; padding: 22px; }
+    .vlm-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .vlm-dialog-head h2 { margin: 0; font-size: 24px; }
+    .vlm-panel-labels { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; color: var(--cream-faint); font-size: 14px; font-weight: 800; letter-spacing: .08em; }
+    .vlm-snapshot-image { display: block; width: 100%; aspect-ratio: 4 / 1; object-fit: contain; background: #120d0a; border-radius: var(--radius-md); }
+    .vlm-snapshot-fallback { min-height: 180px; margin: 0; display: grid; place-items: center; color: var(--cream-faint); border: 1px dashed var(--line-strong); border-radius: var(--radius-md); }
+    .vlm-snapshot-fallback[hidden] { display: none; }
+    .vlm-close-btn { min-width: 92px; min-height: 44px; color: var(--cream); background: transparent; border: 1px solid var(--line-strong); border-radius: 999px; font: inherit; font-weight: 700; cursor: pointer; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .enter, .mic::before, .phase-badge::before, .turn.bot::before, .robot-orb, .robot-orb::after { animation: none !important; }
+      .talk { scroll-behavior: auto; }
+    }
 
     /* 실제 용기 배치 */
     .tray-card { min-height: 0; padding: clamp(14px, 1.5vw, 22px); display: grid; place-items: center; overflow: hidden; }
@@ -923,6 +823,24 @@
     .slot-pepper .ingredient-asset,
     .slot-crab .ingredient-asset { max-width: 88%; max-height: 82%; }
     .ingredient-asset.ingredient-vegetable-combo { max-width: 96%; max-height: 90%; }
+    /* 탑뷰 재료 사진으로 칸을 꽉 채운다. 칸의 둥근 모서리와 overflow:hidden 이 사진을 칸 모양으로 자른다.
+       누끼를 칸 가운데 띄우면 스티커처럼 보여서 이 방식으로 바꿨다. 라벨(z4)·상태 배지(z6)는 사진(z3) 위에 뜬다. */
+    .slot-content.has-photo { position: absolute; inset: 0; padding: 0; gap: 0; filter: none; }
+    .slot-content.has-photo .ingredient-asset {
+      width: 100%; height: 100%; max-width: none; max-height: none;
+      object-fit: cover; filter: none;
+    }
+    .slot-content.has-photo.multi-photo .ingredient-asset { width: 50%; }
+    /* 칸 벽 그림자 + 가장자리 어둡게: 재료가 칸 안쪽에 담긴 것처럼 보이게 한다 */
+    .slot-content.has-photo::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(120% 140% at 50% 45%, transparent 55%, rgba(8,10,12,.45) 100%);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.45), inset 0 8px 14px -6px rgba(0,0,0,.7);
+    }
+    /* 하단 "현재 작업 중" 썸네일도 사진을 꽉 채운다.
+       아래쪽 원래 규칙(.ingredient-photo.has-image)이 뒤에 있어서 선택자를 한 단계 높인다. */
+    .current-work-card .ingredient-photo.has-image { padding: 0; }
+    .current-work-card .current-ingredient-asset { object-fit: cover; filter: none; }
 
     .ingredient-photo.has-image {
       padding: 4px;
@@ -1084,214 +1002,6 @@
       font-size: clamp(20px, 2vw, 28px);
       backdrop-filter: blur(1px);
       pointer-events: none;
-    }
-
-    /* 현재 작업 재료 카드 */
-    .current-work-card {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto minmax(220px, .95fr);
-      align-items: center;
-      gap: 18px;
-      padding: 14px 18px;
-    }
-    .work-heading { grid-column: 1 / -1; margin: 0 0 -4px; font-size: clamp(16px, 1.3vw, 20px); }
-    .current-order-summary {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      min-width: 0;
-      padding: 10px 12px;
-      background: #f3f8f4;
-      border: 1px solid #d8e8dc;
-      border-radius: 10px;
-    }
-    .current-order-label { flex: 0 0 auto; margin-right: 4px; color: #17243b; font-size: 14px; font-weight: 800; }
-    .current-order-summary .selected-chips { flex: 1 1 520px; min-width: 0; }
-    .current-order-summary .empty-state { margin: 0; }
-    .ingredient-photo {
-      width: 92px;
-      height: 72px;
-      display: grid;
-      place-items: center;
-      border-radius: 14px;
-      background: #f4f5f3;
-      font-size: 48px;
-      overflow: hidden;
-    }
-    .ingredient-copy strong { display: block; color: #17243b; font-size: clamp(16px, 1.35vw, 21px); margin-bottom: 5px; }
-    .ingredient-copy span { color: #7d899c; font-size: clamp(12px, 1vw, 15px); }
-    .work-divider { width: 1px; height: 60px; background: #dde3e9; }
-    .work-note { display: flex; align-items: center; gap: 12px; color: #24334a; font-size: clamp(12px, 1vw, 15px); line-height: 1.5; }
-    .work-note .note-icon { font-size: 30px; }
-
-    /* 우측 대화 영역 */
-    .chat-panel {
-      min-width: 0;
-      min-height: 0;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      overflow: hidden;
-    }
-    .chat-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 16px 18px;
-      border-bottom: 1px solid #edf0f3;
-    }
-    .chat-head h2 { margin: 0; font-size: clamp(18px, 1.55vw, 23px); letter-spacing: -.03em; }
-    .phase-badge {
-      min-height: 30px;
-      padding: 6px 11px;
-      border: 0;
-      font-size: 12px;
-      gap: 7px;
-      background: #f3f5f7;
-    }
-    .phase-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #aab3c0; }
-    .phase-badge[data-tech="working"] { color: #d92831; background: #fff0f1; }
-    .phase-badge[data-tech="working"]::before { background: var(--dash-red); animation: pulse-dot 1s infinite; }
-    .phase-badge[data-tech="workdone"] { color: #247a43; background: #eefaf2; }
-    .phase-badge[data-tech="workdone"]::before { background: var(--dash-green); }
-    .phase-badge[data-tech="verifying"] { color: #247a43; background: #eefaf2; }
-    .phase-badge[data-tech="verifying"]::before { background: var(--dash-green); animation: pulse-dot 1s infinite; }
-    .phase-badge[data-tech="verified"] { color: #247a43; background: #eaf8ef; }
-    .phase-badge[data-tech="verified"]::before { background: var(--dash-green); }
-    .phase-badge[data-tech="error"],
-    .phase-badge[data-tech="vlmfail"] { color: #d92831; background: #fff0f1; }
-    .phase-badge[data-tech="error"]::before,
-    .phase-badge[data-tech="vlmfail"]::before { background: var(--dash-red); }
-    .phase-badge[data-tech="retried"] { color: #2869d8; background: #eef4ff; }
-    .phase-badge[data-tech="retried"]::before { background: #2869d8; }
-    .phase-badge[data-tech="uncertain"] { color: #996800; background: #fff8df; }
-    .phase-badge[data-tech="uncertain"]::before { background: #d79700; animation: pulse-dot 1s infinite; }
-    @keyframes pulse-dot { 50% { opacity: .35; transform: scale(.82); } }
-
-    .talk {
-      min-height: 0;
-      padding: 18px 16px 12px;
-      gap: 14px;
-      background: #fff;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-    .talk::before { display: none; }
-    .turn { position: relative; display: flex; align-items: flex-start; gap: 9px; flex: 0 0 auto; }
-    .turn.bot { justify-content: flex-start; padding-right: 12%; }
-    .turn.bot::before {
-      content: '🤖';
-      flex: 0 0 auto;
-      width: 42px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      background: #ecfbf1;
-      border: 1px solid #cbeed7;
-      font-size: 22px;
-    }
-    .turn.me { justify-content: flex-end; padding-left: 12%; }
-    .turn.me::after {
-      content: '●';
-      flex: 0 0 auto;
-      width: 42px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      color: white;
-      background: #8fdca6;
-      font-size: 14px;
-    }
-    .say, .bubble {
-      max-width: 100%;
-      margin: 0;
-      padding: 12px 14px;
-      border: 0;
-      border-radius: 6px 16px 16px 16px;
-      background: #f1f4f8;
-      color: #17243a;
-      font-size: clamp(14px, 1.15vw, 18px);
-      font-weight: 560;
-      line-height: 1.5;
-      letter-spacing: -.015em;
-      box-shadow: none;
-      text-wrap: pretty;
-    }
-    .turn.me .bubble { background: #e8f8ed; border-radius: 16px 6px 16px 16px; }
-    .heard-label { margin: 0 4px 5px 0; font-size: 9px; color: #a1aab7; letter-spacing: .08em; }
-    .turn.past .bubble, .turn.past .say { font-size: clamp(13px, 1.05vw, 16px); color: #5c687a; opacity: .88; }
-    .turn.past::before, .turn.past::after { opacity: .72; }
-
-    /* 작고 아래쪽에 붙는 마이크 상태 */
-    .mic {
-      margin: 0 16px 16px;
-      min-height: 72px;
-      padding: 10px 14px;
-      display: grid;
-      grid-template-columns: 52px minmax(0, 1fr);
-      grid-template-rows: auto auto;
-      column-gap: 12px;
-      row-gap: 2px;
-      align-items: center;
-      background: #fff5f5;
-      border: 1px solid #ffe0e1;
-      border-radius: 16px;
-      box-shadow: none;
-    }
-    .mic::before {
-      content: '🎙';
-      grid-column: 1;
-      grid-row: 1 / 3;
-      width: 48px;
-      height: 48px;
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      color: white;
-      background: var(--dash-red);
-      font-size: 23px;
-      box-shadow: 0 0 0 6px rgba(255,54,59,.08);
-    }
-    .meter { display: none; }
-    .mic-text { grid-column: 2; font-size: clamp(15px, 1.2vw, 18px); font-weight: 800; color: #d62b33; }
-    .mic-hint { grid-column: 2; margin: 0; text-align: left; color: #8c98a9; font-size: 11px; }
-    .mic[data-state="listening"] { background: #effbf3; border-color: #ccefd8; }
-    .mic[data-state="listening"]::before { background: var(--dash-green); box-shadow: 0 0 0 6px rgba(46,184,92,.09); animation: listen-ring 1.2s infinite; }
-    .mic[data-state="listening"] .mic-text { color: #208446; }
-    @keyframes listen-ring { 50% { box-shadow: 0 0 0 10px rgba(46,184,92,.055); } }
-    .mic[data-state="idle"] { background: #f6f7f9; border-color: #eceff2; }
-    .mic[data-state="idle"]::before { background: #a4adba; box-shadow: none; }
-    .mic[data-state="idle"] .mic-text { color: #687587; }
-
-    /* 기존 데이터 노드는 JS 호환성을 위해 유지하되 화면에서는 숨긴다. */
-    .legacy-progress-state { display: none !important; }
-
-    @media (max-width: 1050px) {
-      body { overflow-y: auto; }
-      .shell { height: auto; min-height: 100dvh; }
-      .dashboard { grid-template-columns: 1fr; }
-      .workspace { min-height: 860px; }
-      .chat-panel { min-height: 640px; }
-      .tray { min-height: 430px; }
-    }
-
-    @media (max-width: 720px) {
-      .brand-copy, .clock { display: none; }
-      .stage-dot { width: 42px; height: 42px; font-size: 18px; }
-      .stage-track::before, .stage-progress-line { top: 19px; }
-      .stage-name { font-size: 10px; }
-      .tray { min-height: 360px; border-radius: 38px; padding: 18px; }
-      .current-work-card { grid-template-columns: auto 1fr; }
-      .work-divider, .work-note { display: none; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .compartment.working, .phase-badge::before, .mic::before { animation: none !important; }
     }
 
 
@@ -1481,24 +1191,382 @@
       .sauce-overlay.arriving { animation: none !important; }
     }
 
-    /* 시작 화면은 tray knob, 뚜껑, 소스보다 항상 위에 있어야 한다. */
-    .start { z-index: 10000 !important; }
 
+    /* ============================================================
+       오픈 키친 테마 덮어쓰기 (용기 모양·색은 위 원본 그대로)
+       ============================================================ */
+    /* 나무 조리대 위에 놓인 용기: 그림자만 따뜻하고 깊게 */
+    .tray {
+      box-shadow:
+        inset 0 0 0 9px #11161b,
+        inset 0 0 32px rgba(255,255,255,.08),
+        0 34px 60px rgba(0, 0, 0, .55),
+        0 6px 14px rgba(0, 0, 0, .35);
+    }
+
+    /* 재료는 사진 자체에 타원 무더기로 구워져 있다(가장자리 흐림 포함). 잘리지 않게 전체를 보여준다 */
+    .slot-content.has-photo { inset: 6px; border-radius: 10px; }
+    .slot-content.has-photo .ingredient-asset { object-fit: contain; }
+    .slot-content.has-photo::after { display: none; }
+    .compartment.filled {
+      background:
+        radial-gradient(ellipse 50% 40% at 50% 65%, rgba(0, 0, 0, .45), transparent 70%),
+        linear-gradient(145deg, #383f47, #20262c 72%);
+    }
+    /* 면은 다발 누끼라 흐리지 않고 다발 전체를 보여준다 */
+    .slot-noodle .slot-content.has-photo { -webkit-mask-image: none; mask-image: none; }
+    .slot-noodle .slot-content.has-photo .ingredient-asset { object-fit: contain; }
+
+    /* 작업 중: 빨간 경고색 대신 호박색 조명 */
+    .compartment.working {
+      border-color: var(--amber);
+      background: linear-gradient(145deg, #4a3a26, #251f1a 72%);
+      animation: compartment-working-warm 1.4s ease-in-out infinite;
+    }
+    .compartment.working::before { content: '담는 중'; background: rgba(242, 166, 73, .95); color: #1b130d; }
+    @keyframes compartment-working-warm {
+      0%, 100% { box-shadow: inset 0 0 22px rgba(0,0,0,.46), 0 0 0 2px rgba(242,166,73,.25), 0 0 12px rgba(242,166,73,.15); }
+      50% { box-shadow: inset 0 0 22px rgba(0,0,0,.46), 0 0 0 4px rgba(242,166,73,.65), 0 0 30px rgba(242,166,73,.4); }
+    }
+    .compartment.verifying { border-color: var(--basil); }
+    .compartment.verifying::before { content: 'AI 확인 중'; background: rgba(143, 196, 106, .95); color: #14200d; }
+    .compartment.verified { border-color: var(--basil); }
+    .compartment.verified::before { content: '확인 완료'; background: rgba(143, 196, 106, .95); color: #14200d; }
+    .compartment.work-done::before { content: '담기 완료'; }
+    .compartment.vlm-fail { border-color: var(--tomato); box-shadow: inset 0 0 22px rgba(0,0,0,.42), 0 0 0 2px rgba(228,96,76,.3); }
+    .compartment.vlm-fail::before { content: '다시 확인'; background: rgba(228, 96, 76, .95); }
+    .compartment.vlm-retried::before { content: '한 번 더 담음'; }
+    .compartment.vlm-uncertain::before { content: '다시 보는 중'; }
+    .compartment.working::before,
+    .compartment.verifying::before,
+    .compartment.verified::before,
+    .compartment.work-done::before,
+    .compartment.vlm-fail::before,
+    .compartment.vlm-retried::before,
+    .compartment.vlm-uncertain::before { font-size: 14px; padding: 7px 13px; }
+    .slot-label { font-size: 15px; background: rgba(18, 14, 11, .72); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .compartment.working { animation: none !important; }
+    }
+
+    /* 소스 파우치: 뚜껑 위에 똑바로 얹힌 느낌 */
+    .sauce-overlay { transform: rotate(-2deg); width: clamp(84px, 10.8vw, 144px); }
+    .sauce-pouch.has-photo { box-shadow: none; }
+    .sauce-pouch.has-photo .sauce-pouch-icon { filter: drop-shadow(0 14px 16px rgba(0, 0, 0, .55)); }
+    .sauce-overlay::after {
+      content: '';
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 5%;
+      height: 10%;
+      border-radius: 6px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .12), transparent);
+      pointer-events: none;
+    }
+    @keyframes sauce-arrive {
+      0%   { opacity: 0; transform: translate(20px, -60px) rotate(4deg) scale(.9); }
+      70%  { opacity: 1; transform: translate(-2px, 3px) rotate(-3deg) scale(1.01); }
+      100% { opacity: 1; transform: translate(0, 0) rotate(-2deg) scale(1); }
+    }
+
+    /* 소시지 칸은 오른쪽 아래 모서리가 가운데 노브에 덮인다. 상태 배지를 왼쪽 아래로 옮긴다 */
+    .compartment.slot-sausage::before { right: auto; left: 14px; }
+    /* 하단 썸네일: 누끼 재료가 잘리지 않게 전체를 보여준다 */
+    .current-work-card .ingredient-photo { width: 168px; }
+    .current-work-card .current-ingredient-asset { object-fit: contain; padding: 4px; }
+    /* ============================================================
+       팔레트 A: 쿨 뉴트럴 화이트 — 노란기를 뺀 중성 회색 바탕 + 흰 패널
+       어두운 도시락통이 밝은 바탕 위에서 주인공이 되게 한다
+       ============================================================ */
+    :root {
+      --bg-0: #f2f3f5;
+      --panel: #ffffff;
+      --line: rgba(27, 29, 33, .08);
+      --line-strong: rgba(27, 29, 33, .16);
+      --cream: #1b1d21;
+      --cream-soft: #45484f;
+      --cream-faint: #686c74;
+      --copper: #b84600;
+      --amber: #b64a00;
+      --basil: #257a3c;
+      --tomato: #c4362f;
+      --mustard: #896600;
+      --slate: #3463b3;
+      color-scheme: light;
+    }
+    body { background: var(--bg-0); }
+    body::before { display: none; }
+    .card { background: var(--panel); box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 10px 28px rgba(0, 0, 0, .05); backdrop-filter: none; }
+    .tray-card { background: radial-gradient(ellipse 60% 80% at 50% 0%, rgba(255, 255, 255, .8), transparent 70%), #e3e5e9; }
+
+    .progress-count { color: var(--cream); }
+    .stage-track::before { background: rgba(27, 29, 33, .1); }
+    .stage-progress-line { background: var(--cream); box-shadow: none; }
+    .stage-dot, .stage.skipped .stage-dot { background: #eef0f2; }
+    .stage.done .stage-dot { color: #fff; background: var(--cream); border-color: var(--cream); }
+    .stage.active .stage-dot { color: #fff; box-shadow: 0 0 0 7px rgba(182, 74, 0, .16); }
+
+    .current-order-summary { background: #f6f7f8; }
+    .chip { background: #eef0f2; border-color: var(--line); }
+    .ingredient-photo { background: #eef0f2; }
+
+    .bubble { background: #eef0f2; border-color: transparent; }
+    .turn.past .bubble { background: #f5f6f7; }
+    .phase-badge { background: #eef0f2; }
+
+    .mic { background: #f5f6f7; }
+    .mic::before {
+      background-color: #e5e7ea;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231b1d21' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E");
+    }
+    .mic[data-state="listening"] { background: rgba(37, 122, 60, .08); border-color: rgba(37, 122, 60, .35); }
+    .mic[data-state="listening"]::before {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E");
+    }
+    .mic[data-state="speaking"] { background: rgba(182, 74, 0, .08); }
+
+    .start { background: var(--bg-0); }
+    .pendants { display: none; }
+    .start-inner { margin-top: 0; }
+    .start-btn { color: #fff; background: var(--cream); box-shadow: 0 12px 30px rgba(0, 0, 0, .18); }
+    .start-btn:hover { box-shadow: 0 16px 40px rgba(0, 0, 0, .24); }
+
+    .reset-dialog, .vlm-dialog { background: #ffffff; }
+    .vlm-snapshot-image { background: #1b1d21; }
+
+    /* ── D안: 원본의 배경색과 진행 표시를 되살린다 ───────────────── */
+    :root { --bg-0: #f5f8fb; --basil: #2a9d52; }
+    body { background: radial-gradient(circle at 72% 18%, rgba(46, 184, 92, .04), transparent 28%), var(--bg-0); }
+    .tray-card { background: #ffffff; }
+    .card { border-color: #e6ebf0; box-shadow: 0 8px 28px rgb(27 39 54 / .055); }
+
+    /* 진행 표시: 단계마다 아이콘, 완료 = 초록으로 채움 */
+    .stage-track::before { background: #dce2e9; height: 4px; }
+    .stage-progress-line { background: var(--basil); height: 4px; box-shadow: none; }
+    .stage-dot { width: 50px; height: 50px; font-size: 22px; font-weight: 400; color: #8995a7; background: #f0f3f7; border: 1px solid #e2e7ed; }
+    .stage-track::before, .stage-progress-line { top: 23px; }
+    .stage.done .stage-dot { font-size: 22px; color: #fff; background: var(--basil); border-color: var(--basil); }
+    .stage.done .stage-dot::after { content: none; }
+    .stage.skipped .stage-dot { background: #f0f3f7; border-style: dashed; color: #b3bcc8; }
+    .stage.skipped .stage-dot::after { content: none; }
+    .stage.active .stage-dot { font-size: 22px; color: var(--amber); background: #fff1e6; border-color: #ffd1ad; box-shadow: 0 0 0 8px rgba(182, 74, 0, .07); }
+    .stage.done .stage-state { color: var(--basil); }
+    .stage.done .stage-name { color: #233148; }
+    /* ============================================================
+       진행 아이콘 · 지금 담는 재료 · 로봇과 대화 (테마 뒤에 붙는다)
+       ============================================================ */
+
+    /* ── 진행 아이콘: SVG 라서 폰트와 상관없이 정확히 가운데 ── */
+    .stage-dot { display: grid; place-items: center; line-height: 0; }
+    .stage-dot svg { width: 24px; height: 24px; display: block; }
+    .stage.done .stage-dot, .stage.active .stage-dot { font-size: 0; }
+
+    /* ── 지금 담는 재료: 왼쪽 = 지금 재료, 오른쪽 = 내 주문 ── */
+    .current-work-card {
+      grid-template-columns: 128px minmax(0, 1fr) minmax(0, 1.15fr);
+      grid-template-areas:
+        "head  head  order"
+        "photo copy  order"
+        "photo note  order";
+      align-items: center;
+      gap: 4px 22px;
+      padding: 16px 22px;
+    }
+    .work-heading { grid-area: head; margin: 0 0 6px; font-size: 17px; color: var(--cream-faint); font-weight: 700; }
+    .current-work-card .ingredient-photo {
+      grid-area: photo;
+      width: 128px;
+      height: 96px;
+      border-radius: 14px;
+      background: #f3f6f9;
+      border: 1px solid var(--line);
+    }
+    .current-work-card .current-ingredient-asset { object-fit: contain; padding: 6px; }
+    .ingredient-copy { grid-area: copy; align-self: end; }
+    .ingredient-copy strong { font-size: clamp(24px, 1.6vw, 30px); margin-bottom: 2px; }
+    .ingredient-copy span { font-size: 17px; }
+    .work-divider { display: none; }
+    .work-note { grid-area: note; align-self: start; margin-top: 6px; gap: 10px; color: var(--cream-faint); font-size: 15px; line-height: 1.45; }
+    .work-note .note-icon { width: 3px; height: 36px; }
+
+    .current-order-summary {
+      grid-area: order;
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 10px;
+      padding: 14px 16px;
+      background: #f7f9fb;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+    .current-order-label { margin: 0; color: var(--cream-faint); font-size: 15px; font-weight: 700; }
+    .current-order-summary .selected-chips { flex: none; width: 100%; gap: 8px; }
+    .current-order-summary .chip {
+      gap: 6px;
+      padding: 7px 13px;
+      color: var(--cream-soft);
+      background: #fff;
+      border: 1px solid var(--line-strong);
+      font-size: 17px;
+      font-weight: 600;
+    }
+    .current-order-summary .chip.is-done { color: #1d6b38; background: #eaf6ee; border-color: rgba(42, 157, 82, .35); }
+    .current-order-summary .chip.is-done::before { content: '✓'; font-weight: 900; color: var(--basil); }
+    .current-order-summary .chip.is-now { color: var(--amber); background: #fff4ea; border-color: rgba(182, 74, 0, .45); }
+    .current-order-summary .chip.is-now::before {
+      content: '';
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--amber);
+      animation: pulse-dot 1.1s infinite;
+    }
+
+    /* ── 로봇과 대화: 빛나는 구슬 + 말풍선 + 알약 마이크 바 ── */
+    .chat-head { padding: 16px 22px; border-bottom: 0; }
+    .chat-head h2 { font-size: 19px; color: var(--cream-faint); font-weight: 700; }
+
+    .robot-presence {
+      flex-direction: column;
+      gap: 14px;
+      padding: 8px 24px 22px;
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+    }
+    /* 로봇 상태 = 세로 음파 막대 7개. 상태마다 색과 움직임이 다르다 */
+    .robot-wave {
+      --wave: #b8c1cc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      height: 96px;
+    }
+    .robot-wave i {
+      display: block;
+      width: 12px;
+      height: 20px;
+      border-radius: 999px;
+      background: var(--wave);
+      transition: height .3s ease;
+    }
+    /* 대기: 가운데가 살짝 높은 정지 모양 */
+    .robot-wave i:nth-child(1), .robot-wave i:nth-child(7) { height: 14px; }
+    .robot-wave i:nth-child(2), .robot-wave i:nth-child(6) { height: 24px; }
+    .robot-wave i:nth-child(3), .robot-wave i:nth-child(5) { height: 34px; }
+    .robot-wave i:nth-child(4) { height: 44px; }
+    .robot-wave i:nth-child(1) { animation-delay: 0s; }
+    .robot-wave i:nth-child(2) { animation-delay: .1s; }
+    .robot-wave i:nth-child(3) { animation-delay: .2s; }
+    .robot-wave i:nth-child(4) { animation-delay: .3s; }
+    .robot-wave i:nth-child(5) { animation-delay: .2s; }
+    .robot-wave i:nth-child(6) { animation-delay: .1s; }
+    .robot-wave i:nth-child(7) { animation-delay: 0s; }
+
+    /* 듣는 중: 초록, 크게 출렁임 */
+    .chat-panel:has(.mic[data-state="listening"]) .robot-wave { --wave: var(--basil); }
+    .chat-panel:has(.mic[data-state="listening"]) .robot-wave i { animation: wave-talk .9s ease-in-out infinite; }
+    /* 말하는 중: 주황, 출렁임 */
+    .chat-panel:has(.mic[data-state="speaking"]) .robot-wave { --wave: var(--amber); }
+    .chat-panel:has(.mic[data-state="speaking"]) .robot-wave i { animation: wave-talk 1.1s ease-in-out infinite; }
+    /* 생각 중: 회색, 차례로 깜빡임 */
+    .chat-panel:has(.mic[data-state="thinking"]) .robot-wave i { animation: wave-think 1.2s ease-in-out infinite; }
+    /* 로봇이 담는 중: 주황, 천천히 물결 */
+    .chat-panel:has(.phase-badge[data-tech="working"]):not(:has(.mic[data-state="speaking"])) .robot-wave { --wave: #e9a46d; }
+    .chat-panel:has(.phase-badge[data-tech="working"]):not(:has(.mic[data-state="speaking"])) .robot-wave i { animation: wave-slow 2s ease-in-out infinite; }
+    /* 실패: 빨강, 멈춤 */
+    .chat-panel:has(.phase-badge[data-tech="vlmfail"]) .robot-wave,
+    .chat-panel:has(.phase-badge[data-tech="error"]) .robot-wave { --wave: var(--tomato); }
+    .chat-panel:has(.phase-badge[data-tech="vlmfail"]) .robot-wave i,
+    .chat-panel:has(.phase-badge[data-tech="error"]) .robot-wave i { animation: none; }
+
+    @keyframes wave-talk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.9); } }
+    @keyframes wave-slow { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.35); } }
+    @keyframes wave-think { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+
+    .robot-caption { max-width: 24ch; font-size: clamp(21px, 1.4vw, 25px); font-weight: 800; letter-spacing: -.01em; line-height: 1.38; color: var(--cream); }
+
+    .talk { padding: 18px 20px 12px; gap: 12px; }
+    .turn { gap: 0; }
+    .turn.bot { padding-right: 14%; }
+    .turn.me { padding-left: 14%; }
+    .turn.bot::before { display: none; }
+    .say, .bubble {
+      padding: 12px 16px;
+      font-size: clamp(18px, 1.2vw, 22px);
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .turn.bot .say {
+      color: var(--cream);
+      background: #f1f4f8;
+      border-radius: 6px 18px 18px 18px;
+    }
+    .turn.me .bubble {
+      color: #fff;
+      background: #1b1d21;
+      border: 0;
+      border-radius: 18px 6px 18px 18px;
+    }
+    .turn.past .say, .turn.past .bubble { font-size: 16px; }
+    .turn.past.bot .say { color: var(--cream-soft); background: #f5f7fa; }
+    .turn.past.me .bubble { color: #fff; background: #5b616b; }
+    .heard-label { font-size: 13px; color: var(--cream-faint); margin: 0 6px 5px 0; }
+
+    /* 알약 모양 마이크 바: 들을 때 음파 막대가 움직인다 */
+    .mic {
+      margin: 0 16px 16px;
+      min-height: 76px;
+      padding: 10px 12px 10px 22px;
+      grid-template-columns: minmax(0, 1fr) auto 56px;
+      grid-template-rows: auto auto;
+      border-radius: 999px;
+      background: #f3f6f9;
+      border: 1px solid var(--line);
+    }
+    .mic::before { grid-column: 3; grid-row: 1 / 3; width: 56px; height: 56px; }
+    .mic-text { grid-column: 1; grid-row: 1; font-size: clamp(19px, 1.25vw, 23px); }
+    .mic-hint { grid-column: 1; grid-row: 2; font-size: 15px; }
+    .meter { display: flex; grid-column: 2; grid-row: 1 / 3; align-items: center; gap: 4px; height: 34px; margin-right: 6px; }
+    .meter i { width: 4px; height: 6px; border-radius: 2px; background: #c3cbd5; transform-origin: center; }
+    .mic[data-state="listening"] { background: #eaf6ee; border-color: rgba(42, 157, 82, .4); }
+    .mic[data-state="listening"] .meter i { background: var(--basil); animation: bounce 1s ease-in-out infinite; }
+    .meter i:nth-child(2) { animation-delay: .12s; }
+    .meter i:nth-child(3) { animation-delay: .24s; }
+    .meter i:nth-child(4) { animation-delay: .36s; }
+    .meter i:nth-child(5) { animation-delay: .48s; }
+    @keyframes bounce { 0%, 100% { height: 6px; } 50% { height: 30px; } }
+    .mic[data-state="speaking"] { background: #fff4ea; border-color: rgba(182, 74, 0, .35); }
+    .mic[data-state="speaking"] .meter i { background: var(--amber); animation: bounce 1.3s ease-in-out infinite; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .meter i, .robot-wave i, .current-order-summary .chip.is-now::before { animation: none !important; }
+    }
   </style>
 </head>
 <body>
   <div class="start" id="startScreen">
+    <div class="pendants" aria-hidden="true"><span class="pendant"></span><span class="pendant main"></span><span class="pendant"></span></div>
     <div class="start-inner">
-      <h1>커스텀 파스타 밀키트를<br>직접 담아드립니다</h1>
-      <p>화면을 눌러 시작하세요</p>
+      <p class="start-kicker">SOOMAC KITCHEN</p>
+      <h1>커스텀 파스타 밀키트를<br>로봇이 직접 담아드립니다</h1>
+      <ol class="start-steps">
+        <li><span><b>1</b>말로 주문하기</span></li>
+        <li><span><b>2</b>로봇이 담기</span></li>
+        <li><span><b>3</b>AI 카메라로 확인</span></li>
+      </ol>
       <button class="start-btn" id="startBtn" type="button">시작하기</button>
+      <p>화면 아무 곳이나 눌러도 시작돼요 · 로봇 팔은 천천히 움직여요</p>
     </div>
   </div>
 
   <dialog class="reset-dialog" id="resetDialog">
     <div class="reset-dialog-inner">
       <h2 id="resetDialogTitle">현재 작업을 초기화할까요?</h2>
-      <p>현재 주문, 대기 작업과 화면 대화가 모두 초기화됩니다. Chroma에 저장된 과거 기록은 삭제하지 않습니다.</p>
+      <p>현재 주문, 대기 작업과 화면 대화가 모두 초기화됩니다. 저장된 과거 기록은 삭제하지 않습니다.</p>
       <p class="reset-error" id="resetError" hidden></p>
       <div class="reset-dialog-actions">
         <button class="dialog-btn cancel" type="button" id="resetCancel">취소</button>
@@ -1510,13 +1578,13 @@
   <dialog class="vlm-dialog" id="vlmDialog">
     <div class="vlm-dialog-inner">
       <div class="vlm-dialog-head">
-        <h2>VLM 작업 확인 이미지</h2>
+        <h2>AI 카메라가 본 화면</h2>
         <button class="vlm-close-btn" id="vlmCloseBtn" type="button">닫기</button>
       </div>
       <div class="vlm-panel-labels" aria-hidden="true">
-        <span>REFERENCE</span>
-        <span>COMPARISON</span>
-        <span>CURRENT OBSERVATION</span>
+        <span>기준 사진</span>
+        <span>담기 전</span>
+        <span>지금</span>
       </div>
       <img class="vlm-snapshot-image" id="vlmSnapshotImage"
            alt="VLM이 실제 판정에 사용한 reference, previous, current 이미지">
@@ -1530,14 +1598,14 @@
         <nav class="nav-actions" aria-label="화면 이동">
           <button class="nav-btn" type="button" data-reset-action="back" aria-label="뒤로가기와 작업 초기화" disabled>
             <span class="nav-icon" aria-hidden="true">←</span>
-            <span class="nav-label">뒤로</span>
+            <span class="nav-label">처음으로</span>
           </button>
         </nav>
         <h1 class="store"><span id="storeName"></span><span class="tbd">미정</span></h1>
-        <span class="brand-copy">맛있는 한 끼를, 로봇이 정성껏 담아드려요!</span>
+        <span class="brand-copy">말로 주문하면, 로봇이 한 칸씩 담아드려요</span>
       </div>
       <div class="top-right">
-        <div class="step" id="stepLabel">서버 연결 중</div>
+        <div class="step" id="stepLabel">통신 연결 중</div>
         <div class="clock" aria-label="현재 시각">
           <span id="clockDate"></span>
           <strong id="clockTime"></strong>
@@ -1549,32 +1617,18 @@
       <main class="workspace">
         <section class="overall-progress card" aria-label="전체 진행 상황">
           <div class="section-title-row">
-            <h2>전체 진행 상황</h2>
+            <h2>오늘의 밀키트 진행</h2>
             <span class="progress-count" id="progressCount">0 / 7</span>
           </div>
           <ol class="stage-track" id="stageTrack">
             <span class="stage-progress-line" id="stageProgressLine" aria-hidden="true"></span>
-            <li class="stage" data-stage="container">
-              <span class="stage-dot">▣</span><span class="stage-name">용기 준비</span><span class="stage-state">대기</span>
-            </li>
-            <li class="stage" data-stage="noodle">
-              <span class="stage-dot">◎</span><span class="stage-name">면 담기</span><span class="stage-state">대기</span>
-            </li>
-            <li class="stage" data-stage="vegetable">
-              <span class="stage-dot">◒</span><span class="stage-name">야채 담기</span><span class="stage-state">대기</span>
-            </li>
-            <li class="stage" data-stage="meat">
-              <span class="stage-dot">◖</span><span class="stage-name">육류 담기</span><span class="stage-state">대기</span>
-            </li>
-            <li class="stage" data-stage="extra">
-              <span class="stage-dot">＋</span><span class="stage-name">추가 재료</span><span class="stage-state">대기</span>
-            </li>
-            <li class="stage" data-stage="cover">
-              <span class="stage-dot">▤</span><span class="stage-name">뚜껑</span><span class="stage-state">대기</span>
-            </li>
-            <li class="stage" data-stage="sauce">
-              <span class="stage-dot">●</span><span class="stage-name">소스</span><span class="stage-state">대기</span>
-            </li>
+            <li class="stage" data-stage="container"><span class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M12 6v12M3 12h9"/></svg></span><span class="stage-name">용기 준비</span><span class="stage-state">대기</span></li>
+            <li class="stage" data-stage="noodle"><span class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8c2.7-2 5.3 2 8 0s5.3 2 8 0M4 12c2.7-2 5.3 2 8 0s5.3 2 8 0M4 16c2.7-2 5.3 2 8 0s5.3 2 8 0"/></svg></span><span class="stage-name">면</span><span class="stage-state">대기</span></li>
+            <li class="stage" data-stage="vegetable"><span class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l8.5-8.5"/></svg></span><span class="stage-name">야채</span><span class="stage-state">대기</span></li>
+            <li class="stage" data-stage="meat"><span class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="9" width="19" height="6" rx="3" transform="rotate(-35 12 12)"/><path d="M5.5 18.5l-1.5 1.5M18.5 5.5l1.5-1.5"/></svg></span><span class="stage-name">육류</span><span class="stage-state">대기</span></li>
+            <li class="stage" data-stage="extra"><span class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2 6.5 6.5 2-6.5 2-2 6.5-2-6.5-6.5-2 6.5-2z"/></svg></span><span class="stage-name">추가 재료</span><span class="stage-state">대기</span></li>
+            <li class="stage" data-stage="cover"><span class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h18"/><path d="M5 16a7 7 0 0 1 14 0"/><path d="M12 7V5.5"/><path d="M4 19h16"/></svg></span><span class="stage-name">뚜껑</span><span class="stage-state">대기</span></li>
+            <li class="stage" data-stage="sauce"><span class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"/></svg></span><span class="stage-name">소스</span><span class="stage-state">대기</span></li>
           </ol>
         </section>
 
@@ -1620,33 +1674,37 @@
         </section>
 
         <section class="current-work-card card" aria-label="현재 작업 재료">
-          <h2 class="work-heading">현재 작업 중</h2>
+          <h2 class="work-heading">지금 담는 재료</h2>
           <div class="current-order-summary" aria-label="현재 주문">
-            <strong class="current-order-label">현재 주문</strong>
+            <strong class="current-order-label">내 주문</strong>
             <div class="selected-chips" id="currentOrderItems"></div>
           </div>
           <div class="ingredient-photo" id="currentIngredientVisual">…</div>
           <div class="ingredient-copy">
             <strong id="currentIngredientName">작업 대기 중</strong>
-            <span id="currentIngredientDescription">재료 작업이 시작되면 여기에 표시됩니다.</span>
+            <span id="currentIngredientDescription">재료를 담기 시작하면 여기에 보여드려요.</span>
           </div>
           <div class="work-divider" aria-hidden="true"></div>
           <div class="work-note">
-            <span class="note-icon">♨</span>
-            <span id="workNoteText">주문 내용을 확인하고 있어요.<br>잠시만 기다려주세요.</span>
+            <span class="note-icon" aria-hidden="true"></span>
+            <span id="workNoteText">주문 내용을 확인하고 있어요.<br>잠시만 기다려 주세요.</span>
           </div>
         </section>
       </main>
 
       <aside class="chat-panel card" aria-label="로봇과 대화하기">
         <div class="chat-head">
-          <h2>로봇과 대화하기</h2>
+          <h2>로봇과 대화</h2>
           <span class="phase-badge" id="phaseBadge" data-phase="idle" data-tech="idle">대기 중</span>
+        </div>
+        <div class="robot-presence">
+          <span class="robot-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <p class="robot-caption" id="robotCaption" aria-live="polite">무엇을 담아드릴까요?</p>
         </div>
         <main class="talk" id="talk" aria-live="polite"></main>
         <div class="mic" id="mic" data-state="idle">
           <div class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-          <div class="mic-text" id="micText">시작 버튼을 눌러주세요</div>
+          <div class="mic-text" id="micText">시작하기를 눌러 주세요</div>
           <div class="mic-hint" id="micHint"></div>
         </div>
       </aside>
@@ -1726,11 +1784,11 @@
     setInterval(시계갱신, 30000);
 
     const 마이크상태문구 = {
-      idle: ['시작 버튼을 눌러주세요', ''],
-      waiting: ['마이크 대기 중', '잠시만 기다려 주세요'],
-      listening: ['듣고 있어요', '편하게 말씀하세요'],
-      thinking: ['잠시만요', ''],
-      speaking: ['말하는 중', '']
+      idle: ['시작하기를 눌러 주세요', ''],
+      waiting: ['잠시만 기다려 주세요', '로봇이 일하는 동안에는 듣지 않아요'],
+      listening: ['지금 말씀하세요', '예) 얇은 면에 버섯이랑 양파 넣어줘'],
+      thinking: ['생각하고 있어요', ''],
+      speaking: ['로봇이 말하는 중', '']
     };
 
     function 마이크(state) {
@@ -2189,11 +2247,11 @@
 
     function 기술상태(workState) {
       switch (workState) {
-        case 'working':      return {key: 'working',   text: '작업 중'};
+        case 'working':      return {key: 'working',   text: '담는 중'};
         case 'work_done':    return {key: 'workdone',  text: '작업 완료'};
-        case 'vlm_checking': return {key: 'verifying', text: 'VLM 확인 중'};
-        case 'vlm_done':     return {key: 'verified',  text: 'VLM 확인 완료'};
-        case 'vlm_fail':     return {key: 'vlmfail',   text: 'VLM 확인 실패'};
+        case 'vlm_checking': return {key: 'verifying', text: 'AI 확인 중'};
+        case 'vlm_done':     return {key: 'verified',  text: '확인 완료'};
+        case 'vlm_fail':     return {key: 'vlmfail',   text: '다시 확인 필요'};
         case 'retried':      return {key: 'retried',   text: '재시도 완료'};
         case 'uncertain_wait': return {key: 'uncertain', text: '재촬영 대기'};
         case 'completed':    return {key: 'verified',  text: '전체 작업 완료'};
@@ -2222,13 +2280,13 @@
           doneCount += 1;
         } else if (step.key === currentCategory) {
           el.classList.add('active');
-          if (tech.key === 'verifying') stateEl.textContent = 'VLM 확인 중';
+          if (tech.key === 'verifying') stateEl.textContent = 'AI 확인 중';
           else if (tech.key === 'verified') stateEl.textContent = '확인 완료';
           else if (tech.key === 'workdone') stateEl.textContent = '작업 완료';
           else if (tech.key === 'vlmfail') stateEl.textContent = '확인 실패';
           else if (tech.key === 'retried') stateEl.textContent = '재시도 완료';
           else if (tech.key === 'uncertain') stateEl.textContent = '재촬영 대기';
-          else stateEl.textContent = '작업 중';
+          else stateEl.textContent = '담는 중';
         } else {
           stateEl.textContent = '대기';
         }
@@ -2442,60 +2500,78 @@
       }
     }
 
+    // 받침 있는 글자면 '을', 없으면 '를'
+    function 을를(word) {
+      const code = String(word ?? '').trim().slice(-1).charCodeAt(0) - 0xAC00;
+      return code >= 0 && code <= 11171 && code % 28 !== 0 ? '을' : '를';
+    }
+
     function 현재작업카드그리기(ui, tech) {
       const info = ui.currentInfo;
       if (!ui.currentClass) {
         현재작업비주얼그리기(null, '…');
         currentIngredientName.textContent = '작업 대기 중';
-        currentIngredientDescription.textContent = '재료 작업이 시작되면 여기에 표시됩니다.';
-        workNoteText.innerHTML = '주문 내용을 확인하고 있어요.<br>잠시만 기다려주세요.';
+        currentIngredientDescription.textContent = '재료를 담기 시작하면 여기에 보여드려요.';
+        workNoteText.innerHTML = '주문 내용을 확인하고 있어요.<br>잠시만 기다려 주세요.';
         return;
       }
 
       현재작업비주얼그리기(info);
       currentIngredientName.textContent = info.name;
+      const 이름 = info.name + 을를(info.name);
+
+      if (ui.workState === 'completed') {
+        currentIngredientDescription.textContent = '다 담았어요! 맛있게 드세요.';
+        workNoteText.innerHTML = '포장이 끝났어요.<br>밀키트를 가져가 주세요.';
+        return;
+      }
 
       if (info.category === 'cover') {
         if (tech.key === 'working') {
-          currentIngredientDescription.textContent = '로봇이 용기 뚜껑을 닫고 있어요.';
-          workNoteText.innerHTML = '검은 트레이는 그대로 유지하고<br>투명 뚜껑만 닫히는 중이에요.';
+          currentIngredientDescription.textContent = '로봇이 뚜껑을 닫고 있어요.';
+          workNoteText.innerHTML = '담은 재료가 흐트러지지 않게<br>천천히 덮는 중이에요.';
         } else {
-          currentIngredientDescription.textContent = '용기 밀봉이 완료되었습니다.';
-          workNoteText.innerHTML = '이제 선택한 소스를<br>뚜껑 위에 함께 올립니다.';
+          currentIngredientDescription.textContent = '뚜껑을 잘 닫았어요.';
+          workNoteText.innerHTML = '이제 고른 소스를<br>뚜껑 위에 올려드려요.';
         }
         return;
       }
 
       if (info.category === 'sauce') {
-        currentIngredientDescription.textContent = `${info.name}를 함께 포장하고 있어요.`;
-        workNoteText.innerHTML = '선택한 소스가<br>닫힌 뚜껑 위에 표시됩니다.';
+        if (tech.key === 'verified') {
+          currentIngredientDescription.textContent = `${이름}까지 다 담았어요.`;
+          workNoteText.innerHTML = '포장이 끝났어요.<br>밀키트를 가져가 주세요.';
+          return;
+        }
+        currentIngredientDescription.textContent = `${이름} 함께 담고 있어요.`;
+        workNoteText.innerHTML = '소스는 뚜껑 위에<br>따로 올려드려요.';
         return;
       }
 
       if (tech.key === 'working') {
-        currentIngredientDescription.textContent = `로봇이 ${info.name} 작업을 진행하고 있어요.`;
-        workNoteText.innerHTML = '아직 용기 그림에는 재료를 표시하지 않아요.<br>VLM 확인 완료 후 반영됩니다.';
+        currentIngredientDescription.textContent = `로봇이 ${이름} 담고 있어요.`;
+        workNoteText.innerHTML = '다 담으면 AI 카메라가<br>한 번 더 확인해요.';
       } else if (tech.key === 'workdone') {
-        currentIngredientDescription.textContent = '로봇 동작이 완료되었습니다.';
-        workNoteText.innerHTML = '아직 VLM 확인 전이에요.<br>용기에는 재료를 표시하지 않습니다.';
+        currentIngredientDescription.textContent = '로봇이 담기를 마쳤어요.';
+        workNoteText.innerHTML = '곧 AI 카메라로<br>잘 담겼는지 확인해요.';
       } else if (tech.key === 'verifying') {
-        currentIngredientDescription.textContent = 'VLM이 올바르게 담겼는지 확인하고 있어요.';
-        workNoteText.innerHTML = '확인 중에는 현재 class를 표시하지 않아요.<br>성공 결과를 기다리고 있어요.';
+        currentIngredientDescription.textContent = 'AI 카메라가 잘 담겼는지 보고 있어요.';
+        workNoteText.innerHTML = '확인이 끝나면<br>용기 그림에 채워져요.';
       } else if (tech.key === 'verified') {
-        currentIngredientDescription.textContent = 'VLM 확인이 완료되었습니다.';
-        workNoteText.innerHTML = '확인 성공한 class만 용기에 반영했어요.<br>다음 작업을 준비하고 있어요.';
+        currentIngredientDescription.textContent = '잘 담긴 걸 확인했어요.';
+        workNoteText.innerHTML = '다음 재료를<br>준비하고 있어요.';
       } else if (tech.key === 'vlmfail') {
-        currentIngredientDescription.textContent = 'VLM 확인에 실패했습니다.';
-        workNoteText.innerHTML = '현재 class는 용기에 표시하지 않아요.<br>재작업 또는 다음 판단을 기다립니다.';
+        currentIngredientDescription.textContent = '다시 확인이 필요해요.';
+        workNoteText.innerHTML = '로봇이 다시 담거나<br>다음 단계를 정하고 있어요.';
       } else if (tech.key === 'retried') {
-        currentIngredientDescription.textContent = '로봇 재시도를 마쳤습니다.';
-        workNoteText.innerHTML = '실제 PASS와 구분해 표시하고 있어요.<br>공정은 다음 작업으로 진행합니다.';
+        currentIngredientDescription.textContent = '로봇이 한 번 더 담았어요.';
+        workNoteText.innerHTML = '다음 재료로<br>넘어갈게요.';
       } else if (tech.key === 'uncertain') {
-        currentIngredientDescription.textContent = '판정할 새 카메라 화면을 기다리고 있습니다.';
-        workNoteText.innerHTML = '로봇을 재시도하지 않고<br>새 화면으로 다시 판정합니다.';
+        currentIngredientDescription.textContent = '카메라 화면을 다시 보고 있어요.';
+        workNoteText.innerHTML = '조금만<br>기다려 주세요.';
       } else {
-        currentIngredientDescription.textContent = '작업 상태를 기다리고 있어요.';
-        workNoteText.innerHTML = '잠시만 기다려주세요.';
+        currentIngredientDescription.textContent = '다음 작업을 기다리고 있어요.';
+        workNoteText.innerHTML = '잠시만 기다려 주세요.';
       }
     }
 
@@ -2645,12 +2721,12 @@
     // UI_NODE -> HTML: ROS 연결 여부
     socket.on('ros_status', data => {
       const connected = Boolean(data && data.connected);
-      stepLabel.textContent = connected ? 'ROS 연결됨' : 'ROS 연결 안 됨';
+      stepLabel.textContent = connected ? '통신 연결됨' : '통신 연결 안 됨';
       stepLabel.dataset.status = connected ? 'connected' : 'error';
     });
 
     socket.on('disconnect', () => {
-      stepLabel.textContent = '서버 연결 끊김';
+      stepLabel.textContent = '통신 끊김';
       stepLabel.dataset.status = 'error';
     });
 
@@ -2658,6 +2734,11 @@
       startScreen.hidden = true;
       // HTML -> UI_NODE: 사용자가 시작 버튼을 누름
       socket.emit('start', {});
+    });
+
+    startScreen.addEventListener('click', event => {
+      if (event.target.closest('#startBtn')) return;
+      document.getElementById('startBtn').click();
     });
 
     resetActionButtons.forEach(button => {
@@ -2708,6 +2789,92 @@
 
     // 수신기를 먼저 붙여야 연결 직후 서버가 보내는 마지막 상태를 놓치지 않는다.
     socket.connect();
+  </script>
+  <script>
+    /* 내 주문 칩에 상태 표시: VLM 확인 끝난 재료 = 완료, 지금 작업 재료 = 담는 중 */
+    (() => {
+      const 원래그리기 = 진행상태그리기;
+      진행상태그리기 = function (data) {
+        원래그리기(data);
+        if (!data || typeof data !== 'object') return;
+        const ui = UI상태정규화(data);
+        const 완료 = new Set(ui.filledClasses.map(c => 재료정보(c).name));
+        const 지금 = ui.currentClass && !['completed', 'idle'].includes(ui.workState) ? ui.currentInfo.name : '';
+        currentOrderItems.querySelectorAll('.chip').forEach(chip => {
+          const 이름 = 재료정보(chip.textContent).name;
+          chip.classList.toggle('is-done', 완료.has(이름));
+          chip.classList.toggle('is-now', !완료.has(이름) && 이름 === 지금);
+        });
+      };
+    })();
+  </script>
+  <script>
+    /* 로봇 한 줄 상태: 현재 작업 카드의 설명을 그대로 비춘다. 작업 전에는 주문을 기다리는 말을 보여준다 */
+    (() => {
+      const robotCaption = document.getElementById('robotCaption');
+      const 갱신 = () => {
+        if (currentIngredientName.textContent === '작업 대기 중') {
+          robotCaption.textContent = {
+            listening: '듣고 있어요. 편하게 말씀하세요.',
+            thinking: '잠시만요, 생각하고 있어요.',
+            speaking: '로봇이 대답하고 있어요.',
+          }[mic.dataset.state] ?? '무엇을 담아드릴까요?';
+        } else {
+          robotCaption.textContent = currentIngredientDescription.textContent;
+        }
+      };
+      new MutationObserver(갱신).observe(currentIngredientDescription, {childList: true, characterData: true, subtree: true});
+      new MutationObserver(갱신).observe(mic, {attributes: true, attributeFilter: ['data-state']});
+      갱신();
+    })();
+  </script>
+  <script>
+    /* 데모 모드: 주소 뒤에 ?demo 를 붙였을 때만 동작한다. 서버·ROS 없이 화면 흐름을 확인하는 용도.
+       ?demo        → 전체 흐름을 자동 재생
+       ?demo=7      → 7번째 장면에서 멈춤 (스크린샷용) */
+    (() => {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('demo')) return;
+      socket.disconnect();
+      stepLabel.textContent = '통신 연결됨';
+      stepLabel.dataset.status = 'connected';
+
+      const 주문 = ['noodle', 'mushroom', 'onion', 'sausage', 'cheese', 'pepperoncino', 'crab', 'cover', 'tomato'];
+      const 공통 = {selected_classes: 주문, selected_sauce: 'tomato', selected: ['얇은면', '버섯', '양파', '소시지', '치즈', '페퍼론치노', '게살', '토마토소스']};
+      const 상태 = (extra) => 진행상태그리기({...공통, ...extra});
+
+      const 장면 = [
+        () => { startScreen.hidden = false; 마이크('idle'); },
+        () => { startScreen.hidden = true; 상태({work_state: 'idle', current_group: 'container', selected: [], selected_classes: []});
+                발화추가('bot', '안녕하세요! 어떤 파스타로 담아드릴까요?'); 마이크('listening'); },
+        () => { 발화추가('me', '얇은 면에 버섯이랑 양파 넣어줘'); 마이크('thinking'); },
+        () => { 발화추가('bot', '좋아요. 얇은면에 버섯과 양파를 담을게요. 고기는 어떤 걸로 할까요?'); 마이크('speaking');
+                상태({work_state: 'idle', current_group: 'noodle', completed_groups: ['container']}); },
+        () => { 마이크('listening'); },
+        () => { 발화추가('me', '소시지랑 게살, 치즈랑 페퍼론치노도. 소스는 토마토!'); 마이크('thinking'); },
+        () => { 발화추가('bot', '주문 확인했어요. 지금부터 로봇이 담아드릴게요.'); 마이크('waiting');
+                상태({current_class: 'noodle', current_group: 'noodle', work_state: 'working', completed_groups: ['container']}); },
+        () => 상태({current_class: 'noodle', current_group: 'noodle', work_state: 'vlm_checking', completed_groups: ['container']}),
+        () => 상태({current_class: 'mushroom', current_group: 'vegetable', work_state: 'working', filled_classes: ['noodle'], completed_groups: ['container', 'noodle']}),
+        () => 상태({current_class: 'onion', current_group: 'vegetable', work_state: 'vlm_checking', filled_classes: ['noodle', 'mushroom'], completed_groups: ['container', 'noodle']}),
+        () => 상태({current_class: 'sausage', current_group: 'meat', work_state: 'working', filled_classes: ['noodle', 'mushroom', 'onion'], completed_groups: ['container', 'noodle', 'vegetable']}),
+        () => 상태({current_class: 'crab', current_group: 'meat', work_state: 'vlm_fail', filled_classes: ['noodle', 'mushroom', 'onion', 'sausage'], completed_groups: ['container', 'noodle', 'vegetable']}),
+        () => 상태({current_class: 'pepperoncino', current_group: 'extra', work_state: 'working', filled_classes: ['noodle', 'mushroom', 'onion', 'sausage', 'crab', 'cheese'], completed_groups: ['container', 'noodle', 'vegetable', 'meat']}),
+        () => 상태({current_class: 'cover', current_group: 'cover', work_state: 'working', filled_classes: ['noodle', 'mushroom', 'onion', 'sausage', 'crab', 'cheese', 'pepperoncino'], completed_groups: ['container', 'noodle', 'vegetable', 'meat', 'extra']}),
+        () => { 상태({current_class: 'tomato', current_group: 'sauce', work_state: 'completed', filled_classes: ['noodle', 'mushroom', 'onion', 'sausage', 'crab', 'cheese', 'pepperoncino', 'cover', 'tomato'], completed_groups: ['container', 'noodle', 'vegetable', 'meat', 'extra', 'cover', 'sauce']});
+                발화추가('bot', '다 담았어요! 맛있게 드세요.'); 마이크('speaking'); },
+      ];
+
+      const 멈출장면 = Number(params.get('demo'));
+      if (멈출장면 > 0) {
+        장면.slice(0, 멈출장면).forEach(f => f());
+        return;
+      }
+      let i = 0;
+      const 다음 = () => { 장면[i % 장면.length](); if (i % 장면.length === 장면.length - 1) setTimeout(화면세션초기화, 2600); i += 1; };
+      다음();
+      setInterval(다음, 2800);
+    })();
   </script>
 </body>
 </html>

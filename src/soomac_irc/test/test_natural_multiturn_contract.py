@@ -27,6 +27,7 @@ from soomac_irc.agent_contract import (
 )
 from soomac_irc.agent_prompts import DECISION_SYSTEM
 from soomac_irc.decision_model import DECISION_KEYS_ANY_ORDER, build_decision_model_input
+from soomac_irc.decision_model import build_decision_inputs
 from soomac_irc.llm_langgraph import (
     build_execution_started_reply,
     build_graph,
@@ -209,6 +210,32 @@ def test_schema_and_session_use_the_v4_contract():
     assert forbidden.isdisjoint(properties)
     assert forbidden.isdisjoint(normalized)
     assert forbidden.isdisjoint(new_session_state())
+
+
+def test_decision_shadow_prompt_override_does_not_change_default_contract():
+    class Processor:
+        def apply_chat_template(self, messages, **_kwargs):
+            self.messages = copy.deepcopy(messages)
+            return {"input_ids": SimpleNamespace(shape=(1, 10))}
+
+    session = new_session_state()
+    state = robot_state(section="meat")
+    default_processor = Processor()
+    default_messages, _, default_input = build_decision_inputs(
+        session, "소시지 넣어줘", state, default_processor
+    )
+    shadow_processor = Processor()
+    shadow_messages, _, shadow_input = build_decision_inputs(
+        session,
+        "소시지 넣어줘",
+        state,
+        shadow_processor,
+        system_prompt="shadow-only-prompt",
+    )
+
+    assert default_messages[0]["content"] == DECISION_SYSTEM
+    assert shadow_messages[0]["content"] == "shadow-only-prompt"
+    assert default_input == shadow_input
 
 
 def test_decision_prompt_keeps_contextual_grounding_boundaries():
