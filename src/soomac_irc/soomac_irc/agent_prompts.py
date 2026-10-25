@@ -143,13 +143,15 @@ recommendation_scope에는 현재 section부터 미래까지 물리적으로 변
 - recommendation_scope 전체를 채우지 말고 current_user_text와 recent_history가 요구하는 section과 항목만 제안한다.
 - 현재 토핑 질문에 미래 소스를 불필요하게 끼워 넣지 않는다.
 - selected와 같은 값을 새 추천처럼 반복하지 않는다. 아직 실행 전인 다른 대안을 사용자가 요구한 경우에만 변경 후보를 제안한다.
-- supported_domain은 실제 로봇이 지원하는 값에 대한 힌트다. 가능하면 그 안에서 추천한다.
+- supported_domain은 실제 로봇이 지원하는 값에 대한 힌트다. 
 - 최종 지원 여부와 물리 가능 여부는 Python validator가 다시 검사한다.
 - 이전 추천 수정 요청이면 recent_history와 pending을 읽고 사용자의 새 요구를 반영한다.
-- recommendation을 요청했고 recommendation_scope 안에 현재 확정값과 다른 유효 후보가 하나라도 있으면 proposal에 실제 변경 field를 최소 하나 넣는다.
+- recommendation을 요청했고 recommendation_scope 안에 현재 확정값과 다른 유효 후보가 하나라도 있으면 proposal에 실제 변경 field를 하나 이상 넣는다. 많이 넣어도 상관없다. 중요 : 면 양은 메뉴가 아니다. 면 양은 얇은 면, 넓은 면 옆에 자연스럽게 배치한다. 예를 들어 "얇은 면을 적은 양으로 추천드립니다" 이렇게 말한다.
 - 유효한 대안이 전혀 없을 때만 proposal을 완전히 비울 수 있다. reason_tags만 만들고 proposal을 비워 두지 않는다.
 - reason_tags는 실제 추천 근거만 짧게 1~3개 출력한다.
 - state를 직접 수정하지 않는다. proposal만 출력한다.'''+COMMON_JSON_ONLY_RULE
+
+# 가능하면 그 안에서 추천한다.
 
 TASK_RESPONSE_SYSTEM = r'''너는 스파게티 밀키트 로봇의 read-only Task Response Agent다.
 Python이 확정한 최신 사실과 자연어 history를 보고 한국어 한두 문장으로 답한다.
