@@ -37,34 +37,53 @@ from std_msgs.msg import String
 
 from cosyvoice.cli.cosyvoice import AutoModel
 
+try:
+    from soomac_irc.tts_pause import SentencePauseStretcher
+except ImportError:          # python3 tts_node.py 로 직접 돌릴 때는 같은 폴더에서 찾는다
+    from tts_pause import SentencePauseStretcher
+
 MODEL_DIR = '/home/roma/models/audio/tts/Fun-CosyVoice3-0.5B-2512'
 OUTPUT_DIR = '/home/roma/ros2_ws/src/soomac_ai/src/tts_out'
 LAST_WAV = os.path.join(OUTPUT_DIR, 'last.wav')
 SAMPLE_RATE = 24000
 
-# 참조 음성 = (WAV, 그 WAV 에서 실제로 말한 문장). 둘이 어긋나면 안 된다.
-#   PROMPT_TEXT 는 생성하고 싶은 문장이 아니라 참조 WAV 의 전사다.
-#   TTS_PROMPT 환경변수로 고른다. 되돌릴 때: TTS_PROMPT=sansa
-PROMPT_PRESETS = {
-    'sansa': (
-        os.path.join(OUTPUT_DIR, 'prompt_5p5s.wav'),
-        '반갑습니다. 산사의 아침 공기가 참으로 맑고 고요하지요?'),
-    'cedar_short': (
-        os.path.join(OUTPUT_DIR, 'irc_cedar_short_pauses_24k.wav'),
-        '안녕하세요! 주문 확인했습니다. 요청하신 재료부터 차례대로 준비해 드릴게요.'),
-    'cedar_original': (
-        os.path.join(OUTPUT_DIR, 'irc_cedar_original_24k.wav'),
-        '안녕하세요! 주문 확인했습니다. 요청하신 재료부터 차례대로 준비해 드릴게요.'),
-    # cedar_short 의 끝 무음 0.09 초만 잘라 정확히 5.00 초로 맞춘 것.
-    #   첫 청크 = token_hop_len + (참조 토큰 수를 25 의 배수로 채우는 양) 이다(cosyvoice/cli/model.py 345행).
-    #   토큰은 초당 25개라 5.00 초(125개)면 채울 게 없어 첫 소리가 가장 빨리 나온다.
-    'cedar_short_5s': (
-        os.path.join(OUTPUT_DIR, 'irc_cedar_short_pauses_5s_24k.wav'),
-        '안녕하세요! 주문 확인했습니다. 요청하신 재료부터 차례대로 준비해 드릴게요.'),
-}
-PROMPT_NAME = os.environ.get('TTS_PROMPT') or 'cedar_short_5s'
-PROMPT_WAV, _prompt_transcript = PROMPT_PRESETS[PROMPT_NAME]
-PROMPT_TEXT = 'You are a helpful assistant.<|endofprompt|>' + _prompt_transcript
+# ── 참조 음성: 이 경로 한 줄만 바꾸면 된다 ─────────────────────────────
+PROMPT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tts_prompts')
+PROMPT_WAV = os.path.join(PROMPT_DIR, 'sansa_natural.wav')
+
+# 문장 사이 무음을 재생 직전에 이 길이(초)까지 늘린다. 쉼표·단어 속은 안 건드린다(tts_pause.py). 0 이면 끔
+SENTENCE_PAUSE_SEC = 0.60
+
+# WAV 마다 설정이 다르다.
+#   PROMPT_TRANSCRIPT : 그 WAV 에서 실제로 말한 문장. 생성하고 싶은 문장이 아니다
+#   SEC_PER_CHAR      : 그 목소리의 글자당 말소리 시간. 문장 사이를 찾을 때 쓴다(tts_pause.py)
+_prompt_file = os.path.basename(PROMPT_WAV)
+if _prompt_file == 'cedar_mid.wav':
+    # OpenAI.fm Cedar. 원본에서 문장 사이 무음만 0.55 / 0.60 초로 바꿨다
+    PROMPT_TRANSCRIPT = '안녕하세요! 주문 확인했습니다. 요청하신 재료부터 차례대로 준비해 드릴게요.'
+    SEC_PER_CHAR = 0.14
+elif _prompt_file == 'cedar2.wav':
+    # OpenAI.fm Cedar, 두 번째 녹음
+    PROMPT_TRANSCRIPT = '반갑습니다. 주문하신 내용 확인했습니다. 요청하신 재료부터 차근차근 준비해 드릴게요.'
+    SEC_PER_CHAR = 0.144
+elif _prompt_file == 'marin.wav':
+    # OpenAI.fm Marin. 끝 무음 0.06 초만 잘라 7.00 초로 맞췄다(첫 소리 지연 최소)
+    #   Cedar 보다 말이 느리다. 0.14 를 쓰면 쉼표 자리를 문장 사이로 잘못 늘린다
+    PROMPT_TRANSCRIPT = '반갑습니다. 주문하신 내용 확인했습니다. 요청하신 재료부터 차근차근 준비해 드릴게요.'
+    SEC_PER_CHAR = 0.163
+elif _prompt_file == 'sansa_natural.wav':
+    # 산사 목소리를 다듬은 것. 정확히 5.00 초, 문장 사이 0.44 초(예전 산사는 0.78 초)
+    PROMPT_TRANSCRIPT = '반갑습니다. 산사의 아침 공기가 참으로 맑고 고요하지요?'
+    SEC_PER_CHAR = 0.171
+elif _prompt_file == 'sansa_5p5s.wav':
+    # 예전 참조 음성
+    PROMPT_TRANSCRIPT = '반갑습니다. 산사의 아침 공기가 참으로 맑고 고요하지요?'
+    SEC_PER_CHAR = 0.17
+else:
+    raise ValueError(f'{_prompt_file} 의 전사와 설정이 없어요. tts_node.py 에 elif 를 추가하세요.')
+
+PROMPT_TEXT = 'You are a helpful assistant.<|endofprompt|>' + PROMPT_TRANSCRIPT
+LAST_PACED_WAV = os.path.join(OUTPUT_DIR, 'last_paced.wav')   # 실제로 재생한 소리. last.wav 는 모델 원본
 
 OUT_SR = 48000 # resampleing Hz
 # 'sysdefault' 는 card 0(ALC897 아날로그 = 헤드폰)에 고정이다.
@@ -214,7 +233,7 @@ class TTSNode(Node):
         super().__init__('soomac_tts_node')
 
         self.get_logger().info('김도현 박지수 이준미 주재영 파이팅')
-        self.get_logger().info(f'참조 음성 {PROMPT_NAME}: {PROMPT_WAV}')
+        self.get_logger().info(f'참조 음성 {PROMPT_WAV} / 문장 사이 {SENTENCE_PAUSE_SEC:.2f}초')
 
         self.cosyvoice_tts = AutoModel(model_dir=MODEL_DIR, fp16=False, load_trt=False) # tts 모델 객체!
 
@@ -275,7 +294,17 @@ class TTSNode(Node):
 
         stats = SynthStats()
 
-        chunks = []
+        chunks = []        # 모델 원본. last.wav 로 저장
+        played = []        # 문장 사이 무음을 늘린 뒤 실제로 재생한 소리. last_paced.wav 로 저장
+        pauser = (SentencePauseStretcher(llm_response, SAMPLE_RATE, SENTENCE_PAUSE_SEC, sec_per_char=SEC_PER_CHAR)
+                  if SENTENCE_PAUSE_SEC > 0 else None)
+
+        def play(samples):
+            if len(samples) == 0:
+                return
+            played.append(samples)
+            out = np.clip(resample_poly(samples, OUT_SR, SAMPLE_RATE), -1, 1).astype(np.float32)
+            self.speaker.write(out.reshape(-1, 1))      # 실시간 용
 
 
         q = queue.Queue() # 큐에 청크 담아서 계속 넣어야함
@@ -305,9 +334,10 @@ class TTSNode(Node):
 
                 stats.mark_first_packet()
                 chunks.append(chunk)
+                play(pauser.feed(chunk) if pauser else chunk)
 
-                out = np.clip(resample_poly(chunk, OUT_SR, SAMPLE_RATE), -1, 1).astype(np.float32)
-                self.speaker.write(out.reshape(-1, 1))      # 실시간 용
+            if pauser:
+                play(pauser.flush())   # 10 ms 미만 자투리
 
         except Exception as error:
             self.get_logger().error(f"에러 터짐 샤갈! {error}")
@@ -327,6 +357,12 @@ class TTSNode(Node):
         audio = np.concatenate(chunks) # 생성된 청크들 통합해버려 그냥
 
         sf.write(LAST_WAV, audio, SAMPLE_RATE) # 합성된거 sample rate로 저장
+
+        if pauser and played:
+            sf.write(LAST_PACED_WAV, np.concatenate(played), SAMPLE_RATE)   # 원본과 비교용
+            self.get_logger().info(
+                f'문장 사이 무음 {len(pauser.inserted)}곳을 {SENTENCE_PAUSE_SEC:.2f}초로 늘림 '
+                f'(시작초, 원래, 추가): {pauser.inserted} | {LAST_PACED_WAV}')
 
         total_time = len((audio)) / SAMPLE_RATE
 
