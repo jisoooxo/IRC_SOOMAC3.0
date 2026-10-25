@@ -41,6 +41,8 @@ env/
 *.tar.sha256
 /models/*_adapter*/
 /models/runtime_adapters/
+/archive/*/models/
+/archive/*/soomac_*_training*/
 /upgrade_v4/
 /training_v3_2_v1_1/decision/adapters/
 /training_v3_2_v1_1/response/adapters/
@@ -51,10 +53,10 @@ env/
 /training_v3_2_v1_1/evaluation/*_combination/
 /training_v3_2_v1_1/evaluation/long_horizon*/
 /training_v3_2_v1_1/evaluation/targeted_response/
-/evaluation_decision_v3_1/
-/evaluation_dual_adapter/
-/evaluation_long_horizon/
-/evaluation_long_horizon_corrected/
+/archive/*/evaluation_decision_v3_1/
+/archive/*/evaluation_dual_adapter/
+/archive/*/evaluation_long_horizon/
+/archive/*/evaluation_long_horizon_corrected/
 
 # Learning-first v4.3 training/audit workspace (canonical archive: SOOMAC_TRAINING_WORKSPACE)
 /training/learning_first_v43/
@@ -65,7 +67,7 @@ env/
 /docs/2026-10-25_llm_final_3agent_dataset_audit.md
 
 # 실제 로봇 검증의 rosbag 원본
-/physical_robot_evaluation/rosbag_first_pass/
+/archive/*/physical_robot_evaluation/rosbag_first_pass/
 
 # 편집기·운영체제 임시 파일
 .vscode/
