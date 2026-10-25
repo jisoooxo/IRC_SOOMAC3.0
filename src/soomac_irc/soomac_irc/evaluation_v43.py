@@ -143,6 +143,33 @@ def _canonical_decision(decision: dict) -> dict:
     return canonical
 
 
+def _decision_meaning(decision: dict) -> dict:
+    """Compare sparse/normalized outputs, ignoring only documented no-op defaults."""
+    value = _canonical_decision(decision)
+    for key in ("order_patch", "restriction_options", "preference_options"):
+        value.pop(key, None)
+    understanding = value.pop("understanding", None)
+    if understanding == "clarify":
+        value["clarify"] = True
+    for key in ("commit", "skip_current", "clarify"):
+        if value.get(key) is False:
+            value.pop(key)
+    if value.get("confirmation") == "none":
+        value.pop("confirmation")
+    if value.get("recommendation") == {"action": "none"}:
+        value.pop("recommendation")
+    if isinstance(value.get("order"), dict):
+        value["order"] = {k: v for k, v in value["order"].items() if v is not None and v != {}}
+        if not value["order"]:
+            value.pop("order")
+    for key in ("restrictions", "preferences"):
+        if value.get(key) == []:
+            value.pop(key)
+        elif isinstance(value.get(key), list):
+            value[key] = sorted(value[key], key=lambda item: json.dumps(item, sort_keys=True, ensure_ascii=False))
+    return value
+
+
 def _section_for_plan(plan: dict) -> str | None:
     section = plan.get("section")
     if section is not None:
@@ -322,6 +349,13 @@ def grade_decision_prediction(
         return Grade(str(case.get("id", "UNKNOWN")), False, tuple(failures))
     decision = _canonical_decision(prediction)
     candidates = case.get("expected_any") or []
+    # Dataset targets are complete sparse meanings. A missing key is not permission
+    # to invent a mutation. Explicit alternatives belong in reviewed metadata.
+    if not candidates and isinstance(case.get("target"), dict):
+        alternatives = (case.get("metadata") or {}).get("decision_target_alternatives") or [case["target"]]
+        meaning = _decision_meaning(prediction)
+        if not any(meaning == _decision_meaning(target) for target in alternatives):
+            failures.append(Violation("decision_target_mismatch", "decision", alternatives, meaning))
     if candidates and not any(
         not _contains_pattern(candidate, decision, "decision") for candidate in candidates
     ):
@@ -339,7 +373,7 @@ def grade_decision_prediction(
             "order", "restrictions", "preferences", "recommendation", "commit",
             "skip_current", "confirmation", "clarify",
         }
-        if mutation_fields.intersection(decision):
+        if mutation_fields.intersection(_decision_meaning(prediction)):
             failures.append(Violation("general_route_mutation", "decision", "route only", decision))
     return Grade(str(case.get("id", "UNKNOWN")), not failures, tuple(failures))
 
@@ -378,6 +412,20 @@ def grade_recommendation_prediction(
         return Grade(case_id, False, (Violation("invalid_proposal", "proposal", "object", proposal),))
     model_input = case.get("input") or {}
     actual = _proposal_fields(proposal)
+    metadata = case.get("metadata") or {}
+    constraints = metadata.get("proposal_constraints") or {}
+    # Cardinality is an annotated oracle, not guessed from the user's wording.
+    count = constraints.get("exact_field_count")
+    if count is None and metadata.get("scenario_family") == "one_of":
+        count = 1
+    if count is not None and len(actual) != count:
+        failures.append(Violation("proposal_cardinality", "proposal", count, len(actual)))
+    for field in constraints.get("forbidden_fields") or []:
+        if field in actual:
+            failures.append(Violation("forbidden_proposal_field", field, "absent", actual[field]))
+    if "allowed_fields" in constraints:
+        for field in sorted(set(actual) - set(constraints["allowed_fields"])):
+            failures.append(Violation("proposal_outside_requested_fields", field, constraints["allowed_fields"], actual[field]))
     allowed = _scope_fields(model_input)
     for field in sorted(set(actual) - allowed):
         failures.append(Violation("proposal_outside_scope", field, sorted(allowed), actual[field]))
@@ -432,6 +480,64 @@ def _natural_field_name(field: str) -> str:
     return {"noodle_type": "면", "noodle_portion": "면", "sauce": "소스"}.get(field, field)
 
 
+def _response_fact_checks(model_input: dict, reply: str) -> list[Violation]:
+    """Conservative checks for documented false claims; not a general Korean judge.
+
+    This is evaluation-only. It never changes runtime state or interprets orders.
+    Match local affirmative claims, so a negation about one item cannot excuse a
+    false affirmative claim about a different item in the same reply.
+    """
+    failures = []
+    pending = model_input.get("pending") or {}
+    if pending.get("type") != "execution" and re.search(
+        r"실행\s*확인.{0,8}(?:남아\s*있어요|남았어요|남아\s*있습니다|필요해요|필요합니다)", reply
+    ):
+        failures.append(Violation("invented_execution_pending", "reply", pending, reply))
+    applied = model_input.get("applied_this_turn") or {}
+    added = {str(x.get("target")) for x in applied.get("restriction_added") or []}
+    completed = {str(x.get("class") or x.get("item")) for x in (model_input.get("robot_state") or {}).get("completed_tasks") or []}
+    if any(x in NOODLE_TYPES for x in completed):
+        completed.add("면")
+    if any(x in SAUCES for x in completed):
+        completed.add("소스")
+    order = model_input.get("confirmed_order") or {}
+    facts = {**(order.get("toppings") or {})}
+    if order.get("noodle_type"):
+        facts[order["noodle_type"]] = order.get("noodle_portion")
+    user_history = " ".join(str(x.get("content") or "") for x in model_input.get("recent_history") or [] if x.get("role") == "user")
+    active_preferences = " ".join(str(x.get("value") or "") for x in model_input.get("preferences") or [])
+    for clause in re.split(r"[.!?\n]", reply):
+        # Inspect each item's local span; an earlier item cannot lend its quantity
+        # or completion fact to the next item.
+        names = sorted(set(TOPPINGS) | set(NOODLE_TYPES), key=len, reverse=True)
+        entity_pattern = "|".join([*(re.escape(x) + r"(?:\s*소스)?" for x in SAUCES), *map(re.escape, names), r"(?<![가-힣])면", r"(?<![가-힣])소스"])
+        mentions = list(re.finditer(entity_pattern, clause))
+        for index, mention in enumerate(mentions):
+            item = mention.group()
+            item = next((sauce for sauce in SAUCES if item.startswith(sauce)), item)
+            end = mentions[index + 1].start() if index + 1 < len(mentions) else len(clause)
+            local = clause[mention.start():end]
+            if re.search(r"(?:담았(?:어요|습니다)|담기.{0,5}완료|투입.{0,5}완료)", local) and item not in completed:
+                failures.append(Violation("unverified_item_completion", "reply", sorted(completed), local))
+            if re.search(r"(?:알레르기|제한).{0,15}(?:저장했|추가했|등록했)", local) and not re.search(r"이미|이전에|앞서", clause):
+                if item not in added:
+                    failures.append(Violation("false_restriction_update", "reply", sorted(added), local))
+            if re.search(r"좋아한다고\s*하셨|좋아하신다고\s*하셨", local):
+                stated = bool(re.search(re.escape(item) + r".{0,15}좋아", user_history))
+                revoked = bool(re.search(re.escape(item) + r".{0,15}(?:철회|취소|지워)", user_history))
+                if item not in active_preferences and (not stated or revoked):
+                    failures.append(Violation("ungrounded_preference_recall", "reply", active_preferences, local))
+            amount = facts.get(item)
+            # Only a present selection assertion, not a question, example or past
+            # value that the same clause explicitly says was changed/removed.
+            if amount in _AMOUNT_PATTERNS and re.search(r"선택했|골랐|저장했|바꿨|바꿨어|변경했|수정했", clause) and not re.search(r"취소|제거|빼|이전|아까", clause):
+                cues = [(match.start(), key) for key, pattern in _AMOUNT_PATTERNS.items() for match in pattern.finditer(local)]
+                # "많이에서 조금으로 바꿨어요" asserts the final (last) quantity.
+                if cues and max(cues)[1] != amount:
+                    failures.append(Violation("selected_amount_contradiction", "reply", {item: amount}, local))
+    return failures
+
+
 def grade_response_prediction(
     case: dict,
     reply: str | None,
@@ -443,6 +549,7 @@ def grade_response_prediction(
     if error is not None or not isinstance(reply, str) or not reply.strip():
         return Grade(case_id, False, (Violation("inference_error", "reply", "non-empty string", error or reply),))
     model_input = case.get("input") or {}
+    failures.extend(_response_fact_checks(model_input, reply))
     if _INTERNAL_RESPONSE.search(reply):
         failures.append(Violation("internal_field_leak", "reply", "natural Korean", reply))
     if not model_input.get("execution_authorized") and _claims_execution_started(reply):
