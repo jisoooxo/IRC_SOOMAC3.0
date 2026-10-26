@@ -76,7 +76,7 @@ FLEXIBLE_ORDER_SCHEMA = {
         # scalar의 none은 선택 해제 의미이다. 실제 주문에는 문자열로 저장하지 않는다.
         "sauce": {"type": "string"},
         "noodle_type": {"type": "string"},
-        "noodle_portion": {"type": "string"},
+        "noodle_portion": {"type": "string", "enum": [*AMOUNTS, "none"]},
         "toppings": {
             "type": "object",
             "additionalProperties": {
@@ -95,7 +95,7 @@ ORDER_PATCH_SCHEMA = {
     "properties": {
         "sauce": {"type": ["string", "null"]},
         "noodle_type": {"type": ["string", "null"]},
-        "noodle_portion": {"type": ["string", "null"]},
+        "noodle_portion": {"type": ["string", "null"], "enum": [*AMOUNTS, "none", None]},
         "toppings": {
             "type": "object",
             "additionalProperties": {

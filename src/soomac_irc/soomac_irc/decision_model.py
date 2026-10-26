@@ -17,7 +17,10 @@ from soomac_irc.agent_contract import (
 from soomac_irc.agent_prompts import DECISION_SYSTEM
 
 DECISION_HISTORY_TURNS = 10
-DECISION_INPUT_MAX_TOKENS = 8192
+# GL06 offline baseline/candidate/repair and 20-message stress measurements:
+# 8192 loses additional history with demos; 16384 is the minimum measured cap
+# preserving at least the GL05 baseline window. GPU cost acceptance is GL11.
+DECISION_INPUT_MAX_TOKENS = 16384
 DECISION_MAX_TOKENS = 1024
 DECISION_KEYS_ANY_ORDER = True
 

@@ -12,7 +12,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'jsonschema>=4.18'],
     zip_safe=False,
     maintainer='roma',
     maintainer_email='badukjoo@naver.com',

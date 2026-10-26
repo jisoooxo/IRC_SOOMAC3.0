@@ -53,6 +53,45 @@ def physical_section_for_order_key(key: str) -> str | None:
     return None
 
 
+def is_future_recommendation_pending(pending: dict | None, section: str) -> bool:
+    """미수락 후보가 현재 실행과 무관한 미래 field만 다루는지 검사한다.
+
+    자연어 의도나 실행 권한을 만들지 않는다. 호출자는 별도로 commit·주문·제한·
+    busy를 검증해야 한다. 빈/미지원/취소 후보는 보수적으로 통과시키지 않는다.
+    """
+    if section not in SECTION_ORDER or not isinstance(pending, dict) or pending.get("type") != "recommendation":
+        return False
+    candidate = pending.get("candidate")
+    if not isinstance(candidate, dict) or set(candidate) - {"sauce", "noodle_type", "noodle_portion", "toppings"}:
+        return False
+    toppings = candidate.get("toppings", {})
+    if not isinstance(toppings, dict):
+        return False
+    for field, values in (("sauce", SAUCES), ("noodle_type", NOODLE_TYPES), ("noodle_portion", AMOUNTS)):
+        if candidate.get(field) is not None and candidate[field] not in values:
+            return False
+    if any(item not in TOPPINGS or amount not in AMOUNTS for item, amount in toppings.items()):
+        return False
+    fields = changed_order_keys_from_patch(candidate)
+    current_index = SECTION_ORDER.index(section)
+    return bool(fields) and all(
+        physical_section_for_order_key(field) in SECTION_ORDER
+        and SECTION_ORDER.index(physical_section_for_order_key(field)) > current_index
+        for field in fields
+    )
+
+
+def pending_blocks_execution(pending: dict | None, section: str) -> bool:
+    """현재 실행과 분리 가능한 후보만 보류한 채 실행할 수 있다.
+
+    extra 이후 lid/sauce는 기존 자동 진행이다. 새 소스 후보를 확인하지 못한 채
+    그 구간으로 들어가지 않도록 마지막 대화 단계에서 먼저 해소한다.
+    """
+    if pending is None:
+        return False
+    return not is_future_recommendation_pending(pending, section) or section in ("extra", "lid", "sauce")
+
+
 def section_execution_items(order: dict, section: str) -> list[dict]:
     # 확정 주문을 현재 section에서 실제로 담을 작업 목록으로 바꾼다.
     # 아직 필수값이 부족한 면 section은 빈 목록을 반환해 실행하지 않는다.

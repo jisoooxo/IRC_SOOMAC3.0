@@ -5,6 +5,16 @@
 
 ## 0. 최신 요구 — 변경 불가 기준
 
+**현재 인계(2026-10-26): GL05·GL06 명시 범위 완료, BATCH02 종료.** 다음 작업자는 `final/goals/GL06/RESULT.md` → `RECURRING_FAILURE_CONTRACT.md` → `TOKEN_BUDGET_REPORT.md` → `FEWSHOT_MANIFEST.json` 순으로 읽는다. 저장소 staging은 `training/learning_first_v43/final/goals/`, 외부 정본은 기존 SOOMAC_TRAINING_WORKSPACE의 동일 final/goals이다. 전체612pass·8subtests,32개예시와23개system시연/실제serializer/17개Decision replay·최종Codex찬성 증거를 보관한다. history/context와 이전 GL04/05 봉인은 보존했다.
+
+반복 오류인 근거 없는 단계 진행 주장과 pending/next_prompt 없는 실행 질문은 예시교정·prompt계약·추가12회귀로 고정했다. 잘못된 assistant 질문 뒤 모호한 동의도 검사하되 정상실행수락/명시commit은 유지한다. **실제 자유생성 재발0을 입증한 것은 아니다.** GL07~13에서동일오류target FIX/DROP/HOLD 및새모델채택차단기준으로이어받는다. 기존trainer4096은현재prompt와불일치(32개중24개실패),격리16384후보의32개target masking/완결/추가trim0만검증했다. 새data/전체trainer/GPU/학습검증은후속필수다. 원격job·adapter·VLM·ROS·commit/push변경없음. GL07별도승인전착수금지. 아래미완료기록은과거이력이다.
+
+**2026-10-26 최우선 정정: 프롬프트 개선은 계속하되 기존 adapter 성적을 새 모델의 최종 판정으로 사용하지 않는다.** GL05 코드·입력/발행·안전 계약과 GL06 prompt/few-shot·토큰 검증을 분리한다. 독립 oracle·복합 멀티턴 전후 필드·serializer·history 보존·편향/누수가 현재 기준이다. 기존 GPU 실패는 기록/데이터 보강 근거이지 아직 학습하지 않은 adapter의 불합격이 아니다. 새 모델 성능 NOT_RUN, GL05 미완료·GL06 준비만 완료를 유지한다. 다음 작업자는 기존 adapter 반복 튜닝을 자동 재개하지 말고 `training/learning_first_v43/final/goals/GL05/ACCEPTANCE_POLICY.md`와 최신 NEXT부터 읽는다.
+
+**2026-10-26 최신: 담당은 LLM만이다. VLM 프롬프트·테스트·판정 로직은 건드리지 않는다.** 후속 작업자는 저장소 `AGENTS.md`를 먼저 읽는다. GL05는 구현/검증 진행 중이고 GL06은 준비 산출물만 작성됐다. 기존 VLM 변경은 별도 작업자 소유로 보존한다. 전체 해시 검사 실패를 없애려고 VLM을 되돌리지 않는다. 최신 상세는 GL05/STATE·WORKLOG·NEXT를 따른다.
+
+2026-10-26 GL04 최신: **상태·실행 권한 범위 완료, Codex최종찬성.** 수량 enum·강한 cannot_eat·복합 pending/commit·명확화 권한을 구현했다. 코드493pass·8subtests / controlled20episode63turn / 기존어댑터GPU12상태검사12통과. B2raw오판은fallback으로막았고빈추천도남으므로모델이해/직원형성능완료아님. 새 SessionState/Decision 최상위필드없이pending.question_type·deferred만보강. `final/goals/GL04/RESULT·manifest·NEXT.md`와진행목록우선. 아래미구현/NOT_RUN은과거이력. GL05~15미착수·자동학습/운영교체/실물ROS/commit/push없음.
+
 **최종 목표는 이전 대화와 현재 주문·선호·제약·실제 로봇 상태에 근거해 자연스럽게 권유하고 정확하게 실행하는 직원형 대화이다.** 메뉴 키워드를 외운 단일 턴 분류기나 “저장했어요”만 말하는 시스템이 아니다. 자연스러움은 길게 말하기가 아니라, 해당 상황에 필요한 설명과 다음 대화를 정확하게 이어가는 것이다.
 
 사용자의 최신 추가 강조: **멀티턴이 잘 된 사례도 있다. 기존 멀티턴을 보존한다. 학습 응답을 한 줄 저장 보고로 획일화하지 않는다.** 현재 결함을 전체 멀티턴 기능 고장으로 일반화하지 않는다.
@@ -259,7 +269,7 @@ Claude의 “보강270행 안전 결함 없음” 포괄 판정은 선택질문�
 
 운영 설정 라벨 D v3.4 epoch4 / Q v2 epoch4 / P v1.3 epoch3, Oct11 마지막 D v3.2 epoch4 / Q Base / P v1 epoch1을 구분한다. 실제 로드 model/adapter/base/tokenizer 경로·hash·revision을 새 비교 전에 고정한다. 현재 config만으로 당시 로그 가중치를 증명하지 않는다. Recommendation 과거 strict43/43도 현재 broad/자연스러움 gate 통과 증거는 아니다.
 
-기존 checkpoint → prompt-only → 최소Runtime → 정제data adapter 순서로 Agent별 효과를 비교한다. 각 Agent는 같은 Base에서 독립 LoRA이며 서로의 adapter를 연속 덧씌우지 않는다. 원격 r4 결과는 도착하면 별도 후보로 평가하며 자동 교체하지 않는다. GPU 지연은 턴/총시간/로딩을 분리한다.
+GL11은 기존 checkpoint → prompt-only → 최소Runtime의 학습 전 비교이며 실패도 기록하여 GL12 Agent별 학습 필요 판단에 전달한다. GL13에서만 별도 승인 후 필요한 Agent의 정제data adapter 학습·새 가중치 재평가를 수행한다. 새 adapter 최종 채택은 해당 모델의 독립 holdout·P1/유동 변형/route 3종·기존 성공 회귀·안전/지연 기준을 통과한 뒤 판단한다. 기존 adapter 성적은 비교용이며 학습 전 새 모델 성능은 NOT_RUN이다. 각 Agent는 같은 Base에서 독립 LoRA이며 서로의 adapter를 연속 덧씌우지 않는다. 원격 r4 결과는 도착하면 별도 후보로 평가하며 자동 교체하지 않는다. GPU 지연은 턴/총시간/로딩을 분리한다.
 
 Docker 과거 문제: tokenizer_config hash mismatch, main과 고정revision 캐시 불일치, `/tmp/dataset-quality-audit.json` 권한 충돌. 기록상 r4는 checkpoint monitor 경로·UID1000 재작성·mounted-model preflight로 보완했다. base revision `707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7` 기록을 실제 입력 hash와 재대조한다. 검사를 제거해 우회하지 않는다. `Downloads/TRAINING_IMAGE_SPEC.ko_v2_9 (1).md` 및 프로토콜 ZIP은 실파일 확인 후 사용한다.
 
@@ -307,6 +317,10 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/soomac_irc /home/roma/miniconda3/envs/g
 최종 plan의 G0–G4를 모두 증거와 함께 충족하고, 원문 시나리오 외 표현·메뉴·선호·제약·history 조합에서도 정해진 동결평가를 통과해야 한다. 기존 성공 멀티턴·즉시실행·철회·skip을 망가뜨리지 않는다. 마지막으로 말·주문·pending·실행·VLM 증거가 일치해야 한다. “한 번 자연스럽게 대답함”이나 “학습 loss가 낮음”은 완료가 아니다.
 
 ## 13. 이번 인계 작성의 진행 기록
+
+2026-10-26 GL04 추가 요구: 복합 멀티턴과 모델 판단 자유도를 필수검수로 확정했다. plan §8.3과 final/goals/GL04/MULTITURN_REVIEW.md를 읽는다. 같은 최신 발화라도 앞선history/state/pending에 따라 달라지는 지시대상·수량·수락·실행·제약을 검증한다. mock 통과와 실제LLM closed-loop 성공은 구분하며, 새 Python 자연어 규칙/역사삭제는 금지한다. 전행 데이터 정제는 GL07~09이며 현재 수행했다고 쓰지 않는다.
+
+2026-10-26 최신 인계: GL01·GL02 완료, GL03 Codex 보완 완료(384 passed·최종Codex찬성). 현재 상태는 외부 작업장 `final/goals/GOAL_INDEX.md`와 `GL03/CODEX_FOLLOWUP_STATE/WORKLOG/NEXT.md`를 읽는다. 예전 `USAGE_LIMIT_HANDOFF.md`의 GL02 미완료/GL03 미시작은 과거 시점 기록이다. 이후 작업/독립 검수는 Codex only. 사용자 정정: “나머지만 담아줘”는 이전 대화·state·직전 질문·pending으로 판단하고, 수량 생략 시 기존 확정량을 유지하며 미확정 새 항목에만 normal을 쓴다. 수량 기본값과 실행 승인은 별개이다. [코드 수정 명세](<IRC LLM Final code changes.md>) R07과 plan §3.2/8.0이 후속 구현 기준이다.
 
 2026-10-26: 초기 release 감사, 후보/평가기 개선, 3담당+Claude/Codex 교차검수, future-scope, active-stack 재판정, Oct11 GPU, 계약reset 조정,225109,최종계획B1/B2,최신34턴 결과를 통합했다. 원문 보고의 시점·분모·과잉판정 정정을 명시했다. 이 인계 작업은 문서만 작성/갱신하며 Runtime·학습자료·model·ROS를 변경하지 않는다. 새 인계 문서 자체의 교차검수와 파일 묶음 검증 결과는 별도 `HANDOFF_VALIDATION.md`에 기록한다.
 

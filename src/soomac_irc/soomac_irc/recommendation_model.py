@@ -15,6 +15,7 @@ from soomac_irc.agent_contract import (
 from soomac_irc.agent_prompts import RECOMMENDATION_SYSTEM
 from soomac_irc.domain import AMOUNTS, NOODLE_TYPES, SAUCES, TOPPINGS
 from soomac_irc.llm_policy import build_recommendation_scope
+from soomac_irc.response_contract import build_recommendation_model_input
 
 RECOMMENDATION_MAX_TOKENS = 1024
 RECOMMENDATION_HISTORY_TURNS = 10
@@ -35,28 +36,12 @@ def make_call_recommendation(model, processor, logger=None, adapter_name: str | 
         session: SessionState,
         decision: NormalizedDecision,
         robot_state: dict,
-        user_text: str,
+        user_text: str | None,
     ) -> dict:
         # Decision이 추천 조건을 별도 field로 번역하지 않는다.
         # 추천 모델이 사용자 원문·최근 대화·현재 주문을 직접 읽고 후보를 만든다.
         started = time.perf_counter()
-        model_input = {
-            "current_user_text": user_text.strip(),
-            "recent_history": copy.deepcopy(session["history"][-(RECOMMENDATION_HISTORY_TURNS * 2):]),
-            "order": copy.deepcopy(session["order"]),
-            "restrictions": copy.deepcopy(session["order"].get("restrictions", [])),
-            "preferences": copy.deepcopy(session["preferences"]),
-            "pending": copy.deepcopy(session.get("pending")),
-            "recommendation_action": decision["recommendation"]["action"],
-            "robot_state": copy.deepcopy(robot_state),
-            "recommendation_scope": build_recommendation_scope(session, robot_state),
-            "supported_domain": {
-                "sauces": list(SAUCES),
-                "noodle_types": list(NOODLE_TYPES),
-                "toppings": list(TOPPINGS),
-                "amounts": list(AMOUNTS),
-            },
-        }
+        model_input = build_recommendation_model_input(session, decision, robot_state, user_text)
         messages = [
             {"role": "system", "content": RECOMMENDATION_SYSTEM},
             {"role": "user", "content": json.dumps(model_input, ensure_ascii=False, separators=(",", ":"))},

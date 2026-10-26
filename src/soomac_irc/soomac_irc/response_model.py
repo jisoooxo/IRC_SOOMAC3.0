@@ -9,9 +9,10 @@ from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 from soomac_irc.adapter_runtime import activate_adapter
 from soomac_irc.agent_contract import RESPONSE_SCHEMA, SessionState
 from soomac_irc.agent_prompts import GENERAL_RESPONSE_SYSTEM, MIXED_RESPONSE_SYSTEM, TASK_RESPONSE_SYSTEM
-from soomac_irc.llm_policy import build_recommendation_scope, section_execution_items
+from soomac_irc.response_contract import (
+    RESPONSE_HISTORY_TURNS, build_response_model_input, validate_response_output,
+)
 
-RESPONSE_HISTORY_TURNS = 10
 RESPONSE_MAX_TOKENS = 512
 RESPONSE_SYSTEM_BY_ROUTE = {
     "task": TASK_RESPONSE_SYSTEM,
@@ -32,7 +33,7 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
 
     @torch.inference_mode()
     def call_response(
-        user_text: str,
+        user_text: str | None,
         session: SessionState,
         policy: dict,
         applied_changes: dict,
@@ -45,28 +46,10 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
         # route에 맞는 말투를 고르되, 주문 사실은 항상 Python이 확정한 값만 전달한다.
         started = time.perf_counter()
         route = route if route in RESPONSE_SYSTEM_BY_ROUTE else "task"
-        execution_authorized = bool(policy.get("execute"))
-        model_input = {
-            "user_text": user_text,
-            "recent_history": copy.deepcopy(session["history"][-(RESPONSE_HISTORY_TURNS * 2):]),
-            "confirmed_order": copy.deepcopy(session["order"]),
-            "preferences": copy.deepcopy(session["preferences"]),
-            "pending": copy.deepcopy(session.get("pending")),
-            "policy": copy.deepcopy(policy),
-            "applied_this_turn": copy.deepcopy(applied_changes),
-            "future_changes": copy.deepcopy(future_changes),
-            "recommendation_result": copy.deepcopy(recommendation_result),
-            "next_prompt": copy.deepcopy(next_prompt),
-            "robot_state": copy.deepcopy(robot_state),
-            "recommendation_scope": build_recommendation_scope(session, robot_state),
-            "recent_action_history": copy.deepcopy(session.get("action_history", [])[-20:]),
-            "execution_authorized": execution_authorized,
-            "starting_now": (
-                section_execution_items(session["order"], robot_state["section"])
-                if execution_authorized
-                else []
-            ),
-        }
+        model_input = build_response_model_input(
+            user_text, session, policy, applied_changes, future_changes,
+            recommendation_result, next_prompt, robot_state, route,
+        )
         messages = [
             {"role": "system", "content": RESPONSE_SYSTEM_BY_ROUTE[route]},
             {"role": "user", "content": json.dumps(model_input, ensure_ascii=False, separators=(",", ":"))},
@@ -102,7 +85,8 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
                 output = model.generate(**generate_args)
             raw = processor.decode(output[0][prompt_tokens:], skip_special_tokens=True).strip()
             parsed = json.loads(raw)
-            reply = parsed["reply"].strip()
+            trace.update({"raw": raw, "parsed": copy.deepcopy(parsed)})
+            reply = validate_response_output(parsed)
             trace.update({
                 "prompt_tokens": prompt_tokens,
                 "output_tokens": output[0].shape[0] - prompt_tokens,

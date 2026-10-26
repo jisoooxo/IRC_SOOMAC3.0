@@ -1,5 +1,6 @@
 import copy
 from typing import Callable
+from soomac_irc.response_contract import RESPONSE_FAILURE_REPLY, validate_recommendation_result
 
 from soomac_irc.agent_contract import (
     DuplicateDecisionKeyError as _DuplicateDecisionKeyError,
@@ -22,7 +23,10 @@ from soomac_irc.llm_policy import (
     changed_order_keys_from_patch,
     current_section_changed,
     enforce_restrictions,
+    find_restriction_conflicts,
+    is_future_recommendation_pending,
     missing_current_section,
+    pending_blocks_execution,
     physical_section_for_order_key,
     section_execution_items,
     validate_order_patch,
@@ -47,10 +51,10 @@ def _patch_has_values(patch: dict) -> bool:
 def _canonicalize_structured_flavor_preference(
     decision: _NormalizedDecision,
 ) -> _NormalizedDecision:
-    """모델이 flavor preference를 unsupported restriction으로 낸 경우 의미를 보존한다.
+    """구조화된 소프트 매운맛 기호만 기존 preference로 옮긴다.
 
     사용자 원문을 다시 해석하지 않고 Decision이 이미 구조화한 매운맛 회피 의미만
-    canonical preference로 옮긴다.
+    canonical preference로 옮긴다. cannot_eat 등 강한 제한은 강도를 낮추지 않는다.
     """
     migrated = copy.deepcopy(decision)
     restrictions = []
@@ -63,7 +67,7 @@ def _canonicalize_structured_flavor_preference(
     for option in migrated["restriction_options"]:
         if (
             option.get("target") == "매운맛"
-            and option.get("reason") in ("cannot_eat", "dislike")
+            and option.get("reason") == "dislike"
             and option.get("action") in ("add", "remove")
         ):
             canonical = {"value": "맵지 않게", "action": option["action"]}
@@ -76,44 +80,6 @@ def _canonicalize_structured_flavor_preference(
     migrated["restriction_options"] = restrictions
     migrated["preference_options"] = preferences
     return migrated
-
-
-def _canonical_recommendation_reason_tags(
-    session: _SessionState,
-    robot_state: dict,
-    proposal: dict,
-) -> list[str]:
-    """확정 state와 현재 section으로만 추천 근거를 만든다."""
-    current_section = robot_state.get("section")
-    labels = {
-        "noodle": "면", "veggie": "야채", "meat": "육류",
-        "extra": "추가 재료", "sauce": "소스",
-    }
-    proposal_fields = [
-        field for field in ("sauce", "noodle_type", "noodle_portion")
-        if proposal.get(field) is not None
-    ]
-    proposal_fields.extend(f"toppings.{item}" for item in (proposal.get("toppings") or {}))
-    proposal_sections = {
-        physical_section_for_order_key(field) for field in proposal_fields
-        if physical_section_for_order_key(field) is not None
-    }
-    reason_section = next(iter(proposal_sections)) if len(proposal_sections) == 1 else current_section
-    tags = [f"현재 {labels[reason_section]} 단계"] if reason_section in labels else []
-    toppings = proposal.get("toppings") or {}
-    preferences = {entry.get("value") for entry in session.get("preferences", [])}
-    if reason_section == "extra" and "치즈" in toppings and "맵지 않게" in preferences:
-        tags.insert(0, "매운맛 회피")
-    if reason_section == "extra" and "페퍼론치노" in toppings and "매콤하게" in preferences:
-        tags.insert(0, "매운맛 선호")
-    if reason_section == "meat" and "소시지" in toppings:
-        restricted_targets = {
-            entry.get("target") for entry in session["order"].get("restrictions", [])
-            if entry.get("reason") in SAFETY_RESTRICTION_REASONS
-        }
-        if restricted_targets & {"게살", "갑각류"}:
-            tags.insert(0, "게살 섭취 제한 고려")
-    return tags
 
 
 def _external_decision_view(decision: _NormalizedDecision) -> dict:
@@ -268,72 +234,12 @@ def build_execution_started_reply(session: _SessionState, section: str) -> str:
     return f"{', '.join(descriptions)} 담기를 시작해요."
 
 
-def build_execution_rejected_reply() -> str:
-    """실행 전 거절을 물리 중단이나 주문 취소로 과장하지 않는 고정 문장이다."""
-    return "알겠어요. 이번 담기는 진행하지 않을게요."
-
-
-def build_restriction_removal_rejected_reply(candidate: dict | None) -> str:
-    """강한 제한 삭제 거절 뒤 유지되는 canonical safety state를 고정 문장으로 알린다."""
-    target = (candidate or {}).get("target")
-    if target:
-        return f"알겠어요. {target} 섭취 제한은 그대로 유지할게요."
-    return "알겠어요. 섭취 제한은 그대로 유지할게요."
-
-
-def _describe_order_changes(order_changes: dict) -> str:
-    amount_words = {"low": "적게", "normal": "보통으로", "high": "많이"}
-    display_labels = {
-        "sauce": "소스",
-        "noodle_type": "면 종류",
-        "noodle_portion": "면 양",
-    }
-    descriptions = []
-    for field, value in order_changes.items():
-        if value is None:
-            continue
-        item = field.split(".")[-1] if field.startswith("toppings.") else display_labels.get(field, field)
-        if field in ("sauce", "noodle_type"):
-            descriptions.append(_with_object_particle(str(value)))
-        elif value in amount_words:
-            descriptions.append(f"{_with_object_particle(item)} {amount_words[value]}")
-        else:
-            descriptions.append(f"{item} {_with_object_particle(str(value))}")
-    return ", ".join(descriptions)
-
-
-def build_recommendation_proposed_reply(recommendation_result: dict | None) -> str:
-    """검증된 추천안과 canonical reason만 말하는 고정 문장이다."""
-    result = recommendation_result or {}
-    proposal = result.get("proposal") or {}
-    changes = {
-        field: proposal.get(field)
-        for field in ("sauce", "noodle_type", "noodle_portion")
-        if proposal.get(field) is not None
-    }
-    changes.update({f"toppings.{item}": amount for item, amount in (proposal.get("toppings") or {}).items()})
-    description = _describe_order_changes(changes) or "이 구성으로"
-    reason_tags = result.get("reason_tags") or []
-    if "매운맛 회피" in reason_tags:
-        prefix = "매운맛을 피하는 취향을 고려해 "
-    elif "게살 섭취 제한 고려" in reason_tags:
-        prefix = "게살 섭취 제한을 고려해 "
-    else:
-        prefix = ""
-    return f"{prefix}{description} 추천해요. 적용할까요?"
-
-
-def build_recommendation_accepted_reply(applied: dict, pending: dict | None) -> str:
-    """추천 수락을 새 추천으로 되묻지 않고 확정 사실로 안내한다."""
-    description = _describe_order_changes(applied.get("order_changes") or {}) or "추천한 구성으로"
-    suffix = " 지금 담을까요?" if (pending or {}).get("type") == "execution" else ""
-    return f"알겠어요. {description} 선택했어요.{suffix}"
-
-
 def _pending_prompt(pending: dict | None) -> dict | None:
     # Response Agent에는 내부 pending 전체가 아니라 사용자에게 물을 사실만 전달한다.
     if pending is None:
         return None
+    if pending.get("question_type") == "clarification":
+        return {"type": "clarification"}
     ptype = pending.get("type")
     if ptype == "execution":
         return {
@@ -350,6 +256,131 @@ def _pending_prompt(pending: dict | None) -> dict | None:
             "reason_tags": copy.deepcopy(pending.get("reason_tags", [])),
         }
     return copy.deepcopy(pending)
+
+
+def _pending_confirmation_errors(session: _SessionState, decision: _NormalizedDecision) -> list[str]:
+    # 질문 종류와 권한의 구조적 불일치만 검사한다. 사용자 문장은 읽지 않는다.
+    pending = session.get("pending") or {}
+    if (
+        (pending.get("question_type") == "undelivered"
+         or (pending.get("type") == "execution" and pending.get("question_type") == "clarification"))
+        and decision["confirmation"] in ("accept", "reject")
+        and not (pending.get("type") == "execution" and decision["commit"])
+    ):
+        return [
+            "latest question is clarification or the pending question was not delivered; do not "
+            "accept/reject an unasked question. Resolve explicit order meaning without confirmation, "
+            "clarify if unresolved, or use commit only for explicit execution of a confirmed order"
+        ]
+    return []
+
+
+def _record_question_delivery(session, next_prompt, *, delivered):
+    # A successful generation satisfies the model-call contract, NOT proof that
+    # the prose asks the intended question or that the user heard it. Decision
+    # owns that semantic judgment from actual history; publisher failure restores
+    # this marker. Never inspect sentence keywords here.
+    pending = session.get("pending")
+    if pending is None:
+        return
+    if not delivered:
+        if pending.get("question_type") != "clarification":
+            pending["question_type"] = "undelivered"
+    elif next_prompt and next_prompt.get("type") == pending.get("type"):
+        if pending.get("question_type") == "undelivered":
+            pending.pop("question_type")
+
+
+def generate_section_event_response(session, robot_state, call_recommendation, call_response, fallback_reply):
+    """Read-only model orchestration for an actual conversational-stage event.
+
+    Only validated pending candidates may change. No order, user history, Decision
+    interpretation, execution authority or ROS control is created here.
+    """
+    working = copy.deepcopy(session)
+    section = robot_state["section"]
+    conflicts = [entry for entry in find_restriction_conflicts(working["order"])
+                 if physical_section_for_order_key(entry["key"]) == section]
+    policy = {"status": "pass", "reason": "section_transition", "execute": False, "conflicts": conflicts}
+    result = None
+    error = None
+    recommendation_failed = False
+    pending = working.get("pending")
+    if (pending or {}).get("type") == "recommendation":
+        result = validate_recommendation_result(working, {
+            "proposal": pending.get("candidate"), "reason_tags": pending.get("reason_tags", []),
+        }, robot_state)
+        if "raw_proposal" in result:
+            result["accepted_candidate"] = result.pop("raw_proposal")
+            result["candidate_source"] = "revalidated_pending"
+        working["pending"] = (
+            {"type": "recommendation", "candidate": copy.deepcopy(result["proposal"]),
+             "reason_tags": copy.deepcopy(result["reason_tags"])}
+            if result["accepted_fields"] else None
+        )
+        recommendation_failed = not result["accepted_fields"] and bool(
+            result["rejected_fields"] or result["reason_validation"]["schema_valid"] is False)
+    if conflicts:
+        policy.update(status="blocked", reason="restriction_conflict")
+        if (working.get("pending") or {}).get("type") == "execution":
+            working["pending"] = None
+        next_prompt = {"type": "restriction_conflict", "conflicts": copy.deepcopy(conflicts)}
+    else:
+        if working.get("pending") is None:
+            working["pending"] = build_preselected_section_confirmation(working, section)
+            if working["pending"] is not None:
+                # A valid confirmed order recovers an unusable old candidate.
+                recommendation_failed = False
+        if working.get("pending") is None:
+            decision = new_decision()
+            decision["recommendation"]["action"] = "request"
+            try:
+                raw = call_recommendation(copy.deepcopy(working), decision, copy.deepcopy(robot_state), None)
+                result = validate_recommendation_result(working, raw, robot_state, current_event_only=True)
+                recommendation_failed = not result["accepted_fields"] and bool(
+                    result["rejected_fields"] or result["reason_validation"]["schema_valid"] is False)
+                if result["accepted_fields"]:
+                    working["pending"] = {
+                        "type": "recommendation", "candidate": copy.deepcopy(result["proposal"]),
+                        "reason_tags": copy.deepcopy(result["reason_tags"]),
+                    }
+            except Exception as exc:
+                error = {"stage": "recommendation", "type": type(exc).__name__}
+                recommendation_failed = True
+        next_prompt = _pending_prompt(working.get("pending"))
+        if next_prompt is None:
+            next_prompt = {"type": "section_prompt", "section": section}
+        if (working.get("pending") or {}).get("type") == "recommendation":
+            policy["reason"] = "recommendation_proposed"
+    if recommendation_failed:
+        # Schema/domain failure is mechanical, not a new language judgment.
+        # A valid empty optional proposal and safe partial proposals are not errors.
+        error = error or {"stage": "recommendation", "type": "ValidationError"}
+        _record_question_delivery(working, next_prompt, delivered=False)
+        return {"session": working, "reply": RESPONSE_FAILURE_REPLY, "policy": policy,
+                "recommendation_result": result, "next_prompt": next_prompt, "model_error": error}
+    safe_fallback = fallback_reply
+    if working["order"].get("restrictions") or (working.get("pending") or {}).get("type") == "recommendation":
+        # A fault notice must not list prohibited options or ask execution
+        # acceptance when pending actually points to a recommendation.
+        safe_fallback = RESPONSE_FAILURE_REPLY
+    try:
+        # Rejected historical candidates remain audit evidence, not live proposals
+        # when recovery now asks about the confirmed order or a restriction.
+        response_recommendation = result if next_prompt.get("type") == "recommendation" else None
+        reply = call_response(None, copy.deepcopy(working), copy.deepcopy(policy),
+                              build_applied_changes(session, working), [],
+                              copy.deepcopy(response_recommendation), copy.deepcopy(next_prompt), copy.deepcopy(robot_state), "task")
+        if not isinstance(reply, str) or not reply.strip():
+            raise ValueError("Response event reply is empty or not a string")
+    except Exception as exc:
+        error = {"stage": "response", "type": type(exc).__name__}
+        reply = safe_fallback
+        _record_question_delivery(working, next_prompt, delivered=(safe_fallback != RESPONSE_FAILURE_REPLY))
+    else:
+        _record_question_delivery(working, next_prompt, delivered=True)
+    return {"session": working, "reply": reply, "policy": policy,
+            "recommendation_result": result, "next_prompt": next_prompt, "model_error": error}
 
 
 def _resolve_pending(
@@ -410,6 +441,16 @@ def _resolve_pending(
                 "pending_type": ptype,
                 "candidate": copy.deepcopy(pending.get("candidate")),
             }
+        # 한 번에 한 제한만 확인한다. 나머지 검증된 철회 요청은 pending 안에
+        # 보존하여 다음 턴에 각각 묻고, 한 번의 동의로 전부 삭제하지 않는다.
+        deferred = pending.get("deferred") or []
+        if deferred:
+            working["pending"] = {
+                "type": "restriction_removal",
+                "candidate": copy.deepcopy(deferred[0]),
+            }
+            if len(deferred) > 1:
+                working["pending"]["deferred"] = copy.deepcopy(deferred[1:])
         return working, effective, result
 
     # 실행 확인 수락은 commit으로 바꾸고, 거절은 실행 대기만 닫는다.
@@ -461,7 +502,10 @@ def _refresh_execution_pending(session: _SessionState) -> None:
         return
 
     if pending.get("source") == "preselected":
-        session["pending"] = build_preselected_section_confirmation(session, section)
+        refreshed = build_preselected_section_confirmation(session, section)
+        if refreshed is not None and pending.get("question_type") in ("clarification", "undelivered"):
+            refreshed["question_type"] = pending["question_type"]
+        session["pending"] = refreshed
         return
 
     refreshed = copy.deepcopy(pending)
@@ -498,7 +542,7 @@ def build_graph(
         if not isinstance(external_output, dict):
             external_output = _external_decision_view(decision)
 
-        errors = find_structural_decision_errors(decision)
+        errors = find_structural_decision_errors(decision) + _pending_confirmation_errors(state["session"], decision)
         if not errors:
             return {"decision": decision}
 
@@ -524,7 +568,7 @@ def build_graph(
             repaired["understanding"] = "clarify"
 
         # 두 번째 결과도 모순이면 세 번째 호출 없이 아무 의미도 확정하지 않은 Decision으로 끝낸다.
-        if find_structural_decision_errors(repaired):
+        if find_structural_decision_errors(repaired) or _pending_confirmation_errors(state["session"], repaired):
             repaired = new_decision()
             repaired["understanding"] = "clarify"
 
@@ -543,8 +587,12 @@ def build_graph(
             "execute": False,
             "conflicts": [],
         }
+        session = copy.deepcopy(state["session"])
+        if (policy["reason"] == "understanding" and (session.get("pending") or {}).get("type") == "execution"
+                and session["pending"].get("question_type") != "undelivered"):
+            session["pending"]["question_type"] = "clarification"
         return {
-            "session": copy.deepcopy(state["session"]),
+            "session": session,
             "recommendation_result": None,
             "policy": policy,
         }
@@ -560,6 +608,9 @@ def build_graph(
 
         # 2. 모델도 의미를 확정하지 못한 턴은 state를 바꾸지 않고 다시 묻는다.
         if decision["understanding"] == "clarify":
+            if ((session.get("pending") or {}).get("type") == "execution"
+                    and session["pending"].get("question_type") != "undelivered"):
+                session["pending"]["question_type"] = "clarification"
             return {
                 "session": session,
                 "decision": decision,
@@ -609,14 +660,28 @@ def build_graph(
         if _patch_has_values(decision["order_patch"]) or decision["restriction_options"]:
             _refresh_execution_pending(session)
 
-        # 일반 state 변경 뒤에는 이전 주문 상태로 만든 추천 후보를 더 이상 확인 대상으로 두지 않는다.
+        # 추천과 무관한 현재 주문만 바뀌면 미래 후보는 보존한다. 제한/취향이나
+        # 후보와 관련된 주문이 바뀌면 기존 무효화 정책을 그대로 적용한다.
         # request/revise 턴은 Recommendation Agent가 기존 후보까지 읽어야 하므로 호출 전까지 보존한다.
         applied = build_applied_changes(previous, session)
+        pending = session.get("pending")
+        independent_current_change = (
+            isinstance(pending, dict)
+            and pending.get("type") == "recommendation"
+            and is_future_recommendation_pending(pending, state["robot_state"]["section"])
+            and bool(applied["order_changes"])
+            and all(
+                physical_section_for_order_key(field) == state["robot_state"]["section"]
+                for field in applied["order_changes"]
+            )
+            and not any(value for key, value in applied.items() if key != "order_changes")
+        )
         if (
             isinstance(session.get("pending"), dict)
             and session["pending"].get("type") == "recommendation"
             and decision["recommendation"]["action"] == "none"
             and any(applied.values())
+            and not independent_current_change
         ):
             session["pending"] = None
 
@@ -694,6 +759,11 @@ def build_graph(
                     "type": "restriction_removal",
                     "candidate": candidate,
                 }
+                if len(strong_removals) > 1:
+                    session["pending"]["deferred"] = [
+                        {"target": option["target"], "reason": option["reason"]}
+                        for option in strong_removals[1:]
+                    ]
                 policy = {
                     "status": "clarify",
                     "reason": "restriction_removal_confirmation_required",
@@ -709,30 +779,45 @@ def build_graph(
                 "policy": policy,
             }
 
+        if (
+            pending_result
+            and pending_result["type"] in {"restriction_removal_accepted", "restriction_removal_rejected"}
+            and (session.get("pending") or {}).get("type") == "restriction_removal"
+        ):
+            return {
+                "session": session,
+                "decision": decision,
+                "recommendation_result": None,
+                "policy": {
+                    "status": "clarify", "reason": "restriction_removal_confirmation_required",
+                    "execute": False, "conflicts": [],
+                    "candidate": copy.deepcopy(session["pending"]["candidate"]),
+                    "resolved_confirmation": copy.deepcopy(pending_result),
+                },
+            }
+
         # 5. 추천 요청은 원문과 history를 추천 모델이 직접 읽는다.
         # 추천 결과도 일반 주문과 같은 validator를 통과한 뒤 pending에만 저장한다.
         if decision["recommendation"]["action"] in ("request", "revise"):
-            raw = call_recommendation(
-                copy.deepcopy(session),
-                copy.deepcopy(decision),
-                copy.deepcopy(state["robot_state"]),
-                state["user_text"],
-            )
-            rec_validation = validate_recommendation_proposal(session, raw["proposal"], state["robot_state"])
-            canonical_reason_tags = _canonical_recommendation_reason_tags(
-                session, state["robot_state"], rec_validation["proposal"]
-            )
-            recommendation_result = {
-                "proposal": copy.deepcopy(rec_validation["proposal"]),
-                "reason_tags": canonical_reason_tags,
-                "accepted_fields": copy.deepcopy(rec_validation["accepted_fields"]),
-                "rejected_fields": copy.deepcopy(rec_validation["rejected_fields"]),
-            }
+            try:
+                raw = call_recommendation(
+                    copy.deepcopy(session), copy.deepcopy(decision),
+                    copy.deepcopy(state["robot_state"]), state["user_text"],
+                )
+            except Exception as error:
+                raw = None
+                recommendation_error = {"type": type(error).__name__}
+            else:
+                recommendation_error = None
+            rec_validation = validate_recommendation_result(session, raw, state["robot_state"])
+            recommendation_result = copy.deepcopy(rec_validation)
+            if recommendation_error is not None:
+                recommendation_result["model_error"] = recommendation_error
             if rec_validation["accepted_fields"]:
                 session["pending"] = {
                     "type": "recommendation",
                     "candidate": copy.deepcopy(rec_validation["proposal"]),
-                    "reason_tags": copy.deepcopy(canonical_reason_tags),
+                    "reason_tags": copy.deepcopy(rec_validation["reason_tags"]),
                 }
                 policy = {
                     "status": "pass",
@@ -750,12 +835,17 @@ def build_graph(
                     "conflicts": [],
                     "rejected_fields": copy.deepcopy(rec_validation["rejected_fields"]),
                 }
-            return {
-                "session": session,
-                "decision": decision,
-                "recommendation_result": recommendation_result,
-                "policy": policy,
-            }
+            # 미수락 후보를 실행하지 않는다. 다만 독립된 현재 확정 주문의
+            # 명시적 commit은 미래 후보 때문에 버리지 않고 아래 안전 검사를 탄다.
+            if not decision["commit"] or (
+                pending_blocks_execution(session.get("pending"), state["robot_state"]["section"])
+            ):
+                return {
+                    "session": session,
+                    "decision": decision,
+                    "recommendation_result": recommendation_result,
+                    "policy": policy,
+                }
 
         # 6. 단순 거절은 여기서 끝내되, 현재 section을 새 값으로 교체한 복합 발화는
         # commit 검사 또는 새 execution pending 생성까지 계속 진행한다.
@@ -764,9 +854,12 @@ def build_graph(
             set(changed_order_keys_from_patch(accepted_patch))
             & set(allowed_order_fields(section))
         )
+        if direct_current_fields and (session.get("pending") or {}).get("type") == "execution":
+            # 현재 주문을 명확하게 지정한 유효 patch만 명확화 상태를 해소한다.
+            # 실제 실행 여부는 아래 commit 검사에서 별도로 판단한다.
+            session["pending"].pop("question_type", None)
         has_direct_current_replacement = (
             bool(direct_current_fields)
-            and current_section_changed(applied, section)
         )
         rejected_without_current_replacement = (
             pending_result
@@ -847,7 +940,7 @@ def build_graph(
                     "status": "clarify", "reason": "stale_execution_confirmation",
                     "execute": False, "conflicts": [],
                 }
-            elif unresolved_pending is not None:
+            elif pending_blocks_execution(unresolved_pending, section):
                 policy = {
                     "status": "clarify", "reason": "pending_confirmation_required",
                     "execute": False, "conflicts": [],
@@ -873,7 +966,8 @@ def build_graph(
         # 9. 현재 section 값만 바뀌었다면 바로 실행하지 않고 execution pending을 만든다.
         if (
             session.get("pending") is None
-            and current_section_changed(applied, section)
+            and (current_section_changed(applied, section)
+                 or (pending_result or {}).get("type") == "recommendation_accepted")
             and section_execution_items(session["order"], section)
             and not missing_current_section(session["order"], section)
         ):
@@ -908,10 +1002,30 @@ def build_graph(
         # Response Agent에는 확정 state와 이번 턴 결과만 전달한다.
         # Response는 주문을 바꾸지 않고 사용자가 들을 문장만 만든다.
         applied = build_applied_changes(state["previous_session"], state["session"])
+        response_failed = False
+        response_attempted = False
         future = build_future_changes(applied, state["robot_state"])
         next_prompt = _pending_prompt(state["session"].get("pending"))
         reason = state["policy"].get("reason")
-        if state["policy"].get("issues"):
+        recommendation_result = copy.deepcopy(state.get("recommendation_result"))
+        if reason == "recommendation_accepted" and recommendation_result is None:
+            previous_pending = state["previous_session"].get("pending") or {}
+            applied_proposal = empty_order_patch()
+            for field, value in applied["order_changes"].items():
+                if field.startswith("toppings."):
+                    applied_proposal["toppings"][field.split(".", 1)[1]] = "none" if value is None else value
+                else:
+                    applied_proposal[field] = "none" if value is None else value
+            recommendation_result = {
+                "proposal": applied_proposal,
+                "accepted_candidate": copy.deepcopy(previous_pending.get("candidate")),
+                "reason_tags": copy.deepcopy(previous_pending.get("reason_tags", [])),
+                "accepted_fields": list(applied["order_changes"]), "rejected_fields": [],
+                "reason_validation": {"source": "pending_model", "schema_valid": None, "semantic_status": "unverified"},
+            }
+        if reason == "understanding":
+            next_prompt = {"type": "clarification"}
+        elif state["policy"].get("issues"):
             next_prompt = {
                 "type": "validation_issues",
                 "issues": copy.deepcopy(state["policy"]["issues"]),
@@ -938,17 +1052,6 @@ def build_graph(
                 if starting_items
                 else ""
             )
-        elif reason == "execution_confirmation_rejected":
-            # pending은 이미 닫혔고 실행은 시작되지 않았다. 자유 생성이 과거 중단·남은 확인을
-            # 만들지 못하도록 canonical event만으로 문장을 소유한다.
-            reply = build_execution_rejected_reply()
-        elif reason == "restriction_removal_rejected":
-            # 강한 제한 유지도 모델의 추측 없이 Runtime이 확정 사실만 말한다.
-            reply = build_restriction_removal_rejected_reply(state["policy"].get("candidate"))
-        elif reason == "recommendation_proposed":
-            reply = build_recommendation_proposed_reply(state.get("recommendation_result"))
-        elif reason == "recommendation_accepted":
-            reply = build_recommendation_accepted_reply(applied, state["session"].get("pending"))
         elif reason == "recommendation_unavailable":
             # 추천 후보가 전부 거절된 실패 턴은 Response 모델이 과거 답변을 반복하지 못하게 한다.
             # 사용자의 취향을 새로 해석하지 않고 현재부터 물리적으로 가능한 선택 범위만 안내한다.
@@ -956,26 +1059,34 @@ def build_graph(
                 build_recommendation_scope(state["session"], state["robot_state"])
             )
         else:
-            reply = call_response(
-                state["user_text"],
-                copy.deepcopy(state["session"]),
-                copy.deepcopy(state["policy"]),
-                copy.deepcopy(applied),
-                copy.deepcopy(future),
-                copy.deepcopy(state.get("recommendation_result")),
-                copy.deepcopy(next_prompt),
-                copy.deepcopy(state["robot_state"]),
-                state["decision"]["route"],
-            )
+            response_attempted = True
+            try:
+                reply = call_response(
+                    state["user_text"], copy.deepcopy(state["session"]),
+                    copy.deepcopy(state["policy"]), copy.deepcopy(applied), copy.deepcopy(future),
+                    copy.deepcopy(recommendation_result), copy.deepcopy(next_prompt),
+                    copy.deepcopy(state["robot_state"]), state["decision"]["route"],
+                )
+                if not isinstance(reply, str) or not reply.strip():
+                    raise ValueError("Response reply is empty or not a string")
+            except Exception as error:
+                # Speech failure must not undo validated restrictions or a rejected execution.
+                # This exceptional fault message never claims an order/start/completion.
+                reply = RESPONSE_FAILURE_REPLY
+                response_failed = True
+                state["policy"] = dict(state["policy"], response_error={"type": type(error).__name__})
 
         # 실제 변경 event와 자연어 대화를 session history에 마지막으로 기록한다.
         session = copy.deepcopy(state["session"])
+        if response_attempted:
+            _record_question_delivery(session, next_prompt, delivered=not response_failed)
         event = build_turn_action_event(applied, future)
         if event is not None:
             session["action_history"].append(event)
         session["history"].append({"role": "user", "content": state["user_text"]})
         session["history"].append({"role": "assistant", "content": reply})
-        return {"session": session, "policy": state["policy"], "reply": reply}
+        return {"session": session, "policy": state["policy"], "reply": reply,
+                "recommendation_result": recommendation_result}
 
     # stage 선언 순서가 실제 한 턴의 흐름이다.
     # interpret → general/task → response 순서만 유지해 Graph를 평평하게 둔다.

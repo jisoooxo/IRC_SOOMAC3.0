@@ -11,6 +11,49 @@ VERDICT_RULE = (
     "판정: UNCERTAIN 중 하나만 단독으로 출력한다."
 )
 
+# 재료별 (도시락 칸, 생김새). 참고 이미지는 공급 용기를 확대한 사진이라 실제 도시락 칸과 모습이 다르다.
+# 생김새는 vlm_data/mealkit_coco_v15 참고 crop을 직접 보고 적었다(2026-10-26).
+INGREDIENT_GUIDES = {
+    "양파": ("오른쪽 상단 야채칸", "흰색~반투명의 썬 양파 조각(작은 조각부터 층진 큰 조각까지)"),
+    "버섯": ("오른쪽 상단 야채칸", "가늘고 긴 밝은 줄기에 갈색 갓이 달린 버섯"),
+    "소시지": ("왼쪽 상단 소시지칸", "손가락 길이의 매끈한 원통형 통소시지이고 주황빛이 도는 갈색"),
+    "게살": ("야채칸 아래 게살칸", "겉은 주황·빨강이고 속은 흰 막대 모양(맛살)"),
+    "치즈": ("소시지칸 아래 왼쪽 치즈칸", "흰색~연노랑의 잘게 썬 조각"),
+    "페퍼론치노": ("소시지칸 아래 오른쪽 페퍼론치노칸", "붉은·갈색의 잘게 부순 고추 조각과 노란 씨앗"),
+    "얇은면": ("맨 아래 면 칸", "노란 건조 파스타 면 다발(분홍 띠로 묶여 있을 수 있음)"),
+    # 넓은면 참고 사진은 따로 없다(vlm_rag.py에서 면 3종이 같은 noodle). 폭·종류는 구별하지 않는다.
+    "넓은면": ("맨 아래 면 칸", "노란 건조 파스타 면"),
+    "넓적면": ("맨 아래 면 칸", "노란 건조 파스타 면"),
+}
+# 사용자 결정(2026-10-26): 소시지는 들어갔는지만 본다. 다른 재료의 판정 기준은 바꾸지 않는다.
+INSERTION_ONLY_INGREDIENTS = frozenset({"소시지"})
+
+
+def _has_final_consonant(word: str) -> bool:
+    last = word[-1]
+    return "가" <= last <= "힣" and (ord(last) - ord("가")) % 28 != 0
+
+
+def _topic(word: str) -> str:
+    return f"{word}{'은' if _has_final_consonant(word) else '는'}"
+
+
+def _subject(word: str) -> str:
+    return f"{word}{'이' if _has_final_consonant(word) else '가'}"
+
+
+def _ingredient_guide(expected: str) -> str:
+    # 생김새·칸 안내. 표에 없는 재료는 기존 프롬프트만 쓴다.
+    guide = INGREDIENT_GUIDES.get(expected)
+    if guide is None:
+        return ""
+    compartment, appearance = guide
+    return (
+        f"{_topic(expected)} {appearance}이다. 판정은 검은 도시락통의 {compartment}만 본다. "
+        "참고 이미지는 재료 공급 용기를 확대한 사진이라 도시락 칸에서는 더 적고 작게 보인다. "
+        "용기 모양이나 양이 아니라 생김새만 참고하고, 화면에 함께 보이는 공급 용기 속 재료는 판정에 쓰지 않는다. "
+    )
+
 
 def build_lid_prompt(image_count: int) -> tuple[str, str]:
     # 작업 후 이미지 개수. 
@@ -77,8 +120,9 @@ def build_ingredient_prompt(expected: str, image_count: int, has_comparison: boo
     if not has_comparison:
         system_prompt = (
             "너는 로봇의 식재료 투입 작업을 확인하는 시각 판정기다. "
-            f"{expected}가 얇은면, 넓적면일 경우, 파스타면으로 인식되어도 면이 맞다." 
+            f"{_subject(expected)} 얇은면, 넓적면일 경우, 파스타면으로 인식되어도 면이 맞다."
             "이미지1은 현재 목표 재료의 참고 이미지이고 이후 이미지는 작업 후 장면이다. "
+            f"{_ingredient_guide(expected)}"
             f"작업 후 장면에 {expected} 재료가 명확하게 보이면 PASS이다. "
             f"{expected} 재료가 없거나 명확히 다른 재료가 담겼으면 FAIL이다. "
             "화면의 bounding box, class 글자, 체크 표시 같은 overlay는 실제 재료의 증거로 사용하지 않는다. "
@@ -91,16 +135,22 @@ def build_ingredient_prompt(expected: str, image_count: int, has_comparison: boo
         return system_prompt, user_text
 
     comparison_label = comparison_source or "unknown"
+    insertion_rule = (
+        "한두 조각이라도 새로 들어갔으면 PASS이며, 양이 주문량에 맞는지는 판정하지 않는다. "
+        if expected in INSERTION_ONLY_INGREDIENTS else ""
+    )
     system_prompt = (
         "너는 로봇 작업 전후의 실제 재료 변화를 확인하는 시각 판정기다. "
         "검은색 도시락통 가운데를 기준으로 왼쪽 상단에는 소시지칸, 오른쪽 상단에는 양파 및 버섯칸(이하 야채 칸)이 있다."
         "소시지칸 바로 밑에는 치즈를 담는 칸(왼쪽), 페퍼론치노를 담는 칸(오른쪽)이 있으며 야채칸 아래에는 게살을 담는 칸이 있다."
         "마지막으로, 도시락통의 제일 아래쪽에는 파스타 면을 놓는 칸이 있다."
         "이미지1은 현재 목표 재료의 참고 이미지이고 이미지2는 이번 작업 전 도시락이다. "
-        "페퍼론치노의 경우 고추 씨앗 같이 생겼으며, 잘게 갈려있는 형상이거나 이미지이다. "
         "이후 이미지는 이번 작업 후 장면이다. "
+        f"{_ingredient_guide(expected)}"
         f"작업 전과 비교해 {expected} 재료가 새로 보이거나 해당 재료 영역이 증가했으면 PASS이다. "
-        f"기대 변화가 없거나 {expected}가 아닌 다른 재료가 추가됐으면 FAIL이다. "
+        f"{insertion_rule}"
+        "근거에는 해당 칸의 작업 전 모습과 작업 후 모습을 비교해 적는다. "
+        f"기대 변화가 없거나 {_subject(expected)} 아닌 다른 재료가 추가됐으면 FAIL이다. "
         "화면의 bounding box, class 글자, 체크 표시 같은 overlay는 실제 변화의 증거로 사용하지 않는다. "
         f"가림이나 흔들림 때문에 비교할 수 없으면 UNCERTAIN이다. {VERDICT_RULE}"
     )

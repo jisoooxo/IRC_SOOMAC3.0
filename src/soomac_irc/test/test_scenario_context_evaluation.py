@@ -102,9 +102,12 @@ def test_assistant_speculation_cannot_support_user_preference_recall():
 
 def test_real_update_and_real_pending_are_allowed():
     case = response_input()
-    case['input']['pending'] = {'type': 'execution'}
+    # 실제 execution pending은 확인 대상을 가진다(GL02 O-E06-X1). 대상 없는 pending은 fixture 결함이다.
+    case['input']['pending'] = {'type': 'execution', 'section': 'veggie', 'targets': ['양파', '버섯'], 'items': {'양파': 'low', '버섯': 'low'}}
     case['input']['applied_this_turn']['restriction_added'] = [{'target': '게살', 'reason': 'allergy'}]
     assert grade_response_prediction(case, '게살 알레르기 제한을 저장했어요. 실행 확인이 남아 있어요.').passed
+    case['input']['pending'] = {'type': 'execution'}
+    assert 'invalid_fixture_pending' in codes(grade_response_prediction(case, '게살 알레르기 제한을 저장했어요. 실행 확인이 남아 있어요.'))
 
 
 def test_one_allowed_topping_cannot_be_replaced_by_unrequested_future_sauce():

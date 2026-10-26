@@ -31,8 +31,10 @@ from soomac_irc.llm_langgraph import (
     build_graph,
     build_preselected_confirmation_reply,
     build_preselected_section_confirmation,
+    generate_section_event_response,
+    _record_question_delivery,
 )
-from soomac_irc.llm_policy import section_execution_items
+from soomac_irc.llm_policy import is_future_recommendation_pending, pending_blocks_execution, section_execution_items
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
 from soomac_irc.recommendation_model import make_call_recommendation
 from soomac_irc.response_model import make_call_response
@@ -564,11 +566,20 @@ class LLMLangGraphNode(Node):
 
         raise ValueError(f"사용자 선택 안내가 없는 section : {self.section}")
     
-    def _advance_after_section(self, completed_section: str, *, outcome: str = "completed") -> str:
+    def _advance_after_section(self, completed_section: str, *, outcome: str = "completed") -> str | None:
         if completed_section not in SECTION_ORDER:
             raise ValueError(f"알 수 없는 section : {completed_section}")
         if outcome not in ("completed", "skipped"):
             raise ValueError(f"알 수 없는 단계 전환 결과: {outcome}")
+        if completed_section != self.section:
+            transitions = [event for event in self.graph_state["action_history"]
+                           if event.get("type") == "section_transition"]
+            if transitions and transitions[-1] == {
+                "type": "section_transition", "section": completed_section,
+                "outcome": outcome, "next_section": self.section,
+            }:
+                return None  # Exact duplicate: no models, history, rail or commands.
+            raise ValueError("현재 section과 완료 이벤트가 일치하지 않음")
 
         next_index = SECTION_ORDER.index(completed_section) + 1
 
@@ -592,7 +603,10 @@ class LLMLangGraphNode(Node):
 
         try:
             self.section = next_section
-            self.graph_state["pending"] = None
+            # 완료된 현재 실행과 독립된 미래 추천은 수락/취소 전까지 보관한다.
+            # 주문이나 실행 권한으로 승격하지 않으며 이벤트 발화 교정은 별도이다.
+            if not is_future_recommendation_pending(self.graph_state.get("pending"), completed_section):
+                self.graph_state["pending"] = None
 
 ###################### 레일 먼저 선수 이동 치도록 일단 추가 #######################
 
@@ -621,7 +635,7 @@ class LLMLangGraphNode(Node):
                 next_prompt = None
             else:
                 pending = build_preselected_section_confirmation(self.graph_state, self.section)
-                if pending is not None:
+                if pending is not None and self.graph_state.get("pending") is None:
                     self.graph_state["pending"] = pending
                     next_reply = build_preselected_confirmation_reply(pending)
                     next_prompt = {"type": "execution", "source": "preselected", "section": self.section,
@@ -642,11 +656,20 @@ class LLMLangGraphNode(Node):
                 })
             except Exception as error:
                 self.get_logger().error(f"section transition 로그 실패: {error}")
-        # 사용자 입력이 없는 상태 전환은 이미 계산한 structured 안내를 그대로 사용한다.
-        # Response history가 새 section 안내를 직전 문장으로 덮어쓰지 못하게 한다.
             reply = next_reply
             response_trace = None
             response_error = None
+            if self.section not in ("lid", "sauce"):
+                event_result = generate_section_event_response(
+                    self.graph_state, robot_state, self.call_recommendation,
+                    self.call_response, next_reply,
+                )
+                self.graph_state = event_result["session"]
+                reply = event_result["reply"]
+                response_error = event_result["model_error"]
+                traces = getattr(self.call_response, "trace_events", [])
+                if isinstance(traces, list) and traces:
+                    response_trace = copy.deepcopy(traces[-1])
             try:
                 self.runtime_log.log_event("section_transition_response", {
                     "transition": copy.deepcopy(transition),
@@ -742,7 +765,8 @@ class LLMLangGraphNode(Node):
             return
 
         reply = self._advance_after_section(self.section)
-        self._publish_reply(reply)
+        if reply is not None:
+            self._publish_reply(reply)
 
 
 #################### ui reset 들어오면 초기화 가능한 상태인지 확인 ####################
@@ -874,9 +898,16 @@ class LLMLangGraphNode(Node):
     def _publish_reply(self, reply: str):
         # 사용자한테 publish할 문자열
         if not isinstance(reply, str) or not reply.strip():
+            _record_question_delivery(self.graph_state, None, delivered=False)
             raise ValueError("발행할 reply가 빈 문자열임")
 
-        self.reply_pub.publish(String(data=reply.strip()))
+        try:
+            self.reply_pub.publish(String(data=reply.strip()))
+        except Exception:
+            # Queued turns must not accept a question that never reached the topic.
+            # This tracks transport failure only, never sentence meaning.
+            _record_question_delivery(self.graph_state, None, delivered=False)
+            raise
 
 #################### 지금까지 고른 주문을 ui 표시용 한글 목록으로 변환 ####################
 
@@ -1110,6 +1141,9 @@ class LLMLangGraphNode(Node):
             "active_task": copy.deepcopy(self.active_task),
             "completed_tasks": copy.deepcopy(self.completed_tasks),
             "robot_started": self.robot_started,
+            "verification_history": copy.deepcopy(self.verification_history),
+            "vlm_enabled": ENABLE_VLM,
+            "vlm_confirmed": self.vlm_confirmed,
         }
 
 #################### 현재 section 주문값을 실제 로봇 task 목록으로 바꿈 ####################
@@ -1147,8 +1181,9 @@ class LLMLangGraphNode(Node):
 
         self.task_queue.pop(0)
         self.active_task = copy.deepcopy(task)
-        # 실제 실행이 시작되면 대기 중인 제안이나 확인은 끝난 것으로 본다.
-        self.graph_state["pending"] = None
+        # 현재 실행 확인만 소비한다. 독립된 미래 추천은 아직 수락되지 않았다.
+        if not is_future_recommendation_pending(self.graph_state.get("pending"), self.section):
+            self.graph_state["pending"] = None
         self.robot_started = True
         self.vlm_confirmed = False
 
@@ -1234,6 +1269,7 @@ class LLMLangGraphNode(Node):
         turn_state = new_turn_state(session_before, user_text, robot_state_before)
         result = None
         published_reply = None
+        reply_published = False
 
         def write_turn(status: str, error: Exception | None = None):
             error_payload = None
@@ -1292,13 +1328,14 @@ class LLMLangGraphNode(Node):
                 if reply:
                     published_reply = reply
                     self._publish_reply(published_reply)
+                    reply_published = True
 
                 self._set_stt_enabled(True)
                 write_turn("completed")
                 return
 
             unresolved_pending = self.graph_state.get("pending")
-            if unresolved_pending is not None:
+            if pending_blocks_execution(unresolved_pending, self.section):
                 if unresolved_pending.get("type") == "execution":
                     targets = ", ".join(unresolved_pending.get("targets", [])) or "현재 선택한 재료"
                     published_reply = f"{targets} 담기를 진행할지 먼저 확인해 주세요."
@@ -1309,6 +1346,7 @@ class LLMLangGraphNode(Node):
                 else:
                     self.graph_state["history"].append({"role": "assistant", "content": published_reply})
                 self._publish_reply(published_reply)
+                reply_published = True
                 self._set_stt_enabled(True)
                 write_turn("pending_blocked")
                 return
@@ -1320,6 +1358,7 @@ class LLMLangGraphNode(Node):
                 else:
                     self.graph_state["history"].append({"role": "assistant", "content": published_reply})
                 self._publish_reply(published_reply)
+                reply_published = True
 
                 write_turn("execution_started")
                 return
@@ -1333,16 +1372,20 @@ class LLMLangGraphNode(Node):
 
                 published_reply = reply
                 self._publish_reply(reply)
+                reply_published = True
                 write_turn("section_advanced")
                 return
 
             if result["reply"]:
                 published_reply = result["reply"]
                 self._publish_reply(published_reply)
+                reply_published = True
 
             self._set_stt_enabled(True)
             write_turn("completed")
         except Exception as error:
+            if published_reply is not None and not reply_published:
+                _record_question_delivery(self.graph_state, None, delivered=False)
             write_turn("post_graph_error", error)
             raise
 

@@ -9,6 +9,7 @@ AMOUNTS = ("low", "normal", "high")
 SECTION_ORDER = ("noodle", "veggie", "meat", "extra", "lid", "sauce")
 
 RESTRICTION_CATEGORY_ITEMS = {
+    "매운맛": ("페퍼론치노",),
     "유제품": ("크림", "치즈"),
     "갑각류": ("게살",),
     "육류": ("소시지",),

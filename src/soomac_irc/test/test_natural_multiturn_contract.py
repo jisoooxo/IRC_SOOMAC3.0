@@ -972,7 +972,7 @@ def test_execution_reject_without_replacement_only_clears_pending():
     assert result["policy"]["execute"] is False
     assert result["session"]["pending"] is None
     assert result["session"]["order"]["toppings"] == {"양파": "normal"}
-    assert result["reply"] == "알겠어요. 이번 담기는 진행하지 않을게요."
+    assert result["reply"] == "ok"  # Response owns wording; state assertions above remain authoritative.
 
 
 def test_execution_reject_with_current_replacement_creates_new_pending():
@@ -1178,7 +1178,7 @@ def test_recommendation_stays_pending_until_acceptance():
     assert proposed["session"]["pending"] == {
         "type": "recommendation",
         "candidate": recommendation["proposal"],
-        "reason_tags": ["현재 야채 단계"],
+        "reason_tags": ["담백함"],
     }
 
     accepted = run(
@@ -1192,22 +1192,27 @@ def test_recommendation_stays_pending_until_acceptance():
 def test_recommendation_acceptance_uses_factual_reply_without_reproposal():
     session = session_with_recommendation_pending("치즈", "normal")
 
-    def fail_if_called(*_args, **_kwargs):
-        raise AssertionError("recommendation acceptance reply must be runtime-owned")
+    seen = []
+    def capture_response(*args):
+        seen.append(args)
+        return "치즈를 보통으로 선택했어요. 지금 담을까요?"
 
     graph = compiled_for(
         {"route": "task", "confirmation": "accept"},
-        response=fail_if_called,
+        response=capture_response,
     )
     result = graph.invoke(new_turn_state(session, "그 추천대로 할게", robot_state(section="extra")))
 
     assert result["policy"]["reason"] == "recommendation_accepted"
     assert result["session"]["order"]["toppings"] == {"치즈": "normal"}
     assert result["session"]["pending"]["type"] == "execution"
-    assert result["reply"] == "알겠어요. 치즈를 보통으로 선택했어요. 지금 담을까요?"
+    assert result["reply"] == "치즈를 보통으로 선택했어요. 지금 담을까요?"
+    assert len(seen) == 1
+    assert seen[0][6]["type"] == "execution"
+    assert seen[0][5]["proposal"]["toppings"] == {"치즈": "normal"}
 
 
-def test_structured_spicy_restriction_is_migrated_to_canonical_preference():
+def test_structured_spicy_cannot_eat_keeps_a_strong_restriction():
     result = run(
         new_session_state(),
         {
@@ -1218,17 +1223,19 @@ def test_structured_spicy_restriction_is_migrated_to_canonical_preference():
         text="매운 거 못 먹어",
     )
 
-    assert result["session"]["preferences"] == [{"value": "맵지 않게"}]
-    assert result["session"]["order"]["restrictions"] == []
+    assert result["session"]["preferences"] == []
+    assert result["session"]["order"]["restrictions"] == [{"target": "매운맛", "reason": "cannot_eat"}]
     assert result["policy"]["reason"] == "state_update_only"
 
 
-def test_recommendation_reply_uses_only_section_relevant_canonical_reason():
+def test_recommendation_model_reasons_are_evidence_not_python_rewritten_text():
     session = new_session_state()
     session["preferences"] = [{"value": "맵지 않게"}]
 
-    def fail_if_called(*_args, **_kwargs):
-        raise AssertionError("validated recommendation reply must be runtime-owned")
+    seen = []
+    def capture_response(*args):
+        seen.append(args)
+        return "버섯을 보통 양으로 추천해요. 이렇게 선택할까요?"
 
     graph = compiled_for(
         {"route": "task", "recommendation": {"action": "request"}},
@@ -1239,16 +1246,17 @@ def test_recommendation_reply_uses_only_section_relevant_canonical_reason():
             },
             "reason_tags": ["매운맛 회피"],
         },
-        response=fail_if_called,
+        response=capture_response,
     )
     result = graph.invoke(new_turn_state(session, "야채 하나 추천해", robot_state(section="veggie")))
 
-    assert result["recommendation_result"]["reason_tags"] == ["현재 야채 단계"]
+    assert result["recommendation_result"]["reason_tags"] == ["매운맛 회피"]
+    assert seen[0][5]["reason_validation"]["semantic_status"] == "unverified"
     assert "매운" not in result["reply"]
-    assert result["reply"] == "버섯을 보통으로 추천해요. 적용할까요?"
+    assert result["reply"] == "버섯을 보통 양으로 추천해요. 이렇게 선택할까요?"
 
 
-def test_removed_preference_cannot_reappear_from_history_or_model_reason():
+def test_removed_preference_not_recreated_by_unverified_model_reason():
     session = new_session_state()
     session["history"] = [
         {"role": "user", "content": "나는 매운 걸 못 먹어"},
@@ -1274,8 +1282,9 @@ def test_removed_preference_cannot_reappear_from_history_or_model_reason():
     ))
 
     assert result["session"]["preferences"] == []
-    assert result["recommendation_result"]["reason_tags"] == ["현재 추가 재료 단계"]
-    assert result["reply"] == "페퍼론치노를 보통으로 추천해요. 적용할까요?"
+    assert result["recommendation_result"]["reason_tags"] == ["매운맛 회피"]
+    assert result["recommendation_result"]["reason_validation"]["semantic_status"] == "unverified"
+    assert result["reply"] == "ok"  # Actual model ignoring stale reasons is a GPU/manual test, not this mock.
 
 
 def test_recommendation_scope_contains_current_and_future_but_not_past_or_lid():
@@ -1485,7 +1494,7 @@ def test_recommendation_revise_receives_old_pending_then_replaces_it():
     assert result["session"]["pending"] == {
         "type": "recommendation",
         "candidate": new_proposal,
-        "reason_tags": ["매운맛 선호", "현재 추가 재료 단계"],
+        "reason_tags": ["매운맛"],
     }
 
 
@@ -1635,7 +1644,7 @@ def test_preselected_reject_removes_only_the_rejected_candidate():
     assert result["session"]["pending"] is None
     assert result["session"]["order"]["toppings"] == {}
     assert result["policy"]["reason"] == "execution_confirmation_rejected"
-    assert result["reply"] == "알겠어요. 이번 담기는 진행하지 않을게요."
+    assert result["reply"] == "ok"
 
 
 def test_commit_is_model_owned_but_runtime_checks_missing_and_busy():
@@ -1783,7 +1792,7 @@ def test_strong_restriction_removal_reject_keeps_restriction():
     assert result["policy"]["reason"] == "restriction_removal_rejected"
     assert result["session"]["order"]["restrictions"] == [restriction]
     assert result["session"]["pending"] is None
-    assert result["reply"] == "알겠어요. 게살 섭취 제한은 그대로 유지할게요."
+    assert result["reply"] == "ok"
 
 
 def test_strong_restriction_reason_replace_waits_then_keeps_new_reason():

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PYTHONDONTWRITEBYTECODE=1 /home/roma/miniconda3/envs/gemma4_env/bin/python -I /home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/final/goals/GL03/compare_gold_grades.py /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/956f3d1a-9808-4c18-82cd-42a33cc56126/scratchpad/review/old_eval.py /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/956f3d1a-9808-4c18-82cd-42a33cc56126/scratchpad/review/gold.json)",
+      "Bash(PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/soomac_irc /home/roma/miniconda3/envs/gemma4_env/bin/python -I -c \"import sys; sys.path.insert\\(0,'src/soomac_irc'\\); exec\\(open\\('/tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/956f3d1a-9808-4c18-82cd-42a33cc56126/scratchpad/review/probe1.py'\\).read\\(\\)\\)\")",
+      "Bash(PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/soomac_irc /home/roma/miniconda3/envs/gemma4_env/bin/python -I -c ' *)",
+      "Bash(python3 - src/soomac_irc/soomac_irc/evaluation_v43.py)",
+      "Bash(PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/soomac_irc /home/roma/miniconda3/envs/gemma4_env/bin/python -I -c 'import sys; sys.path.insert\\(0,'\\\\''src/soomac_irc'\\\\''\\); exec\\(open\\('\\\\''/tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/956f3d1a-9808-4c18-82cd-42a33cc56126/scratchpad/review/probe1.py'\\\\''\\).read\\(\\)\\)')",
+      "Bash(awk -F' \\\\\\\\| ' '{e=$2; sub\\(\"expect=\",\"\",e\\); p=$3; ok = \\(e ~ /^P/ && p ~ /passed=True/\\) || \\(e ~ /^F/ && p ~ /passed=False/\\); print \\(ok?\"OK \":\"MISS\"\\), $0}' training/learning_first_v43/final/goals/GL03/probe_after_fix.log)",
+      "Bash(python3 -c ' *)",
+      "Bash(grep -n '\\\\.get\\(\"[a-z_]*\", \\\\[\\\\]\\)\\\\|\\\\.get\\(\"[a-z_]*\", {}\\)' src/soomac_irc/soomac_irc/evaluation_v43.py)",
+      "Bash(nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv)",
+      "Bash(python3 -c \"import math;t=280*48*48;print\\(t, math.sqrt\\(t\\), int\\(math.sqrt\\(t\\)//48\\)*48, \\(768//48\\)**2\\)\")"
+    ]
+  }
+}

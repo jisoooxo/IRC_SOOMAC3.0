@@ -17,15 +17,18 @@ from soomac_irc.agent_contract import new_session_state, new_turn_state
 from soomac_irc.llm_langgraph import (
     build_execution_started_reply, build_preselected_confirmation_reply,
     build_preselected_section_confirmation,
+    generate_section_event_response,
+    _record_question_delivery,
 )
-from soomac_irc.llm_policy import build_applied_changes
+from soomac_irc.llm_policy import build_applied_changes, is_future_recommendation_pending, pending_blocks_execution, section_execution_items
 
 
 def node_methods():
     source = Path(__file__).parents[1] / "soomac_irc" / "llm_langgraph_node.py"
     tree = ast.parse(source.read_text())
     cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "LLMLangGraphNode")
-    names = {"_section_prompt", "_advance_after_section", "_publish_next_task", "_process_turn"}
+    names = {"_section_prompt", "_advance_after_section", "_publish_next_task", "_process_turn", "_publish_reply",
+             "_start_current_section", "_build_current_section_tasks"}
     selected = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in names]
     node_class = ast.ClassDef(name="IsolatedNode", bases=[], keywords=[], body=selected, decorator_list=[])
     module = ast.fix_missing_locations(ast.Module(body=[node_class], type_ignores=[]))
@@ -33,6 +36,9 @@ def node_methods():
     topic_names = next(n for n in tree.body if isinstance(n, ast.Assign)
                        and any(isinstance(t, ast.Name) and t.id == "TOPIC_CLASS_NAMES" for t in n.targets))
     ns["TOPIC_CLASS_NAMES"] = ast.literal_eval(topic_names.value)
+    amount_counts = next(n for n in tree.body if isinstance(n, ast.Assign)
+                        and any(isinstance(t, ast.Name) and t.id == "AMOUNT_TO_COUNT" for t in n.targets))
+    ns["AMOUNT_TO_COUNT"] = ast.literal_eval(amount_counts.value)
     exec(compile(module, str(source), "exec"), ns)
     return ns["IsolatedNode"]
 
@@ -52,6 +58,10 @@ def make_node(section="meat"):
     node.conversation_started = True
     node.order_finished = False
     node.call_response = Mock(return_value="모델이 만든 단계 전환 안내")
+    node.call_recommendation = Mock(return_value={
+        "proposal": {"sauce": None, "noodle_type": None, "noodle_portion": None, "toppings": {}},
+        "reason_tags": [],
+    })
     node.rail_move_ahead_pub = Mock()
     node.plan_pub = Mock()
     node.runtime_log = Mock()
@@ -112,25 +122,30 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertIsNone(node.active_task)
         self.assertFalse(node.robot_started)
 
-    def test_skipped_and_completed_use_deterministic_next_prompt(self):
+    def test_skipped_and_completed_call_event_response_with_structured_next_prompt(self):
         for outcome in ("skipped", "completed"):
             with self.subTest(outcome=outcome):
                 node = make_node()
                 self.assertEqual(node._advance_after_section("meat", outcome=outcome),
-                                 "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요.")
+                                 node.call_response.return_value)
                 self.assertIsNone(node.graph_state["pending"])
                 self.assertEqual(node.graph_state["action_history"][-1]["outcome"], outcome)
                 self.assertEqual(node.completed_tasks, [])
-                node.call_response.assert_not_called()
+                node.call_response.assert_called_once()
+                args = node.call_response.call_args.args
+                self.assertIsNone(args[0])
+                self.assertEqual(args[6], {"type": "section_prompt", "section": "extra"})
+                self.assertFalse(args[2]["execute"])
+                self.assertEqual(args[7]["section_transition"]["outcome"], outcome)
                 node.rail_move_ahead_pub.publish.assert_called_once()
 
-    def test_transition_does_not_call_failing_response_model(self):
+    def test_transition_model_failure_uses_existing_safe_fallback(self):
         node = make_node()
         node.call_response.side_effect = RuntimeError("모의 모델 실패")
         reply = node._advance_after_section("meat", outcome="skipped")
         self.assertNotIn("다 담", reply)
         self.assertIn("추가 재료", reply)
-        node.call_response.assert_not_called()
+        node.call_response.assert_called_once()
         node._set_stt_enabled.assert_called_with(True)
 
     def test_lid_completion_starts_sauce_with_deterministic_reply(self):
@@ -161,10 +176,13 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertEqual(node.graph_state["pending"]["items"], {"치즈": "low"})
         self.assertEqual(node.graph_state["pending"]["type"], "execution")
         self.assertEqual(node.graph_state["history"][-1]["content"],
-                         "미리 고른 치즈를 적게 담을까요?")
-        node.call_response.assert_not_called()
+                         node.call_response.return_value)
+        node.call_response.assert_called_once()
+        node.call_recommendation.assert_not_called()
+        self.assertEqual(node.call_response.call_args.args[6]["items"], {"치즈": "low"})
+        node.plan_pub.publish.assert_not_called()
 
-    def test_section_transition_response_event_records_deterministic_reply(self):
+    def test_section_transition_response_event_records_reply_and_actual_trace_if_available(self):
         node = make_node()
         reply = node._advance_after_section("meat", outcome="completed")
 
@@ -173,7 +191,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
             for call in node.runtime_log.log_event.call_args_list
             if call.args[0] == "section_transition_response"
         ]
-        self.assertIn("추가 재료", reply)
+        self.assertEqual(reply, node.call_response.return_value)
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0]["transition"]["next_section"], "extra")
         self.assertEqual(matching[0]["robot_state"]["section"], "extra")
@@ -181,7 +199,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertIsNone(matching[0]["response_model_input"])
         self.assertIsNone(matching[0]["response_raw"])
         self.assertEqual(matching[0]["reply"], reply)
-        node.call_response.assert_not_called()
+        node.call_response.assert_called_once()
 
     def test_extra_skip_starts_lid_with_deterministic_reply(self):
         node = make_node("extra")
@@ -268,7 +286,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
         reply = node._advance_after_section("meat")
 
         self.assertEqual(node.section, "extra")
-        self.assertIn("추가 재료", reply)
+        self.assertEqual(reply, node.call_response.return_value)
         self.assertEqual(node.graph_state["action_history"][-1]["next_section"], "extra")
         self.assertEqual(node.task_queue, [])
         self.assertIsNone(node.active_task)
@@ -283,9 +301,9 @@ class TestSectionQuestionEvents(unittest.TestCase):
                                           "reply": "이전 응답"}
         node._process_turn("바로 진행해")
         self.assertEqual(node.section, "extra")
-        node.call_response.assert_not_called()
-        self.assertIn("추가 재료", node._publish_reply.call_args.args[0])
-        self.assertIn("추가 재료", node.graph_state["history"][-1]["content"])
+        node.call_response.assert_called_once()
+        self.assertEqual(node._publish_reply.call_args.args[0], node.call_response.return_value)
+        self.assertEqual(node.graph_state["history"][-1]["content"], node.call_response.return_value)
         self.assertEqual(len(node.graph_state["history"]), 2)
         self.assertEqual(node.runtime_log.log_turn.call_args.args[0]["status"], "section_advanced")
 
@@ -384,6 +402,51 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node._start_current_section.assert_not_called()
         self.assertIn("추천", node._publish_reply.call_args.args[0])
         self.assertEqual(node.runtime_log.log_turn.call_args.args[0]["status"], "pending_blocked")
+
+    def test_future_recommendation_does_not_block_confirmed_current_execution(self):
+        node = make_node("meat")
+        session = new_session_state()
+        session["order"]["toppings"] = {"소시지": "high"}
+        session["pending"] = {
+            "type": "recommendation", "candidate": {
+                "sauce": None, "noodle_type": None, "noodle_portion": None,
+                "toppings": {"치즈": "low"},
+            }, "reason_tags": [],
+        }
+        node.graph = Mock()
+        node.graph.invoke.return_value = {
+            "session": session, "policy": {"execute": True, "reason": "execution_allowed"},
+            "reply": "소시지를 많이 담기 시작할게요.",
+        }
+        node._start_current_section.return_value = True
+        node._process_turn("소시지는 바로 담고 추가 재료도 추천해줘")
+        node._start_current_section.assert_called_once()
+        self.assertEqual(node.graph_state["pending"], session["pending"])
+
+    def test_future_recommendation_survives_current_plan_publication(self):
+        node = make_node("meat")
+        pending = {"type": "recommendation", "candidate": {
+            "sauce": None, "noodle_type": None, "noodle_portion": None,
+            "toppings": {"치즈": "low"},
+        }, "reason_tags": []}
+        node.graph_state["pending"] = copy.deepcopy(pending)
+        node.task_queue = [{"class": "소시지", "repeat_count": 3}]
+        self.assertTrue(node._publish_next_task())
+        self.assertEqual(node.graph_state["pending"], pending)
+        self.assertEqual(json.loads(node.plan_pub.publish.call_args.args[0].data),
+                         {"class": "sausage", "repeat_count": 3})
+
+    def test_future_recommendation_survives_section_transition_unaccepted(self):
+        node = make_node("meat")
+        pending = {"type": "recommendation", "candidate": {
+            "sauce": None, "noodle_type": None, "noodle_portion": None,
+            "toppings": {"치즈": "low"},
+        }, "reason_tags": []}
+        node.graph_state["pending"] = copy.deepcopy(pending)
+        node._advance_after_section("meat", outcome="completed")
+        self.assertEqual(node.graph_state["pending"], pending)
+        self.assertEqual(node.graph_state["order"]["toppings"], {})
+        node.plan_pub.publish.assert_not_called()
 
 
 if __name__ == "__main__":

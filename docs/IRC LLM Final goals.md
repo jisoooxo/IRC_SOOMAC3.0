@@ -5,6 +5,28 @@
 
 ## 0. 최신 요구 — 변경 불가 기준
 
+**2026-10-26 현재: GL01~06 명시 범위 완료, BATCH02 종료.** GL05 응답/이벤트/안전 코드 계약과 GL06 prompt·독립few-shot·serializer·토큰/로컬누수 검증을 마쳤다. 전체612pass·8subtests, 최종Codex sol/high찬성. 기존32개예시30PASS/2FIX를교정했고 두재발오류와정상수락/명시commit/추천/명확화/skip충돌회귀를추가했다. 결과정본은 `training/learning_first_v43/final/goals/GL06/RESULT.md`·manifest·RECURRING_FAILURE_CONTRACT.md이다. **실제 새 모델 성능은 NOT_RUN, 전체 데이터 전수 정제·새 학습·Docker 미실행. GL07은 자동 시작하지 않는다.** 아래 실행 중/미완료 표시는 당시 이력이다.
+
+**2026-10-26 최신 판정 기준: 프롬프트 튜닝은 계속하되 기존 adapter 성적을 최종 기준으로 삼지 않는다.** GL05는 코드·입력/발행·안전 계약을 독립 oracle/테스트/검수로 확인하고, GL06은 같은 계약의 prompt·few-shot·토큰/편향 검증을 수행한다. 기존 adapter GPU 결과는 비교 진단이며 새 adapter 성능은 아직 NOT_RUN이다. GL07~10 데이터 정제·보강/통합 → GL11 기존 모델 비교 → GL12 학습 필요 판단 → GL13 별도 승인된 학습·새 모델 재평가를 구분한다. 기존 모델 의미 오판을 전부 prompt로 해결해야 GL05가 끝나는 것은 아니지만 코드·안전 결함을 후속으로 미룰 수는 없다. 상세: `training/learning_first_v43/final/goals/GL05/ACCEPTANCE_POLICY.md`. 아래 상충하는 튜닝/실행 중 표시는 과거 이력이다.
+
+2026-10-26 재확인: **즉시 실행·단계 생략(바로 진행해줘/바로 담아줘 등)도 GL05 회귀에 포함한다.** 새 mode field나 Python 키워드 판단은 추가하지 않는다. 기존 commit/confirmation/skip_current 계약으로 새 주문+즉시 실행·실제 실행확인 수락·일반 주문·추천 수락·명시적 optional 생략을 구분하며 안전/history/기존 수량을 보존한다. 상세 GL05/FAST_PATH_CONTRACT.md. GL06은24후보·CPU측정/harness 준비만 완료했으며 최종 prompt 통합/완료는 아직이다.
+
+**2026-10-26 사용자 범위 확정: 담당은 LLM 전용이다. VLM 프롬프트·테스트·판정 정책의 기존/병렬 변경은 건드리지 않는다.** 저장소 `AGENTS.md`가 후속 작업자 공통 지침이다. 공유 node에서는 LLM 대화/이벤트와 기존 완료 증거의 읽기 전용 전달만 다룬다. 전체 해시의 VLM 병렬 변경과 LLM 의존 파일 불변 여부를 별도로 기록하며, 원래 실패/변경 결과를 지우거나 성공으로 바꾸지 않는다.
+
+2026-10-26 최신 모델 변경: 이후 Codex 작업자/교차검수는 **gpt-6-sol / high**. GL06_PREP 기존 Astra 작업은 미완료 체크포인트로 보존 후 전용 터미널을 정리했고, Sol 새 시도 ctx_cf238d27f6bf의 요청/실효 설정과 ready/input_accepted를 확인했다. GL05 활성·GL06 준비만 병렬인 범위는 그대로이다. 주 대화 모델 변경은 이 기록으로 보장하지 않는다.
+
+2026-10-26 사용자 승인: **GL05 시작 + GL06 준비 병렬.** GL05를활성Goal로진행하며GL06준비작업자는별도후보/검사기준/token도구만작성한다. 공유Runtime/agent_prompts.py는조정자단일수정. GL05의사용자/event입력·reason·pending/next_prompt계약동결후GL06을최종통합/검증한다. 독립동시완료나GL06선행해제가아니다. 최신GL05/STATE·GL06_PREP/TASK.md참조.
+
+최신 사용자 변경(2026-10-26): “중단경계 신경쓰지마라.” **기존 UNKNOWN45분 경과에 따른 자동중단 조건은 해제**한다. 아래45분/13:49:32 경계는 변경 전 운영기록이다. 실제 서비스한도/인증오류우회는 하지 않으며 원본보존·순차Goal·작업전후저장 규칙은 유지한다.
+
+2026-10-26 최신: **GL04 상태·실행 권한 범위 완료(Codex 최종찬성).** 실제 GPU B2 오실행을 발견하여 질문 목적/권한 계약까지 보완했다. 코드493pass·8subtests, controlled20episode63turn, 기존어댑터GPU12상태검사12통과. rawB2오판·빈추천은미해결후속과제이며모델성능/전체대화합격이아니다. GL04/RESULT·manifest와 [진행 목록](<IRC LLM Final progress.md>)이정본. GL05/06 전체미착수, 이번사용자범위GL04이므로GL05자동시작안함.
+
+사용자 추가: GL04 검수는 앞선 여러 턴의 복합 의미·모델 판단 자유도를 포함한다(plan §8.3, GL04/MULTITURN_REVIEW.md). 실제 history 전달·oracle/mock 상태검증·실제LLM closed-loop 진단을 구분하고 미실행을 합격으로 표시하지 않는다. “나머지”를 Python 키워드 규칙으로 판단하지 않는다. Agent별 데이터 전행 의미 정제는 GL07~09, 통합은 GL10이다.
+
+추가 필수: 한 발화의 여러의도와 여러 선행턴의 누적 의미를 동시에 대조한다. 매 발화 전후 session/robot_state 전필드diff와 기대변경·보존·금지경로를 검사하고 raw→정규화→검증→state/reply/plan을 연결한다. 기존량 덮어쓰기·관련없는 필드 변경·복합의도 일부 누락을 별도 실패로 기록한다.
+
+2026-10-26 최신 실행 기록: GL01·GL02 완료, GL03 Codex bool/null 구조 검증 보완 완료(384 passed·최종Codex찬성). 최신 실행 상태는 외부 작업장 `final/goals/GOAL_INDEX.md`와 GL03의 `CODEX_FOLLOWUP_STATE/WORKLOG/NEXT.md`를 우선한다. 과거 28%는 현재 계정 잔량으로 쓰지 않는다. 사용자 정정: “나머지”는 이전 대화·state·pending 기반 판단, 수량 생략 시 기존 확정량 유지·미확정 새 항목에만 normal. 이후 작업과 독립 검수는 Codex만 사용한다. [별도 코드 수정 명세](<IRC LLM Final code changes.md>)에 실제 구현과 후속 Runtime 수정 범위를 구분했다.
+
 자연스러운 직원형 대화, 성공 멀티턴/history 보존, 새 Python 자연어 규칙 금지, 10월11일 이후 고정 발화 교정, few-shot/session 예시, 토큰 예산 검증, 엄격한 조건부 편향 검수는 기존 plan을 따른다. 이 문서는 범위를 줄이는 것이 아니라 같은 최종 목표를 재개 가능한 작업으로 나눈다.
 
 사용자는 새 Pro 계정의 사용량 한도로 중단될 가능성을 우려했다. **계정별 실제 사용량 창·남은 양·갱신 시각은 실행 시 확인하며, ‘5시간이면 그동안 계속 실행 가능’ 또는 ‘남은 토큰을 모델이 항상 안다’고 가정하지 않는다.** 컨텍스트 잔량, Goal token budget, 계정 사용량 한도는 다른 항목이다. 알 수 없는 값은 UNKNOWN으로 남긴다. 아래25%·45분은 이 프로젝트의 보수적인 중단 기준이지 제품의 공식 한도가 아니다.
@@ -45,9 +67,11 @@
 
 | Goal / 선행 | 범위와 계획 매핑 | 완료 조건 |
 |---|---|---|
-| GL04 / GL02·GL03 | W2 상태: 수량 계약, 복합의도, 강한제한, clarification/pending 우선순위 | 최소 diff·성공멀티턴/즉시실행/skip 회귀, history 무변경·안전 보존 |
-| GL05 / GL04 | W2 발화: 추가 고정문 제거, 이유 보존, 선호-only/단계event 호출, 최종발행문 grounding | 호출표·검증된 후보→Response, 가짜 user/ROS 없음, 기존 제어·fallback 보존 |
-| GL06 / GL04·GL05 | W2 few-shot: Agent별 prompt/serializer, FS01~05 세션대조, 입력/출력/학습 토큰 후보, 생성 전 편향 기준 확정 | FEWSHOT_MANIFEST·TOKEN_BUDGET_REPORT 설계/토큰실측·누수검사. GPU성능 최종판정은 GL11까지 보류 |
+| GL04 / GL02·GL03 | W2 상태: 수량 계약, 복합의도, 강한제한, clarification/pending 우선순위 | 최소 diff·성공멀티턴/즉시실행/skip 회귀, history 무변경·안전 보존. **plan §8.0 P1 상태 관측(P1-2 복합의도, P1-3 번복, P1-4 문맥 기반 나머지) + D2 기존 확정량 유지·미확정 새 항목만 normal, D3 못 먹어=강한 제한** |
+| GL05 / GL04 | W2 발화: 추가 고정문 제거, 이유 보존, 선호-only/단계event 호출, 최종발행문 grounding | 호출표·검증된 후보→Response, 가짜 user/ROS 없음, 기존 제어·fallback 보존. **P1-1·P1-5 이유+제안, general/mixed 끼움 턴** |
+| GL06 / GL04·GL05 | W2 few-shot: Agent별 prompt/serializer, FS01~05 세션대조, 입력/출력/학습 토큰 후보, 생성 전 편향 기준 확정 | FEWSHOT_MANIFEST·TOKEN_BUDGET_REPORT 설계/토큰실측·누수검사. 기존 모델 GPU 비교는 GL11, 새 학습 후보 최종 성능은 GL13 재평가에서 판정. **P1 유동 변형을 few-shot 대조쌍 후보로 포함(P1 원문은 test 전용, prompt 유출 금지)** |
+
+GL05 완료는 구조·응답 소유권·입력/발행·fallback 계약과 회귀의 확인이다. 실제 모델 의미 진단은 실패도 기록하되 기존 adapter 완전 교정을 단독 완료 조건으로 추가하지 않는다. GL06은 독립 oracle·복합 멀티턴/전후 필드·실제 serializer·history/token·편향/누수로 설계한다. mock 통과를 자연어 성공으로 보고하지 않는다.
 
 ### 2.3 Agent별 데이터 — 각각 독립 Goal
 
@@ -63,8 +87,8 @@
 
 | Goal / 선행 | 범위와 계획 매핑 | 완료 조건 |
 |---|---|---|
-| GL10 / GL07~09 | W4 통합: split/family·prompt·schema·few-shot·편향·token 검사, 전행 ledger 합산 | G0/G1 통합 근거, 누락/누수/미해결 활성행0, 새 후보 manifest. 이전 release 보존 |
-| GL11 / GL03~06·GL10 | W5 실제GPU: 기존/0-shot/후보few-shot/prompt/minimal-runtime 연속대화·그룹별 성능·지연·VRAM 비교 | 입력/가중치 고정, raw/최종발행/state/plan 기록, G2/G3 및 G4 관련 측정. ROS mock, active adapter 교체 없음 |
+| GL10 / GL07~09 | W4 통합: split/family·prompt·schema·few-shot·편향·token 검사, 전행 ledger 합산 | G0/G1 통합 근거, 누락/누수/미해결 활성행0, 새 후보 manifest. 이전 release 보존. **문구 규칙 표시는 단독 DROP 금지, 의미 판정은 사람 기준 세트로 검증된 judge만(plan §7.2)** |
+| GL11 / GL03~06·GL10 | W5 실제GPU: 기존/0-shot/후보few-shot/prompt/minimal-runtime 연속대화·그룹별 성능·지연·VRAM 비교 | 입력/가중치 고정, raw/최종발행/state/plan 기록, G2/G3 및 G4 관련 측정. ROS mock, active adapter 교체 없음. **학습 전 비교로 실패도 기록하여 GL12에 전달한다. 후보 채택에는 P1 전 턴·유동 변형·route 3종 연속 대화 통과가 필수이며, 새 adapter는 GL13에서 재평가한다.** |
 | GL12 / GL10·GL11 | W6 결정: Agent별 유지/prompt/runtime/재학습 권고 및 데이터·예산 | 증거 기반 결정문, 남은실패와 회귀위험, 필요한 학습·운영 작업의 승인 요청 |
 
 ### 2.5 별도 승인 이후
