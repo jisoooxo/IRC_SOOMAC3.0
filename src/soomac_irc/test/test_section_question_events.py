@@ -27,7 +27,7 @@ def node_methods():
     source = Path(__file__).parents[1] / "soomac_irc" / "llm_langgraph_node.py"
     tree = ast.parse(source.read_text())
     cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "LLMLangGraphNode")
-    names = {"_section_prompt", "_advance_after_section", "_publish_next_task", "_process_turn", "_publish_reply",
+    names = {"_section_prompt", "_advance_after_section", "_publish_next_task", "_process_turn", "_log_turn_result", "_publish_reply",
              "_start_current_section", "_build_current_section_tasks"}
     selected = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in names]
     node_class = ast.ClassDef(name="IsolatedNode", bases=[], keywords=[], body=selected, decorator_list=[])

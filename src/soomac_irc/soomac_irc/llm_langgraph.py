@@ -36,6 +36,11 @@ from soomac_irc.llm_policy import (
 )
 
 
+class _GraphTurnState(_TurnState, total=False):
+    # 추천 전 계산한 임시 값만 잇는다. 공개 입출력·세션·모델 입력에는 포함하지 않는다.
+    _task_context: dict | None
+
+
 #################### 주문 patch와 pending을 다루는 작은 도우미 ####################
 
 def _patch_has_values(patch: dict) -> bool:
@@ -597,7 +602,7 @@ def build_graph(
             "policy": policy,
         }
 
-    def process_task(state: _TurnState) -> dict:
+    def prepare_task(state: _GraphTurnState) -> dict:
         # 아래 분기는 모두 조기 반환한다. 위에서 아래로 읽으면 실제 처리 순서와 같다.
         previous = copy.deepcopy(state["session"])
         raw_decision = _canonicalize_structured_flavor_preference(state["decision"])
@@ -796,56 +801,94 @@ def build_graph(
                 },
             }
 
-        # 5. 추천 요청은 원문과 history를 추천 모델이 직접 읽는다.
-        # 추천 결과도 일반 주문과 같은 validator를 통과한 뒤 pending에만 저장한다.
-        if decision["recommendation"]["action"] in ("request", "revise"):
-            try:
-                raw = call_recommendation(
-                    copy.deepcopy(session), copy.deepcopy(decision),
-                    copy.deepcopy(state["robot_state"]), state["user_text"],
-                )
-            except Exception as error:
-                raw = None
-                recommendation_error = {"type": type(error).__name__}
-            else:
-                recommendation_error = None
-            rec_validation = validate_recommendation_result(session, raw, state["robot_state"])
-            recommendation_result = copy.deepcopy(rec_validation)
-            if recommendation_error is not None:
-                recommendation_result["model_error"] = recommendation_error
-            if rec_validation["accepted_fields"]:
-                session["pending"] = {
-                    "type": "recommendation",
-                    "candidate": copy.deepcopy(rec_validation["proposal"]),
-                    "reason_tags": copy.deepcopy(rec_validation["reason_tags"]),
-                }
-                policy = {
-                    "status": "pass",
-                    "reason": "recommendation_proposed",
-                    "execute": False,
-                    "conflicts": [],
-                }
-            else:
-                # 새 추천 후보를 만들지 못했으면 이전 후보도 더 이상 확인 대상으로 남기지 않는다.
-                session["pending"] = None
-                policy = {
-                    "status": "clarify",
-                    "reason": "recommendation_unavailable",
-                    "execute": False,
-                    "conflicts": [],
-                    "rejected_fields": copy.deepcopy(rec_validation["rejected_fields"]),
-                }
-            # 미수락 후보를 실행하지 않는다. 다만 독립된 현재 확정 주문의
-            # 명시적 commit은 미래 후보 때문에 버리지 않고 아래 안전 검사를 탄다.
-            if not decision["commit"] or (
-                pending_blocks_execution(session.get("pending"), state["robot_state"]["section"])
-            ):
-                return {
-                    "session": session,
-                    "decision": decision,
-                    "recommendation_result": recommendation_result,
-                    "policy": policy,
-                }
+        # 추천 뒤에도 쓰는 계산 결과를 그대로 잇는다. 주문 변경을 다시 적용하지 않는다.
+        return {
+            "session": session,
+            "decision": decision,
+            "recommendation_result": None,
+            "_task_context": {
+                "pending_result": pending_result,
+                "applied": applied,
+                "accepted_patch": accepted_patch,
+                "restriction_validation": restriction_validation,
+                "restriction_enforcement": restriction_enforcement,
+            },
+        }
+
+    def route_prepared_task(state: _GraphTurnState) -> str:
+        if state.get("_task_context") is None:
+            return "response"
+        if state["decision"]["recommendation"]["action"] in ("request", "revise"):
+            return "recommendation"
+        return "finalize"
+
+    def run_recommendation(state: _GraphTurnState) -> dict:
+        # 이번 턴의 제한·취향·주문 변경을 먼저 반영한 상태로 한 번만 추천한다.
+        session = state["session"]
+        decision = state["decision"]
+        try:
+            raw = call_recommendation(
+                copy.deepcopy(session), copy.deepcopy(decision),
+                copy.deepcopy(state["robot_state"]), state["user_text"],
+            )
+        except Exception as error:
+            raw = None
+            recommendation_error = {"type": type(error).__name__}
+        else:
+            recommendation_error = None
+        rec_validation = validate_recommendation_result(session, raw, state["robot_state"])
+        recommendation_result = copy.deepcopy(rec_validation)
+        if recommendation_error is not None:
+            recommendation_result["model_error"] = recommendation_error
+
+        # 추천은 검증된 후보를 pending에만 보관하며, 여기서 주문을 확정하지 않는다.
+        if rec_validation["accepted_fields"]:
+            session["pending"] = {
+                "type": "recommendation",
+                "candidate": copy.deepcopy(rec_validation["proposal"]),
+                "reason_tags": copy.deepcopy(rec_validation["reason_tags"]),
+            }
+            policy = {
+                "status": "pass", "reason": "recommendation_proposed",
+                "execute": False, "conflicts": [],
+            }
+        else:
+            # 실패한 새 추천으로 이전 후보를 확인 대상으로 남기지 않는다.
+            session["pending"] = None
+            policy = {
+                "status": "clarify", "reason": "recommendation_unavailable",
+                "execute": False, "conflicts": [],
+                "rejected_fields": copy.deepcopy(rec_validation["rejected_fields"]),
+            }
+
+        # 미래 추천 때문에 독립된 현재 확정 주문의 명시적 실행 요청을 버리지 않는다.
+        context = state["_task_context"]
+        if not decision["commit"] or pending_blocks_execution(
+            session.get("pending"), state["robot_state"]["section"]
+        ):
+            context = None
+        return {
+            "session": session,
+            "decision": decision,
+            "recommendation_result": recommendation_result,
+            "policy": policy,
+            "_task_context": context,
+        }
+
+    def route_recommended_task(state: _GraphTurnState) -> str:
+        return "response" if state["_task_context"] is None else "finalize"
+
+    def finalize_task(state: _GraphTurnState) -> dict:
+        # 추천 전 계산 결과와 추천 후 pending을 함께 읽어 기존 실행 검사를 이어간다.
+        session = state["session"]
+        decision = state["decision"]
+        recommendation_result = state["recommendation_result"]
+        context = state["_task_context"]
+        pending_result = context["pending_result"]
+        applied = context["applied"]
+        accepted_patch = context["accepted_patch"]
+        restriction_validation = context["restriction_validation"]
+        restriction_enforcement = context["restriction_enforcement"]
 
         # 6. 단순 거절은 여기서 끝내되, 현재 section을 새 값으로 교체한 복합 발화는
         # commit 검사 또는 새 execution pending 생성까지 계속 진행한다.
@@ -1086,23 +1129,33 @@ def build_graph(
         session["history"].append({"role": "user", "content": state["user_text"]})
         session["history"].append({"role": "assistant", "content": reply})
         return {"session": session, "policy": state["policy"], "reply": reply,
-                "recommendation_result": recommendation_result}
+                "recommendation_result": recommendation_result, "_task_context": None}
 
-    # stage 선언 순서가 실제 한 턴의 흐름이다.
-    # interpret → general/task → response 순서만 유지해 Graph를 평평하게 둔다.
-    graph = StateGraph(_TurnState)
+    # 모델 역할을 노드로 드러내되 상태 반영·추천·실행 검사의 순서는 보존한다.
+    # 임시 문맥은 내부 채널에만 두고, invoke 입출력은 기존 8개 공개 필드로 투영한다.
+    graph = StateGraph(_GraphTurnState, input_schema=_TurnState, output_schema=_TurnState)
     graph.add_node("interpret_decision", interpret_decision)
     graph.add_node("process_general", process_general)
-    graph.add_node("process_task", process_task)
+    graph.add_node("prepare_task", prepare_task)
+    graph.add_node("run_recommendation", run_recommendation)
+    graph.add_node("finalize_task", finalize_task)
     graph.add_node("generate_response", generate_response)
 
     graph.add_edge(START, "interpret_decision")
     graph.add_conditional_edges(
         "interpret_decision",
         route_by_decision,
-        {"general": "process_general", "task": "process_task"},
+        {"general": "process_general", "task": "prepare_task"},
     )
     graph.add_edge("process_general", "generate_response")
-    graph.add_edge("process_task", "generate_response")
+    graph.add_conditional_edges(
+        "prepare_task", route_prepared_task,
+        {"response": "generate_response", "recommendation": "run_recommendation", "finalize": "finalize_task"},
+    )
+    graph.add_conditional_edges(
+        "run_recommendation", route_recommended_task,
+        {"response": "generate_response", "finalize": "finalize_task"},
+    )
+    graph.add_edge("finalize_task", "generate_response")
     graph.add_edge("generate_response", END)
     return graph.compile()

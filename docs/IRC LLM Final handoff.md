@@ -1,5 +1,7 @@
 # IRC LLM Final — 계정 전환 인수인계
 
+**2026-10-29 추가 읽기:** [그래프 역할 분리 구현 결과](../training/learning_first_v43/final/audits/2026-10-29_graph_refactor/RESULT.md) → [계획 §10](<IRC LLM Final graph refactor plan.md#10-현재-상태와-다음-한-단계>) → [실행 영수증](../training/learning_first_v43/final/audits/2026-10-29_graph_refactor/TEST_RECEIPT.md). 사용자 승인 범위 R1~R5 완료. 최종 778건·2subtests 통과, 독립 Codex sol/high 찬성·신규 차단0. Recommendation 실제 독립 노드와 로그 메서드를 분리했으며 기존 기능·계약을 대조했다. 학습/원격/adapter/VLM/ROS 정책 변경 없음. 기존 이중 오류 로그 누락/schema export 한계는 RESULT에 따로 기록했으며 변경하지 않았다. 아래 10월26일의 실행 상태는 당시 이력이다.
+
 [실행 계획 정본](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final plan.md>) · [오늘 검수 원본 모음](/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/reports/) · [외부 학습 작업장](/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/final/)
 → **2026-10-25 하루 동안 수행한 데이터·코드·프롬프트·과거/최신 실로그·GPU·멀티에이전트 검수를 함께 이어받는 문서이다. 마지막 두 세션만 요약한 문서가 아니다.** 작성일 2026-10-26 KST.
 

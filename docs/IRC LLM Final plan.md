@@ -1,5 +1,7 @@
 # IRC LLM Final plan
 
+**2026-10-29 구조 작업 완료:** [그래프 역할 분리 계획 §10](<IRC LLM Final graph refactor plan.md#10-현재-상태와-다음-한-단계>) → [구현 결과](../training/learning_first_v43/final/audits/2026-10-29_graph_refactor/RESULT.md). 사용자 승인 R1~R5 완료, 최종 778건·2subtests 통과/독립 Codex sol/high 찬성. 기존 의미·안전·학습 계약은 유지한다. 아래 GL01~06 상태는 작성 당시 기록이며 현재 학습 실행 상태로 복사하지 않는다.
+
 상태: GL01~06의 명시 구현/검증 범위 완료, BATCH02 종료. Agent별 데이터 전수 정제·새 학습·모델 채택은 미실행이다. 작성일: 2026-10-25 KST. 인계 보강: 2026-10-26 KST. 최신 증거는 final/goals/GL06/RESULT.md·manifest를 따른다. 아래 TODO는 작성 당시 작업 명세이며 모두 실제 완료됐다는 뜻이 아니다.
 
 계정 전환 시 먼저 [IRC LLM Final handoff](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final handoff.md>)를 읽는다. 오늘 전체 검수·정정·읽기 순서·실행 경계를 통합한 진입점이다. 과거 후보 생성/평가기 일부 개선 이력까지 없었다는 뜻으로 위 미실행 상태를 읽지 않는다.

@@ -1235,6 +1235,34 @@ class LLMLangGraphNode(Node):
 
 #################### 사용자 한 턴을 graph에 넣고 결과를 실제 session에 반영 ####################
 
+    def _log_turn_result(self, status: str, turn_context: dict, result: dict | None,
+                         published_reply: str | None, error: Exception | None = None):
+        # 시작 시점 스냅샷과 기록 시점의 실제 결과를 분리한다.
+        # graph 실패 시 result=None이며, 실행/발행 뒤 상태는 호출 순간에 읽는다.
+        error_payload = None
+        if error is not None:
+            error_payload = {"type": type(error).__name__, "message": str(error)}
+
+        self.runtime_log.log_turn({
+            "turn_id": turn_context["turn_id"],
+            "status": status,
+            "user_text": turn_context["user_text"].strip(),
+            "session_before": turn_context["session_before"],
+            "robot_state_before": turn_context["robot_state_before"],
+            "llm_trace": self._collect_model_traces(),
+            "decision_final": copy.deepcopy(result.get("decision")) if isinstance(result, dict) else None,
+            "recommendation_result": copy.deepcopy(result.get("recommendation_result")) if isinstance(result, dict) else None,
+            "policy": copy.deepcopy(result.get("policy")) if isinstance(result, dict) else None,
+            "graph_reply": result.get("reply") if isinstance(result, dict) else None,
+            "published_reply": published_reply,
+            "session_after": copy.deepcopy(self.graph_state),
+            "robot_state_after": self._build_robot_state(),
+            "latency_ms": {
+                "total": round((time.perf_counter() - turn_context["turn_started"]) * 1000.0, 3),
+            },
+            "error": error_payload,
+        })
+
     def _process_turn(self, user_text: str):
         # 역할: 한 사용자 발화를 graph에 전달하고 검증된 세션만 실제 상태에 반영한다.
         # 각 turn의 exact LLM input/raw/final, state 전후, policy, reply를 세션 JSONL에 남긴다.
@@ -1271,33 +1299,11 @@ class LLMLangGraphNode(Node):
         published_reply = None
         reply_published = False
 
-        def write_turn(status: str, error: Exception | None = None):
-            error_payload = None
-            if error is not None:
-                error_payload = {
-                    "type": type(error).__name__,
-                    "message": str(error),
-                }
-
-            self.runtime_log.log_turn({
-                "turn_id": turn_id,
-                "status": status,
-                "user_text": user_text.strip(),
-                "session_before": session_before,
-                "robot_state_before": robot_state_before,
-                "llm_trace": self._collect_model_traces(),
-                "decision_final": copy.deepcopy(result.get("decision")) if isinstance(result, dict) else None,
-                "recommendation_result": copy.deepcopy(result.get("recommendation_result")) if isinstance(result, dict) else None,
-                "policy": copy.deepcopy(result.get("policy")) if isinstance(result, dict) else None,
-                "graph_reply": result.get("reply") if isinstance(result, dict) else None,
-                "published_reply": published_reply,
-                "session_after": copy.deepcopy(self.graph_state),
-                "robot_state_after": self._build_robot_state(),
-                "latency_ms": {
-                    "total": round((time.perf_counter() - turn_started) * 1000.0, 3),
-                },
-                "error": error_payload,
-            })
+        # 시작 스냅샷만 고정한다. result와 발행문은 각 종료 분기에서 최신 값을 넘긴다.
+        turn_context = {
+            "turn_id": turn_id, "turn_started": turn_started, "user_text": user_text,
+            "session_before": session_before, "robot_state_before": robot_state_before,
+        }
 
         try:
             result = self.graph.invoke(turn_state)
@@ -1310,7 +1316,7 @@ class LLMLangGraphNode(Node):
                 self._publish_reply(published_reply)
                 self._set_stt_enabled(True)
 
-            write_turn("graph_error", error)
+            self._log_turn_result("graph_error", turn_context, result, published_reply, error)
             return
 
         self.graph_state = copy.deepcopy(result["session"])
@@ -1331,7 +1337,7 @@ class LLMLangGraphNode(Node):
                     reply_published = True
 
                 self._set_stt_enabled(True)
-                write_turn("completed")
+                self._log_turn_result("completed", turn_context, result, published_reply)
                 return
 
             unresolved_pending = self.graph_state.get("pending")
@@ -1348,7 +1354,7 @@ class LLMLangGraphNode(Node):
                 self._publish_reply(published_reply)
                 reply_published = True
                 self._set_stt_enabled(True)
-                write_turn("pending_blocked")
+                self._log_turn_result("pending_blocked", turn_context, result, published_reply)
                 return
 
             if self._start_current_section():
@@ -1360,7 +1366,7 @@ class LLMLangGraphNode(Node):
                 self._publish_reply(published_reply)
                 reply_published = True
 
-                write_turn("execution_started")
+                self._log_turn_result("execution_started", turn_context, result, published_reply)
                 return
 
             # 선택 재료가 없는 optional section은 로봇 작업 없이 바로 다음 section으로 이동한다.
@@ -1373,7 +1379,7 @@ class LLMLangGraphNode(Node):
                 published_reply = reply
                 self._publish_reply(reply)
                 reply_published = True
-                write_turn("section_advanced")
+                self._log_turn_result("section_advanced", turn_context, result, published_reply)
                 return
 
             if result["reply"]:
@@ -1382,11 +1388,11 @@ class LLMLangGraphNode(Node):
                 reply_published = True
 
             self._set_stt_enabled(True)
-            write_turn("completed")
+            self._log_turn_result("completed", turn_context, result, published_reply)
         except Exception as error:
             if published_reply is not None and not reply_published:
                 _record_question_delivery(self.graph_state, None, delivered=False)
-            write_turn("post_graph_error", error)
+            self._log_turn_result("post_graph_error", turn_context, result, published_reply, error)
             raise
 
 #################### callback에서 쌓은 job을 종류별 처리 함수로 분배 ####################
