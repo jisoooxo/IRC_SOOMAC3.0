@@ -196,14 +196,15 @@ def test_event_proposal_is_validated_before_response_and_never_becomes_order():
     state = robot("extra")
     state["section_transition"] = dict(type="section_transition", section="meat", next_section="extra", outcome="completed")
     raw = dict(proposal=proposal(치즈="high", 페퍼론치노="low"), reason_tags=["매운맛 선호"])
-    raw["proposal"]["sauce"] = "크림"  # future candidate is outside this stage-event contract
+    raw["proposal"]["sauce"] = "크림"  # safe future sauce is now allowed in stage events
     recommendation, response = Mock(return_value=raw), Mock(return_value="매운맛을 좋아하셔서 페퍼론치노를 추천해요. 이렇게 선택할까요?")
     result = generate_section_event_response(session, state, recommendation, response, "기존 안내")
     assert recommendation.call_args.args[3] is None
     assert response.call_args.args[0] is None
-    assert response.call_args.args[5]["proposal"] == proposal(페퍼론치노="low")
-    assert {item["reason"] for item in response.call_args.args[5]["rejected_fields"]} == {"restriction_conflict", "event_scope"}
-    assert result["session"]["pending"]["candidate"] == proposal(페퍼론치노="low")
+    expected = dict(proposal(페퍼론치노="low"), sauce="크림")
+    assert response.call_args.args[5]["proposal"] == expected
+    assert {item["reason"] for item in response.call_args.args[5]["rejected_fields"]} == {"restriction_conflict"}
+    assert result["session"]["pending"]["candidate"] == expected
     assert result["session"]["order"] == before["order"]
     assert result["session"]["history"] == before["history"]
     assert result["policy"]["execute"] is False
@@ -217,8 +218,8 @@ def test_exact_duplicate_section_event_does_not_repeat_models_history_or_rail():
     before = copy.deepcopy(node.graph_state)
     assert node._advance_after_section("meat", outcome="skipped") is None
     assert node.graph_state == before
-    node.call_response.assert_called_once()
-    node.call_recommendation.assert_called_once()
+    node.call_response.assert_not_called()
+    node.call_recommendation.assert_not_called()
     node.rail_move_ahead_pub.publish.assert_called_once()
     node.plan_pub.publish.assert_not_called()
 
@@ -336,7 +337,7 @@ def test_event_uses_same_five_applied_fields_as_user_response():
     assert not any(response.call_args.args[3].values())
 
 
-@pytest.mark.parametrize("failure", ["exception", "schema", "unsafe", "outside_event_scope"])
+@pytest.mark.parametrize("failure", ["exception", "schema", "unsafe", "past_section"])
 def test_event_recommendation_failure_is_deterministic_not_a_second_model_guess(failure):
     from soomac_irc.llm_langgraph import generate_section_event_response
     session = new_session_state()
@@ -349,8 +350,8 @@ def test_event_recommendation_failure_is_deterministic_not_a_second_model_guess(
         raw = {"proposal": proposal(), "reason_tags": [True]}
     elif failure == "unsafe":
         raw["proposal"] = proposal(치즈="high")
-    elif failure == "outside_event_scope":
-        raw["proposal"]["sauce"] = "크림"
+    elif failure == "past_section":
+        raw["proposal"]["noodle_type"] = "얇은면"
     rec = Mock(side_effect=RuntimeError("failed")) if failure == "exception" else Mock(return_value=raw)
     response = Mock(return_value="검증되지 않은 재료를 추천하는 모델 응답")
     result = generate_section_event_response(session, state, rec, response, "치즈를 담을까요?")

@@ -60,12 +60,25 @@ def _resolve_runtime_adapter_paths() -> tuple[str, str, str | None, str | None]:
     return (*rollback[:3], "; ".join(errors) or None)
 
 
-(
-    DECISION_ADAPTER_PATH,
-    RESPONSE_ADAPTER_PATH,
-    RECOMMENDATION_ADAPTER_PATH,
-    RUNTIME_ADOPTION_ERROR,
-) = _resolve_runtime_adapter_paths()
+# 2026-10-31 사용자 지정: 최신 학습 best 세 개로 실물 테스트를 준비한다.
+# best는 validation loss 기준이며 전체 의미 회귀 합격 모델이라는 뜻은 아니다.
+# 현재 선택 정본은 아래 직접 경로다. 위 manifest resolver/rollback은 복구용으로 보존한다.
+DECISION_ADAPTER_PATH = (
+    "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/"
+    "remote_all_a519cf_20261031_r2/results/checkpoints/"
+    "attempt-d8a4ee465c95443daa47e2caf7fa1ee4/decision/best_adapter"
+)
+RECOMMENDATION_ADAPTER_PATH = (
+    "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/"
+    "local_v6_batch_20261028/recommendation-c492d6c7538b/"
+    "attempt-8f34316e864e429ba8ebdbd8b60f8a8a/recommendation/best_adapter"
+)
+RESPONSE_ADAPTER_PATH = (
+    "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/"
+    "local_v6_batch_20261028/response-b1acc16-resume-bed9d88cbc5a/full/"
+    "attempt-2b74a8919fce4e5690767295942c27d5/response/best_adapter"
+)
+RUNTIME_ADOPTION_ERROR = None
 DECISION_ADAPTER_NAME = "decision"
 RECOMMENDATION_ADAPTER_NAME = "recommendation"
 RESPONSE_ADAPTER_NAME = "response"

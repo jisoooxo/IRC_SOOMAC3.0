@@ -659,17 +659,19 @@ class LLMLangGraphNode(Node):
             reply = next_reply
             response_trace = None
             response_error = None
-            if self.section not in ("lid", "sauce"):
-                event_result = generate_section_event_response(
-                    self.graph_state, robot_state, self.call_recommendation,
-                    self.call_response, next_reply,
-                )
-                self.graph_state = event_result["session"]
-                reply = event_result["reply"]
-                response_error = event_result["model_error"]
-                traces = getattr(self.call_response, "trace_events", [])
-                if isinstance(traces, list) and traces:
-                    response_trace = copy.deepcopy(traces[-1])
+            # 단계 진입은 _section_prompt() 또는 사전 주문 확인문을 그대로 발화한다.
+            # 사용자 주문 턴의 LLM 호출은 유지하고, 단계 전환의 자동 추천/응답만 끈다.
+            # if self.section not in ("lid", "sauce"):
+            #     event_result = generate_section_event_response(
+            #         self.graph_state, robot_state, self.call_recommendation,
+            #         self.call_response, next_reply,
+            #     )
+            #     self.graph_state = event_result["session"]
+            #     reply = event_result["reply"]
+            #     response_error = event_result["model_error"]
+            #     traces = getattr(self.call_response, "trace_events", [])
+            #     if isinstance(traces, list) and traces:
+            #         response_trace = copy.deepcopy(traces[-1])
             try:
                 self.runtime_log.log_event("section_transition_response", {
                     "transition": copy.deepcopy(transition),

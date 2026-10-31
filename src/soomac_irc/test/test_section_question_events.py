@@ -122,30 +122,42 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertIsNone(node.active_task)
         self.assertFalse(node.robot_started)
 
-    def test_skipped_and_completed_call_event_response_with_structured_next_prompt(self):
-        for outcome in ("skipped", "completed"):
-            with self.subTest(outcome=outcome):
-                node = make_node()
-                self.assertEqual(node._advance_after_section("meat", outcome=outcome),
-                                 node.call_response.return_value)
-                self.assertIsNone(node.graph_state["pending"])
-                self.assertEqual(node.graph_state["action_history"][-1]["outcome"], outcome)
-                self.assertEqual(node.completed_tasks, [])
-                node.call_response.assert_called_once()
-                args = node.call_response.call_args.args
-                self.assertIsNone(args[0])
-                self.assertEqual(args[6], {"type": "section_prompt", "section": "extra"})
-                self.assertFalse(args[2]["execute"])
-                self.assertEqual(args[7]["section_transition"]["outcome"], outcome)
-                node.rail_move_ahead_pub.publish.assert_called_once()
+    def test_skipped_and_completed_use_fixed_section_prompt_without_models(self):
+        stages = (
+            ("noodle", "veggie", "다음은 야채를 고르실 차례입니다."),
+            ("veggie", "meat", "다음은 육류를 고르실 차례입니다."),
+            ("meat", "extra", "다음은 추가 재료 차례입니다."),
+        )
+        for section, next_section, prefix in stages:
+            for outcome in ("skipped", "completed"):
+                with self.subTest(section=section, outcome=outcome):
+                    node = make_node(section)
+                    node.graph_state["history"] = [{"role": "user", "content": "앞서 한 주문"}]
+                    before = copy.deepcopy(node.graph_state)
+                    reply = node._advance_after_section(section, outcome=outcome)
+                    self.assertTrue(reply.startswith(prefix))
+                    self.assertEqual(node.section, next_section)
+                    self.assertIsNone(node.graph_state["pending"])
+                    self.assertEqual(node.graph_state["order"], before["order"])
+                    self.assertEqual(node.graph_state["history"], before["history"] + [
+                        {"role": "assistant", "content": reply},
+                    ])
+                    self.assertEqual(node.graph_state["action_history"][-1]["outcome"], outcome)
+                    self.assertEqual(node.completed_tasks, [])
+                    node.call_response.assert_not_called()
+                    node.call_recommendation.assert_not_called()
+                    node.plan_pub.publish.assert_not_called()
+                    node.rail_move_ahead_pub.publish.assert_called_once()
 
-    def test_transition_model_failure_uses_existing_safe_fallback(self):
+    def test_transition_does_not_call_failing_models(self):
         node = make_node()
         node.call_response.side_effect = RuntimeError("모의 모델 실패")
+        node.call_recommendation.side_effect = RuntimeError("모의 추천 실패")
         reply = node._advance_after_section("meat", outcome="skipped")
         self.assertNotIn("다 담", reply)
         self.assertIn("추가 재료", reply)
-        node.call_response.assert_called_once()
+        node.call_response.assert_not_called()
+        node.call_recommendation.assert_not_called()
         node._set_stt_enabled.assert_called_with(True)
 
     def test_lid_completion_starts_sauce_with_deterministic_reply(self):
@@ -162,7 +174,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
         node.call_response.assert_not_called()
         node._set_stt_enabled.assert_not_called()
 
-    def test_empty_response_uses_same_safe_fallback(self):
+    def test_empty_model_response_does_not_replace_fixed_prompt(self):
         node = make_node()
         node.call_response.return_value = ""
         reply = node._advance_after_section("meat", outcome="skipped")
@@ -176,14 +188,14 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertEqual(node.graph_state["pending"]["items"], {"치즈": "low"})
         self.assertEqual(node.graph_state["pending"]["type"], "execution")
         self.assertEqual(node.graph_state["history"][-1]["content"],
-                         node.call_response.return_value)
-        node.call_response.assert_called_once()
+                         "미리 고른 치즈를 적게 담을까요?")
+        node.call_response.assert_not_called()
         node.call_recommendation.assert_not_called()
-        self.assertEqual(node.call_response.call_args.args[6]["items"], {"치즈": "low"})
         node.plan_pub.publish.assert_not_called()
 
-    def test_section_transition_response_event_records_reply_and_actual_trace_if_available(self):
+    def test_section_transition_response_event_records_fixed_reply_without_model_trace(self):
         node = make_node()
+        node.call_response.trace_events = [{"model_input": {"old": True}, "raw": "이전 응답"}]
         reply = node._advance_after_section("meat", outcome="completed")
 
         matching = [
@@ -191,7 +203,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
             for call in node.runtime_log.log_event.call_args_list
             if call.args[0] == "section_transition_response"
         ]
-        self.assertEqual(reply, node.call_response.return_value)
+        self.assertTrue(reply.startswith("다음은 추가 재료 차례입니다."))
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0]["transition"]["next_section"], "extra")
         self.assertEqual(matching[0]["robot_state"]["section"], "extra")
@@ -199,7 +211,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
         self.assertIsNone(matching[0]["response_model_input"])
         self.assertIsNone(matching[0]["response_raw"])
         self.assertEqual(matching[0]["reply"], reply)
-        node.call_response.assert_called_once()
+        node.call_response.assert_not_called()
 
     def test_extra_skip_starts_lid_with_deterministic_reply(self):
         node = make_node("extra")
@@ -286,7 +298,7 @@ class TestSectionQuestionEvents(unittest.TestCase):
         reply = node._advance_after_section("meat")
 
         self.assertEqual(node.section, "extra")
-        self.assertEqual(reply, node.call_response.return_value)
+        self.assertTrue(reply.startswith("다음은 추가 재료 차례입니다."))
         self.assertEqual(node.graph_state["action_history"][-1]["next_section"], "extra")
         self.assertEqual(node.task_queue, [])
         self.assertIsNone(node.active_task)
@@ -301,9 +313,10 @@ class TestSectionQuestionEvents(unittest.TestCase):
                                           "reply": "이전 응답"}
         node._process_turn("바로 진행해")
         self.assertEqual(node.section, "extra")
-        node.call_response.assert_called_once()
-        self.assertEqual(node._publish_reply.call_args.args[0], node.call_response.return_value)
-        self.assertEqual(node.graph_state["history"][-1]["content"], node.call_response.return_value)
+        node.call_response.assert_not_called()
+        reply = node._publish_reply.call_args.args[0]
+        self.assertTrue(reply.startswith("다음은 추가 재료 차례입니다."))
+        self.assertEqual(node.graph_state["history"][-1]["content"], reply)
         self.assertEqual(len(node.graph_state["history"]), 2)
         self.assertEqual(node.runtime_log.log_turn.call_args.args[0]["status"], "section_advanced")
 

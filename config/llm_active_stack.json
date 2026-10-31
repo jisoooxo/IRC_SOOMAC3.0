@@ -1,16 +1,18 @@
 {
-  "active": true,
-  "all_gates_pass": true,
+  "active": false,
+  "all_gates_pass": false,
+  "selection_source": "src/soomac_irc/soomac_irc/model_runtime.py explicit path constants",
+  "note": "Informational mirror only. User-authorized latest-best robot-test paths; semantic acceptance is unverified. No automatic manifest adoption.",
   "labels": {
-    "decision": "decision_v3_4_epoch4",
-    "recommendation": "recommendation_v2_epoch4",
-    "response": "response_v1_3_epoch3"
+    "decision": "learning_first_v5_best_step750_epoch2.944417",
+    "recommendation": "learning_first_v5_best_step100_epoch2.642140",
+    "response": "learning_first_v5_best_step50_epoch0.551724"
   },
   "selected": {
-    "decision": "models/runtime_adapters/decision_v3_4_epoch4",
-    "recommendation": "models/runtime_adapters/recommendation_v2_epoch4",
-    "response": "models/runtime_adapters/response_v1_3_epoch3"
+    "decision": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/remote_all_a519cf_20261031_r2/results/checkpoints/attempt-d8a4ee465c95443daa47e2caf7fa1ee4/decision/best_adapter",
+    "recommendation": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/local_v6_batch_20261028/recommendation-c492d6c7538b/attempt-8f34316e864e429ba8ebdbd8b60f8a8a/recommendation/best_adapter",
+    "response": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/local_v6_batch_20261028/response-b1acc16-resume-bed9d88cbc5a/full/attempt-2b74a8919fce4e5690767295942c27d5/response/best_adapter"
   },
-  "source_evaluation": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/full_rebuild_v4/FINAL_AUDITED_RETRAIN_REPORT.md",
-  "candidate_status": "rejected_keep_previous"
+  "source_evaluation": "training/learning_first_v43/final/goals/GL10/docker_v5_20261028/best_stack_regression_20261031/RESULT.md",
+  "candidate_status": "user_authorized_robot_test_unverified"
 }

@@ -1,5 +1,15 @@
 # IRC LLM Final plan
 
+**최신 2026-11-01: 감사·비활성 정제 마감.** [RESULT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/RESULT.md) → [최종 판정](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/ROOT_FINAL_ADJUDICATION.md) → [NEXT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/NEXT.md). 새고유93행(D59/Q4/P30), 원본대체108(D4/Q104), D계약HOLD12를 저장했다. 사용자 수량정책은 **근거 없는 새 추천량만normal**이며 기존량/후보수락량/명시변경량/취향근거량은 보존한다. 원본39파일·LLM의존불변, actual builder/CPUgold연결/훈련mask/8192·변경관련exact충돌0 확인. 새 학습본 조립/새학습/실모델시연/운영교체는 아직 아니다. 기존두Runtime공백과수치편향DEFERRED는남는다. 아래실행중/의미대기/정책대기는과거상태이며완료된검수를반복하지않는다.
+
+**2026-10-31 실행 갱신:** 사용자 승인으로 데이터 감사 Goal이 active이며 [현재 상태](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/STATE.md)에서 이어간다. 필수 목표는 자연스러운 누적 주문이며 크림선택+commit·버섯량변경+commit·게살allergy/소시지high+commit·제외/치즈low+commit을 동시에 놓치지 않는다. DA01 입력동결 완료, Codex-D/Codex-P/Claude-Q 실제 시작. 새7대화64기록83후보는 실제 graph/serializer/훈련mask·8192토큰 구조 대조 통과, 독립 의미검수 전이다. 아래 계획 선보고/미시작 표시는 과거 상태이다. 실제 학습·모델교체·ROS/원격/commit은 현재 범위가 아니다.
+
+**2026-10-31 최신 사용자 추가 요구:** [데이터 원인 재검수 실행 목록](../training/learning_first_v43/final/goals/GL10/dataset_supplement_plan_20261031/DATA_REAUDIT_EXECUTION_PLAN.ko.md)을 후속 실행 진입점으로 사용한다. 복합 멀티턴·앞선 대화 기반 자연응답·불필요한 추천·Agent별 자체/연결 오류·명시 즉시 실행/수량을 실제 학습 데이터부터 검수한다. **Claude+Codex 병렬 검수 요청이 과거 Codex-only보다 우선**하며 Codex는 gpt-6-sol/high다. 사용자 임시 고정 단계 안내는 유지한다. 현재 단계는 계획/미이행 목록 선보고이며 새 데이터 전행 감사·정제·학습 완료가 아니다.
+
+**2026-10-31 상태 정정·후속 진입점:** [잔여 작업·D→P 보강 계획](<IRC LLM Final remaining work.md>) §1이 현재 후속 작업의 상태표다. 추천 범위 토글, D→state→P 집중 검수, 새 5단계 누적 회귀, 영향 데이터 재정제·보강 및 해당 재학습은 아직 미완료다. event 범위 필터 제거·Q 소스 prompt는 일부 적용됐지만 전체 모델 동작 합격은 아니다. 아래 날짜별 완료/미실행은 당시 범위의 이력이며, 이미 끝난 v5 학습·GL 계약 작업을 새로 미실행 처리하지 않는다. 이번 승인 범위는 문서 정리·계획 보강뿐이다.
+
+**2026-10-31 현재 후속 범위:** [통합 테스트·보강·검수 계획](<IRC LLM Final integrated validation plan.md>)을 우선 읽는다. 사용자 요청으로 조합 탐색을11완료에서 중단했고, 최신 best3개의 직접 코드 경로와 문서 교차검수까지만 준비한다. 미검증 best를 전체 합격으로 표시하지 않는다. 실제ROS/새학습/새prompt 변경은 이번에 실행하지 않는다.
+
 **2026-10-29 구조 작업 완료:** [그래프 역할 분리 계획 §10](<IRC LLM Final graph refactor plan.md#10-현재-상태와-다음-한-단계>) → [구현 결과](../training/learning_first_v43/final/audits/2026-10-29_graph_refactor/RESULT.md). 사용자 승인 R1~R5 완료, 최종 778건·2subtests 통과/독립 Codex sol/high 찬성. 기존 의미·안전·학습 계약은 유지한다. 아래 GL01~06 상태는 작성 당시 기록이며 현재 학습 실행 상태로 복사하지 않는다.
 
 상태: GL01~06의 명시 구현/검증 범위 완료, BATCH02 종료. Agent별 데이터 전수 정제·새 학습·모델 채택은 미실행이다. 작성일: 2026-10-25 KST. 인계 보강: 2026-10-26 KST. 최신 증거는 final/goals/GL06/RESULT.md·manifest를 따른다. 아래 TODO는 작성 당시 작업 명세이며 모두 실제 완료됐다는 뜻이 아니다.
@@ -253,7 +263,7 @@ Decision은 구조 판단, Recommendation은 유효 후보·유지항목·변경
 
 ### 5.7 토큰 예산 증액 — history를 희생하지 않는다
 
-few-shot으로 입력/출력이 늘면 **필요한 토큰 예산 증액도 W2/W5의 명시적 작업**이다. max_new_tokens 증액은 입력 context나 학습 길이 확장과 다르다. 2026-10-26 소스 확인값은 Decision 입력8192, 생성 상한 Decision1024 / Recommendation1024 / Response512이다. 이는 앱 설정이지 Base의 지원 context 또는 모든 경로의 입력 상한 증거가 아니다. 착수 시 실제 loader/tokenizer/trainer와 재대조한다.
+few-shot으로 입력/출력이 늘면 **필요한 토큰 예산 증액도 W2/W5의 명시적 작업**이다. max_new_tokens 증액은 입력 context나 학습 길이 확장과 다르다. 2026-10-31 현재 `decision_model.py:23`의 입력 상한은16384이며, 생성 상한은 Decision1024 / Recommendation1024 / Response512이다. 이전8192는 과거 값이다. 이는 앱 설정이지 Base의 지원 context 또는 모든 경로의 입력 상한 증거가 아니다. 착수 시 실제 loader/tokenizer/trainer와 재대조한다.
 
 | 분리할 예산 | 측정·변경 조건 | 완료 조건 |
 |---|---|---|

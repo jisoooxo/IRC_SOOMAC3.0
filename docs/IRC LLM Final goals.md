@@ -1,5 +1,13 @@
 # IRC LLM Final — 분할 Goal·중단·재개
 
+**최신 2026-11-01: DA 데이터 감사·비활성 정제 범위 완료.** [RESULT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/RESULT.md) → [최종 판정](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/ROOT_FINAL_ADJUDICATION.md) → [NEXT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/NEXT.md). 원본7,784행 장부 결속·불변 판정 재사용/영향 검수, 새10대화104행 독립KEEP→고유93행, 원본대체108(D4/Q104), 계약HOLD12를 비활성 overlay로 저장했다. 근거 없는 새 추천량만normal 사용자 정책 반영. 실제 builder/mask/8192·exact충돌검사 통과, 원본/Runtime 불변. **새 학습본 조립·학습·모델성공은 미실행**이며 두Runtime공백/수치편향DEFERRED는 남는다. 아래active/검수대기/정책대기는 당시 이력이다. 다음은재조립범위확정이며GL01부터재검수하지않는다.
+
+**2026-10-31 현재 실행 상태:** 사용자 승인으로 DA 데이터 감사 Goal **active**. [현재 STATE](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/STATE.md)가 정본이다. 원본7,784행 형식/39파일 해시 동결 완료. Codex 조정자 Run 생성·P 작업자 시작 확인, Q는 영수증 확인 전까지 준비로 표시한다. 필수 자연 주문7대화64기록/83후보를 작성하여 정답주입 CPU 연결은 통과했으나 독립 의미 검수와 실제 모델 성공은 별개다. 아래 “계획 선보고/아직 새 Goal 없음”은 이전 상태이다. 원본·고정 안내·VLM·history를 보존하고 학습/운영교체/ROS/원격/commit은 하지 않는다.
+
+**2026-10-31 최신 데이터 검수 범위:** [DA01~05 실행 목록](../training/learning_first_v43/final/goals/GL10/dataset_supplement_plan_20261031/DATA_REAUDIT_EXECUTION_PLAN.ko.md)에 따라 실제 학습본/장부 연결→D/P/Q 병렬 오염·오답 검수→복합 멀티턴/불필요 추천/Agent 연결→국소 정제·보강→실제 누적 회귀 순서로 진행한다. 현재 사용자 요청은 계획 선보고이며 아직 새 감사 Goal/worker를 시작하지 않았다. 시작 시 Goal은 하나씩, 담당 검수는 Claude+Codex 병렬, 기존 완료 GL은 재시작하지 않는다. 학습·가중치·ROS·원격 변경은 기존 별도 단계다.
+
+**2026-10-31 후속 재개 기준:** [잔여 작업·D→P 계획](<IRC LLM Final remaining work.md>)의 RW01~05를 먼저 읽는다. 이 문서의 GL01부터 재시작하거나 아래 당시 NOT_STARTED를 현재 상태로 복사하지 않는다. 새 토글 구현·D→P 집중 검수·새 시연 누적 회귀·영향 데이터 보강은 미완료이며, 지금은 계획만 정리했다. 실제 Goal은 생성하지 않았다. 최신 사용자 승인 범위를 확인한 뒤 미완료 작업 하나부터 활성화한다.
+
 [인계 문서](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final handoff.md>) · [최종 계획](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final plan.md>)
 → **새 계정에서 Goal 3개를 한 묶음으로 순차 실행하고 파일로 이어받는다.** 전체 프로젝트를 하나의 무제한 Goal로 시작하거나 Goal 3개를 동시에 활성화하는 뜻이 아니다. 작성일: 2026-10-26. 이 문서는 운영 계획이며 실제 Goal 실행/생성 완료가 아니다.
 

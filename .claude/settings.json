@@ -10,7 +10,20 @@
       "Bash(python3 -c ' *)",
       "Bash(grep -n '\\\\.get\\(\"[a-z_]*\", \\\\[\\\\]\\)\\\\|\\\\.get\\(\"[a-z_]*\", {}\\)' src/soomac_irc/soomac_irc/evaluation_v43.py)",
       "Bash(nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv)",
-      "Bash(python3 -c \"import math;t=280*48*48;print\\(t, math.sqrt\\(t\\), int\\(math.sqrt\\(t\\)//48\\)*48, \\(768//48\\)**2\\)\")"
+      "Bash(python3 -c \"import math;t=280*48*48;print\\(t, math.sqrt\\(t\\), int\\(math.sqrt\\(t\\)//48\\)*48, \\(768//48\\)**2\\)\")",
+      "Bash(python3 -m venv .venv_cad)",
+      "Bash(.venv_cad/bin/pip install *)",
+      "Bash(timeout 900 .venv_cad/bin/pip install -q cadquery)",
+      "Bash(.venv_cad/bin/python -c \"import cadquery as cq; print\\('cadquery', cq.__version__\\)\")",
+      "WebFetch(domain:app.notion.com)",
+      "Bash(unzip -l Claude_Ramp_Standalone_GOAL_Package.zip)",
+      "Bash(mkdir -p /home/roma/ramp_project)",
+      "Bash(unzip -q -o /home/roma/Downloads/Claude_Ramp_Standalone_GOAL_Package.zip)",
+      "Bash(/home/roma/wheelchair_ramp_abc/.venv_cad/bin/python -c \"import cadquery as cq, numpy, sys; print\\('cadquery', cq.__version__, 'py', sys.version.split\\(\\)[0]\\); r=cq.Workplane\\(\\).box\\(10,10,10\\); import tempfile,os; d=tempfile.mkdtemp\\(\\); cq.exporters.export\\(r, d+'/t.step'\\); cq.exporters.export\\(r, d+'/t.stl'\\); print\\(os.path.getsize\\(d+'/t.step'\\), os.path.getsize\\(d+'/t.stl'\\)\\)\")",
+      "Bash(/home/roma/wheelchair_ramp_abc/.venv_cad/bin/pip list *)",
+      "Bash(python3 -c \"import yaml;print\\('pyyaml sys ok'\\)\")",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

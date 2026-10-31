@@ -1,3 +1,4 @@
+import ast
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -197,8 +198,59 @@ def test_load_model_registers_three_named_adapters(monkeypatch):
     assert ("set_adapter", "decision") in calls
 
 
-def test_adopted_recommendation_adapter_is_routed_from_manifest():
+def test_latest_best_recommendation_adapter_artifacts_exist():
     assert model_runtime.RECOMMENDATION_ADAPTER_PATH is not None
     root = Path(model_runtime.RECOMMENDATION_ADAPTER_PATH)
     assert (root / "adapter_config.json").is_file()
     assert (root / "adapter_model.safetensors").is_file()
+
+
+def test_explicit_latest_best_paths_match_unverified_informational_manifest():
+    manifest = json.loads(model_runtime.RUNTIME_ADOPTION_MANIFEST.read_text(encoding="utf-8"))
+    assert manifest["active"] is False
+    assert manifest["all_gates_pass"] is False
+    assert manifest["candidate_status"] == "user_authorized_robot_test_unverified"
+    actual = {
+        "decision": model_runtime.DECISION_ADAPTER_PATH,
+        "recommendation": model_runtime.RECOMMENDATION_ADAPTER_PATH,
+        "response": model_runtime.RESPONSE_ADAPTER_PATH,
+    }
+    assert actual == manifest["selected"]
+    for path in actual.values():
+        root = Path(path)
+        assert root.is_absolute() and root.name == "best_adapter"
+        config = json.loads((root / "adapter_config.json").read_text(encoding="utf-8"))
+        assert config["peft_type"] == "LORA"
+        assert (root / "adapter_model.safetensors").is_file()
+
+
+def test_current_paths_are_literal_assignments_not_automatic_manifest_adoption():
+    tree = ast.parse(Path(model_runtime.__file__).read_text(encoding="utf-8"))
+    expected = {"DECISION_ADAPTER_PATH", "RECOMMENDATION_ADAPTER_PATH", "RESPONSE_ADAPTER_PATH"}
+    found = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id in expected:
+                found[target.id] = ast.literal_eval(node.value)
+        assert not (
+            isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "_resolve_runtime_adapter_paths"
+        )
+    assert set(found) == expected
+    assert all(found[name] == getattr(model_runtime, name) for name in expected)
+
+
+def test_node_passes_explicit_paths_in_actual_loader_argument_order():
+    source = Path(model_runtime.__file__).with_name("llm_langgraph_node.py")
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    node = next(item for item in tree.body if isinstance(item, ast.ClassDef) and item.name == "LLMLangGraphNode")
+    init = next(item for item in node.body if isinstance(item, ast.FunctionDef) and item.name == "__init__")
+    calls = [item for item in ast.walk(init) if isinstance(item, ast.Call)
+             and isinstance(item.func, ast.Name) and item.func.id == "load_model"]
+    assert len(calls) == 1
+    assert [arg.id for arg in calls[0].args] == [
+        "DECISION_ADAPTER_PATH", "RESPONSE_ADAPTER_PATH", "RECOMMENDATION_ADAPTER_PATH"
+    ]

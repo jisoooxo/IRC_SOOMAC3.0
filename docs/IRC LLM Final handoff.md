@@ -1,5 +1,31 @@
 # IRC LLM Final — 계정 전환 인수인계
 
+**최신 인계 2026-11-01: 데이터 감사와 비활성 정제 완료.** [RESULT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/RESULT.md) → [ROOT_FINAL_ADJUDICATION](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/ROOT_FINAL_ADJUDICATION.md) → [NEXT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/NEXT.md) 순서다. source D5319/Q687/P1778 장부결속, 영향검수와 Codex-D/P·Claude-Q 새104행 독립KEEP 완료. 비활성 후보는 고유93행/alias11, 원본대체108(D4/Q104), 계약HOLD12다. 사용자 승인으로 근거 없는 새 추천량103행만normal, Qevent scope3이관. 원본·Runtime·모델은 그대로, 학습/ROS/원격/commit 없음. 최종검증/가상통합 exact충돌0이며 실제모델성공은NOT_RUN, 편향수치DEFERRED·Runtime두공백보존이다. 다음은 **완료 검수 반복 없이 새 학습본 재조립 범위 확정**. 아래대기/active/정책미정은과거이력이다.
+
+**2026-10-31 현재 재개 지점:** [data_reaudit STATE](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/STATE.md) → ORACLE.md → DA01_INPUT_MANIFEST.json → ORCHESTRATION_LIVE.json → ROOT_UPDATE_01.md 순서. 사용자 승인 Goal은 active이고 DA01 완료, D/P/Q 새 기준 영향 검수·계보 연결 및 필수 복합 시연 후보의 독립 검수 진행 단계이다. 현재 데이터/CPU 연결 결과를 실제 모델 성공으로 보고하지 않는다. 기존 GL07~10/장부를 재시작하지 말고 동일 키의 불변 승인을 재사용한다. 아래 계획만/미실행 표시는 과거 이력이다.
+
+**2026-10-31 최신 추가 인계:** [데이터 원인 재검수 DA01~05](../training/learning_first_v43/final/goals/GL10/dataset_supplement_plan_20261031/DATA_REAUDIT_EXECUTION_PLAN.ko.md)을 먼저 읽는다. 세 Agent의 실제 학습 정답/입력 오염, 복합 멀티턴·commit·수량·필요할 때만 추천하는 대화와 Agent별 오류를 검수한다. 최신 사용자가 Claude+Codex 병렬 검수를 지정했으므로 과거 Codex-only 지시는 이 범위에서 대체된다. 기존 장부·정상 멀티턴·history와 사용자 임시 고정 단계 안내를 보존하며 새 전행 감사/정제/학습은 현재 미실행이다.
+
+**2026-10-31 현재 읽기 순서:** [잔여 작업 상태표·RW01~05](<IRC LLM Final remaining work.md>) → [18:07 로그·연결 데이터 교차검수](../training/learning_first_v43/final/goals/GL10/dataset_supplement_plan_20261031/DEMO_ALIGNMENT_REVIEW_180704.ko.md) → 해당 작업의 세부 계획. **D→P 집중 검수/보강, 추천 범위 토글 구현, 새 시연 대본의 누적 회귀는 아직 안 됐다.** 계획/교차검수 완료를 구현·모델 합격으로 읽지 않는다. 최신 로그에서 추천 수락과 게살 allergy 저장 누락이 남아 있다. 아래 역사적 “다음”이나 GL01부터 시작하라는 문구 대신 RW01의 미완료부터 이어간다. 이번에는 코드·데이터·모델을 변경하지 않는다.
+
+**2026-10-31 후속 최신 — 실패 조건 진단30회 완료:** [결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/failure_conditions_20261031/RESULT.md) → 같은 폴더 WORKLOG.md → gpu01/results.jsonl. 사용자 추가 요청으로15입력×동일4bit Base/최신best를 비교했고 exit0·오류/OOM0·소스불변·GPU종료를 확인했다. D는 같은 history의 알레르기 단독·소시지 명시 선택·둘의 명시 결합은 성공하지만 알레르기+나머지/제외 표현은 누락한다. 새 주문+바로담아줘는best commit누락/Base성공, 실제채소pending수락은둘다성공. P는원본 next_prompt=null에서잘못질문, next_prompt만missing_order(sauce)로바꾸면정상질문. Q는포괄추천에서best소스누락/Base크림포함, 소스명시요청은둘다소스출력. Base가모든조건에서우수한것은아니다. 제외전제없는‘나머지만’은HOLD이며best의offline execute=true위험을기록했다. 전체대화/실물합격이나운영수정완료가아니다. 다음국소후보는불완전주문 next_prompt계약과D/Q/P대조보강이다. 이전전체조합탐색은여전히중단상태이며자동재개하지않는다.
+
+**2026-10-31 최신 사용자 변경 — 탐색 종료·실물 테스트 준비까지만 완료:** [통합 테스트·보강·검수 계획](<IRC LLM Final integrated validation plan.md>) → [교차검수 결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/real_robot_test_plan_20261031/REVIEW.md)를 먼저 읽는다. 탐색은11/320·후보0에서 사용자 SIGINT로 종료, D1/Q2/P8만 완료했으며 자동 재개하지 않는다. 최신 D/Q/P best3개는 사용자 지시대로 `model_runtime.py` 직접 상수로 지정했다. `config/llm_active_stack.json`은false/false 정보용 사본이고 선택 정본이 아니다. 기존 resolver/rollback 모델은 보존했다. Claude 계획 검수 조건4건을 root가 반영했고 Codex 최종 검수 찬성, CPU79pass·weight/config/processor identity·기존install→source 연결을 확인했다. 모델 의미/실물 합격은 아니다. 실제ROS·새학습·추가prompt변경은 하지 않는다. 다음은 사용자가 기동한 새 실물 세션의 실제import/모델경로·STT/raw/최종발행/state/실행증거를 받아 Response 우선으로 독립·상호영향 원인을 분리하는 것이다. 아래 Goal active/탐색중/manifest자동선택 표시는 과거 이력이다.
+
+**2026-10-31 최신 원격 Decision 도착·best3-Agent 실제 GPU 회귀 완료, 전체 미통과:** [결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/best_stack_regression_20261031/RESULT.md) → ACTUAL_CONVERSATIONS.md → ACTUAL_CODEX_REVIEW.md. a519cf…result.tar는Decision이며1530step/6epoch/exit0, best750(epoch2.9444) 원본checkpoint byte동일. 로컬Qbest100/Pbest50과한조합/2표현/22기록42호출, 오류·OOM0/source불변/실물ROS0. 채소lowhigh→lowlow와명시실행은통과했으나두육류발화모두D raw가게살none만내고allergy/소시지선택을누락해중단,치즈NOT_REACHED. P는pending없는‘이대로진행할까요’재현,초기Q소스없어추가확정필요. 10월31일alignment보강은미학습이며이번v5학습본과혼동금지. 다음은같은D의육류단독/복합발화분리대조;다른epoch/수정/학습/운영교체는자동시작하지않음. 아래원격Decision학습중/미도착표시는과거이력이다.
+
+**2026-10-31 연결 보강 데이터 생성·검수 완료, 비활성139개:** [결과](../training/learning_first_v43/final/goals/GL10/alignment_20261031/RESULT.md) → [미해결 Runtime2종](../training/learning_first_v43/final/goals/GL10/alignment_20261031/RUNTIME_GAPS.md) → FINAL_VERIFICATION.json·행별LEDGER. 새12대화98턴/96KEEP2HOLD, 실제175기록 중139고유승인/34alias/2HOLD. 학습후보D51/Q10/P45=106, 사용자원문파생은보호회귀D14/Q7/P12=33으로train금지. 기존7784행에append없음. 독립의미·언어/발화전후state/실제callback/history·mask·8192검사(max6863/trim0) 완료, 같은기존승인/토큰근거재사용. 수치편향DEFERRED/실모델성능NOT_RUN. **미래추천거절+현재commit이막힘**, **preselected실행유예시주문까지삭제**는미수정반례로보존했으며데이터학습만으로해결됐다고보고하지않는다. 다음은이두분기최소Runtime수정승인. 기존21adapter/306회비교반복·새학습·운영교체·Docker·ROS·VLM·원격·commit/push없음.
+
+**2026-10-30 추가 검사 완료: 저장 후보21개·306회 GPU 개별 비교와 대표3조합 누적진단 완료, 전체시나리오는미통과.** [전체 결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/scenario_all_adapters_20261030/RESULT.md) → MANUAL_REVIEW.md → TURN_FIELD_DIFFS.json. 현행Q5/P11+미완료full1/smoke2+운영Q/P2=21범위, schema306·오류/OOM0·source불변·screen EXIT0. 중간P100이일부핵심문항에서일관됐으나운영채택아님. Q전체대안누락과일부P의미승인raw시작주장확인. 유효graph02는old로컬Decision+Q/P3조합/21기록/39모델호출/EXIT0이며, oldD가채소주문또는번복에commit=true를붙여3흐름정지. 육류/extra미도달을통과로세지않음. 그3실행턴은Response미호출이므로별도구분. 첫graph01은시험기event누락으로전체회귀무효/원본보존했고CPU계약6건후graph02만사용. 새Decision은사용자확인상아직학습중이므로완료후동일통합회귀가다음단계. GPU평가프로세스종료/RustDesk보존, 운영교체·추가학습·ROS·원격변경·commit/push없음. 아래316회평가는이전별도완료결과다.
+
+**2026-10-30 20:02 이후 최신: 로컬Q/P 학습완료 및 GPU평가316회완료,운영채택보류.** [결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/adapter_eval_20261030/RESULT.md) → MANUAL_REVIEW.md → gpu_eval_01/SUMMARY.json → NEXT.md. Q228/P546각6epoch/fullEXIT0. Qbest100/final228,Pbest50/final546 고유158입력×2=316예측·schema316·오류0·sourceSHA불변·평가EXIT0(20:02:01). 자동규칙 Q30/31·29/31,P123/127·125/127은의미정확도가아니다. Q전체범위빈추천, Pbest허위완료/assistant사실승격, Pfinal무승인진행주장/현재주문설명누락·단위/단어오류를원문확인했다. 반면과거2필드counterfactual4쌍회상은두P모델모두성공했다. 새고정문구/규칙·재학습·운영교체·ROS·원격변경없음. 평가PID124993은정상종료했고중복실행금지. 원격Decision완료본/3새Agent통합평가NOT_RUN. 아래학습실행중/ETA는과거이력이다.
+
+**2026-10-30 17:10 KST 최신: 전원 종료 후 Response 실제 본 학습 재개 완료, 현재501/546 실행 중.** [재개 결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/response_restart500_20261030/RESULT.md) → STATE/NEXT/RESUME_RECEIPT. 기존 로그518에서 중단됐고 마지막 전체checkpoint500(epoch5.49655)을 택했다. CPU9건·명시승인 Codex sol/high 재대조·별도GPU1update16microbatch/PASS/exit0 후 시험업데이트는 버리고 원본500에서 본 학습을 시작했다. 실제 full501/16microbatch/4상태복원/RandomSampler/유한loss·기울기, 원본30파일hash동일. 새root `response-b1acc16-resume-bed9d88cbc5a`, worker33358/학습36749 호스트생존. full/training.log와 RESUME_PROGRESS.json을 읽고 중복launch 금지. 같은batch1/acc16·31GB·8192·546 설정 유지. 첫update ETA02:08:23은 초기속도 기반이다. 전체546완료/품질합격/운영교체는 아니다. epoch_5_adapter는 가중치전용으로 사용하지 않았으며 PC정지원인은unknown이다. 아래 기존root/PID생존은 전원종료 전 이력이다.
+
+**2026-10-30 현재: 검증된 본 학습 재개 완료, 학습은 계속 실행 중.** [배치1·누적16 결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/response_resume_b1_20261030/RESULT.md) → STATE/NEXT/COMPLETION_RECEIPT. CPU22건·독립검수·GPU3update/48microbatch PASS/exit0 후, 원본250에서 별도 full을 재개했다. 03:17KST 실제252/546·32microbatch·네 상태 복원·유한 기울기를 확인했다. root `response-b1acc16-resume-628bc4536cfa`, worker1235191/학습PID1242327 실제 생존, 원본28파일hash동일. `full/training.log`와 `RESUME_PROGRESS.json`을 읽고 중복 launch 금지. 전체546 완료/모델품질 합격/운영adapter 교체는 아니다. 아래 batch2 고정 Goal의 blocked/실패는 이전 이력이며 새 승인 batch1 Goal과 구분한다.
+
+**2026-10-30 Response 재개 최신:** [추가512MiB 시험 결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/response_resume_cap512_20261030/RESULT.md) → 같은디렉토리 STATE/WORKLOG/NEXT. 원본checkpoint250에서batch2/accum8을보존한새후보는251 한update후allocator여유327.90MiB<512MiB로exit1. OOM이아니며본학습미시작/Goal미완료, GPU프로세스없음, 원본28파일hash동일. 자동재시도금지. 이후batch1/accum16(유효16)명시recipe이관은별도승인후검증한다. 기존STARTED/실패로그/Recommendation완료본/원격Decision/데이터/Runtime/VLM변경없음.
+
 **2026-10-29 추가 읽기:** [그래프 역할 분리 구현 결과](../training/learning_first_v43/final/audits/2026-10-29_graph_refactor/RESULT.md) → [계획 §10](<IRC LLM Final graph refactor plan.md#10-현재-상태와-다음-한-단계>) → [실행 영수증](../training/learning_first_v43/final/audits/2026-10-29_graph_refactor/TEST_RECEIPT.md). 사용자 승인 범위 R1~R5 완료. 최종 778건·2subtests 통과, 독립 Codex sol/high 찬성·신규 차단0. Recommendation 실제 독립 노드와 로그 메서드를 분리했으며 기존 기능·계약을 대조했다. 학습/원격/adapter/VLM/ROS 정책 변경 없음. 기존 이중 오류 로그 누락/schema export 한계는 RESULT에 따로 기록했으며 변경하지 않았다. 아래 10월26일의 실행 상태는 당시 이력이다.
 
 [실행 계획 정본](</home/roma/IRC_SOOMAC3.0/docs/IRC LLM Final plan.md>) · [오늘 검수 원본 모음](/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/reports/) · [외부 학습 작업장](/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/final/)
@@ -328,6 +354,19 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/soomac_irc /home/roma/miniconda3/envs/g
 
 2026-10-26 추가: 사용자 요청에 따라 최종 plan §5.6/5.7/6.6과 이 인계 §5.1/6.4에 session·멀티턴 few-shot, history를 희생하지 않는 입력/출력/학습 토큰 증액 검증, 조건부 교차 분포·누수·그룹별 편향 기준을 추가했다. W1~W5 담당과 G0~G4 산출물에 연결했다. 이전 인계 봉인 묶음은 수정하지 않고 새 문서 보강본으로 보관한다. 이 추가 작업도 문서 변경이며 실제 prompt/설정/data 변경은 아니다.
 
+### 2026-10-31 prompt-only 최신 인계
+
+2026-10-31 최신 prompt-only 인계: [r1 결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/best_stack_regression_20261031/prompt_trial_01/RESULT.md)와 [Decision 전용 r2 결과](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/best_stack_regression_20261031/prompt_trial_02/RESULT.md)를 먼저 읽는다. 두 후보 모두 미채택·source 원복이며 현재 agent_prompts.py는 원래 baseline SHA와 같다. r2는 cannot_eat+추천을 보존했지만 육류 지시어 선택은 미해결이다. 직접 실행 누락은 원래 prompt에도 있었고, 메뉴조회 task→general은 새 회귀로 확인했다. r2 선행12입력 게이트 실패로 전체3-Agent 연결 흐름은 NOT_RUN이다. CPU/state재생/실제D추론/전체흐름을 혼동하지 않는다. 첫state-onlygate9/12의route누락은 별도ADJUDICATION8/12로 보완하고 첫 결과를 보존했다. 전체 독립 결과 검수는timeout으로미완료, 요약검수와구분한다. 다음은 같은육류문맥의 명시적선택/지시어/알레르기결합 차이만 분리 대조하며, 이미끝난전수검수/학습/다른epoch탐색을자동시작하지않는다. 사용자변경·원본adapter·학습자료·VLM·ROS·원격·commit/push는보존했다.
+
+### 2026-10-31 최신 epoch 조합 Goal — 위 prompt-only 다음 범위
+
+사용자가 이후 최신 학습 adapter의 시나리오 조합 탐색과 첫 실사용 통과 조합 종료를 명시 승인했다. [현재 PLAN](../training/learning_first_v43/final/goals/GL10/docker_v5_20261028/scenario_combo_search_20261031/PLAN.md) → 같은 폴더 STATE.md/PROGRESS.json/WORKLOG.md 순서로 읽는다. 과거 '다른 epoch 자동 탐색 금지'는 승인 전 경계이며 이번 범위는 아래와 같다.
+
+- 최신 완료 학습 계보의 named epoch/best만 D8/Q5/P8=320조합이다. 잘못 넓힌 D31/Q5/P11=1,705조합은 GPU 실행 전 정정했고 ALL_CHECKPOINTS_SUPERSEDED로 보존했다. Q의 best=epoch3은 한 번만 세며 P의 재개 전후 epoch3은 서로 다른 가중치라 구분한다. 옛 운영본·smoke·별도 미완료 실험·checkpoint-only는 제외한다.
+- 14:44 KST 회귀 PID802808/session72598 시작. 14:45 KST GPU PID/NVML 사용13,742MiB 및 실제 대화 trace 확인. 첫 조합은 면 선택 필드에서 실패했으며 뒤 단계는 별도 gold-context 진단 중이다. 첫 결과 전에는 통과/완료로 쓰지 않는다. 같은 프로세스를 중복 실행하지 않는다.
+- 시험기 CPU11건 통과. Codex STOP 구현 검수 조건부 찬성의 재개 경로 결함을 실제 evidence_dir와 SHA 검증/회귀 테스트로 교정했다. 실제 두 흐름 완주+추가소스보완없음+안전 구조 조건은 후보 자격일 뿐이다. 후보가 생기면 worker는 다음 조합을 기다리고 주담당자가 전 턴 실제 응답과 독립 Codex 대조를 거쳐 SEMANTIC_REVIEW를 기록한다. ACCEPT만 SELECTED_STACK 생성 후 종료한다. 전체 최고/범용 성능 합격과 구분한다.
+- Goal active. 실제/강제 진행 결과·추론 캐시·첫 실패를 분리한다. PLAN/시험코드/source 동결. 추가 학습·운영 adapter 자동 교체·ROS/VLM·원격·commit/push는 하지 않는다.
+
 ## 용어 정리
 
 | 용어 | 의미 |
@@ -339,3 +378,9 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/soomac_irc /home/roma/miniconda3/envs/g
 | 채택 준비(dataset_ready/release gate) | 판정 회수 이후 오류 교정·독립 oracle·회귀·운영 증거까지 갖춘 상태 |
 
 (내가 의역해보자면, 대화를 기억하는 기능을 버리는 것이 아니라, 기억한 것과 지금 하는 말과 실제 행동을 서로 맞추는 작업이다.)
+
+### 2026-10-31 16:43 실세션 이후 — 데이터 보강 정책 갱신
+
+최신 범위는 [전체 추천·데이터 보강 계획](../training/learning_first_v43/final/goals/GL10/dataset_supplement_plan_20261031/PLAN.ko.md)을 먼저 읽는다. 추천은 현재 단계만이 아닌 전체 주문/남은 변경 가능 코스를 기준으로 하며, 실제 제안은 상황에 맞춘다. 소스와 면을 고르는 안내에서 소스를 빠뜨리지 않는다. 사용자 원문 시나리오도 새 학습 후보에 포함한다는 최신 승인이 있어 이전 F01 33행 train 금지 정책은 새 버전에서 전환 대상으로 기록한다. 옛 장부는 보존하고 seen 회귀와 unseen 일반화 평가를 분리한다.
+
+원본 v5 7,784행/39파일의 비활성 복사본을 만들었다. 새 데이터 생성/전수 재검수/학습/Runtime 변경은 아직 하지 않았다. 최신 5턴의 제한 누락·면 한정 추천·미지원 허위 발화를 근거로 정리했으며 교차검수 상태는 새 폴더의 WORKLOG.md 및 REVIEW_RESULT.md를 따른다. 과거 조합 탐색 Goal active 문구는 당시 이력이며 이번 작업이 탐색 재개 승인은 아니다.

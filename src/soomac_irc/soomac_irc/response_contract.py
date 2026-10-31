@@ -6,7 +6,7 @@ from jsonschema import Draft202012Validator, ValidationError
 from soomac_irc.agent_contract import RECOMMENDATION_SCHEMA, RESPONSE_SCHEMA, empty_order_patch
 from soomac_irc.domain import AMOUNTS, NOODLE_TYPES, SAUCES, TOPPINGS
 from soomac_irc.llm_policy import (
-    build_recommendation_scope, changed_order_keys_from_patch, physical_section_for_order_key,
+    build_recommendation_scope,
     section_execution_items, validate_recommendation_proposal,
 )
 
@@ -67,8 +67,8 @@ def build_recommendation_model_input(session, decision, robot_state, user_text):
     if user_text is not None and (not isinstance(user_text, str) or not user_text.strip()):
         raise ValueError("Recommendation user text must be nonempty")
     scope = build_recommendation_scope(session, robot_state)
-    if event is not None:
-        scope["sections"] = [entry for entry in scope["sections"] if entry["section"] == robot_state["section"]]
+    # 단계 전환도 남은 코스 전체를 본다. 물리적으로 지난/보호된 항목과
+    # 강한 제한은 공통 scope/validator가 계속 제외한다.
     return {
         "input_source": "event" if event is not None else "user", "event": copy.deepcopy(event),
         "current_user_text": user_text.strip() if user_text is not None else None,
@@ -83,7 +83,7 @@ def build_recommendation_model_input(session, decision, robot_state, user_text):
     }
 
 
-def validate_recommendation_result(session, raw, robot_state, *, current_event_only=False):
+def validate_recommendation_result(session, raw, robot_state):
     """Validate JSON and physical/domain safety, NOT the semantics of reason prose."""
     try:
         Draft202012Validator(RECOMMENDATION_SCHEMA).validate(raw)
@@ -94,15 +94,6 @@ def validate_recommendation_result(session, raw, robot_state, *, current_event_o
             "reason_validation": {"source": "model", "schema_valid": False, "semantic_status": "unverified"},
         }
     result = validate_recommendation_proposal(session, raw["proposal"], robot_state)
-    if current_event_only:
-        for field in list(result["accepted_fields"]):
-            if physical_section_for_order_key(field) != robot_state["section"]:
-                result["rejected_fields"].append({"field": field, "reason": "event_scope"})
-                if field.startswith("toppings."):
-                    result["proposal"]["toppings"].pop(field.split(".", 1)[1], None)
-                else:
-                    result["proposal"][field] = None
-        result["accepted_fields"] = changed_order_keys_from_patch(result["proposal"])
     result.update({
         "raw_proposal": copy.deepcopy(raw["proposal"]),
         "reason_tags": copy.deepcopy(raw["reason_tags"]),

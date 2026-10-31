@@ -1,5 +1,7 @@
 # IRC LLM Final — 코드 수정 명세
 
+**2026-10-31 현재 후속:** [잔여 작업 상태표](<IRC LLM Final remaining work.md>) §1·RW02를 우선한다. 추천 범위 토글, 불완전 일반 주문의 missing_order next_prompt 보완, preselected 실행 유예 시 주문 삭제와 미래 추천 거절+현재 commit 공백은 아직 미수정이다. event scope 확장/Q prompt 보강은 이미 일부 적용됐다. D 누락·P 허위 발화가 모두 코드 결함이라는 뜻은 아니므로 D→적용→P 입력→출력을 먼저 대조한다. 아래 날짜·라인은 역사적 탐색점이다.
+
 [최종 plan](<IRC LLM Final plan.md>) · [Goal 순서](<IRC LLM Final goals.md>) · [인계](<IRC LLM Final handoff.md>)
 → **문서 작성은 수정 완료가 아니다. GL02 정답 기준을 확정한 뒤 GL03에서 평가기 코드를 실제 수정하고 테스트한다.**
 
@@ -70,7 +72,7 @@
 | GL02 oracle | COMPLETE | ORACLE.md r1 FROZEN·독립 검수 9건 반영. 동결본은 보존하고 사용자 정정 D2는 현 plan/후속 계약으로 인계 |
 | E01~E10 | IMPLEMENTED (GL03, Codex 보완 포함, 미커밋) | `final/goals/GL03/CODEX_FOLLOWUP_RESULT.md`. bool/null/pattern/targets·정답bool 추가검증, 전체384 passed·Codex찬성. Response 문구 검사는 검토 표시 |
 | R01/R02/R06/R07 | GL04 Runtime 범위 COMPLETE, R07 데이터는 후속 | 수량 enum·기존량 보존 prompt·강한 제한·복합 pending/commit·명확화 권한. GL04/RESULT·manifest·AUTHORITY_REVIEW(찬성). raw모델실패는별도미해결 |
-| R03/R04/R05 | NOT_IMPLEMENTED | 후속 GL05/06 선행·실행 범위 확인 |
+| R03/R04/R05 | GL05/06 당시 명시 계약 범위 완료 | GL05/RESULT.md·GL06/RESULT.md의 코드/prompt 증거. 10월31일 새 토글·D→P 모델 실패 해결까지 완료됐다는 뜻은 아님 |
 
 ### 4.1 GL04의 최소 추가 계약 — 질문 목적과 실행 권한
 

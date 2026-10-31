@@ -341,7 +341,7 @@ def generate_section_event_response(session, robot_state, call_recommendation, c
             decision["recommendation"]["action"] = "request"
             try:
                 raw = call_recommendation(copy.deepcopy(working), decision, copy.deepcopy(robot_state), None)
-                result = validate_recommendation_result(working, raw, robot_state, current_event_only=True)
+                result = validate_recommendation_result(working, raw, robot_state)
                 recommendation_failed = not result["accepted_fields"] and bool(
                     result["rejected_fields"] or result["reason_validation"]["schema_valid"] is False)
                 if result["accepted_fields"]:
