@@ -1,0 +1,34 @@
+  torch._check_is_size(blocksize)
+response L=5962 prefix=5280 suffix=682
+  full vs full (repeat)        maxdiff=0.0000 meandiff=0.00000 top_ref=[14937, 236782, 2717] [25.5, 15.81, 15.12] top_x=[14937, 236782, 2717] [25.5, 15.81, 15.12]
+  trimmed cache(config)        maxdiff=1.1875 meandiff=0.19653 top_ref=[14937, 236782, 2717] [25.5, 15.81, 15.12] top_x=[14937, 236782, 236775] [25.62, 15.81, 15.12]
+    cache layer0 len=5280 type=DynamicLayer; layer5 len=5280 type=DynamicLayer
+  untrimmed cache(no config)   maxdiff=1.1875 meandiff=0.19653 top_ref=[14937, 236782, 2717] [25.5, 15.81, 15.12] top_x=[14937, 236782, 236775] [25.62, 15.81, 15.12]
+    cache layer0 len=5280 type=DynamicLayer; layer5 len=5280 type=DynamicLayer
+  untrimmed split@2640         maxdiff=0.8887 meandiff=0.14401 top_ref=[14937, 236782, 2717] [25.5, 15.81, 15.12] top_x=[14937, 236782, 2717] [25.62, 16.12, 15.25]
+  torch._check_is_size(blocksize)
+  untrimmed split@5961         maxdiff=0.7500 meandiff=0.12351 top_ref=[14937, 236782, 2717] [25.5, 15.81, 15.12] top_x=[14937, 236782, 2717] [25.5, 15.69, 14.94]
+decision L=6716 prefix=6040 suffix=676
+  full vs full (repeat)        maxdiff=0.0000 meandiff=0.00000 top_ref=[14937, 236775, 100] [25.25, 13.62, 13.38] top_x=[14937, 236775, 100] [25.25, 13.62, 13.38]
+  trimmed cache(config)        maxdiff=1.0000 meandiff=0.14677 top_ref=[14937, 236775, 100] [25.25, 13.62, 13.38] top_x=[14937, 236775, 100] [25.25, 13.75, 13.44]
+    cache layer0 len=6040 type=DynamicLayer; layer5 len=6040 type=DynamicLayer
+  untrimmed cache(no config)   maxdiff=1.0000 meandiff=0.14677 top_ref=[14937, 236775, 100] [25.25, 13.62, 13.38] top_x=[14937, 236775, 100] [25.25, 13.75, 13.44]
+    cache layer0 len=6040 type=DynamicLayer; layer5 len=6040 type=DynamicLayer
+  untrimmed split@3020         maxdiff=1.0078 meandiff=0.16637 top_ref=[14937, 236775, 100] [25.25, 13.62, 13.38] top_x=[14937, 236775, 100] [25.25, 13.62, 13.44]
+  untrimmed split@6715         maxdiff=0.6250 meandiff=0.10379 top_ref=[14937, 236775, 100] [25.25, 13.62, 13.38] top_x=[14937, 236775, 100] [25.25, 13.62, 13.31]
+decision L=6321 prefix=6040 suffix=281
+  full vs full (repeat)        maxdiff=0.0000 meandiff=0.00000 top_ref=[14937, 236840, 2717] [25.12, 13.31, 13.06] top_x=[14937, 236840, 2717] [25.12, 13.31, 13.06]
+  trimmed cache(config)        maxdiff=0.8125 meandiff=0.13484 top_ref=[14937, 236840, 2717] [25.12, 13.31, 13.06] top_x=[14937, 236840, 2717] [25.12, 13.44, 12.94]
+    cache layer0 len=6040 type=DynamicLayer; layer5 len=6040 type=DynamicLayer
+  untrimmed cache(no config)   maxdiff=0.8125 meandiff=0.13484 top_ref=[14937, 236840, 2717] [25.12, 13.31, 13.06] top_x=[14937, 236840, 2717] [25.12, 13.44, 12.94]
+    cache layer0 len=6040 type=DynamicLayer; layer5 len=6040 type=DynamicLayer
+  untrimmed split@3020         maxdiff=0.7812 meandiff=0.12254 top_ref=[14937, 236840, 2717] [25.12, 13.31, 13.06] top_x=[14937, 236840, 2717] [25.12, 13.31, 12.88]
+  untrimmed split@6320         maxdiff=0.6094 meandiff=0.09009 top_ref=[14937, 236840, 2717] [25.12, 13.31, 13.06] top_x=[14937, 236840, 2717] [25.12, 13.38, 12.94]
+response L=2567 prefix=1162 suffix=1405
+  full vs full (repeat)        maxdiff=0.0000 meandiff=0.00000 top_ref=[14937, 236782, 2717] [25.12, 16.5, 15.56] top_x=[14937, 236782, 2717] [25.12, 16.5, 15.56]
+  trimmed cache(config)        maxdiff=1.5312 meandiff=0.21718 top_ref=[14937, 236782, 2717] [25.12, 16.5, 15.56] top_x=[14937, 236782, 2717] [25.12, 16.38, 15.5]
+    cache layer0 len=1162 type=DynamicLayer; layer5 len=1162 type=DynamicLayer
+  untrimmed cache(no config)   maxdiff=1.5312 meandiff=0.21718 top_ref=[14937, 236782, 2717] [25.12, 16.5, 15.56] top_x=[14937, 236782, 2717] [25.12, 16.38, 15.5]
+    cache layer0 len=1162 type=DynamicLayer; layer5 len=1162 type=DynamicLayer
+  untrimmed split@581          maxdiff=1.7031 meandiff=0.26895 top_ref=[14937, 236782, 2717] [25.12, 16.5, 15.56] top_x=[14937, 236782, 2717] [25.12, 16.12, 14.88]
+  untrimmed split@2566         maxdiff=0.7656 meandiff=0.13237 top_ref=[14937, 236782, 2717] [25.12, 16.5, 15.56] top_x=[14937, 236782, 2717] [25.0, 16.25, 15.38]

@@ -21,9 +21,12 @@ from soomac_irc.model_runtime import (
     RECOMMENDATION_ADAPTER_PATH,
     RESPONSE_ADAPTER_NAME,
     RESPONSE_ADAPTER_PATH,
+    MODEL_PATH,
+    VLM_MAX_TOKENS,
     load_model,
     make_call_vlm,
 )
+from soomac_irc.vllm_client import VllmModel, load_vllm_backend, make_call_vlm_remote
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.agent_contract import new_session_state, new_turn_state
 from soomac_irc.llm_langgraph import (
@@ -48,6 +51,14 @@ from soomac_irc.vlm import (
 # lid section이 cover(뚜껑) task를 만든다. main_vlm.py는 소스(마지막 작업) 완료 뒤 /llm/reset을 보낸다.
 from soomac_irc.domain import SECTION_ORDER
 
+
+# 단계 전환의 대화 안내만 선택한다. True: 기존 고정 안내, False: Q/P 모델 안내.
+# lid/sauce 자동 실행 안내와 안전 fallback, 사용자 주문 턴은 이 토글과 별개다.
+hard_cording_response = True
+
+# 모델 실행 위치. "hf": 이 노드가 모델을 직접 GPU에 올림(기존).
+# "vllm": tools/vllm_server/start_vllm_server.sh로 띄운 서버에 요청(노드는 모델을 올리지 않음).
+LLM_BACKEND = "hf"
 
 ENABLE_VLM = True
 ENABLE_VLM_UI_IMAGES = True
@@ -95,12 +106,20 @@ class LLMLangGraphNode(Node):
 
         if call_decision is None:
             # Decision, Recommendation, Response, VLM은 같은 base model을 순차적으로 사용
-            self.get_logger().info("Agentic LLM base model 로딩중")
-            self.model, self.processor = load_model(
-                DECISION_ADAPTER_PATH,
-                RESPONSE_ADAPTER_PATH,
-                RECOMMENDATION_ADAPTER_PATH,
-            )
+            self.get_logger().info(f"Agentic LLM base model 로딩중 (backend={LLM_BACKEND})")
+            if LLM_BACKEND == "vllm":
+                # 서버가 쓰는 Adapter 변환본이 아래 학습 결과와 같은지 확인한 뒤 서버 준비를 기다린다.
+                self.model, self.processor = load_vllm_backend(MODEL_PATH, {
+                    DECISION_ADAPTER_NAME: DECISION_ADAPTER_PATH,
+                    RECOMMENDATION_ADAPTER_NAME: RECOMMENDATION_ADAPTER_PATH,
+                    RESPONSE_ADAPTER_NAME: RESPONSE_ADAPTER_PATH,
+                })
+            else:
+                self.model, self.processor = load_model(
+                    DECISION_ADAPTER_PATH,
+                    RESPONSE_ADAPTER_PATH,
+                    RECOMMENDATION_ADAPTER_PATH,
+                )
             call_decision = make_call_decision(
                 self.model,
                 self.processor,
@@ -134,7 +153,10 @@ class LLMLangGraphNode(Node):
         if ENABLE_VLM and self.model is not None:
             from soomac_irc.vlm_rag import VlmRag
 
-            self.call_vlm = make_call_vlm(self.model, self.processor, self.get_logger())
+            if isinstance(self.model, VllmModel):
+                self.call_vlm = make_call_vlm_remote(VLM_MAX_TOKENS, self.get_logger())
+            else:
+                self.call_vlm = make_call_vlm(self.model, self.processor, self.get_logger())
             self.vlm_rag = VlmRag()
 
         ## 이하 llm agents
@@ -659,19 +681,22 @@ class LLMLangGraphNode(Node):
             reply = next_reply
             response_trace = None
             response_error = None
-            # 단계 진입은 _section_prompt() 또는 사전 주문 확인문을 그대로 발화한다.
-            # 사용자 주문 턴의 LLM 호출은 유지하고, 단계 전환의 자동 추천/응답만 끈다.
-            # if self.section not in ("lid", "sauce"):
-            #     event_result = generate_section_event_response(
-            #         self.graph_state, robot_state, self.call_recommendation,
-            #         self.call_response, next_reply,
-            #     )
-            #     self.graph_state = event_result["session"]
-            #     reply = event_result["reply"]
-            #     response_error = event_result["model_error"]
-            #     traces = getattr(self.call_response, "trace_events", [])
-            #     if isinstance(traces, list) and traces:
-            #         response_trace = copy.deepcopy(traces[-1])
+            if not hard_cording_response and self.section not in ("lid", "sauce"):
+                # 실제 전환 event를 넘긴다. 가짜 user 발화·주문 확정·실행은 만들지 않는다.
+                # 같은 턴의 Decision trace는 지우지 않고 새 Response trace만 구분한다.
+                traces = getattr(self.call_response, "trace_events", [])
+                response_trace_count = len(traces) if isinstance(traces, list) else 0
+                event_result = generate_section_event_response(
+                    self.graph_state, robot_state, self.call_recommendation,
+                    self.call_response, next_reply,
+                )
+                self.graph_state = event_result["session"]
+                reply = event_result["reply"]
+                next_prompt = event_result["next_prompt"]
+                response_error = event_result["model_error"]
+                traces = getattr(self.call_response, "trace_events", [])
+                if isinstance(traces, list) and len(traces) > response_trace_count:
+                    response_trace = copy.deepcopy(traces[-1])
             try:
                 self.runtime_log.log_event("section_transition_response", {
                     "transition": copy.deepcopy(transition),
@@ -683,6 +708,8 @@ class LLMLangGraphNode(Node):
                     ),
                     "response_raw": response_trace.get("raw") if isinstance(response_trace, dict) else None,
                     "reply": reply,
+                    "hard_cording_response": hard_cording_response,
+                    "next_prompt": copy.deepcopy(next_prompt),
                     "fallback_error": response_error,
                 })
             except Exception as error:

@@ -1,0 +1,9 @@
+(MainProcess pid=226671) INFO 11-01 04:58:22 [config.py:286] Gemma4 model has heterogeneous head dimensions {'sliding_attention': 256, 'full_attention': 512}. FA4 not available, forcing TRITON_ATTN ba
+(EngineCore pid=227126) INFO 11-01 04:58:34 [cuda.py:446] Using AttentionBackendEnum.TRITON_ATTN backend.
+(EngineCore pid=227126) INFO 11-01 04:58:34 [cuda.py:446] Using AttentionBackendEnum.TRITON_ATTN backend.
+(EngineCore pid=227126) INFO 11-01 04:58:38 [model_runner.py:424] Model loading took 8.63 GiB memory and 3.822344 seconds
+(EngineCore pid=227126) INFO 11-01 04:59:50 [model_runner.py:1127] Graph capturing finished in 21 secs, took 1.15 GiB
+(EngineCore pid=227126) INFO 11-01 04:59:50 [gpu_worker.py:759] Available KV cache memory: 6.9 GiB
+(EngineCore pid=227126) INFO 11-01 04:59:50 [gpu_worker.py:774] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.6000 is equivalent to --gpu-memor
+(EngineCore pid=227126) INFO 11-01 04:59:50 [kv_cache_utils.py:2327] GPU KV cache size: 21,489 tokens, Maximum concurrency for 12,288 tokens per request: 1.75x
+(EngineCore pid=227126) INFO 11-01 05:00:15 [model_runner.py:1127] Graph capturing finished in 22 secs, took 0.58 GiB

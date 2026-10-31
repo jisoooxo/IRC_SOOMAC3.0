@@ -1,5 +1,11 @@
 # IRC LLM Final — 잔여 작업·D→P 보강 실행 계획
 
+**2026-11-01 최신 마감 — 먼저 읽을 것:** [재조립 최종 결과·학습 준비 판정](2026-11-01_dataset_rebuild_result.md) → [실행 worklog](2026-11-01_dataset_rebuild_worklog.md). 승인한R1~R5의한정작업은마감했다. 최신비활성본은외부작업장의`natural_order_rebuild_20261101_r1/dataset_aligned_r2/`7,864행(train6,200)이다. 기존108교체·새68교정·추가P입력64교정·보강93·제외13을반영했고전행CPU검사와저장후SHA/mask결속을마쳤다. Q승인규칙1개·시연수량4개도Runtime/학습계약에맞췄다. 첫영수증실패·893행의저장전후키순서차이는원형을보존해교정했다. **학습·GPU·adapter·Docker·ROS·cache/VLM·commit/push는하지않았다.** 8192초과615행(train595)이라다음은길이·배치·직렬화설정검토다. 전역의역누수/수치편향/새모델성공은미입증이다. 아래“미착수/현재실행/가상7865”는해당작성시점의역사이며최신데이터상태로읽지않는다. 범위토글·일반주문missing_order보완등별도미구현을이번데이터작업으로완료처리하지않는다.
+
+**2026-11-01 새 학습본 재조립 계획 작성:** [원본 영향 검수·연결 데이터 재조립 계획](<IRC LLM Final dataset rebuild plan.md>). 기존 의미 판정은 근거·hash·계약 일치 시 재사용하고 최신 실패/계약 변경 영향 행만 다시 연다. delta93·replacement108·HOLD12는 출발 장부이며 원본 무결함 보증이 아니다. 교체 split은 train98/test2/challenge8, 가상 전체7865행과 train예상6201행을 구분했다. 수치 편향 DEFERRED와 의미 유사도 누수 미확정은 유지한다. 이번에는 MD·로봇 로그6턴·기존17턴 계측/감사 근거 대조와 계획만 작성했다. **R1~R5 실제 데이터 정제·조립·학습은 미착수**, 다음은 R1 원본·현재 계약·판정 장부 결속이다. 캐시·속도는 Claude 소유이며 이번 범위에서 변경하지 않는다.
+
+**2026-11-01 Python 후속 수정 완료:** [pending Runtime 수정 기록](2026-11-01_llm_pending_runtime_fix.md). `llm_final_2`에서 preselected 실행 거절 시 주문 보존, 추천/제한 철회 거절과 독립된 현재 commit의 안전 검증 전달을 수정했다. LLM13파일812건 및 하위6건 통과. 실제 모델·prompt/few-shot·위임 실행 HOLD12·가속은 미해결이다. 아래 데이터 감사 당시의 Runtime 불변은 역사적 시점이며, 그 manifest를 새 코드 통과 증거로 고쳐 쓰지 않는다.
+
 **최신 마감 2026-11-01:** [데이터 감사 RESULT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/RESULT.md)와 [NEXT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/NEXT.md)가 현재 정본이다. 데이터 장부결속/영향검수/새 시연104행 독립검수와 비활성 고유93행·대체108행·계약HOLD12 저장을 마쳤다. 근거 없는 새추천량만normal 사용자 정책을 반영했다. 이전학습본/Runtime/history/고정안내불변이며 실제모델성공·새학습본조립·새학습은아직이다. 다음미완료는재조립범위확정이다. 기존두Runtime공백과위임실행계약HOLD는데이터정제로해결됐다고표시하지않는다. 아래실행중/정책대기문구는이전시점이다.
 
 **현재 실행:** [data_reaudit STATE](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/STATE.md)가 최신 정본이다. 계획 선보고를 마치고 사용자 승인 Goal active로 D/P/Q 병렬 영향 검수 및 새 필수 시연 후보 독립 검수를 진행 중이다. 이전 완료 데이터의 원본/hash/기존 의미 판정은 재사용하며 미실행 전체를 완료로 바꾸지 않는다. 모델 실제 성공·재학습은 아직 후속이다.
@@ -27,7 +33,7 @@
 | event 현재 단계 필터 제거·Q 소스 고려 prompt | 일부 구현·모델 전체 흐름 미통과 | 디스크 변경 및 CPU306 pass 증거 존재. 최신 일부 추천 성공과 별개로 전체 요구 충족은 미확정 |
 | 상단 추천 범위 True/False 토글 | **미구현** | 입력/후처리/prompt/pending 일치 설계만 있음. 현재 코드는 모드 전환 가능 상태가 아님 |
 | 불완전 주문의 missing_order next_prompt 보완 | **미구현** | 수동으로 P 입력을 바꾼 과거 GPU 대조 성공. 일반 주문 경로를 고쳤다는 뜻이 아님 |
-| 미래 추천 거절+현재 commit 조기 반환 / preselected 실행 거절 시 주문 삭제 | **미수정** | 기존 [Runtime 공백](../training/learning_first_v43/final/goals/GL10/alignment_20261031/RUNTIME_GAPS.md) 보존. 완료 체크 금지 |
+| 미래 추천 거절+현재 commit 조기 반환 / preselected 실행 거절 시 주문 삭제 | **수정·CPU 회귀 완료 / 실제 모델 미검증** | [2026-11-01 수정 기록](2026-11-01_llm_pending_runtime_fix.md). 기존 Runtime 공백은 수정 전 증거로 보존. 알레르기·물리 상태·busy 차단 유지, 계약HOLD12는 별도 미해결 |
 | 새 D→state→P 집중 검수·대조 데이터 | **일부 분석·교차검수 완료 / 데이터 생성 미실행** | 18:47 새 12턴·이벤트19행 분석과 Codex 검수 완료. T4는 후속 멀티턴 재검수로 HOLD 해제, 크림 patch+commit gold 확정. A~E에 동일 마지막 발화/상이한 복합 history 대조를 추가. 전체 oracle·신규 후보·GPU 회귀는 미완료 |
 | 19:58~21:31 즉시 실행·수량·지연 | **분석·독립 검수 완료 / 구현·새 데이터 미실행** | 추천 수락+commit과 변경+commit 누락, 수량 값/변경 사실 구별, allergy 필드 및 없는 pending 질문, D/DP/DQP 지연·임시 고정 안내 효과를 CQ01~05에 연결. 계측 구간/두 턴 합계 표현 2건 정정 |
 | 새 5단계 시연 후보의 동일 누적 회귀 | **미실행** | 문장별 기존 성공/실패만 있음. 크림 확정·게살 allergy 저장이 필수 진행 조건 |

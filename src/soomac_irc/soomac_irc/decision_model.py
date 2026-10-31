@@ -15,6 +15,7 @@ from soomac_irc.agent_contract import (
     normalize_decision,
 )
 from soomac_irc.agent_prompts import DECISION_SYSTEM
+from soomac_irc.prefix_cache import PrefixKVCache
 
 DECISION_HISTORY_TURNS = 10
 # GL06 offline baseline/candidate/repair and 20-message stress measurements:
@@ -118,6 +119,7 @@ def make_call_decision(
         DECISION_SCHEMA,
         any_order=DECISION_KEYS_ANY_ORDER,
     )
+    prefix_cache = PrefixKVCache(processor, logger)
 
     @torch.inference_mode()
     def call_decision(
@@ -152,14 +154,18 @@ def make_call_decision(
             activate_adapter(model, adapter_name)
 
             # sampling 없이 같은 입력은 같은 Decision이 나오게 하고, XGrammar로 JSON 모양을 보장한다.
-            output = model.generate(
+            # 고정 system prompt 앞부분은 Decision Adapter 전용 접두 KV를 재사용한다.
+            # adapter_name이 없으면 직전 Adapter가 그대로 켜져 있으므로 실제 활성 Adapter로 캐시를 구분한다.
+            cache_key = adapter_name or getattr(model, "active_adapter", None)
+            output = prefix_cache.generate(model, cache_key, messages[0]["content"], {
                 **inputs,
-                max_new_tokens=DECISION_MAX_TOKENS,
-                do_sample=False,
-                use_cache=True,
-                eos_token_id=stop_ids,
-                logits_processor=[XGrammarLogitsProcessor(compiled_grammar)],
-            )
+                "max_new_tokens": DECISION_MAX_TOKENS,
+                "do_sample": False,
+                "use_cache": True,
+                "eos_token_id": stop_ids,
+                "logits_processor": [XGrammarLogitsProcessor(compiled_grammar)],
+            })
+            trace["prefix_cache"] = copy.deepcopy(prefix_cache.last_event)
             output_tokens = output[0].shape[0] - prompt_tokens
             raw = processor.decode(output[0][prompt_tokens:], skip_special_tokens=True).strip()
             sparse = _parse_sparse_decision(raw)
@@ -186,4 +192,5 @@ def make_call_decision(
 
     call_decision.trace_events = []
     call_decision.last_external_output = None
+    call_decision.prefix_cache = prefix_cache
     return call_decision

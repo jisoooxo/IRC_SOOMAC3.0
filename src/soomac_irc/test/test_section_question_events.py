@@ -23,7 +23,7 @@ from soomac_irc.llm_langgraph import (
 from soomac_irc.llm_policy import build_applied_changes, is_future_recommendation_pending, pending_blocks_execution, section_execution_items
 
 
-def node_methods():
+def node_methods(*, hard_cording_response=True):
     source = Path(__file__).parents[1] / "soomac_irc" / "llm_langgraph_node.py"
     tree = ast.parse(source.read_text())
     cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "LLMLangGraphNode")
@@ -32,7 +32,8 @@ def node_methods():
     selected = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in names]
     node_class = ast.ClassDef(name="IsolatedNode", bases=[], keywords=[], body=selected, decorator_list=[])
     module = ast.fix_missing_locations(ast.Module(body=[node_class], type_ignores=[]))
-    ns = dict(globals(), String=SimpleNamespace, ENABLE_VLM=False)
+    ns = dict(globals(), String=SimpleNamespace, ENABLE_VLM=False,
+              hard_cording_response=hard_cording_response)
     topic_names = next(n for n in tree.body if isinstance(n, ast.Assign)
                        and any(isinstance(t, ast.Name) and t.id == "TOPIC_CLASS_NAMES" for t in n.targets))
     ns["TOPIC_CLASS_NAMES"] = ast.literal_eval(topic_names.value)
@@ -46,8 +47,9 @@ def node_methods():
 IsolatedNode = node_methods()
 
 
-def make_node(section="meat"):
-    node = IsolatedNode()
+def make_node(section="meat", *, hard_cording_response=True):
+    cls = IsolatedNode if hard_cording_response else node_methods(hard_cording_response=False)
+    node = cls()
     node.section = section
     node.graph_state = new_session_state()
     node.active_task = None

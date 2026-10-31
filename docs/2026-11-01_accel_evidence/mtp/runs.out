@@ -1,0 +1,6 @@
+A ok | GPU KV cache size: 20,540 tokens | server MiB ready=16474 after=18904 | pass0: mean 1.256s sem_vs_hf 10/14 pass1: mean 0.513s sem_vs_hf 11/14 | eager_mentions=1
+B ok | GPU KV cache size: 20,623 tokens | server MiB ready=16468 after=18898 | pass0: mean 1.378s sem_vs_hf 13/14 pass1: mean 0.648s sem_vs_hf 13/14 | eager_mentions=1
+C SERVER FAILED: AttributeError: Model Gemma4MTP does not support BitsAndBytes quantization yet. No 'packed_modules_mapping' found.     raise RuntimeError( 
+D SERVER FAILED: AttributeError: Model Gemma4MTP does not support BitsAndBytes quantization yet. No 'packed_modules_mapping' found.     raise RuntimeError( 
+C ok | GPU KV cache size: 14,594 tokens | server MiB ready=15584 after=18502 | pass0: mean 1.267s sem_vs_hf 12/14 pass1: mean 0.483s sem_vs_hf 11/14 | eager_mentions=1
+D ok | GPU KV cache size: 15,072 tokens | server MiB ready=15640 after=18556 | pass0: mean 1.276s sem_vs_hf 11/14 pass1: mean 0.535s sem_vs_hf 11/14 | eager_mentions=1

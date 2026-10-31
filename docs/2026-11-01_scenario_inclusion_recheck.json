@@ -1,0 +1,211 @@
+{
+  "status": "SAVED_GOLD_AND_CPU_POLICY_PASS_NOT_MODEL_SUCCESS",
+  "manifest_sha256": "7850948287237c5ace9d1b0f56931419760fbce3f0afa02cea40681acb6ceffa",
+  "core_counts": {
+    "decision": 26,
+    "recommendation": 1,
+    "response": 10
+  },
+  "core_user_turns_checked": 6,
+  "core_execution_turns": 4,
+  "accumulated_history_and_order_continuity": true,
+  "supplement_raw_rows_represented_in_train": 109,
+  "alias_rows": 28,
+  "observed": [
+    {
+      "id": "DA31-CORE-separate-T01",
+      "user_text": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘.",
+      "target": {
+        "order": {
+          "noodle_portion": "normal",
+          "noodle_type": "얇은면"
+        },
+        "recommendation": {
+          "action": "request"
+        },
+        "route": "task"
+      },
+      "after_order": {
+        "noodle_portion": "normal",
+        "noodle_type": "얇은면",
+        "restrictions": [],
+        "sauce": null,
+        "toppings": {}
+      },
+      "execute": false,
+      "reply": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?",
+      "calls": [
+        "decision",
+        "recommendation",
+        "response"
+      ],
+      "prior_user_turns": 0
+    },
+    {
+      "id": "DA31-CORE-compound-T02",
+      "user_text": "크림으로 선택할게 바로 담아.",
+      "target": {
+        "commit": true,
+        "order": {
+          "sauce": "크림"
+        },
+        "route": "task"
+      },
+      "after_order": {
+        "noodle_portion": "normal",
+        "noodle_type": "얇은면",
+        "restrictions": [],
+        "sauce": "크림",
+        "toppings": {}
+      },
+      "execute": true,
+      "reply": "얇은면 보통 담기를 시작해요.",
+      "calls": [
+        "decision"
+      ],
+      "prior_user_turns": 1
+    },
+    {
+      "id": "DA31-CORE-compound-T04",
+      "user_text": "양파랑 버섯 둘 다 적게 담아줘.",
+      "target": {
+        "order": {
+          "toppings": {
+            "버섯": "low",
+            "양파": "low"
+          }
+        },
+        "route": "task"
+      },
+      "after_order": {
+        "noodle_portion": "normal",
+        "noodle_type": "얇은면",
+        "restrictions": [],
+        "sauce": "크림",
+        "toppings": {
+          "버섯": "low",
+          "양파": "low"
+        }
+      },
+      "execute": false,
+      "reply": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?",
+      "calls": [
+        "decision",
+        "response"
+      ],
+      "prior_user_turns": 2
+    },
+    {
+      "id": "DA31-CORE-compound-T05",
+      "user_text": "버섯만 보통 양으로 바꿔서 바로 담아.",
+      "target": {
+        "commit": true,
+        "order": {
+          "toppings": {
+            "버섯": "normal"
+          }
+        },
+        "route": "task"
+      },
+      "after_order": {
+        "noodle_portion": "normal",
+        "noodle_type": "얇은면",
+        "restrictions": [],
+        "sauce": "크림",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        }
+      },
+      "execute": true,
+      "reply": "양파 적게, 버섯 보통 담기를 시작해요.",
+      "calls": [
+        "decision"
+      ],
+      "prior_user_turns": 3
+    },
+    {
+      "id": "DA31-CORE-compound-T07",
+      "user_text": "게살 알러지가 있어서 소시지만 많이 바로 담아줘.",
+      "target": {
+        "commit": true,
+        "order": {
+          "toppings": {
+            "게살": "none",
+            "소시지": "high"
+          }
+        },
+        "restrictions": [
+          {
+            "action": "add",
+            "reason": "allergy",
+            "target": "게살"
+          }
+        ],
+        "route": "task"
+      },
+      "after_order": {
+        "noodle_portion": "normal",
+        "noodle_type": "얇은면",
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ],
+        "sauce": "크림",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high"
+        }
+      },
+      "execute": true,
+      "reply": "소시지 많이 담기를 시작해요.",
+      "calls": [
+        "decision"
+      ],
+      "prior_user_turns": 4
+    },
+    {
+      "id": "DA31-CORE-compound-T09",
+      "user_text": "페퍼론치노는 빼고 치즈만 적게 골라서 바로 담아.",
+      "target": {
+        "commit": true,
+        "order": {
+          "toppings": {
+            "치즈": "low",
+            "페퍼론치노": "none"
+          }
+        },
+        "route": "task"
+      },
+      "after_order": {
+        "noodle_portion": "normal",
+        "noodle_type": "얇은면",
+        "restrictions": [
+          {
+            "reason": "allergy",
+            "target": "게살"
+          }
+        ],
+        "sauce": "크림",
+        "toppings": {
+          "버섯": "normal",
+          "소시지": "high",
+          "양파": "low",
+          "치즈": "low"
+        }
+      },
+      "execute": true,
+      "reply": "치즈 적게 담기를 시작해요.",
+      "calls": [
+        "decision"
+      ],
+      "prior_user_turns": 5
+    }
+  ],
+  "model_inference": false,
+  "training": false,
+  "ROS": false
+}

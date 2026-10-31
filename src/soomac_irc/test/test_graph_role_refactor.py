@@ -189,7 +189,9 @@ def test_pending_lifecycle_and_replacement(baseline, ptype, confirmation, replac
     result, calls, _ = run_pair(baseline, session, sparse)
     assert "recommendation" not in [c["agent"] for c in calls]
     if confirmation == "reject" and not replacement:
-        assert result["policy"]["execute"] is False
+        # 후보 거절과 기존 주문의 명시적 실행은 독립이다. execution 거절 및
+        # deferred 강한 제한 철회 확인은 기존처럼 실행을 막는다.
+        assert result["policy"]["execute"] is (ptype == "recommendation" and commit)
 
 
 @pytest.mark.parametrize("section", ["noodle", "veggie", "meat", "extra"])

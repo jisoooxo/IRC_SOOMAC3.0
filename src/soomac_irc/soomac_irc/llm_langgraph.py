@@ -165,20 +165,6 @@ def _merge_patch(base: dict, overlay: dict) -> dict:
     return merged
 
 
-def _remove_patch_from_order(order: dict, patch: dict) -> dict:
-    # 미래 section의 preselected 실행을 거절하거나 교체할 때 그 후보만 주문에서 뺀다.
-    updated = copy.deepcopy(order)
-    if patch.get("sauce") is not None and updated.get("sauce") == patch.get("sauce"):
-        updated["sauce"] = None
-    if patch.get("noodle_type") is not None and updated.get("noodle_type") == patch.get("noodle_type"):
-        updated["noodle_type"] = None
-        updated["noodle_portion"] = None
-    for item, amount in (patch.get("toppings") or {}).items():
-        if updated.get("toppings", {}).get(item) == amount:
-            updated["toppings"].pop(item, None)
-    return updated
-
-
 def build_preselected_section_confirmation(session: _SessionState, section: str) -> dict | None:
     """미리 고른 미래 section 재료를 execution pending 하나로 묶는다."""
     if section not in ("veggie", "meat", "extra"):
@@ -459,6 +445,7 @@ def _resolve_pending(
         return working, effective, result
 
     # 실행 확인 수락은 commit으로 바꾸고, 거절은 실행 대기만 닫는다.
+    # preselected도 이미 확정된 주문이다. 주문 취소는 명시적 order patch로만 적용한다.
     if ptype == "execution":
         if accepted:
             effective["commit"] = True
@@ -468,10 +455,6 @@ def _resolve_pending(
                 "section": pending.get("section"),
             }
         else:
-            if pending.get("source") == "preselected":
-                working["order"] = _remove_patch_from_order(
-                    working["order"], pending.get("candidate", empty_order_patch())
-                )
             result = {"type": "execution_confirmation_rejected", "pending_type": ptype}
         return working, effective, result
 
@@ -890,8 +873,7 @@ def build_graph(
         restriction_validation = context["restriction_validation"]
         restriction_enforcement = context["restriction_enforcement"]
 
-        # 6. 단순 거절은 여기서 끝내되, 현재 section을 새 값으로 교체한 복합 발화는
-        # commit 검사 또는 새 execution pending 생성까지 계속 진행한다.
+        # 6. 단순 거절은 여기서 끝내되, 현재 주문 교체와 별도의 commit은 이어서 검증한다.
         section = state["robot_state"]["section"]
         direct_current_fields = (
             set(changed_order_keys_from_patch(accepted_patch))
@@ -904,6 +886,13 @@ def build_graph(
         has_direct_current_replacement = (
             bool(direct_current_fields)
         )
+        # 추천/제한 철회를 거절해도 이미 고른 주문의 실행까지 거절한 것은 아니다.
+        # 같은 실행 확인의 reject+commit은 유효한 현재 주문 재지정 없이는 실행하지 않는다.
+        independent_commit = (
+            decision["commit"]
+            and pending_result is not None
+            and pending_result.get("type") in {"recommendation_rejected", "restriction_removal_rejected"}
+        )
         rejected_without_current_replacement = (
             pending_result
             and pending_result.get("type") in {
@@ -912,6 +901,7 @@ def build_graph(
                 "restriction_removal_rejected",
             }
             and not has_direct_current_replacement
+            and not independent_commit
             and not decision["skip_current"]
         )
         if rejected_without_current_replacement:

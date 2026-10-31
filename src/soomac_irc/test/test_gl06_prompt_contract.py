@@ -84,8 +84,15 @@ def test_decision_demos_replay_expected_authority_and_full_order(example):
         expected_order["toppings"] = {}
     elif example["id"] == "N05":
         expected_order.update(noodle_type="넓은면", noodle_portion="low")
+    elif example["id"] in {"C01", "C02"}:
+        expected_order["sauce"] = "크림"
+    elif example["id"] in {"C03", "C04"}:
+        expected_order["toppings"]["버섯"] = "normal"
+    elif example["id"] in {"C05", "C06", "C07"}:
+        expected_order["toppings"]["소시지"] = "high"
+        expected_order["restrictions"].append({"target": "게살", "reason": "allergy"})
     assert result["session"]["order"] == expected_order
-    assert result["policy"]["execute"] is (example["id"] in {"D02", "D04", "N02", "N03"})
+    assert result["policy"]["execute"] is (example["id"] in {"D02", "D04", "N02", "N03", "C02", "C04", "C06"})
     if example["id"] == "N03":
         # Existing policy uses execute for authorized stage advance too, not
         # ingredient execution. Actual node plan=0 is covered by GL05 fast-path.
@@ -98,6 +105,38 @@ def test_decision_demos_replay_expected_authority_and_full_order(example):
         assert result["session"]["preferences"] == before["preferences"]
     assert result["session"]["history"][:-2] == before["history"]
     assert session == before
+
+
+@pytest.mark.parametrize("plain,immediate", [("C01", "C02"), ("C03", "C04"), ("C05", "C06")])
+def test_compound_contrasts_change_only_message_and_execution_intent(plain, immediate):
+    examples = {ex["id"]: ex for ex in EXAMPLES["decision"]}
+    left, right = copy.deepcopy(examples[plain]), copy.deepcopy(examples[immediate])
+    assert left["input"].pop("message") != right["input"].pop("message")
+    assert left["input"] == right["input"]
+    assert right["output"].pop("commit") is True
+    assert left["output"] == right["output"]
+    assert "commit" not in left["output"]
+
+
+def test_compound_negation_keeps_selection_and_restriction_without_execution():
+    examples = {ex["id"]: ex for ex in EXAMPLES["decision"]}
+    assert examples["C07"]["output"] == examples["C05"]["output"]
+    assert examples["C07"]["input"]["pending"] is None
+    assert examples["C07"]["input"]["message"].endswith("바로 담지는 마.")
+
+
+def test_response_contrasts_distinguish_change_facts_and_real_pending():
+    examples = {ex["id"]: ex for ex in EXAMPLES["task"]}
+    assert examples["S10"]["input"]["applied_this_turn"]["order_changes"] == {"toppings.소시지": "high"}
+    assert examples["S11"]["input"]["applied_this_turn"]["order_changes"] == {"toppings.버섯": "normal"}
+    assert examples["S12"]["input"]["applied_this_turn"]["order_changes"] == {}
+    assert examples["S11"]["input"]["confirmed_order"] == examples["S12"]["input"]["confirmed_order"]
+    for identifier in ("S10", "S11", "S12"):
+        data = examples[identifier]["input"]
+        assert data["pending"]["type"] == data["next_prompt"]["type"] == "execution"
+        assert data["pending"]["section"] == data["robot_state"]["section"]
+        assert set(data["pending"]["targets"]) == set(data["confirmed_order"]["toppings"])
+        assert data["execution_authorized"] is False
 
 
 def test_examples_are_static_independent_system_content_not_live_history():

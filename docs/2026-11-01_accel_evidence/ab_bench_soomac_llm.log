@@ -1,0 +1,20 @@
+transformers 5.14.1
+load 5.3s, alloc 7.88 GiB
+events: {'decision': 6, 'recommendation': 2, 'response/task': 4, 'response/general': 2}
+{"key": "decision", "in": 6209, "out": 32, "off_s": 5.225, "on_s": 5.01, "cache": {"status": "build", "cached_tokens": 6040}, "same_tokens": false, "off_text": "{\"route\":\"task\",\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"}}", "on_text": "{\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"},\"route\":\"task\"}"}
+{"key": "recommendation", "in": 3832, "out": 58, "off_s": 4.667, "on_s": 4.704, "cache": {"status": "build", "cached_tokens": 3338}, "same_tokens": true}
+{"key": "response/task", "in": 6077, "out": 32, "off_s": 4.8, "on_s": 4.639, "cache": {"status": "build", "cached_tokens": 5280}, "same_tokens": false, "off_text": "{\"reply\":\"얇은 면과 보통 양은 그대로예요. 느끼한 소스로 크림을 추천할게요. 이대로 선택할까요?\"}", "on_text": "{\"reply\":\"얇은 면과 보통 양은 그대로 유지하고 느끼한 크림 소스를 추천할게요. 이대로 선택할까요?\"}"}
+{"key": "decision", "in": 6317, "out": 14, "off_s": 4.09, "on_s": 0.842, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "response/task", "in": 5962, "out": 18, "off_s": 4.04, "on_s": 1.753, "cache": {"status": "hit", "cached_tokens": 5280}, "same_tokens": false, "off_text": "{\"reply\":\"소스는 크림으로 저장했어요. 계속 진행할게요.\"}", "on_text": "{\"reply\":\"소스는 크림으로 저장했어요. 현재 면 종류는 얇은 면이에요. 이대로 진행할까요?\"}"}
+{"key": "decision", "in": 6311, "out": 10, "off_s": 3.871, "on_s": 0.635, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "decision", "in": 6406, "out": 23, "off_s": 4.637, "on_s": 1.326, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "response/task", "in": 6210, "out": 25, "off_s": 4.567, "on_s": 1.59, "cache": {"status": "hit", "cached_tokens": 5280}, "same_tokens": false, "off_text": "{\"reply\":\"양파와 버섯은 모두 적은 양으로 저장했어요. 이대로 담을까요?\"}", "on_text": "{\"reply\":\"양파와 버섯은 적은 양으로 저장했어요. 이대로 담을까요?\"}"}
+{"key": "decision", "in": 6481, "out": 18, "off_s": 4.454, "on_s": 1.102, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "response/task", "in": 6292, "out": 20, "off_s": 4.381, "on_s": 1.415, "cache": {"status": "hit", "cached_tokens": 5280}, "same_tokens": true}
+{"key": "decision", "in": 6514, "out": 22, "off_s": 4.651, "on_s": 1.304, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "recommendation", "in": 3835, "out": 57, "off_s": 4.612, "on_s": 3.087, "cache": {"status": "hit", "cached_tokens": 3338}, "same_tokens": true}
+{"key": "response/general", "in": 2567, "out": 25, "off_s": 2.317, "on_s": 1.932, "cache": {"status": "build", "cached_tokens": 1162}, "same_tokens": false, "off_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}", "on_text": "{\"reply\":\"그런 말은 하지 마세요. 다른 이야기를 해볼까요?\"}"}
+{"key": "response/general", "in": 2561, "out": 25, "off_s": 2.337, "on_s": 1.843, "cache": {"status": "hit", "cached_tokens": 1162}, "same_tokens": false, "off_text": "{\"reply\":\"부적절한 표현은 삼가 주세요. 육류 재료를 선택할 수 있어요.\"}", "on_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}"}
+peak alloc during replay 12.69 GiB, after 9.46 GiB, cache entries 4
+{"vlm_same": true, "vlm_before": "이 이미지의 주된 색은 갈색입니다.", "vlm_after": "이 이미지의 주된 색은 갈색입니다.", "vlm_s": [0.888, 0.566]}
+SUMMARY {"n": 14, "same_tokens": 8, "hit_n": 10, "hit_off_mean_s": 4.164, "hit_on_mean_s": 1.49}

@@ -1,0 +1,18 @@
+ready after 132s
+models: ['gemma4-base', 'decision', 'recommendation', 'response']
+{"key": "decision", "in": 6209, "s": 3.272, "cached": 0, "out": 33, "sem_vs_hf": true}
+{"key": "recommendation", "in": 3832, "s": 2.059, "cached": 0, "out": 59, "sem_vs_hf": false}
+{"key": "response/task", "in": 6077, "s": 2.251, "cached": 0, "out": 32, "sem_vs_hf": true}
+{"key": "decision", "in": 6317, "s": 2.0, "cached": 0, "out": 14, "sem_vs_hf": true}
+{"key": "response/task", "in": 5962, "s": 2.18, "cached": 0, "out": 29, "sem_vs_hf": false}
+{"key": "decision", "in": 6311, "s": 0.3, "cached": 6144, "out": 10, "sem_vs_hf": true}
+{"key": "decision", "in": 6406, "s": 0.567, "cached": 6144, "out": 23, "sem_vs_hf": true}
+{"key": "response/task", "in": 6210, "s": 0.791, "cached": 5248, "out": 25, "sem_vs_hf": true}
+{"key": "decision", "in": 6481, "s": 0.477, "cached": 6208, "out": 18, "sem_vs_hf": true}
+{"key": "response/task", "in": 6292, "s": 0.729, "cached": 5248, "out": 20, "sem_vs_hf": true}
+{"key": "decision", "in": 6514, "s": 0.532, "cached": 6272, "out": 22, "sem_vs_hf": true}
+{"key": "recommendation", "in": 3835, "s": 2.035, "cached": 0, "out": 57, "sem_vs_hf": true}
+{"key": "response/general", "in": 2567, "s": 1.131, "cached": 0, "out": 24, "sem_vs_hf": false}
+{"key": "response/general", "in": 2561, "s": 1.159, "cached": 0, "out": 25, "sem_vs_hf": false}
+SEM_MATCH 10/14
+INTERNET: BLOCKED URLError

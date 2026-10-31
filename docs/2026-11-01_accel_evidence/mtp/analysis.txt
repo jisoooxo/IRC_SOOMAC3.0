@@ -1,0 +1,8 @@
+[A] accept=None/None=- | replay pass0 1.256s (prefix-hit 0.521s n=6) pass1 0.513s per-agent warm {'decision': 0.386, 'response/task': 0.494, 'recommendation': 1.018, 'response/general': 0.426}
+     sem_vs_HF pass0 10/14 pass1 11/14 | token-identical to A: 28/28 | 17turn totals {1: 33.2, 2: 21.9} | run1==run2 fields 16/17 | run1 vs A-run1 fields 17/17 | T11 D ['{"route":"task","clarify":true}']
+[B] accept=None/None=- | replay pass0 1.378s (prefix-hit 0.623s n=6) pass1 0.648s per-agent warm {'decision': 0.494, 'response/task': 0.634, 'recommendation': 1.253, 'response/general': 0.536}
+     sem_vs_HF pass0 13/14 pass1 13/14 | token-identical to A: 23/28 | 17turn totals {1: 35.0, 2: 22.9} | run1==run2 fields 17/17 | run1 vs A-run1 fields 13/17 | T11 D ['{"route":"task","order":{"toppings":{"양파":"low"}},"commit":true}']
+[C] accept=1418.0/1872.0=0.76 | replay pass0 1.267s (prefix-hit 0.488s n=6) pass1 0.483s per-agent warm {'decision': 0.36, 'response/task': 0.445, 'recommendation': 0.933, 'response/general': 0.478}
+     sem_vs_HF pass0 12/14 pass1 11/14 | token-identical to A: 24/28 | 17turn totals {1: 32.2, 2: 22.5} | run1==run2 fields 13/17 | run1 vs A-run1 fields 17/17 | T11 D ['{"route":"task","clarify":true}']
+[D] accept=1450.0/1904.0=0.76 | replay pass0 1.276s (prefix-hit 0.527s n=6) pass1 0.535s per-agent warm {'decision': 0.399, 'response/task': 0.527, 'recommendation': 1.014, 'response/general': 0.479}
+     sem_vs_HF pass0 11/14 pass1 11/14 | token-identical to A: 25/28 | 17turn totals {1: 32.7, 2: 25.1} | run1==run2 fields 17/17 | run1 vs A-run1 fields 16/17 | T11 D ['{"route":"task","commit":true}']

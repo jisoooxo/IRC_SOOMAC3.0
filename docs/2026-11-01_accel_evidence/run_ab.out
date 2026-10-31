@@ -1,0 +1,5 @@
+BENCH gemma4_env exit=0 peak alloc during replay 16.20 GiB, after 13.00 GiB, cache entries 4 SUMMARY {"n": 14, "same_tokens": 9, "hit_n": 10, "hit_off_mean_s": 4.485, "hit_on_mean_s": 1.914} 
+BENCH soomac_llm exit=0 peak alloc during replay 12.69 GiB, after 9.46 GiB, cache entries 4 SUMMARY {"n": 14, "same_tokens": 8, "hit_n": 10, "hit_off_mean_s": 4.164, "hit_on_mean_s": 1.49} 
+SCENARIO gemma4_env exit=0 {"exit_code":0,"gpu":"NVIDIARTXPRO4500Blackwell","peak_allocated_bytes":21779078144,"actual_ros":false,"training":false}
+SCENARIO soomac_llm exit=0 {"exit_code":0,"gpu":"NVIDIARTXPRO4500Blackwell","peak_allocated_bytes":14122748928,"actual_ros":false,"training":false}
+ALLDONE

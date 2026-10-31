@@ -1,0 +1,7 @@
+util=0.55 rc=0 17turn_s=32.7 | GPU MiB: STT+TTS+desktop=10603, +server_ready=26911, peak=29564 | GPU KV cache size: 14,829 tokens | hits/queries=275217.0 220224.0  | apps=277896, 4334;277897, 4956;278819, 18762;
+util=0.60 rc=0 17turn_s=34.1 | GPU MiB: STT+TTS+desktop=10583, +server_ready=28555, peak=31175 | GPU KV cache size: 19,666 tokens | hits/queries=275214.0 220224.0  | apps=281307, 4334;281308, 4972;283045, 20352;
+ALLDONE
+cfg=0.50:2:10240 rc=0 17turn_s=34.2 | GPU MiB: STT+TTS+desktop=10518, +server_ready=25346, peak=27931 | GPU KV cache size: 15,659 tokens | hits/queries=275223.0 220224.0  | apps=287199, 4334;287200, 4964;288863, 17224;
+cfg=0.45:2:10240 rc=0 17turn_s=37.2 | GPU MiB: STT+TTS+desktop=10440, +server_ready=23710, peak=26594 | GPU KV cache size: 10,717 tokens | hits/queries=275935.0 213184.0  | apps=291627, 4334;291628, 4956;292540, 15604;
+cfg=0.42:2:10240 SERVER FAILED: RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+ALLDONE

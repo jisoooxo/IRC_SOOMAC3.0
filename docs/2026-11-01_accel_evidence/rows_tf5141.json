@@ -1,0 +1,180 @@
+[
+ {
+  "key": "decision",
+  "in": 6209,
+  "out": 32,
+  "off_s": 5.203,
+  "on_s": 5.06,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 6040
+  },
+  "same_tokens": false,
+  "off_text": "{\"route\":\"task\",\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"}}",
+  "on_text": "{\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"},\"route\":\"task\"}"
+ },
+ {
+  "key": "recommendation",
+  "in": 3832,
+  "out": 58,
+  "off_s": 5.014,
+  "on_s": 5.034,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 3338
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6077,
+  "out": 32,
+  "off_s": 4.865,
+  "on_s": 4.724,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 5280
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6317,
+  "out": 14,
+  "off_s": 3.989,
+  "on_s": 0.927,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 5962,
+  "out": 18,
+  "off_s": 3.993,
+  "on_s": 1.949,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"소스는 크림으로 저장했어요. 계속 진행할게요.\"}",
+  "on_text": "{\"reply\":\"소스는 크림으로 저장했어요. 현재 면 종류는 얇은 면이에요. 이대로 진행할까요?\"}"
+ },
+ {
+  "key": "decision",
+  "in": 6311,
+  "out": 10,
+  "off_s": 3.75,
+  "on_s": 0.688,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6406,
+  "out": 23,
+  "off_s": 4.602,
+  "on_s": 1.48,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6210,
+  "out": 25,
+  "off_s": 4.549,
+  "on_s": 1.73,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"양파와 버섯은 모두 적은 양으로 저장했어요. 이대로 담을까요?\"}",
+  "on_text": "{\"reply\":\"양파와 버섯은 적은 양으로 저장했어요. 이대로 담을까요?\"}"
+ },
+ {
+  "key": "decision",
+  "in": 6481,
+  "out": 18,
+  "off_s": 4.343,
+  "on_s": 1.205,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6292,
+  "out": 20,
+  "off_s": 4.32,
+  "on_s": 1.55,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6514,
+  "out": 22,
+  "off_s": 4.597,
+  "on_s": 1.447,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "recommendation",
+  "in": 3835,
+  "out": 57,
+  "off_s": 4.928,
+  "on_s": 3.5,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 3338
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/general",
+  "in": 2567,
+  "out": 25,
+  "off_s": 2.439,
+  "on_s": 2.007,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 1162
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}",
+  "on_text": "{\"reply\":\"그런 말은 하지 마세요. 다른 이야기를 해볼까요?\"}"
+ },
+ {
+  "key": "response/general",
+  "in": 2561,
+  "out": 25,
+  "off_s": 2.44,
+  "on_s": 1.981,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 1162
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"부적절한 표현은 삼가 주세요. 육류 재료를 선택할 수 있어요.\"}",
+  "on_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}"
+ }
+]

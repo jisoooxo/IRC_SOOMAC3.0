@@ -15,6 +15,7 @@ from soomac_irc.agent_contract import (
 from soomac_irc.agent_prompts import RECOMMENDATION_SYSTEM
 from soomac_irc.domain import AMOUNTS, NOODLE_TYPES, SAUCES, TOPPINGS
 from soomac_irc.llm_policy import build_recommendation_scope
+from soomac_irc.prefix_cache import PrefixKVCache
 from soomac_irc.response_contract import build_recommendation_model_input
 
 RECOMMENDATION_MAX_TOKENS = 1024
@@ -30,6 +31,7 @@ def make_call_recommendation(model, processor, logger=None, adapter_name: str | 
     stop_ids = list(dict.fromkeys(i for i in stop_ids if isinstance(i, int) and i >= 0))
     tokenizer_info = xgr.TokenizerInfo.from_huggingface(tokenizer, vocab_size=len(tokenizer), stop_token_ids=stop_ids)
     compiled_grammar = xgr.GrammarCompiler(tokenizer_info).compile_json_schema(RECOMMENDATION_SCHEMA)
+    prefix_cache = PrefixKVCache(processor, logger)
 
     @torch.inference_mode()
     def call_recommendation(
@@ -68,13 +70,15 @@ def make_call_recommendation(model, processor, logger=None, adapter_name: str | 
 
             # A/B를 통과한 Recommendation Adapter가 있으면 이를 사용한다.
             # adapter_name이 없으면 종전처럼 Base Model을 사용한다.
+            # 고정 system prompt 앞부분은 해당 Adapter(또는 Base) 전용 접두 KV를 재사용한다.
             if activate_adapter(model, adapter_name):
-                output = model.generate(**generate_args)
+                output = prefix_cache.generate(model, adapter_name, RECOMMENDATION_SYSTEM, generate_args)
             elif hasattr(model, "disable_adapter"):
                 with model.disable_adapter():
-                    output = model.generate(**generate_args)
+                    output = prefix_cache.generate(model, None, RECOMMENDATION_SYSTEM, generate_args)
             else:
-                output = model.generate(**generate_args)
+                output = prefix_cache.generate(model, None, RECOMMENDATION_SYSTEM, generate_args)
+            trace["prefix_cache"] = copy.deepcopy(prefix_cache.last_event)
             raw = processor.decode(output[0][prompt_tokens:], skip_special_tokens=True).strip()
             parsed = json.loads(raw)
             trace.update({
@@ -94,4 +98,5 @@ def make_call_recommendation(model, processor, logger=None, adapter_name: str | 
             call_recommendation.trace_events.append(copy.deepcopy(trace))
 
     call_recommendation.trace_events = []
+    call_recommendation.prefix_cache = prefix_cache
     return call_recommendation

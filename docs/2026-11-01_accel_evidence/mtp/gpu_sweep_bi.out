@@ -1,0 +1,2 @@
+cfg=0.45:2:10240 rc=0 17turn_s=36.0 | GPU MiB: STT+TTS+desktop=10532, +server_ready=23819, peak=26463 | GPU KV cache size: 10,927 tokens | hits/queries=550450.0 470208.0  | apps=336353, 4334;336354, 4956;337775, 15636;
+ALLDONE

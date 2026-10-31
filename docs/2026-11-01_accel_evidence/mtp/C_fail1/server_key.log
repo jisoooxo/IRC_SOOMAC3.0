@@ -1,0 +1,10 @@
+(APIServer pid=320698) INFO 11-01 06:35:23 [api_utils.py:286] non-default args: {'model_tag': '/home/roma/Desktop/sLLM/gemma-4-12B-it', 'lora_modules': [LoRAModulePath(name='decision', path='/home/roma/IRC_SOOMAC3.0/models/vllm_adapters/decision', base_model_name=None, is_3d_lora_weight=False), LoRA
+(APIServer pid=320698) WARNING 11-01 06:35:28 [speculative.py:1381] Enabling num_speculative_tokens > 1 will run multiple times of forward on same MTP layer,which may result in lower acceptance rate
+(APIServer pid=320698) INFO 11-01 06:35:28 [speculative.py:1669] Overriding draft model max model len from 262144 to 10240
+(EngineCore pid=321177) INFO 11-01 06:35:45 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/home/roma/Desktop/sLLM/gemma-4-12B-it', speculative_config=SpeculativeConfig(method='mtp', model='/home/roma/models/gemma-4-12B-it-assistant', num_spec_tokens=2), tokenizer='/home/ro
+(EngineCore pid=321177) ERROR 11-01 06:35:50 [core.py:1510]     raise AttributeError(
+(EngineCore pid=321177) ERROR 11-01 06:35:50 [core.py:1510] AttributeError: Model Gemma4MTP does not support BitsAndBytes quantization yet. No 'packed_modules_mapping' found.
+    raise AttributeError(
+AttributeError: Model Gemma4MTP does not support BitsAndBytes quantization yet. No 'packed_modules_mapping' found.
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}

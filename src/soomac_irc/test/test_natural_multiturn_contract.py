@@ -1633,7 +1633,7 @@ def test_recommendation_reject_removes_pending_without_applying_order():
     assert result["policy"]["reason"] == "recommendation_rejected"
 
 
-def test_preselected_reject_removes_only_the_rejected_candidate():
+def test_preselected_execution_reject_preserves_the_selected_order():
     session = session_with_preselected_meat({"소시지": "high"})
     result = run(
         session,
@@ -1642,7 +1642,8 @@ def test_preselected_reject_removes_only_the_rejected_candidate():
     )
 
     assert result["session"]["pending"] is None
-    assert result["session"]["order"]["toppings"] == {}
+    # 실행 유예는 확정 주문 취소가 아니다. 취소는 order의 명시적 none으로 검증한다.
+    assert result["session"]["order"]["toppings"] == {"소시지": "high"}
     assert result["policy"]["reason"] == "execution_confirmation_rejected"
     assert result["reply"] == "ok"
 

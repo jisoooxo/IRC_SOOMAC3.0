@@ -9,6 +9,7 @@ from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 from soomac_irc.adapter_runtime import activate_adapter
 from soomac_irc.agent_contract import RESPONSE_SCHEMA, SessionState
 from soomac_irc.agent_prompts import GENERAL_RESPONSE_SYSTEM, MIXED_RESPONSE_SYSTEM, TASK_RESPONSE_SYSTEM
+from soomac_irc.prefix_cache import PrefixKVCache
 from soomac_irc.response_contract import (
     RESPONSE_HISTORY_TURNS, build_response_model_input, validate_response_output,
 )
@@ -30,6 +31,7 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
     stop_ids = list(dict.fromkeys(i for i in stop_ids if isinstance(i, int) and i >= 0))
     tokenizer_info = xgr.TokenizerInfo.from_huggingface(tokenizer, vocab_size=len(tokenizer), stop_token_ids=stop_ids)
     compiled_grammar = xgr.GrammarCompiler(tokenizer_info).compile_json_schema(RESPONSE_SCHEMA)
+    prefix_cache = PrefixKVCache(processor, logger)
 
     @torch.inference_mode()
     def call_response(
@@ -76,13 +78,16 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
 
             # 학습된 Response Adapter가 있으면 해당 LoRA로 답변을 생성한다.
             # adapter_name을 생략한 기존 호출은 종전처럼 Base Model을 사용한다.
+            # route마다 system이 다르므로 접두 KV도 (Adapter, route system)별로 따로 재사용한다.
+            system_prompt = RESPONSE_SYSTEM_BY_ROUTE[route]
             if activate_adapter(model, adapter_name):
-                output = model.generate(**generate_args)
+                output = prefix_cache.generate(model, adapter_name, system_prompt, generate_args)
             elif hasattr(model, "disable_adapter"):
                 with model.disable_adapter():
-                    output = model.generate(**generate_args)
+                    output = prefix_cache.generate(model, None, system_prompt, generate_args)
             else:
-                output = model.generate(**generate_args)
+                output = prefix_cache.generate(model, None, system_prompt, generate_args)
+            trace["prefix_cache"] = copy.deepcopy(prefix_cache.last_event)
             raw = processor.decode(output[0][prompt_tokens:], skip_special_tokens=True).strip()
             parsed = json.loads(raw)
             trace.update({"raw": raw, "parsed": copy.deepcopy(parsed)})
@@ -107,4 +112,5 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
             call_response.trace_events.append(copy.deepcopy(trace))
 
     call_response.trace_events = []
+    call_response.prefix_cache = prefix_cache
     return call_response

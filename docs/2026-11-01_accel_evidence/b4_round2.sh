@@ -1,0 +1,8 @@
+cd /tmp
+PYTHONDONTWRITEBYTECODE=1 env -u PYTHONPATH /home/roma/miniconda3/envs/soomac_llm/bin/python -I /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/scripts/vlm_compare.py hf /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/vlm_hf.json > /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/vlm_hf.log 2>&1; echo "HF VLM exit=$?"
+/home/roma/IRC_SOOMAC3.0/tools/vllm_server/start_vllm_server.sh > /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/b4_round2_server.log 2>&1 &
+SERVER=$!
+PYTHONDONTWRITEBYTECODE=1 env -u PYTHONPATH /home/roma/miniconda3/envs/soomac_llm/bin/python -I /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/scripts/vlm_compare.py vllm /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/vlm_vllm.json > /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/vlm_vllm.log 2>&1; echo "vLLM VLM exit=$?"
+cd /home/roma/IRC_SOOMAC3.0 && PYTHONDONTWRITEBYTECODE=1 env -u PYTHONPATH /home/roma/miniconda3/envs/soomac_llm/bin/python /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/run_scenario_vllm.py --measure-all --out /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/b4_scn_vllm_rep2 > /tmp/claude-1000/-home-roma-IRC-SOOMAC3-0/f10905d6-bf59-4085-a889-d658537908bd/scratchpad/b4_scn_vllm_rep2.log 2>&1; echo "scenario rep2 exit=$?"
+kill $SERVER; wait $SERVER 2>/dev/null
+echo ALLDONE

@@ -1,6 +1,6 @@
 # IRC LLM Final — 코드 수정 명세
 
-**2026-10-31 현재 후속:** [잔여 작업 상태표](<IRC LLM Final remaining work.md>) §1·RW02를 우선한다. 추천 범위 토글, 불완전 일반 주문의 missing_order next_prompt 보완, preselected 실행 유예 시 주문 삭제와 미래 추천 거절+현재 commit 공백은 아직 미수정이다. event scope 확장/Q prompt 보강은 이미 일부 적용됐다. D 누락·P 허위 발화가 모두 코드 결함이라는 뜻은 아니므로 D→적용→P 입력→출력을 먼저 대조한다. 아래 날짜·라인은 역사적 탐색점이다.
+**2026-11-01 후속:** [잔여 작업 상태표](<IRC LLM Final remaining work.md>) §1·RW02와 [pending Runtime 수정 기록](2026-11-01_llm_pending_runtime_fix.md)을 우선한다. preselected 실행 유예 시 주문 삭제와 추천 거절+현재 commit 공백은 승인 후 수정했고 LLM812건/하위6건이 통과했다. 추천 범위 토글과 불완전 일반 주문의 missing_order next_prompt 보완은 아직 미구현이다. event scope 확장/Q prompt 보강은 이미 일부 적용됐다. D 누락·P 허위 발화가 모두 코드 결함이라는 뜻은 아니므로 D→적용→P 입력→출력을 먼저 대조한다. 아래 날짜·라인은 역사적 탐색점이다.
 
 [최종 plan](<IRC LLM Final plan.md>) · [Goal 순서](<IRC LLM Final goals.md>) · [인계](<IRC LLM Final handoff.md>)
 → **문서 작성은 수정 완료가 아니다. GL02 정답 기준을 확정한 뒤 GL03에서 평가기 코드를 실제 수정하고 테스트한다.**

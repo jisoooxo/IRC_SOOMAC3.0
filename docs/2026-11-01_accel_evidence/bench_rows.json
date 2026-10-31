@@ -1,0 +1,366 @@
+[
+ {
+  "key": "decision",
+  "in": 6209,
+  "out": 32,
+  "off_s": 5.441,
+  "on_s": 5.353,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 6040
+  },
+  "same_tokens": false,
+  "off_text": "{\"route\":\"task\",\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"}}",
+  "on_text": "{\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"},\"route\":\"task\"}"
+ },
+ {
+  "key": "recommendation",
+  "in": 3832,
+  "out": 58,
+  "off_s": 5.108,
+  "on_s": 5.121,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 3338
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6077,
+  "out": 32,
+  "off_s": 5.269,
+  "on_s": 5.094,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 5280
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"얇은 면과 보통 양은 그대로예요. 느끼한 소스로 크림을 추천할게요. 이대로 선택할까요?\"}",
+  "on_text": "{\"reply\":\"얇은 면과 보통 양은 그대로 유지하고 느끼한 크림 소스를 추천할게요. 이대로 선택할까요?\"}"
+ },
+ {
+  "key": "decision",
+  "in": 6317,
+  "out": 14,
+  "off_s": 4.217,
+  "on_s": 1.136,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 5962,
+  "out": 18,
+  "off_s": 4.191,
+  "on_s": 2.241,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"소스는 크림으로 저장했어요. 계속 진행할게요.\"}",
+  "on_text": "{\"reply\":\"소스는 크림으로 저장했어요. 현재 면 종류는 얇은 면이에요. 이대로 진행할까요?\"}"
+ },
+ {
+  "key": "decision",
+  "in": 6311,
+  "out": 10,
+  "off_s": 3.902,
+  "on_s": 0.874,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6406,
+  "out": 23,
+  "off_s": 4.932,
+  "on_s": 1.755,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6210,
+  "out": 25,
+  "off_s": 4.826,
+  "on_s": 2.123,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6481,
+  "out": 18,
+  "off_s": 4.598,
+  "on_s": 1.449,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6292,
+  "out": 20,
+  "off_s": 4.582,
+  "on_s": 1.825,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6514,
+  "out": 22,
+  "off_s": 4.856,
+  "on_s": 1.752,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6636,
+  "out": 36,
+  "off_s": 5.956,
+  "on_s": 2.816,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6611,
+  "out": 32,
+  "off_s": 5.661,
+  "on_s": 2.898,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6716,
+  "out": 10,
+  "off_s": 4.268,
+  "on_s": 3.254,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": false,
+  "off_text": "{\"route\":\"task\",\"commit\":true}",
+  "on_text": "{\"route\":\"task\",\"order\":{\"toppings\":{\"게살\":\"none\"}},\"preferences\":[{\"action\":\"add\",\"value\":\"게살 알레르기\"}],\"recommendation\":{\"action\":\"request\"}}"
+ },
+ {
+  "key": "decision",
+  "in": 6814,
+  "out": 26,
+  "off_s": 5.537,
+  "on_s": 2.228,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6851,
+  "out": 29,
+  "off_s": 5.767,
+  "on_s": 2.856,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"페퍼론치노는 제외하고 치즈를 적은 양으로 저장했어요. 이대로 담을까요?\"}",
+  "on_text": "{\"reply\":\"페퍼론치노는 제외하고 치즈만 적은 양으로 저장했어요. 이대로 담을까요?\"}"
+ },
+ {
+  "key": "decision",
+  "in": 6808,
+  "out": 10,
+  "off_s": 4.31,
+  "on_s": 1.075,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6321,
+  "out": 19,
+  "off_s": 4.578,
+  "on_s": 1.459,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": false,
+  "off_text": "{\"route\":\"task\",\"order\":{\"sauce\":\"크림\"},\"confirmation\":\"accept\"}",
+  "on_text": "{\"route\":\"task\",\"order\":{\"sauce\":\"크림\"},\"commit\":true}"
+ },
+ {
+  "key": "response/task",
+  "in": 6084,
+  "out": 22,
+  "off_s": 4.642,
+  "on_s": 1.845,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "decision",
+  "in": 6319,
+  "out": 10,
+  "off_s": 3.931,
+  "on_s": 0.848,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 6040
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/task",
+  "in": 6218,
+  "out": 25,
+  "off_s": 4.877,
+  "on_s": 2.131,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 5280
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "recommendation",
+  "in": 3835,
+  "out": 57,
+  "off_s": 5.043,
+  "on_s": 3.528,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 3338
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "recommendation",
+  "in": 3832,
+  "out": 56,
+  "off_s": 4.939,
+  "on_s": 3.487,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 3338
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/general",
+  "in": 2567,
+  "out": 25,
+  "off_s": 2.473,
+  "on_s": 2.035,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 1162
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}",
+  "on_text": "{\"reply\":\"그런 말은 하지 마세요. 다른 이야기를 해볼까요?\"}"
+ },
+ {
+  "key": "response/general",
+  "in": 2561,
+  "out": 25,
+  "off_s": 2.498,
+  "on_s": 2.007,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 1162
+  },
+  "same_tokens": false,
+  "off_text": "{\"reply\":\"부적절한 표현은 삼가 주세요. 육류 재료를 선택할 수 있어요.\"}",
+  "on_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}"
+ },
+ {
+  "key": "recommendation",
+  "in": 3825,
+  "out": 48,
+  "off_s": 4.547,
+  "on_s": 3.024,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 3338
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "recommendation",
+  "in": 3554,
+  "out": 43,
+  "off_s": 4.09,
+  "on_s": 4.074,
+  "cache": {
+   "status": "build",
+   "cached_tokens": 3069
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/general",
+  "in": 1638,
+  "out": 21,
+  "off_s": 1.82,
+  "on_s": 1.386,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 1162
+  },
+  "same_tokens": true
+ },
+ {
+  "key": "response/general",
+  "in": 1682,
+  "out": 15,
+  "off_s": 1.488,
+  "on_s": 1.072,
+  "cache": {
+   "status": "hit",
+   "cached_tokens": 1162
+  },
+  "same_tokens": true
+ }
+]

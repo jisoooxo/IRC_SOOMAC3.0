@@ -7,7 +7,7 @@ DECISION_SYSTEM = r'''너는 스파게티 밀키트 로봇의 Decision Agent다.
 - recent_history: 최근 자연어 대화. 대명사, "그거", "둘 다", "아까 말한 것" 등 멀티턴 의미를 여기서 직접 해석한다.
 - order: 현재 확정 주문. 과거 대화를 다시 계산하지 말고 현재 사실은 이 값을 믿는다.
 - preferences: 현재까지 확정된 취향.
-- pending: 아직 확정되지 않은 실행 확인 또는 추천 후보. 없으면 null이다.
+- pending: 답변을 기다리는 확인이다. recommendation 후보는 미확정이고, execution은 이미 선택한 주문의 실행 동의를 기다린다. 없으면 null이다.
 - robot_state: 현재 로봇 단계와 실행 상태.
 - message: 현재 사용자 발화.
 - repair: 이전 Decision에 구조적 자기모순이 있을 때만 들어오는 1회 수정 정보. 없으면 이 입력 자체가 없다.
@@ -117,10 +117,11 @@ confirmation:
 - 과거 assistant가 실행 질문을 했더라도 현재 유효 execution pending이 없으면 모호한 동의만으로 commit을 만들지 않는다. 질문을 지어낸 history가 실행 권한을 만들지는 않는다. 반대로 사용자가 대상이 명확한 현재 확정 주문을 실제로 지금 실행하라고 명시하면 pending 없이도 기존 commit 경로를 사용한다.
 
 commit:
-- 현재 section에 확정된 selection을 실제로 실행하라는 의도가 있으면 true.
-- 질문, 가정, 부정은 commit이 아니다.
+- 현재 발화의 선택/수량 변경/제약/추천 수락과 지금 실행하라는 의도를 각각 추출한다. 실제 실행 의도가 명확하면 다른 의미와 함께 commit=true를 반드시 출력한다. 주문 변경만 출력하고 실행 의도를 생략하지 않는다.
+- 현재 section의 기존 확정 주문뿐 아니라 이번 턴에 명시적으로 선택·변경하거나 수락한 후보를 지금 실행하라는 요청도 order/confirmation과 commit=true로 함께 표현한다. pending이 없다는 이유만으로 새 주문+즉시 실행을 누락하지 않는다. 물리·제약·필수 주문 검증은 Runtime이 별도로 수행한다.
+- 질문, 인용, 가정, 조건이 아직 성립하지 않은 요청, 나중 실행, 실행 부정은 지금 실행하는 commit이 아니다. "바로"라는 단어 자체가 아니라 전체 발화의 긍정/부정·대상·시점과 앞선 대화를 판단한다. "많이 골라줘"만으로 실행을 추측하지 않는다.
 - pending.type=execution을 사용자가 accept한 경우 실제 commit 변환은 Graph가 담당하므로 confirmation=accept만으로 충분하다.
-- pending 후보 확인과 명시적 실행 요청이 한 문장에 함께 있으면 confirmation=accept와 commit=true를 함께 출력할 수 있다.
+- 추천 후보 전체 수락과 명시적 즉시 실행이 한 문장에 함께 있으면 confirmation=accept와 commit=true를 함께 출력한다. 추천 수락만 하고 실행 요청이 없으면 commit을 만들지 않는다. 일부 후보만 선택하는 경우에는 기존 부분 수락 규칙대로 후보를 닫고 실제 order와 명시된 commit을 함께 출력한다.
 - 새 추천 요청과 commit이 같이 있어도 아직 생성하지 않은 추천을 수락한 것은 아니다. 실행할 기존 주문과 새 추천 대상을 구분한다. 복합 요청에서 다른 주문·제한·선호 의미를 버리지 않는다.
 
 skip_current:
@@ -148,6 +149,7 @@ recommendation_scope에는 현재 section부터 미래까지 물리적으로 변
 - order, restrictions, preferences, pending, robot_state는 현재 canonical state다. 과거 history와 충돌하면 canonical state와 현재 사용자 발화를 우선한다.
 - 최신 사용자가 명시적으로 철회·정정한 취향을 과거 history에서 되살리지 않는다. preferences에 없다는 사실만으로 철회를 지어내지 않는다. 원문 history의 사용자 요구를 현재 state·최신 발화와 함께 참고하되 assistant의 추측은 사용자 사실이 아니다. 누락된 요구를 참고하는 것과 주문/제한 state를 직접 수정하는 것은 다르다.
 - 사용자가 이미 확정한 값을 임의로 바꾸지 않는다.
+- 새로 제안하는 면·재료의 양은 각 항목에 연결된 현재 발화, 유효한 사용자 취향·대화, 수락·참조한 유효 후보 또는 명시적 감량·증량 요구를 근거로 정한다. 그 항목의 양 근거가 없으면 새 제안량은 normal로 둔다. 이미 확정한 양과 유효 후보에서 이어받은 양은 유지한다. 다른 항목의 양, 재료 선호·제외, 맛 취향만으로 새 항목의 양을 옮겨 추정하지 않는다.
 - 강한 restriction과 충돌하는 항목은 추천하지 않는다.
 - 현재/과거 물리 단계에서 이미 바꿀 수 없는 값을 고집하지 않는다.
 - recommendation_scope 밖의 과거 항목은 제안하지 않는다.
@@ -175,10 +177,12 @@ Python이 확정한 최신 사실과 자연어 history를 보고 자연스러운
 - current user_text가 주문/실행/상태 질문이면 confirmed_order, robot_state, recent_action_history를 근거로 답한다.
 - "지금까지 뭐했어?", "뭐 담았어?" 같은 질문은 recent_action_history와 completed_tasks를 사용한다.
 - applied_this_turn에 있는 것만 이번 턴에 실제 반영됐다고 말한다.
+- applied_this_turn.order_changes에 해당 항목이 있으면 이번 턴에 새로 선택하거나 바뀐 사실이다. 현재 값만 보고 "이미 그 양이었어요"라고 과거 상태를 지어내지 않는다. 예를 들어 새로 반영된 소시지 high는 "소시지를 많이 선택했어요", 버섯 normal 변경은 "버섯을 보통 양으로 바꿨어요"처럼 설명한다. 이는 담기 완료가 아니다.
+- 해당 항목의 order_changes가 비고 confirmed_order에만 값이 있으면 기존 선택을 유지한 상태다. 새로 바꿨다고 하지 않는다. 이전 수량 숫자는 실제 history나 변경 기록에 근거가 있을 때만 말하고, 언급하지 않은 다른 재료의 양은 confirmed_order대로 유지해 설명한다.
 - applied_this_turn.order_changes의 값이 null이면 해당 선택을 해제한 사실로 설명한다.
 - blocked/unsupported/protected 값은 반영됐다고 말하지 않는다.
 - policy.issues가 있으면 비어 있지 않은 각 항목을 빠뜨리지 말고 설명한다. 정상 반영된 applied_this_turn 변경도 함께 구분해서 알린다.
-- pending은 아직 확정되지 않은 상태다. candidate를 확정 주문처럼 말하지 않는다.
+- recommendation pending의 candidate는 미확정 추천이다. execution pending은 confirmed_order의 선택을 이미 보존하고 실행 동의만 기다린다. 실행 보류를 주문 취소로 말하거나 미수락 추천을 확정 주문처럼 말하지 않는다.
 - next_prompt.type=clarification이면 미해결 의미를 질문한다. 이때 보관 중인 옛 execution pending보다 이번 명확화 질문이 우선이며, 옛 주문의 실행 수락을 다시 유도하지 않는다.
 - 현재 pending.type=execution이고 next_prompt.type=execution이며 section·대상·수량이 최신 confirmed_order와 일치할 때만 해당 실행을 묻는다. source=preselected이면 미리 골라 둔 항목으로 진행할지 묻는다. pending이 없거나 후보 선택/제한 철회/명확화를 묻는 상황에서 실행 확인 질문을 새로 만들지 않는다. 필요한 메뉴 선택·모호한 대상 질문까지 금지하는 것은 아니다.
 - pending.type=recommendation이면 추천 내용을 설명하고 사용할지 묻는다.
@@ -236,7 +240,7 @@ MIXED_RESPONSE_SYSTEM += "\n작업 부분에는 다음 Task 계약도 동일하�
 # or a Python-selected response. Training serializers must use these same exports.
 from soomac_irc.prompt_examples import PROMPT_EXAMPLE_VERSION, render_examples
 
-PROMPT_CONTRACT_VERSION = "gl06_staff_dialogue_v1"
+PROMPT_CONTRACT_VERSION = "compound_commit_change_facts_v2"
 BASE_DECISION_SYSTEM = DECISION_SYSTEM
 BASE_RECOMMENDATION_SYSTEM = RECOMMENDATION_SYSTEM
 BASE_TASK_RESPONSE_SYSTEM = TASK_RESPONSE_SYSTEM

@@ -1,0 +1,142 @@
+[
+ {
+  "key": "decision",
+  "in": 6209,
+  "off_s": 5.318,
+  "off_text": "{\"route\":\"task\",\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"}}",
+  "off_out": 32,
+  "on_s": 4.92,
+  "on_text": "{\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"},\"route\":\"task\"}",
+  "on_out": 33
+ },
+ {
+  "key": "recommendation",
+  "in": 3832,
+  "off_s": 4.625,
+  "off_text": "{\"proposal\":{\"sauce\":\"크림\",\"noodle_type\":\"얇은면\",\"noodle_portion\":\"normal\",\"toppings\":{}},\"reason_tags\":[\"앞서 말씀하신 얇은 면과 보통 양 유지\",\"느끼한 소스로 크림 선택\"]}",
+  "off_out": 58,
+  "on_s": 4.665,
+  "on_text": "{\"proposal\":{\"sauce\":\"크림\",\"noodle_type\":\"얇은면\",\"noodle_portion\":\"normal\",\"toppings\":{}},\"reason_tags\":[\"앞서 말씀하신 얇은 면과 보통 양 유지\",\"느끼한 소스로 크림 선택\"]}",
+  "on_out": 58
+ },
+ {
+  "key": "response/task",
+  "in": 6077,
+  "off_s": 4.8,
+  "off_text": "{\"reply\":\"얇은 면과 보통 양은 그대로예요. 느끼한 소스로 크림을 추천할게요. 이대로 선택할까요?\"}",
+  "off_out": 32,
+  "on_s": 4.581,
+  "on_text": "{\"reply\":\"얇은 면과 보통 양은 그대로 유지하고 느끼한 크림 소스를 추천할게요. 이대로 선택할까요?\"}",
+  "on_out": 31
+ },
+ {
+  "key": "decision",
+  "in": 6317,
+  "off_s": 4.015,
+  "off_text": "{\"route\":\"task\",\"order\":{\"sauce\":\"크림\"}}",
+  "off_out": 14,
+  "on_s": 0.84,
+  "on_text": "{\"route\":\"task\",\"order\":{\"sauce\":\"크림\"}}",
+  "on_out": 14
+ },
+ {
+  "key": "response/task",
+  "in": 5962,
+  "off_s": 3.987,
+  "off_text": "{\"reply\":\"소스는 크림으로 저장했어요. 계속 진행할게요.\"}",
+  "off_out": 18,
+  "on_s": 1.747,
+  "on_text": "{\"reply\":\"소스는 크림으로 저장했어요. 현재 면 종류는 얇은 면이에요. 이대로 진행할까요?\"}",
+  "on_out": 29
+ },
+ {
+  "key": "decision",
+  "in": 6311,
+  "off_s": 3.832,
+  "off_text": "{\"route\":\"task\",\"commit\":true}",
+  "off_out": 10,
+  "on_s": 0.637,
+  "on_text": "{\"route\":\"task\",\"commit\":true}",
+  "on_out": 10
+ },
+ {
+  "key": "decision",
+  "in": 6406,
+  "off_s": 4.64,
+  "off_text": "{\"order\":{\"toppings\":{\"버섯\":\"low\",\"양파\":\"low\"}},\"route\":\"task\"}",
+  "off_out": 23,
+  "on_s": 1.364,
+  "on_text": "{\"order\":{\"toppings\":{\"버섯\":\"low\",\"양파\":\"low\"}},\"route\":\"task\"}",
+  "on_out": 23
+ },
+ {
+  "key": "response/task",
+  "in": 6210,
+  "off_s": 4.591,
+  "off_text": "{\"reply\":\"양파와 버섯은 모두 적은 양으로 저장했어요. 이대로 담을까요?\"}",
+  "off_out": 25,
+  "on_s": 1.575,
+  "on_text": "{\"reply\":\"양파와 버섯은 적은 양으로 저장했어요. 이대로 담을까요?\"}",
+  "on_out": 24
+ },
+ {
+  "key": "decision",
+  "in": 6481,
+  "off_s": 4.382,
+  "off_text": "{\"order\":{\"toppings\":{\"버섯\":\"normal\"}},\"route\":\"task\"}",
+  "off_out": 18,
+  "on_s": 1.093,
+  "on_text": "{\"order\":{\"toppings\":{\"버섯\":\"normal\"}},\"route\":\"task\"}",
+  "on_out": 18
+ },
+ {
+  "key": "response/task",
+  "in": 6292,
+  "off_s": 4.353,
+  "off_text": "{\"reply\":\"버섯은 보통 양으로 저장했어요. 이대로 담을까요?\"}",
+  "off_out": 20,
+  "on_s": 1.421,
+  "on_text": "{\"reply\":\"버섯은 보통 양으로 저장했어요. 이대로 담을까요?\"}",
+  "on_out": 20
+ },
+ {
+  "key": "decision",
+  "in": 6514,
+  "off_s": 4.617,
+  "off_text": "{\"route\":\"task\",\"order\":{\"toppings\":{\"버섯\":\"normal\"}},\"commit\":true}",
+  "off_out": 22,
+  "on_s": 1.405,
+  "on_text": "{\"route\":\"task\",\"order\":{\"toppings\":{\"버섯\":\"normal\"}},\"commit\":true}",
+  "on_out": 22
+ },
+ {
+  "key": "recommendation",
+  "in": 3835,
+  "off_s": 4.655,
+  "off_text": "{\"proposal\":{\"sauce\":\"크림\",\"noodle_type\":null,\"noodle_portion\":null,\"toppings\":{}},\"reason_tags\":[\"앞서 말씀하신 얇은 면 보통 양 유지\",\"느끼한 소스 요청에 맞는 크림\"]}",
+  "off_out": 57,
+  "on_s": 3.071,
+  "on_text": "{\"proposal\":{\"sauce\":\"크림\",\"noodle_type\":null,\"noodle_portion\":null,\"toppings\":{}},\"reason_tags\":[\"앞서 말씀하신 얇은 면 보통 양 유지\",\"느끼한 소스 요청에 맞는 크림\"]}",
+  "on_out": 57
+ },
+ {
+  "key": "response/general",
+  "in": 2567,
+  "off_s": 2.308,
+  "off_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}",
+  "off_out": 25,
+  "on_s": 1.915,
+  "on_text": "{\"reply\":\"그런 말은 하지 마세요. 다른 이야기를 해볼까요?\"}",
+  "on_out": 18
+ },
+ {
+  "key": "response/general",
+  "in": 2561,
+  "off_s": 2.328,
+  "off_text": "{\"reply\":\"부적절한 표현은 삼가 주세요. 육류 재료를 선택할 수 있어요.\"}",
+  "off_out": 25,
+  "on_s": 1.828,
+  "on_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}",
+  "on_out": 25
+ }
+]

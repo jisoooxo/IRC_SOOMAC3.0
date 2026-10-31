@@ -1,0 +1,187 @@
+
+=== compound T1 [initial] "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+  prev: FAIL cream_is_unconfirmed_candidate | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 13.33s {'decision': [6.77], 'response': [6.56]} cache=[None, None]
+        D=['{"order":{"noodle_portion":"normal","noodle_type":"얇은면"},"route":"task"}']
+        P="면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?"
+  off : FAIL cream_is_unconfirmed_candidate | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 13.07s {'decision': [6.64], 'response': [6.43]} cache=['off', 'off']
+        D=['{"order":{"noodle_portion":"normal","noodle_type":"얇은면"},"route":"task"}']
+        P="면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?"
+  on  : FAIL cream_is_unconfirmed_candidate | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 13.57s {'decision': [6.89], 'response': [6.68]} cache=['build', 'build']
+        D=['{"order":{"noodle_portion":"normal","noodle_type":"얇은면"},"route":"task"}']
+        P="면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?"
+
+=== compound T2 [cream_execute] "크림으로 선택할게. 바로 담아."
+  prev: FAIL order_matches,execute_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 10.65s {'decision': [5.18], 'response': [5.47]} cache=[None, None]
+        D=['{"route":"task","commit":true}']
+        P="소스는 크림으로 선택했어요. 이대로 담을까요?"
+  off : FAIL order_matches,execute_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 10.45s {'decision': [5.12], 'response': [5.32]} cache=['off', 'off']
+        D=['{"route":"task","commit":true}']
+        P="소스는 크림으로 선택했어요. 이대로 담을까요?"
+  on  : FAIL order_matches,execute_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 2.75s {'decision': [0.98], 'response': [1.77]} cache=['hit', 'hit']
+        D=['{"route":"task","commit":true}']
+        P="소스는 크림으로 선택했어요. 이대로 담을까요?"
+
+=== compound T3 [vegetables] "양파랑 버섯 둘 다 적게 담아줘."
+  prev: FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:low,양파:low] 제약=[] | pending=- | 12.18s {'decision': [6.2], 'response': [5.98]} cache=[None, None]
+        D=['{"order":{"toppings":{"버섯":"low","양파":"low"}},"route":"task"}']
+        P="양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?"
+  off : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:low,양파:low] 제약=[] | pending=- | 11.88s {'decision': [6.09], 'response': [5.8]} cache=['off', 'off']
+        D=['{"order":{"toppings":{"버섯":"low","양파":"low"}},"route":"task"}']
+        P="양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?"
+  on  : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:low,양파:low] 제약=[] | pending=- | 4.18s {'decision': [2.0], 'response': [2.18]} cache=['hit', 'hit']
+        D=['{"order":{"toppings":{"버섯":"low","양파":"low"}},"route":"task"}']
+        P="양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?"
+
+=== compound T4 [mushroom_execute] "버섯만 보통 양으로 바꿔서 바로 담아."
+  prev: FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 12.83s {'decision': [6.29], 'response': [6.54]} cache=[None, None]
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}},"commit":true}']
+        P="버섯은 보통 양으로 바꿨어요. 아직 소스가 선택되지 않았어요. 소스를 말씀해주세요."
+  off : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 12.36s {'decision': [6.15], 'response': [6.2]} cache=['off', 'off']
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}},"commit":true}']
+        P="버섯은 보통 양으로 바꿨어요. 아직 소스가 선택되지 않았어요. 소스를 말씀해주세요."
+  on  : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 4.52s {'decision': [1.95], 'response': [2.57]} cache=['hit', 'hit']
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}},"commit":true}']
+        P="버섯은 보통 양으로 바꿨어요. 아직 소스가 선택되지 않았어요. 소스를 말씀해주세요."
+
+=== compound T5 [allergy_sausage_execute] "게살 알레르기가 있어서 소시지만 많이 바로 담아줘."
+  prev: FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low] 제약=[게살/allergy] | pending=- | 14.11s {'decision': [7.36], 'response': [6.75]} cache=[None, None]
+        D=['{"order":{"toppings":{"소시지":"high"}},"restrictions":[{"action":"add","reason":"allergy","target":"게살"}],"route":"task"}']
+        P="게살 알레르기 제한을 추가했어요. 소시지는 많이 선택되어 있어요. 이대로 담을까요?"
+  off : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low] 제약=[게살/allergy] | pending=- | 13.62s {'decision': [7.17], 'response': [6.45]} cache=['off', 'off']
+        D=['{"order":{"toppings":{"소시지":"high"}},"restrictions":[{"action":"add","reason":"allergy","target":"게살"}],"route":"task"}']
+        P="게살 알레르기 제한을 추가했어요. 소시지는 많이 선택되어 있어요. 이대로 담을까요?"
+  on  : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low] 제약=[게살/allergy] | pending=- | 6.75s {'decision': [3.22], 'response': [3.52]} cache=['hit', 'hit']
+        D=['{"order":{"toppings":{"소시지":"high"}},"restrictions":[{"action":"add","reason":"allergy","target":"게살"}],"route":"task"}']
+        P="게살 알레르기 제한을 추가했어요. 소시지는 많이 선택되어 있고 양파는 적은 양 그대로예요. 이대로 담을까요?"
+
+=== compound T6 [cheese_execute] "페퍼론치노는 빼고 치즈만 적게 골라서 바로 담아."
+  prev: FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low,치즈:low] 제약=[게살/allergy] | pending=- | 13.5s {'decision': [6.74], 'response': [6.76]} cache=[None, None]
+        D=['{"order":{"toppings":{"치즈":"low","페퍼론치노":"none"}},"route":"task"}']
+        P="페퍼론치노는 제외하고 치즈를 적은 양으로 선택했어요. 이대로 담을까요?"
+  off : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low,치즈:low] 제약=[게살/allergy] | pending=- | 13.16s {'decision': [6.5], 'response': [6.66]} cache=['off', 'off']
+        D=['{"order":{"toppings":{"치즈":"low","페퍼론치노":"none"}},"route":"task"}']
+        P="페퍼론치노는 제외하고 치즈를 적은 양으로 선택했어요. 이대로 담을까요?"
+  on  : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low,치즈:low] 제약=[게살/allergy] | pending=- | 5.36s {'decision': [2.54], 'response': [2.82]} cache=['hit', 'hit']
+        D=['{"order":{"toppings":{"치즈":"low","페퍼론치노":"none"}},"route":"task"}']
+        P="페퍼론치노는 제외하고 치즈를 적은 양으로 선택했어요. 이대로 담을까요?"
+
+=== split_control T1 [initial] "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+  prev: FAIL cream_is_unconfirmed_candidate | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 12.99s {'decision': [6.39], 'response': [6.6]} cache=[None, None]
+        D=['{"order":{"noodle_portion":"normal","noodle_type":"얇은면"},"route":"task"}']
+        P="면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?"
+  off : FAIL cream_is_unconfirmed_candidate | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 12.64s {'decision': [6.22], 'response': [6.42]} cache=['off', 'off']
+        D=['{"order":{"noodle_portion":"normal","noodle_type":"얇은면"},"route":"task"}']
+        P="면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?"
+  on  : FAIL cream_is_unconfirmed_candidate | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 13.24s {'decision': [6.5], 'response': [6.74]} cache=['build', 'build']
+        D=['{"order":{"noodle_portion":"normal","noodle_type":"얇은면"},"route":"task"}']
+        P="면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?"
+
+=== split_control T2 [cream_select] "크림으로 선택할게."
+  prev: FAIL order_matches | exec=False commit=False conf=accept rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 10.84s {'decision': [5.28], 'response': [5.56]} cache=[None, None]
+        D=['{"route":"task","confirmation":"accept"}']
+        P="소스는 크림으로 선택했어요. 이대로 진행할까요?"
+  off : FAIL order_matches | exec=False commit=False conf=accept rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 10.88s {'decision': [5.33], 'response': [5.55]} cache=['off', 'off']
+        D=['{"route":"task","confirmation":"accept"}']
+        P="소스는 크림으로 선택했어요. 이대로 진행할까요?"
+  on  : FAIL order_matches | exec=False commit=False conf=accept rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 3.72s {'decision': [0.99], 'response': [2.72]} cache=['hit', 'hit']
+        D=['{"route":"task","confirmation":"accept"}']
+        P="소스는 크림으로 선택했어요. 면은 얇은면 보통 양 그대로예요. 이대로 진행할까요?"
+
+=== split_control T3 [cream_execute] "바로 담아."
+  prev: FAIL order_matches,execute_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 11.05s {'decision': [5.28], 'response': [5.77]} cache=[None, None]
+        D=['{"route":"task","commit":true}']
+        P="아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요."
+  off : FAIL order_matches,execute_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 11.28s {'decision': [5.32], 'response': [5.96]} cache=['off', 'off']
+        D=['{"route":"task","commit":true}']
+        P="아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요."
+  on  : FAIL order_matches,execute_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [] 제약=[] | pending=- | 3.67s {'decision': [1.02], 'response': [2.65]} cache=['hit', 'hit']
+        D=['{"route":"task","commit":true}']
+        P="아직 소스가 선택되지 않았어요. 오일, 토마토, 크림 중 어떤 소스로 할까요?"
+
+=== split_control T4 [vegetables] "양파랑 버섯 둘 다 적게 담아줘."
+  prev: FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:low,양파:low] 제약=[] | pending=- | 12.52s {'decision': [6.45], 'response': [6.07]} cache=[None, None]
+        D=['{"order":{"toppings":{"버섯":"low","양파":"low"}},"route":"task"}']
+        P="양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?"
+  off : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:low,양파:low] 제약=[] | pending=- | 12.79s {'decision': [6.87], 'response': [5.91]} cache=['off', 'off']
+        D=['{"order":{"toppings":{"버섯":"low","양파":"low"}},"route":"task"}']
+        P="양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?"
+  on  : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:low,양파:low] 제약=[] | pending=- | 4.26s {'decision': [2.02], 'response': [2.24]} cache=['hit', 'hit']
+        D=['{"order":{"toppings":{"버섯":"low","양파":"low"}},"route":"task"}']
+        P="양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?"
+
+=== split_control T5 [mushroom_change] "버섯만 보통 양으로 바꿔줘."
+  prev: FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 12.68s {'decision': [6.02], 'response': [6.66]} cache=[None, None]
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}}}']
+        P="버섯을 보통 양으로 바꿨어요. 양파는 적은 양 그대로예요. 이대로 담을까요?"
+  off : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 12.25s {'decision': [5.81], 'response': [6.43]} cache=['off', 'off']
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}}}']
+        P="버섯을 보통 양으로 바꿨어요. 양파는 적은 양 그대로예요. 이대로 담을까요?"
+  on  : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 4.44s {'decision': [1.58], 'response': [2.86]} cache=['hit', 'hit']
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}}}']
+        P="버섯은 보통 양으로 바꿨어요. 양파는 적은 양 그대로예요. 이대로 담을까요?"
+
+=== split_control T6 [mushroom_execute] "바로 담아."
+  prev: FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 12.35s {'decision': [6.34], 'response': [6.01]} cache=[None, None]
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}},"commit":true}']
+        P="아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요."
+  off : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 11.96s {'decision': [6.19], 'response': [5.77]} cache=['off', 'off']
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}},"commit":true}']
+        P="아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요."
+  on  : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[] | pending=- | 4.92s {'decision': [2.06], 'response': [2.87]} cache=['hit', 'hit']
+        D=['{"route":"task","order":{"toppings":{"버섯":"normal"}},"commit":true}']
+        P="아직 소스가 선택되지 않았어요. 오일, 토마토, 크림 중 어떤 소스로 할까요?"
+
+=== split_control T7 [allergy] "게살 알레르기가 있어요."
+  prev: FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[게살/allergy] | pending=- | 14.13s {'decision': [7.48], 'response': [6.65]} cache=[None, None]
+        D=['{"route":"task","order":{"toppings":{"게살":"none"}},"restrictions":[{"action":"add","target":"게살","reason":"allergy"}]}']
+        P="게살 알레르기 제한을 추가했어요. 현재 주문에는 게살을 피해야 해요."
+  off : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[게살/allergy] | pending=- | 13.46s {'decision': [7.22], 'response': [6.24]} cache=['off', 'off']
+        D=['{"route":"task","order":{"toppings":{"게살":"none"}},"restrictions":[{"action":"add","target":"게살","reason":"allergy"}]}']
+        P="게살 알레르기 제한을 추가했어요. 현재 주문에는 게살을 피해야 해요."
+  on  : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[게살/allergy] | pending=- | 5.63s {'decision': [3.21], 'response': [2.42]} cache=['hit', 'hit']
+        D=['{"route":"task","order":{"toppings":{"게살":"none"}},"restrictions":[{"action":"add","target":"게살","reason":"allergy"}]}']
+        P="게살 알레르기 제한을 새로 추가했어요. 현재 주문은 그대로예요."
+
+=== split_control T8 [sausage_select] "소시지만 많이 골라줘."
+  prev: FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low] 제약=[게살/allergy] | pending=- | 13.5s {'decision': [7.57], 'response': [5.92]} cache=[None, None]
+        D=['{"route":"task","order":{"toppings":{"소시지":"high"}},"restrictions":[{"action":"add","target":"게살","reason":"allergy"}]}']
+        P="소시지를 많이 선택했어요. 이대로 담을까요?"
+  off : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low] 제약=[게살/allergy] | pending=- | 13.2s {'decision': [7.34], 'response': [5.86]} cache=['off', 'off']
+        D=['{"route":"task","order":{"toppings":{"소시지":"high"}},"restrictions":[{"action":"add","target":"게살","reason":"allergy"}]}']
+        P="소시지를 많이 선택했어요. 이대로 담을까요?"
+  on  : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[게살/allergy,소시지/dietary_rule] | pending=- | 6.57s {'decision': [3.43], 'response': [3.13]} cache=['hit', 'hit']
+        D=['{"route":"task","order":{"toppings":{"소시지":"high"}},"restrictions":[{"action":"add","target":"소시지","reason":"dietary_rule"}]}']
+        P="소시지는 현재 제한과 충돌해서 반영하지 않았어요. 제한을 해제하려면 명확히 말씀해주세요."
+
+=== split_control T9 [sausage_execute] "바로 담아."
+  prev: FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low] 제약=[게살/allergy] | pending=- | 11.8s {'decision': [5.58], 'response': [6.22]} cache=[None, None]
+        D=['{"route":"task","commit":true}']
+        P="아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요."
+  off : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low] 제약=[게살/allergy] | pending=- | 11.44s {'decision': [5.41], 'response': [6.02]} cache=['off', 'off']
+        D=['{"route":"task","commit":true}']
+        P="아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요."
+  on  : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low] 제약=[게살/allergy,소시지/dietary_rule] | pending=- | 6.72s {'decision': [3.53], 'response': [3.18]} cache=['hit', 'hit']
+        D=['{"route":"task","order":{"toppings":{"소시지":"high"}},"restrictions":[{"action":"remove","target":"소시지","reason":"dietary_rule"}]}']
+        P="소시지는 현재 제한과 충돌해서 반영하지 않았어요. 제한을 해제하려면 명확히 말씀해주세요."
+
+=== split_control T10 [cheese_select] "페퍼론치노는 빼고 치즈만 적게 골라줘."
+  prev: FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low,치즈:low] 제약=[게살/allergy] | pending=- | 14.04s {'decision': [6.98], 'response': [7.06]} cache=[None, None]
+        D=['{"order":{"toppings":{"치즈":"low","페퍼론치노":"none"}},"route":"task"}']
+        P="페퍼론치노는 선택에서 제외했고 치즈는 적은 양으로 선택했어요. 이대로 담을까요?"
+  off : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low,치즈:low] 제약=[게살/allergy] | pending=- | 13.55s {'decision': [6.72], 'response': [6.83]} cache=['off', 'off']
+        D=['{"order":{"toppings":{"치즈":"low","페퍼론치노":"none"}},"route":"task"}']
+        P="페퍼론치노는 선택에서 제외했고 치즈는 적은 양으로 선택했어요. 이대로 담을까요?"
+  on  : FAIL order_matches,section_matches | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low,치즈:low] 제약=[게살/allergy,소시지/dietary_rule] | pending=- | 5.54s {'decision': [2.52], 'response': [3.02]} cache=['hit', 'hit']
+        D=['{"order":{"toppings":{"치즈":"low","페퍼론치노":"none"}},"route":"task"}']
+        P="페퍼론치노는 제외하고 치즈를 적은 양으로 선택했어요. 이대로 진행할까요?"
+
+=== split_control T11 [cheese_execute] "바로 담아."
+  prev: FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low,치즈:low] 제약=[게살/allergy] | pending=- | 12.85s {'decision': [6.59], 'response': [6.26]} cache=[None, None]
+        D=['{"route":"task","order":{"toppings":{"치즈":"low"}},"commit":true}']
+        P="아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요."
+  off : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=True conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,소시지:high,양파:low,치즈:low] 제약=[게살/allergy] | pending=- | 12.79s {'decision': [6.74], 'response': [6.05]} cache=['off', 'off']
+        D=['{"route":"task","order":{"toppings":{"치즈":"low"}},"commit":true}']
+        P="아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요."
+  on  : FAIL order_matches,execute_matches,section_matches,plans_match | exec=False commit=False conf=none rec=none | 얇은면/normal 소스=None [버섯:normal,양파:low,치즈:low] 제약=[게살/allergy,소시지/dietary_rule] | pending=- | 3.62s {'decision': [1.27], 'response': [2.34]} cache=['hit', 'hit']
+        D=['{"route":"task","clarify":true}']
+        P="치즈는 적은 양으로 선택했어요. 이대로 진행할까요?"

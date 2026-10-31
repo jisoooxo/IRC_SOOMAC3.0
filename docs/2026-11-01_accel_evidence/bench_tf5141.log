@@ -1,0 +1,24 @@
+transformers 5.14.1
+/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/peft/config.py:220: UserWarning: Unexpected keyword arguments ['kasa_config', 'monteclora_config', 'velora_config'] for class LoraConfig, these are ignored. This probably means that you're loading a configuration file that was saved using a higher version of the library and additional parameters have been introduced since. It is highly recommended to upgrade the PEFT version before continuing (e.g. by running `pip install -U peft`).
+  warnings.warn(
+load 5.7s, alloc 7.88 GiB
+/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:468: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+events: {'decision': 6, 'recommendation': 2, 'response/task': 4, 'response/general': 2}
+/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages/bitsandbytes/backends/cuda/ops.py:468: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+{"key": "decision", "in": 6209, "out": 32, "off_s": 5.203, "on_s": 5.06, "cache": {"status": "build", "cached_tokens": 6040}, "same_tokens": false, "off_text": "{\"route\":\"task\",\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"}}", "on_text": "{\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"recommendation\":{\"action\":\"request\"},\"route\":\"task\"}"}
+{"key": "recommendation", "in": 3832, "out": 58, "off_s": 5.014, "on_s": 5.034, "cache": {"status": "build", "cached_tokens": 3338}, "same_tokens": true}
+{"key": "response/task", "in": 6077, "out": 32, "off_s": 4.865, "on_s": 4.724, "cache": {"status": "build", "cached_tokens": 5280}, "same_tokens": true}
+{"key": "decision", "in": 6317, "out": 14, "off_s": 3.989, "on_s": 0.927, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "response/task", "in": 5962, "out": 18, "off_s": 3.993, "on_s": 1.949, "cache": {"status": "hit", "cached_tokens": 5280}, "same_tokens": false, "off_text": "{\"reply\":\"소스는 크림으로 저장했어요. 계속 진행할게요.\"}", "on_text": "{\"reply\":\"소스는 크림으로 저장했어요. 현재 면 종류는 얇은 면이에요. 이대로 진행할까요?\"}"}
+{"key": "decision", "in": 6311, "out": 10, "off_s": 3.75, "on_s": 0.688, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "decision", "in": 6406, "out": 23, "off_s": 4.602, "on_s": 1.48, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "response/task", "in": 6210, "out": 25, "off_s": 4.549, "on_s": 1.73, "cache": {"status": "hit", "cached_tokens": 5280}, "same_tokens": false, "off_text": "{\"reply\":\"양파와 버섯은 모두 적은 양으로 저장했어요. 이대로 담을까요?\"}", "on_text": "{\"reply\":\"양파와 버섯은 적은 양으로 저장했어요. 이대로 담을까요?\"}"}
+{"key": "decision", "in": 6481, "out": 18, "off_s": 4.343, "on_s": 1.205, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "response/task", "in": 6292, "out": 20, "off_s": 4.32, "on_s": 1.55, "cache": {"status": "hit", "cached_tokens": 5280}, "same_tokens": true}
+{"key": "decision", "in": 6514, "out": 22, "off_s": 4.597, "on_s": 1.447, "cache": {"status": "hit", "cached_tokens": 6040}, "same_tokens": true}
+{"key": "recommendation", "in": 3835, "out": 57, "off_s": 4.928, "on_s": 3.5, "cache": {"status": "hit", "cached_tokens": 3338}, "same_tokens": true}
+{"key": "response/general", "in": 2567, "out": 25, "off_s": 2.439, "on_s": 2.007, "cache": {"status": "build", "cached_tokens": 1162}, "same_tokens": false, "off_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}", "on_text": "{\"reply\":\"그런 말은 하지 마세요. 다른 이야기를 해볼까요?\"}"}
+{"key": "response/general", "in": 2561, "out": 25, "off_s": 2.44, "on_s": 1.981, "cache": {"status": "hit", "cached_tokens": 1162}, "same_tokens": false, "off_text": "{\"reply\":\"부적절한 표현은 삼가 주세요. 육류 재료를 선택할 수 있어요.\"}", "on_text": "{\"reply\":\"말씀은 자제해 주세요. 계속해서 육류 재료를 선택할 수 있어요.\"}"}
+peak alloc during replay 16.20 GiB, after 13.00 GiB, cache entries 4
+{"vlm_same": true, "vlm_before": "이 이미지의 주된 색은 갈색입니다.", "vlm_after": "이 이미지의 주된 색은 갈색입니다.", "vlm_s": [0.946, 0.628]}
+SUMMARY {"n": 14, "same_tokens": 9, "hit_n": 10, "hit_off_mean_s": 4.151, "hit_on_mean_s": 1.646}

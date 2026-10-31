@@ -1,0 +1,2488 @@
+{
+  "artifact_type": "user_acceptance_measurements_not_training_data",
+  "source_directory": "/tmp/soomac_closed_loop_all_20261101_v2",
+  "identity": {
+    "pid": 85399,
+    "started": 1793467780.4756677,
+    "adapters": {
+      "decision": {
+        "path": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/remote_all_a519cf_20261031_r2/results/checkpoints/attempt-d8a4ee465c95443daa47e2caf7fa1ee4/decision/best_adapter",
+        "weight_sha256": "c2cf15bb3a351c016974b69e5126b427373c9f06a9dbe367b402daf038c8a3d4",
+        "config_sha256": "0b3d65522040673bda4934d1db94db2af951d0ef10dc072deeaca0984c48ad7c"
+      },
+      "response": {
+        "path": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/local_v6_batch_20261028/response-b1acc16-resume-bed9d88cbc5a/full/attempt-2b74a8919fce4e5690767295942c27d5/response/best_adapter",
+        "weight_sha256": "7f528012569df694ecefa0bcb2b816c26dec0875995fdbd300e6fb32dc9a5dff",
+        "config_sha256": "4f27143eaa595edc441030e81a7fbe5885a249fc145518460f7c7145d42944ac"
+      },
+      "recommendation": {
+        "path": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/local_v6_batch_20261028/recommendation-c492d6c7538b/attempt-8f34316e864e429ba8ebdbd8b60f8a8a/recommendation/best_adapter",
+        "weight_sha256": "cda007d8e7e985c483a96821cf32e9b6e0fcb8b713e3305c5c0d905e45c7e9de",
+        "config_sha256": "4f27143eaa595edc441030e81a7fbe5885a249fc145518460f7c7145d42944ac"
+      }
+    }
+  },
+  "exit": {
+    "exit_code": 0,
+    "gpu": "NVIDIA RTX PRO 4500 Blackwell",
+    "peak_allocated_bytes": 13549817344,
+    "actual_ros": false,
+    "training": false
+  },
+  "plan": {
+    "base": "/home/roma/Desktop/sLLM/gemma-4-12B-it",
+    "adapters": {
+      "decision": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/remote_all_a519cf_20261031_r2/results/checkpoints/attempt-d8a4ee465c95443daa47e2caf7fa1ee4/decision/best_adapter",
+      "response": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/local_v6_batch_20261028/response-b1acc16-resume-bed9d88cbc5a/full/attempt-2b74a8919fce4e5690767295942c27d5/response/best_adapter",
+      "recommendation": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/local_v6_batch_20261028/recommendation-c492d6c7538b/attempt-8f34316e864e429ba8ebdbd8b60f8a8a/recommendation/best_adapter"
+    },
+    "source_sha256": {
+      "agent_prompts.py": "a2648c32a178fac2cc3b64fb97abf975cfebec4cee9b97d53ec69b90ff5b5955",
+      "prompt_examples.py": "adbcd38251ebf569f36f9ae7ab056f51f53be23c6fe27f834fb53cd21445e1ad",
+      "prompt_contrast_examples.py": "3593309ec949c37b0f432ceb81ff3a6d04a49e9f3b3654f8aa9a7b0257277992",
+      "llm_langgraph.py": "e02d3ce5c023d181258812cceed5b6dfcb54ab1f7cda87a93622d295581b4ec2",
+      "model_runtime.py": "abb224719e69e21e385b7a24819ad4499e3ca91f211851415df652c6f9a73a75"
+    },
+    "episodes": {
+      "compound": [
+        [
+          "noodle",
+          "initial",
+          "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘.",
+          false
+        ],
+        [
+          "noodle",
+          "cream_execute",
+          "크림으로 선택할게. 바로 담아.",
+          true
+        ],
+        [
+          "veggie",
+          "vegetables",
+          "양파랑 버섯 둘 다 적게 담아줘.",
+          false
+        ],
+        [
+          "veggie",
+          "mushroom_execute",
+          "버섯만 보통 양으로 바꿔서 바로 담아.",
+          true
+        ],
+        [
+          "meat",
+          "allergy_sausage_execute",
+          "게살 알레르기가 있어서 소시지만 많이 바로 담아줘.",
+          true
+        ],
+        [
+          "extra",
+          "cheese_execute",
+          "페퍼론치노는 빼고 치즈만 적게 골라서 바로 담아.",
+          true
+        ]
+      ],
+      "split_control": [
+        [
+          "noodle",
+          "initial",
+          "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘.",
+          false
+        ],
+        [
+          "noodle",
+          "cream_select",
+          "크림으로 선택할게.",
+          false
+        ],
+        [
+          "noodle",
+          "cream_execute",
+          "바로 담아.",
+          true
+        ],
+        [
+          "veggie",
+          "vegetables",
+          "양파랑 버섯 둘 다 적게 담아줘.",
+          false
+        ],
+        [
+          "veggie",
+          "mushroom_change",
+          "버섯만 보통 양으로 바꿔줘.",
+          false
+        ],
+        [
+          "veggie",
+          "mushroom_execute",
+          "바로 담아.",
+          true
+        ],
+        [
+          "meat",
+          "allergy",
+          "게살 알레르기가 있어요.",
+          false
+        ],
+        [
+          "meat",
+          "sausage_select",
+          "소시지만 많이 골라줘.",
+          false
+        ],
+        [
+          "meat",
+          "sausage_execute",
+          "바로 담아.",
+          true
+        ],
+        [
+          "extra",
+          "cheese_select",
+          "페퍼론치노는 빼고 치즈만 적게 골라줘.",
+          false
+        ],
+        [
+          "extra",
+          "cheese_execute",
+          "바로 담아.",
+          true
+        ]
+      ]
+    },
+    "actual_ros": false,
+    "training": false,
+    "gold_order_repair": false,
+    "physical_simulation_only": true,
+    "measure_all": true,
+    "acceptance_owner": "user"
+  },
+  "acceptance_owner": "user",
+  "actual_ros": false,
+  "turns": [
+    {
+      "episode": "compound",
+      "turn": 1,
+      "tag": "initial",
+      "user_text": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘.",
+      "reply": "면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?",
+      "latency_ms": 13329.269,
+      "expected_section": "noodle",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": null,
+        "noodle_portion": null,
+        "toppings": {},
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {}
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": true,
+        "execute_matches": true,
+        "section_matches": true,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "cream_is_unconfirmed_candidate": false,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"route\":\"task\"}",
+          "prompt_tokens": 8092,
+          "output_tokens": 25,
+          "latency_ms": 6765.832
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?\"}",
+          "prompt_tokens": 7574,
+          "output_tokens": 34,
+          "latency_ms": 6561.36
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {},
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "compound",
+      "turn": 2,
+      "tag": "cream_execute",
+      "user_text": "크림으로 선택할게. 바로 담아.",
+      "reply": "소스는 크림으로 선택했어요. 이대로 담을까요?",
+      "latency_ms": 10645.641,
+      "expected_section": "noodle",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": true,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "clarify",
+        "reason": "missing_order",
+        "execute": false,
+        "missing": [
+          "sauce"
+        ],
+        "conflicts": []
+      },
+      "expected_plans": [
+        {
+          "class": "noodle_thin",
+          "repeat_count": 2
+        }
+      ],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": false,
+        "section_matches": true,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": false
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"commit\":true}",
+          "prompt_tokens": 8148,
+          "output_tokens": 10,
+          "latency_ms": 5175.779
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"소스는 크림으로 선택했어요. 이대로 담을까요?\"}",
+          "prompt_tokens": 7663,
+          "output_tokens": 19,
+          "latency_ms": 5468.22
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {},
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": {
+            "type": "missing_order",
+            "fields": [
+              "sauce"
+            ]
+          },
+          "applied_this_turn": {
+            "order_changes": {},
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "compound",
+      "turn": 3,
+      "tag": "vegetables",
+      "user_text": "양파랑 버섯 둘 다 적게 담아줘.",
+      "reply": "양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?",
+      "latency_ms": 12175.578,
+      "expected_section": "veggie",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "low",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "low"
+        },
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "버섯": "low",
+            "양파": "low"
+          }
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": true,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"order\":{\"toppings\":{\"버섯\":\"low\",\"양파\":\"low\"}},\"route\":\"task\"}",
+          "prompt_tokens": 8189,
+          "output_tokens": 23,
+          "latency_ms": 6198.799
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?\"}",
+          "prompt_tokens": 7758,
+          "output_tokens": 24,
+          "latency_ms": 5975.095
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "low",
+              "양파": "low"
+            },
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "compound",
+      "turn": 4,
+      "tag": "mushroom_execute",
+      "user_text": "버섯만 보통 양으로 바꿔서 바로 담아.",
+      "reply": "버섯은 보통 양으로 바꿨어요. 아직 소스가 선택되지 않았어요. 소스를 말씀해주세요.",
+      "latency_ms": 12827.402,
+      "expected_section": "veggie",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "low",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal"
+        },
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "버섯": "normal"
+          }
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": true,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "clarify",
+        "reason": "missing_order",
+        "execute": false,
+        "missing": [
+          "sauce"
+        ],
+        "conflicts": []
+      },
+      "expected_plans": [
+        {
+          "class": "onion",
+          "repeat_count": 1
+        },
+        {
+          "class": "mushroom",
+          "repeat_count": 2
+        }
+      ],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": false,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": false
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"order\":{\"toppings\":{\"버섯\":\"normal\"}},\"commit\":true}",
+          "prompt_tokens": 8243,
+          "output_tokens": 22,
+          "latency_ms": 6287.158
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"버섯은 보통 양으로 바꿨어요. 아직 소스가 선택되지 않았어요. 소스를 말씀해주세요.\"}",
+          "prompt_tokens": 7863,
+          "output_tokens": 28,
+          "latency_ms": 6538.505
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low"
+            },
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": {
+            "type": "missing_order",
+            "fields": [
+              "sauce"
+            ]
+          },
+          "applied_this_turn": {
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "compound",
+      "turn": 5,
+      "tag": "allergy_sausage_execute",
+      "user_text": "게살 알레르기가 있어서 소시지만 많이 바로 담아줘.",
+      "reply": "게살 알레르기 제한을 추가했어요. 소시지는 많이 선택되어 있어요. 이대로 담을까요?",
+      "latency_ms": 14109.792,
+      "expected_section": "meat",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "소시지": "high"
+          }
+        },
+        "restriction_options": [
+          {
+            "action": "add",
+            "reason": "allergy",
+            "target": "게살"
+          }
+        ],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [
+        {
+          "class": "sausage",
+          "repeat_count": 3
+        }
+      ],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": false,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": false
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"order\":{\"toppings\":{\"소시지\":\"high\"}},\"restrictions\":[{\"action\":\"add\",\"reason\":\"allergy\",\"target\":\"게살\"}],\"route\":\"task\"}",
+          "prompt_tokens": 8296,
+          "output_tokens": 36,
+          "latency_ms": 7361.752
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"게살 알레르기 제한을 추가했어요. 소시지는 많이 선택되어 있어요. 이대로 담을까요?\"}",
+          "prompt_tokens": 8000,
+          "output_tokens": 30,
+          "latency_ms": 6746.213
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low",
+              "소시지": "high"
+            },
+            "restrictions": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ]
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "compound",
+      "turn": 6,
+      "tag": "cheese_execute",
+      "user_text": "페퍼론치노는 빼고 치즈만 적게 골라서 바로 담아.",
+      "reply": "페퍼론치노는 제외하고 치즈를 적은 양으로 선택했어요. 이대로 담을까요?",
+      "latency_ms": 13503.423,
+      "expected_section": "extra",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high",
+          "치즈": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal",
+          "소시지": "high",
+          "치즈": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "치즈": "low",
+            "페퍼론치노": "none"
+          }
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [
+        {
+          "class": "cheese",
+          "repeat_count": 1
+        }
+      ],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": false,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": false
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"order\":{\"toppings\":{\"치즈\":\"low\",\"페퍼론치노\":\"none\"}},\"route\":\"task\"}",
+          "prompt_tokens": 8370,
+          "output_tokens": 26,
+          "latency_ms": 6739.154
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"페퍼론치노는 제외하고 치즈를 적은 양으로 선택했어요. 이대로 담을까요?\"}",
+          "prompt_tokens": 8124,
+          "output_tokens": 29,
+          "latency_ms": 6762.325
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low",
+              "소시지": "high",
+              "치즈": "low"
+            },
+            "restrictions": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ]
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "toppings.치즈": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 1,
+      "tag": "initial",
+      "user_text": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘.",
+      "reply": "면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?",
+      "latency_ms": 12986.871,
+      "expected_section": "noodle",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": null,
+        "noodle_portion": null,
+        "toppings": {},
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {}
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": true,
+        "execute_matches": true,
+        "section_matches": true,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "cream_is_unconfirmed_candidate": false,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"order\":{\"noodle_portion\":\"normal\",\"noodle_type\":\"얇은면\"},\"route\":\"task\"}",
+          "prompt_tokens": 8092,
+          "output_tokens": 25,
+          "latency_ms": 6386.673
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"면은 얇은면으로 보통 양을 선택했어요. 느끼한 소스는 크림을 추천해요. 이대로 진행할까요?\"}",
+          "prompt_tokens": 7574,
+          "output_tokens": 34,
+          "latency_ms": 6598.45
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {},
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 2,
+      "tag": "cream_select",
+      "user_text": "크림으로 선택할게.",
+      "reply": "소스는 크림으로 선택했어요. 이대로 진행할까요?",
+      "latency_ms": 10839.793,
+      "expected_section": "noodle",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "accept"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": true,
+        "section_matches": true,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"confirmation\":\"accept\"}",
+          "prompt_tokens": 8144,
+          "output_tokens": 10,
+          "latency_ms": 5277.231
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"소스는 크림으로 선택했어요. 이대로 진행할까요?\"}",
+          "prompt_tokens": 7656,
+          "output_tokens": 19,
+          "latency_ms": 5560.949
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {},
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {},
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 3,
+      "tag": "cream_execute",
+      "user_text": "바로 담아.",
+      "reply": "아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요.",
+      "latency_ms": 11050.36,
+      "expected_section": "noodle",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": true,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "clarify",
+        "reason": "missing_order",
+        "execute": false,
+        "missing": [
+          "sauce"
+        ],
+        "conflicts": []
+      },
+      "expected_plans": [
+        {
+          "class": "noodle_thin",
+          "repeat_count": 2
+        }
+      ],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": false,
+        "section_matches": true,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": false
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"commit\":true}",
+          "prompt_tokens": 8176,
+          "output_tokens": 10,
+          "latency_ms": 5281.91
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요.\"}",
+          "prompt_tokens": 7691,
+          "output_tokens": 20,
+          "latency_ms": 5766.795
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {},
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": {
+            "type": "missing_order",
+            "fields": [
+              "sauce"
+            ]
+          },
+          "applied_this_turn": {
+            "order_changes": {},
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 4,
+      "tag": "vegetables",
+      "user_text": "양파랑 버섯 둘 다 적게 담아줘.",
+      "reply": "양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?",
+      "latency_ms": 12515.555,
+      "expected_section": "veggie",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {},
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "low",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "low"
+        },
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "버섯": "low",
+            "양파": "low"
+          }
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": true,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"order\":{\"toppings\":{\"버섯\":\"low\",\"양파\":\"low\"}},\"route\":\"task\"}",
+          "prompt_tokens": 8218,
+          "output_tokens": 23,
+          "latency_ms": 6446.715
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"양파와 버섯 모두 적은 양으로 선택했어요. 이대로 담을까요?\"}",
+          "prompt_tokens": 7787,
+          "output_tokens": 24,
+          "latency_ms": 6067.146
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "low",
+              "양파": "low"
+            },
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 5,
+      "tag": "mushroom_change",
+      "user_text": "버섯만 보통 양으로 바꿔줘.",
+      "reply": "버섯을 보통 양으로 바꿨어요. 양파는 적은 양 그대로예요. 이대로 담을까요?",
+      "latency_ms": 12684.929,
+      "expected_section": "veggie",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "low",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal"
+        },
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "버섯": "normal"
+          }
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": true,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"order\":{\"toppings\":{\"버섯\":\"normal\"}}}",
+          "prompt_tokens": 8269,
+          "output_tokens": 17,
+          "latency_ms": 6018.691
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"버섯을 보통 양으로 바꿨어요. 양파는 적은 양 그대로예요. 이대로 담을까요?\"}",
+          "prompt_tokens": 7886,
+          "output_tokens": 30,
+          "latency_ms": 6664.46
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low"
+            },
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 6,
+      "tag": "mushroom_execute",
+      "user_text": "바로 담아.",
+      "reply": "아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요.",
+      "latency_ms": 12348.362,
+      "expected_section": "veggie",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal"
+        },
+        "restrictions": []
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "버섯": "normal"
+          }
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": true,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "clarify",
+        "reason": "missing_order",
+        "execute": false,
+        "missing": [
+          "sauce"
+        ],
+        "conflicts": []
+      },
+      "expected_plans": [
+        {
+          "class": "onion",
+          "repeat_count": 1
+        },
+        {
+          "class": "mushroom",
+          "repeat_count": 2
+        }
+      ],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": false,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": false
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"order\":{\"toppings\":{\"버섯\":\"normal\"}},\"commit\":true}",
+          "prompt_tokens": 8312,
+          "output_tokens": 22,
+          "latency_ms": 6337.573
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요.\"}",
+          "prompt_tokens": 7970,
+          "output_tokens": 20,
+          "latency_ms": 6008.966
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low"
+            },
+            "restrictions": []
+          },
+          "pending": null,
+          "next_prompt": {
+            "type": "missing_order",
+            "fields": [
+              "sauce"
+            ]
+          },
+          "applied_this_turn": {
+            "order_changes": {},
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 7,
+      "tag": "allergy",
+      "user_text": "게살 알레르기가 있어요.",
+      "reply": "게살 알레르기 제한을 추가했어요. 현재 주문에는 게살을 피해야 해요.",
+      "latency_ms": 14133.609,
+      "expected_section": "meat",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        },
+        "restrictions": []
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "게살": "none"
+          }
+        },
+        "restriction_options": [
+          {
+            "action": "add",
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": true,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"order\":{\"toppings\":{\"게살\":\"none\"}},\"restrictions\":[{\"action\":\"add\",\"target\":\"게살\",\"reason\":\"allergy\"}]}",
+          "prompt_tokens": 8349,
+          "output_tokens": 35,
+          "latency_ms": 7478.773
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"게살 알레르기 제한을 추가했어요. 현재 주문에는 게살을 피해야 해요.\"}",
+          "prompt_tokens": 8021,
+          "output_tokens": 26,
+          "latency_ms": 6652.98
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low"
+            },
+            "restrictions": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ]
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {},
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 8,
+      "tag": "sausage_select",
+      "user_text": "소시지만 많이 골라줘.",
+      "reply": "소시지를 많이 선택했어요. 이대로 담을까요?",
+      "latency_ms": 13496.174,
+      "expected_section": "meat",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "소시지": "high"
+          }
+        },
+        "restriction_options": [
+          {
+            "action": "add",
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": [
+          {
+            "target": "게살",
+            "reason": "allergy",
+            "action": "add"
+          }
+        ]
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": true,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"order\":{\"toppings\":{\"소시지\":\"high\"}},\"restrictions\":[{\"action\":\"add\",\"target\":\"게살\",\"reason\":\"allergy\"}]}",
+          "prompt_tokens": 8402,
+          "output_tokens": 36,
+          "latency_ms": 7571.551
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"소시지를 많이 선택했어요. 이대로 담을까요?\"}",
+          "prompt_tokens": 8143,
+          "output_tokens": 18,
+          "latency_ms": 5922.675
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low",
+              "소시지": "high"
+            },
+            "restrictions": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ]
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 9,
+      "tag": "sausage_execute",
+      "user_text": "바로 담아.",
+      "reply": "아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요.",
+      "latency_ms": 11800.386,
+      "expected_section": "meat",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": true,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "clarify",
+        "reason": "missing_order",
+        "execute": false,
+        "missing": [
+          "sauce"
+        ],
+        "conflicts": []
+      },
+      "expected_plans": [
+        {
+          "class": "sausage",
+          "repeat_count": 3
+        }
+      ],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": false,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": false
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"commit\":true}",
+          "prompt_tokens": 8439,
+          "output_tokens": 10,
+          "latency_ms": 5582.748
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요.\"}",
+          "prompt_tokens": 8201,
+          "output_tokens": 20,
+          "latency_ms": 6215.665
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low",
+              "소시지": "high"
+            },
+            "restrictions": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ]
+          },
+          "pending": null,
+          "next_prompt": {
+            "type": "missing_order",
+            "fields": [
+              "sauce"
+            ]
+          },
+          "applied_this_turn": {
+            "order_changes": {},
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 10,
+      "tag": "cheese_select",
+      "user_text": "페퍼론치노는 빼고 치즈만 적게 골라줘.",
+      "reply": "페퍼론치노는 선택에서 제외했고 치즈는 적은 양으로 선택했어요. 이대로 담을까요?",
+      "latency_ms": 14044.91,
+      "expected_section": "extra",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high",
+          "치즈": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal",
+          "소시지": "high",
+          "치즈": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "치즈": "low",
+            "페퍼론치노": "none"
+          }
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": false,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "expected_plans": [],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": true,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": true
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"order\":{\"toppings\":{\"치즈\":\"low\",\"페퍼론치노\":\"none\"}},\"route\":\"task\"}",
+          "prompt_tokens": 8485,
+          "output_tokens": 26,
+          "latency_ms": 6981.033
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"페퍼론치노는 선택에서 제외했고 치즈는 적은 양으로 선택했어요. 이대로 담을까요?\"}",
+          "prompt_tokens": 8272,
+          "output_tokens": 31,
+          "latency_ms": 7061.842
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low",
+              "소시지": "high",
+              "치즈": "low"
+            },
+            "restrictions": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ]
+          },
+          "pending": null,
+          "next_prompt": null,
+          "applied_this_turn": {
+            "order_changes": {
+              "toppings.치즈": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    },
+    {
+      "episode": "split_control",
+      "turn": 11,
+      "tag": "cheese_execute",
+      "user_text": "바로 담아.",
+      "reply": "아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요.",
+      "latency_ms": 12853.558,
+      "expected_section": "extra",
+      "actual_section": "noodle",
+      "before_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high",
+          "치즈": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "after_order": {
+        "sauce": null,
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "버섯": "normal",
+          "양파": "low",
+          "소시지": "high",
+          "치즈": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "before_pending": null,
+      "after_pending": null,
+      "expected_order": {
+        "sauce": "크림",
+        "noodle_type": "얇은면",
+        "noodle_portion": "normal",
+        "toppings": {
+          "양파": "low",
+          "버섯": "normal",
+          "소시지": "high",
+          "치즈": "low"
+        },
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy"
+          }
+        ]
+      },
+      "decision_final": {
+        "route": "task",
+        "understanding": "ok",
+        "order_patch": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "치즈": "low"
+          }
+        },
+        "restriction_options": [],
+        "preference_options": [],
+        "recommendation": {
+          "action": "none"
+        },
+        "commit": true,
+        "skip_current": false,
+        "confirmation": "none"
+      },
+      "policy": {
+        "status": "clarify",
+        "reason": "missing_order",
+        "execute": false,
+        "missing": [
+          "sauce"
+        ],
+        "conflicts": []
+      },
+      "expected_plans": [
+        {
+          "class": "cheese",
+          "repeat_count": 1
+        }
+      ],
+      "actual_plans": [],
+      "checks": {
+        "order_matches": false,
+        "execute_matches": false,
+        "section_matches": false,
+        "history_prefix_preserved": true,
+        "history_pair_matches": true,
+        "no_model_errors": true,
+        "plans_match": false
+      },
+      "raw_calls": [
+        {
+          "stage": "decision",
+          "raw": "{\"route\":\"task\",\"order\":{\"toppings\":{\"치즈\":\"low\"}},\"commit\":true}",
+          "prompt_tokens": 8492,
+          "output_tokens": 22,
+          "latency_ms": 6594.359
+        },
+        {
+          "stage": "response",
+          "raw": "{\"reply\":\"아직 소스가 선택되지 않았어요. 원하는 소스를 말씀해주세요.\"}",
+          "prompt_tokens": 8315,
+          "output_tokens": 20,
+          "latency_ms": 6257.074
+        }
+      ],
+      "response_context": [
+        {
+          "confirmed_order": {
+            "sauce": null,
+            "noodle_type": "얇은면",
+            "noodle_portion": "normal",
+            "toppings": {
+              "버섯": "normal",
+              "양파": "low",
+              "소시지": "high",
+              "치즈": "low"
+            },
+            "restrictions": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ]
+          },
+          "pending": null,
+          "next_prompt": {
+            "type": "missing_order",
+            "fields": [
+              "sauce"
+            ]
+          },
+          "applied_this_turn": {
+            "order_changes": {},
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          "recommendation_result": null,
+          "execution_authorized": false,
+          "starting_now": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5508 @@
+{
+  "sources": {
+    "audit_result": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/RESULT.md",
+    "audit_readme": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/README.md",
+    "overlay_manifest": {
+      "path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/MANIFEST.json",
+      "sha256": "62ecd9aafae83a361939a7127850da523c4936f053d9d2ff2cc8ef21df65b1b2"
+    },
+    "overlay_ledger": {
+      "path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/LEDGER.jsonl",
+      "sha256": "610aa92172c2b6515317d636c673dc761804f147c80838fae96c7f2c107c8249"
+    },
+    "required_replay": {
+      "path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/required_replay_r1/TRACES.jsonl",
+      "sha256": "dae9e57c7c4c445c0f12b0c8278d4aabfc841008fa78b13a91fc538ea2d7c036"
+    },
+    "draft_rows": {
+      "path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/required_replay_r1/DRAFT_ROWS.jsonl",
+      "sha256": "d5509a9070186cf3e6a72b36fd8e3b1b0126b0fab33d4a41f33ea47b7981a0fc"
+    },
+    "train_candidate_seen": {
+      "decision": {
+        "path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+        "sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755"
+      },
+      "recommendation": {
+        "path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/recommendation/train_candidate_seen.jsonl",
+        "sha256": "da2e2b0772f1ea0e3e45c9e9e0ba88c723448969b92c550598bf11c0ce0cdd48"
+      },
+      "response": {
+        "path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+        "sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046"
+      }
+    },
+    "prompt_only_contrast": {
+      "path": "src/soomac_irc/soomac_irc/prompt_contrast_examples.py",
+      "sha256": "3593309ec949c37b0f432ceb81ff3a6d04a49e9f3b3654f8aa9a7b0257277992",
+      "status": "PROMPT_ONLY_NOT_TRAINING_DATA"
+    }
+  },
+  "status_summary": {
+    "source_scope": "inactive overlay; selected oracle replay turns from 10 dialogues/88 records and 104 authored Agent targets",
+    "authored_agent_targets": 104,
+    "unique_supplement_rows": 93,
+    "unique_by_agent": {
+      "decision": 59,
+      "recommendation": 4,
+      "response": 30
+    },
+    "aliases": 11,
+    "selection_rule": "13 turns from four requested flows: initial D/Q/P proposal, separate acceptance, compound commit, low-to-normal correction, allergy, exclusion; retain exact utterances and targets; exclude replacements and HOLD",
+    "selected_turns": 13,
+    "selected_agent_targets": 22,
+    "source_replacements_excluded": 108,
+    "contract_holds_excluded": 12,
+    "prompt_contrast_status": "PROMPT_ONLY_NOT_TRAINING_DATA",
+    "model_17_turn_measurement_included": false,
+    "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+    "model_success": false,
+    "training_run": false,
+    "loader_connected": false,
+    "replay_interpretation": "Oracle injected expected targets into builder/graph; these traces are not model inference or physical ROS success"
+  },
+  "examples": [
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-separate",
+      "turn_id": "DA31-CORE-separate-T01",
+      "user_text": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {},
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          }
+        ],
+        "action_history": []
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal"
+        },
+        "recommendation": {
+          "action": "request"
+        }
+      },
+      "recommendation": {
+        "proposal": {
+          "sauce": "크림",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "reason_tags": [
+          "느끼한 소스를 원하신다는 요청을 고려한 크림 후보"
+        ]
+      },
+      "response": {
+        "reply": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+      },
+      "after_state": {
+        "order": {
+          "sauce": null,
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {},
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "recommendation",
+          "candidate": {
+            "sauce": "크림",
+            "noodle_type": null,
+            "noodle_portion": null,
+            "toppings": {}
+          },
+          "reason_tags": [
+            "느끼한 소스를 원하신다는 요청을 고려한 크림 후보"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": false,
+      "pending": {
+        "before": null,
+        "after": {
+          "type": "recommendation",
+          "candidate": {
+            "sauce": "크림",
+            "noodle_type": null,
+            "noodle_portion": null,
+            "toppings": {}
+          },
+          "reason_tags": [
+            "느끼한 소스를 원하신다는 요청을 고려한 크림 후보"
+          ]
+        }
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "recommendation_proposed",
+        "execute": false,
+        "conflicts": []
+      },
+      "robot_before": {
+        "section": "noodle",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [],
+        "robot_started": false
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-separate-T01-D",
+          "representative_id": "DA31-CORE-separate-T01-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "c98a72fcfeafd4a7139d55fe488a9f2175c9ac6eba882643c07fca975598eb58",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T01",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "recommendation",
+          "id": "DA31-CORE-separate-T01-Q",
+          "representative_id": "DA31-CORE-separate-T01-Q",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/recommendation/train_candidate_seen.jsonl",
+          "source_file_sha256": "da2e2b0772f1ea0e3e45c9e9e0ba88c723448969b92c550598bf11c0ce0cdd48",
+          "target_sha256": "1ee643215589d12f595779ab8162f52ad7739daec94bc525ba3970381403f011",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T01",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "response",
+          "id": "DA31-CORE-separate-T01-P",
+          "representative_id": "DA31-CORE-separate-T01-P",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+          "source_file_sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046",
+          "target_sha256": "3d7d152b648b842ac0ae04331a2651d57cdf6e49e4db8c62b810f53b812895e9",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T01",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-separate-T01",
+        "authored_turn_sha256": "3e58c94c9c3cbccd233d83390708f98d29c535a18edb9603370ef07b5b0103df",
+        "before_sha256": "c5350c4789079989c45022409d53515d7a43361ba261cc55c0598ecf42c99cdb",
+        "after_sha256": "3249b72653489297f3b718d258d6c8a7f0aebb3404cce2ad21533b65b80e9c25",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-separate",
+      "turn_id": "DA31-CORE-separate-T02",
+      "user_text": "크림으로 선택할게.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": null,
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {},
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "recommendation",
+          "candidate": {
+            "sauce": "크림",
+            "noodle_type": null,
+            "noodle_portion": null,
+            "toppings": {}
+          },
+          "reason_tags": [
+            "느끼한 소스를 원하신다는 요청을 고려한 크림 후보"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "sauce": "크림"
+        },
+        "confirmation": "accept"
+      },
+      "recommendation": null,
+      "response": {
+        "reply": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+      },
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {},
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "noodle",
+          "targets": [
+            "얇은면"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          }
+        ]
+      },
+      "commit": false,
+      "pending": {
+        "before": {
+          "type": "recommendation",
+          "candidate": {
+            "sauce": "크림",
+            "noodle_type": null,
+            "noodle_portion": null,
+            "toppings": {}
+          },
+          "reason_tags": [
+            "느끼한 소스를 원하신다는 요청을 고려한 크림 후보"
+          ]
+        },
+        "after": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "noodle",
+          "targets": [
+            "얇은면"
+          ]
+        }
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "recommendation_accepted",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "robot_before": {
+        "section": "noodle",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [],
+        "robot_started": false
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-separate-T02-D",
+          "representative_id": "DA31-CORE-separate-T02-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "247aacba554a3f219f365c0332ed068a5d37f4ad9af138d1d0df89215d6acbb0",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T02",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "response",
+          "id": "DA31-CORE-separate-T02-P",
+          "representative_id": "DA31-CORE-separate-T02-P",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+          "source_file_sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046",
+          "target_sha256": "fc4508179b02536f8a52990e38c19941bda217e147ccf61b8a2903045e5d1052",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T02",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-separate-T02",
+        "authored_turn_sha256": "c62a751dc72c8e1c9794910a32c21bdc08bd440d17b865ad19edbd50450e61a8",
+        "before_sha256": "3249b72653489297f3b718d258d6c8a7f0aebb3404cce2ad21533b65b80e9c25",
+        "after_sha256": "f093c22ae1f7301258e2271a90f006c56c92b157053ce614ad52a0bdd847f39a",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-compound",
+      "turn_id": "DA31-CORE-compound-T02",
+      "user_text": "크림으로 선택할게 바로 담아.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": null,
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {},
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "recommendation",
+          "candidate": {
+            "sauce": "크림",
+            "noodle_type": null,
+            "noodle_portion": null,
+            "toppings": {}
+          },
+          "reason_tags": [
+            "느끼한 소스를 원하신다는 요청을 고려한 크림 후보"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "sauce": "크림"
+        },
+        "commit": true
+      },
+      "recommendation": null,
+      "response": null,
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {},
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          }
+        ]
+      },
+      "commit": true,
+      "pending": {
+        "before": {
+          "type": "recommendation",
+          "candidate": {
+            "sauce": "크림",
+            "noodle_type": null,
+            "noodle_portion": null,
+            "toppings": {}
+          },
+          "reason_tags": [
+            "느끼한 소스를 원하신다는 요청을 고려한 크림 후보"
+          ]
+        },
+        "after": null
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "execution_allowed",
+        "execute": true,
+        "conflicts": []
+      },
+      "robot_before": {
+        "section": "noodle",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [],
+        "robot_started": false
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-compound-T02-D",
+          "representative_id": "DA31-CORE-compound-T02-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "9fd2a740088831d7f45d2e2eb7bc7000de6dec0f63d73680cf325565beb50046",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-compound-T02",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-compound-T02",
+        "authored_turn_sha256": "d9df29f6f1f500802d4e9f1a8fea62999792a6697409bb3571bbbe5c0d5aae90",
+        "before_sha256": "3249b72653489297f3b718d258d6c8a7f0aebb3404cce2ad21533b65b80e9c25",
+        "after_sha256": "038b649d3353ad76f323e8c0f7b381eedf348e6eb363acaa0f74a8654d6fa0f7",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-separate",
+      "turn_id": "DA31-CORE-separate-T05",
+      "user_text": "양파랑 버섯 둘 다 적게 담아줘.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게."
+        },
+        {
+          "role": "assistant",
+          "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {},
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "toppings": {
+            "양파": "low",
+            "버섯": "low"
+          }
+        }
+      },
+      "recommendation": null,
+      "response": {
+        "reply": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+      },
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "low"
+          },
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": false,
+      "pending": {
+        "before": null,
+        "after": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        }
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "robot_before": {
+        "section": "veggie",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-separate-T05-D",
+          "representative_id": "DA31-CORE-separate-T05-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "0ad725ef67c3e168d9f18804927313b4d6370971183daaee532c83740f07f072",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T05",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "response",
+          "id": "DA31-CORE-separate-T05-P",
+          "representative_id": "DA31-CORE-separate-T05-P",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+          "source_file_sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046",
+          "target_sha256": "e4f65d155e40f8c4d3285e1996fba5e79388dd107844ce692b082259e86a20f0",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T05",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-separate-T05",
+        "authored_turn_sha256": "79ccff91b7f105caf1a5ddf0056ff00ad3b1720f76bc85949b3041b9b00b40b6",
+        "before_sha256": "c1493b69e798f11bacf7e9755bf3865af884974fb8bbb7ec88bcfb483aed315e",
+        "after_sha256": "ce24be139531610bfdca811286ffbc974f96f1f5fe6e9d8d9f1760c89acb96ea",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-separate",
+      "turn_id": "DA31-CORE-separate-T06",
+      "user_text": "버섯만 보통 양으로 바꿔줘.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게."
+        },
+        {
+          "role": "assistant",
+          "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "양파랑 버섯 둘 다 적게 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "low"
+          },
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "toppings": {
+            "버섯": "normal"
+          }
+        }
+      },
+      "recommendation": null,
+      "response": {
+        "reply": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+      },
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal"
+          },
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": false,
+      "pending": {
+        "before": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        },
+        "after": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        }
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "robot_before": {
+        "section": "veggie",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-separate-T06-D",
+          "representative_id": "DA31-CORE-separate-T06-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "153760850ebd5d56497023e26fe16292a079b4a4716872713cacc41477dad097",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T06",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "response",
+          "id": "DA31-CORE-separate-T06-P",
+          "representative_id": "DA31-CORE-separate-T06-P",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+          "source_file_sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046",
+          "target_sha256": "8302f193f18cf2ca38d82f8966b27fdd1e7752270e35a51d60648a77ac1f128f",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T06",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-separate-T06",
+        "authored_turn_sha256": "e2e99c8b0f5b4ac4198eba2b01e141846f3d5fee45cce12b22ac298305be6542",
+        "before_sha256": "ce24be139531610bfdca811286ffbc974f96f1f5fe6e9d8d9f1760c89acb96ea",
+        "after_sha256": "023de96373e6ecc6117b29f6b134faa697d14d69adbf24af63f4c9bbbb35eb36",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-compound",
+      "turn_id": "DA31-CORE-compound-T04",
+      "user_text": "양파랑 버섯 둘 다 적게 담아줘.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게 바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {},
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "toppings": {
+            "양파": "low",
+            "버섯": "low"
+          }
+        }
+      },
+      "recommendation": null,
+      "response": {
+        "reply": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+      },
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "low"
+          },
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": false,
+      "pending": {
+        "before": null,
+        "after": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        }
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "robot_before": {
+        "section": "veggie",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-compound-T04-D",
+          "representative_id": "DA31-CORE-compound-T04-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "0ad725ef67c3e168d9f18804927313b4d6370971183daaee532c83740f07f072",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-compound-T04",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "response",
+          "id": "DA31-CORE-compound-T04-P",
+          "representative_id": "DA31-CORE-compound-T04-P",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+          "source_file_sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046",
+          "target_sha256": "e4f65d155e40f8c4d3285e1996fba5e79388dd107844ce692b082259e86a20f0",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-compound-T04",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-compound-T04",
+        "authored_turn_sha256": "79ccff91b7f105caf1a5ddf0056ff00ad3b1720f76bc85949b3041b9b00b40b6",
+        "before_sha256": "578e4013bd0954780d7fe139113619ada35bfa11b140541eecd39876bd1cf432",
+        "after_sha256": "3c1250c9c20e3f94d866c47a70fc642606a181bc688a19f5704a5879012ae82c",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-compound",
+      "turn_id": "DA31-CORE-compound-T05",
+      "user_text": "버섯만 보통 양으로 바꿔서 바로 담아.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게 바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "양파랑 버섯 둘 다 적게 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "low"
+          },
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "toppings": {
+            "버섯": "normal"
+          }
+        },
+        "commit": true
+      },
+      "recommendation": null,
+      "response": null,
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal"
+          },
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔서 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": true,
+      "pending": {
+        "before": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "veggie",
+          "targets": [
+            "양파",
+            "버섯"
+          ]
+        },
+        "after": null
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "execution_allowed",
+        "execute": true,
+        "conflicts": []
+      },
+      "robot_before": {
+        "section": "veggie",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-compound-T05-D",
+          "representative_id": "DA31-CORE-compound-T05-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "3f4296806a59177c2231004a8079d63ce61df64a246d67c5a5b9db109d4cf842",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-compound-T05",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-compound-T05",
+        "authored_turn_sha256": "a0fa96990ec77c8f035bb03edf4121063dd777fac15ecd2536775ea28784b04f",
+        "before_sha256": "3c1250c9c20e3f94d866c47a70fc642606a181bc688a19f5704a5879012ae82c",
+        "after_sha256": "56740c45071cd93dcf00c100e64b7ddfcd47628f78178bc6695d274841d166ec",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-separate",
+      "turn_id": "DA31-CORE-separate-T09",
+      "user_text": "게살 알레르기가 있어요.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게."
+        },
+        {
+          "role": "assistant",
+          "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "양파랑 버섯 둘 다 적게 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "버섯만 보통 양으로 바꿔줘."
+        },
+        {
+          "role": "assistant",
+          "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "양파 적게, 버섯 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal"
+          },
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy",
+            "action": "add"
+          }
+        ]
+      },
+      "recommendation": null,
+      "response": {
+        "reply": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+      },
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알레르기가 있어요."
+          },
+          {
+            "role": "assistant",
+            "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {},
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": false,
+      "pending": {
+        "before": null,
+        "after": null
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "robot_before": {
+        "section": "meat",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          },
+          {
+            "class": "양파",
+            "repeat_count": 1
+          },
+          {
+            "class": "버섯",
+            "repeat_count": 2
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-separate-T09-D",
+          "representative_id": "DA31-CORE-separate-T09-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "2c3b29882c6f914f20883992bf3f2cc9140d29ff9b4a54ead5ebac44eb5b0288",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T09",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "response",
+          "id": "DA31-CORE-separate-T09-P",
+          "representative_id": "DA31-CORE-separate-T09-P",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+          "source_file_sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046",
+          "target_sha256": "e4e6878eade849145c0435ccc559cb17f77f835e9e6d0372595543f074c4dd78",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T09",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-separate-T09",
+        "authored_turn_sha256": "d78cd321c596123b0d41ee35526709952c7e44c9f142c118dbfdb38b97bcc26a",
+        "before_sha256": "c22cd12e837fbcb2bcdad2f8deefffb57797df88390ee6ad98a1754e4efbbf55",
+        "after_sha256": "41a82f43e39c83e9980811018f742a2a30810c1b03d62c03639e56fe4cadf85f",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-separate",
+      "turn_id": "DA31-CORE-separate-T10",
+      "user_text": "소시지만 많이 골라줘.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게."
+        },
+        {
+          "role": "assistant",
+          "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "양파랑 버섯 둘 다 적게 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "버섯만 보통 양으로 바꿔줘."
+        },
+        {
+          "role": "assistant",
+          "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "양파 적게, 버섯 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "게살 알레르기가 있어요."
+        },
+        {
+          "role": "assistant",
+          "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알레르기가 있어요."
+          },
+          {
+            "role": "assistant",
+            "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {},
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "toppings": {
+            "소시지": "high"
+          }
+        }
+      },
+      "recommendation": null,
+      "response": {
+        "reply": "소시지를 많은 양으로 골랐어요. 지금 담을까요?"
+      },
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal",
+            "소시지": "high"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "meat",
+          "targets": [
+            "소시지"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알레르기가 있어요."
+          },
+          {
+            "role": "assistant",
+            "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "소시지만 많이 골라줘."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지를 많은 양으로 골랐어요. 지금 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {},
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": false,
+      "pending": {
+        "before": null,
+        "after": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "meat",
+          "targets": [
+            "소시지"
+          ]
+        }
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "robot_before": {
+        "section": "meat",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          },
+          {
+            "class": "양파",
+            "repeat_count": 1
+          },
+          {
+            "class": "버섯",
+            "repeat_count": 2
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-separate-T10-D",
+          "representative_id": "DA31-CORE-separate-T10-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "54b64f1d9ad8e9c3454397fa729a5f56be1a2f509ab967c7a7ebac5fbc4361a7",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T10",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "response",
+          "id": "DA31-CORE-separate-T10-P",
+          "representative_id": "DA31-CORE-separate-T10-P",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+          "source_file_sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046",
+          "target_sha256": "41c2ab52a7f91a1084a387f3ae9cadab8a5b60bd8d01f38ef5bcf490dd079eea",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T10",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-separate-T10",
+        "authored_turn_sha256": "2bc95fdb5ec336821b26518ffa95d648163893528de8063f42b12b1e08613921",
+        "before_sha256": "41a82f43e39c83e9980811018f742a2a30810c1b03d62c03639e56fe4cadf85f",
+        "after_sha256": "401cac938850dc3f43a7530a4c51303a645876a4a7780cb51b1865eca0810616",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-compound",
+      "turn_id": "DA31-CORE-compound-T07",
+      "user_text": "게살 알러지가 있어서 소시지만 많이 바로 담아줘.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게 바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "양파랑 버섯 둘 다 적게 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "버섯만 보통 양으로 바꿔서 바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "양파 적게, 버섯 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal"
+          },
+          "restrictions": []
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔서 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "restrictions": [
+          {
+            "target": "게살",
+            "reason": "allergy",
+            "action": "add"
+          }
+        ],
+        "order": {
+          "toppings": {
+            "게살": "none",
+            "소시지": "high"
+          }
+        },
+        "commit": true
+      },
+      "recommendation": null,
+      "response": null,
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal",
+            "소시지": "high"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔서 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알러지가 있어서 소시지만 많이 바로 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지 많이 담기를 시작해요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": true,
+      "pending": {
+        "before": null,
+        "after": null
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "execution_allowed",
+        "execute": true,
+        "conflicts": []
+      },
+      "robot_before": {
+        "section": "meat",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          },
+          {
+            "class": "양파",
+            "repeat_count": 1
+          },
+          {
+            "class": "버섯",
+            "repeat_count": 2
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-compound-T07-D",
+          "representative_id": "DA31-CORE-compound-T07-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "803c86e720ad1c0380c423508d7e58d678ec2035f705ef458fb16c71fd73960b",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-compound-T07",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-compound-T07",
+        "authored_turn_sha256": "2b77ceab685f2aa21c9428485b9e5889f777ef7885e35569503ae534721038cf",
+        "before_sha256": "f565b345edac36bc652ccb2243a5fe13d16dfce0eb65f4bafb79968cef1bcd5e",
+        "after_sha256": "0dc7c2a76625955bbd2aa72f4588b0e7ad8abf6540fc1ad16f7e022995d868ee",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-separate",
+      "turn_id": "DA31-CORE-separate-T13",
+      "user_text": "페퍼론치노는 빼고 치즈만 적게 골라줘.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게."
+        },
+        {
+          "role": "assistant",
+          "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "양파랑 버섯 둘 다 적게 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "버섯만 보통 양으로 바꿔줘."
+        },
+        {
+          "role": "assistant",
+          "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "양파 적게, 버섯 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "게살 알레르기가 있어요."
+        },
+        {
+          "role": "assistant",
+          "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "소시지만 많이 골라줘."
+        },
+        {
+          "role": "assistant",
+          "content": "소시지를 많은 양으로 골랐어요. 지금 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "소시지 많이 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal",
+            "소시지": "high"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알레르기가 있어요."
+          },
+          {
+            "role": "assistant",
+            "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "소시지만 많이 골라줘."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지를 많은 양으로 골랐어요. 지금 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지 많이 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {},
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "meat",
+            "task": {
+              "class": "소시지",
+              "repeat_count": 3
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "meat",
+            "outcome": "completed",
+            "next_section": "extra"
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "toppings": {
+            "페퍼론치노": "none",
+            "치즈": "low"
+          }
+        }
+      },
+      "recommendation": null,
+      "response": {
+        "reply": "페퍼론치노는 빼고 치즈만 적은 양으로 골랐어요. 이대로 담을까요?"
+      },
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal",
+            "소시지": "high",
+            "치즈": "low"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "extra",
+          "targets": [
+            "치즈"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알레르기가 있어요."
+          },
+          {
+            "role": "assistant",
+            "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "소시지만 많이 골라줘."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지를 많은 양으로 골랐어요. 지금 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지 많이 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "페퍼론치노는 빼고 치즈만 적게 골라줘."
+          },
+          {
+            "role": "assistant",
+            "content": "페퍼론치노는 빼고 치즈만 적은 양으로 골랐어요. 이대로 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {},
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "meat",
+            "task": {
+              "class": "소시지",
+              "repeat_count": 3
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "meat",
+            "outcome": "completed",
+            "next_section": "extra"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.치즈": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": false,
+      "pending": {
+        "before": null,
+        "after": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "extra",
+          "targets": [
+            "치즈"
+          ]
+        }
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "state_update_only",
+        "execute": false,
+        "conflicts": [],
+        "restriction_blocked": [],
+        "restriction_unchanged": []
+      },
+      "robot_before": {
+        "section": "extra",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          },
+          {
+            "class": "양파",
+            "repeat_count": 1
+          },
+          {
+            "class": "버섯",
+            "repeat_count": 2
+          },
+          {
+            "class": "소시지",
+            "repeat_count": 3
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-separate-T13-D",
+          "representative_id": "DA31-CORE-separate-T13-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "7d3d1cba80b468213d98507d68e96a67ca21082432040a4d738e80eed7af16e8",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T13",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        },
+        {
+          "agent": "response",
+          "id": "DA31-CORE-separate-T13-P",
+          "representative_id": "DA31-CORE-separate-T13-P",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/response/train_candidate_seen.jsonl",
+          "source_file_sha256": "a1b9742a76fca20edd7cbfbce45497e9a86e810eb36f74c218b25f5f4e958046",
+          "target_sha256": "b46955e3c237f901689856d54ef3809229fb3080c0af6543f0388a3710a14bba",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T13",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-separate-T13",
+        "authored_turn_sha256": "69595080640d63f42a4aeb5d0d9ca6630e11fdd69e63c5278554b604f5daa76e",
+        "before_sha256": "d24249a4c4e81c3e96ac58f4553dde9f8cc8618bfe8c35d08e2b6768ff0ce0be",
+        "after_sha256": "d32e12dae839bf4f15d2e3393728e846755a8690b0d9f7eeae375bfcaa51c033",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-separate",
+      "turn_id": "DA31-CORE-separate-T14",
+      "user_text": "바로 담아.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게."
+        },
+        {
+          "role": "assistant",
+          "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "양파랑 버섯 둘 다 적게 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "버섯만 보통 양으로 바꿔줘."
+        },
+        {
+          "role": "assistant",
+          "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "양파 적게, 버섯 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "게살 알레르기가 있어요."
+        },
+        {
+          "role": "assistant",
+          "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "소시지만 많이 골라줘."
+        },
+        {
+          "role": "assistant",
+          "content": "소시지를 많은 양으로 골랐어요. 지금 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "소시지 많이 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "페퍼론치노는 빼고 치즈만 적게 골라줘."
+        },
+        {
+          "role": "assistant",
+          "content": "페퍼론치노는 빼고 치즈만 적은 양으로 골랐어요. 이대로 담을까요?"
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal",
+            "소시지": "high",
+            "치즈": "low"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "extra",
+          "targets": [
+            "치즈"
+          ]
+        },
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알레르기가 있어요."
+          },
+          {
+            "role": "assistant",
+            "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "소시지만 많이 골라줘."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지를 많은 양으로 골랐어요. 지금 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지 많이 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "페퍼론치노는 빼고 치즈만 적게 골라줘."
+          },
+          {
+            "role": "assistant",
+            "content": "페퍼론치노는 빼고 치즈만 적은 양으로 골랐어요. 이대로 담을까요?"
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {},
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "meat",
+            "task": {
+              "class": "소시지",
+              "repeat_count": 3
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "meat",
+            "outcome": "completed",
+            "next_section": "extra"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.치즈": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "commit": true
+      },
+      "recommendation": null,
+      "response": null,
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal",
+            "소시지": "high",
+            "치즈": "low"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게."
+          },
+          {
+            "role": "assistant",
+            "content": "소스는 크림으로 골랐어요. 얇은면을 보통 양으로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔줘."
+          },
+          {
+            "role": "assistant",
+            "content": "버섯은 보통 양으로 늘렸고, 양파는 적은 양 그대로예요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알레르기가 있어요."
+          },
+          {
+            "role": "assistant",
+            "content": "게살은 제외할게요. 소시지를 원하시면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "소시지만 많이 골라줘."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지를 많은 양으로 골랐어요. 지금 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지 많이 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "페퍼론치노는 빼고 치즈만 적게 골라줘."
+          },
+          {
+            "role": "assistant",
+            "content": "페퍼론치노는 빼고 치즈만 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "치즈 적게 담기를 시작해요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {},
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "meat",
+            "task": {
+              "class": "소시지",
+              "repeat_count": 3
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "meat",
+            "outcome": "completed",
+            "next_section": "extra"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.치즈": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": true,
+      "pending": {
+        "before": {
+          "type": "execution",
+          "source": "current_update",
+          "section": "extra",
+          "targets": [
+            "치즈"
+          ]
+        },
+        "after": null
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "execution_allowed",
+        "execute": true,
+        "conflicts": []
+      },
+      "robot_before": {
+        "section": "extra",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          },
+          {
+            "class": "양파",
+            "repeat_count": 1
+          },
+          {
+            "class": "버섯",
+            "repeat_count": 2
+          },
+          {
+            "class": "소시지",
+            "repeat_count": 3
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-separate-T14-D",
+          "representative_id": "DA31-CORE-separate-T14-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "e9cc8476c2f21e16a2844b629f56c46dd87a98d32ad9d8e155819ccfd6fb8d23",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-separate-T14",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-separate-T14",
+        "authored_turn_sha256": "392ff26a8b4f61eb749e887e7256cfb82a64569952adf573935232f6cc724589",
+        "before_sha256": "d32e12dae839bf4f15d2e3393728e846755a8690b0d9f7eeae375bfcaa51c033",
+        "after_sha256": "c2088b5d8cacfa4b0bc3695fb80f5912808aef36d60d7c48db3052e5cfcd6d65",
+        "model_inference": false,
+        "ROS": false
+      }
+    },
+    {
+      "record_kind": "oracle_replay_turn",
+      "episode_id": "DA31-CORE-compound",
+      "turn_id": "DA31-CORE-compound-T09",
+      "user_text": "페퍼론치노는 빼고 치즈만 적게 골라서 바로 담아.",
+      "history": [
+        {
+          "role": "assistant",
+          "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+        },
+        {
+          "role": "user",
+          "content": "크림으로 선택할게 바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "얇은면 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "양파랑 버섯 둘 다 적게 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+        },
+        {
+          "role": "user",
+          "content": "버섯만 보통 양으로 바꿔서 바로 담아."
+        },
+        {
+          "role": "assistant",
+          "content": "양파 적게, 버섯 보통 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        },
+        {
+          "role": "user",
+          "content": "게살 알러지가 있어서 소시지만 많이 바로 담아줘."
+        },
+        {
+          "role": "assistant",
+          "content": "소시지 많이 담기를 시작해요."
+        },
+        {
+          "role": "assistant",
+          "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+        }
+      ],
+      "before_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal",
+            "소시지": "high"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔서 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알러지가 있어서 소시지만 많이 바로 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지 많이 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "meat",
+            "task": {
+              "class": "소시지",
+              "repeat_count": 3
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "meat",
+            "outcome": "completed",
+            "next_section": "extra"
+          }
+        ]
+      },
+      "decision": {
+        "route": "task",
+        "order": {
+          "toppings": {
+            "페퍼론치노": "none",
+            "치즈": "low"
+          }
+        },
+        "commit": true
+      },
+      "recommendation": null,
+      "response": null,
+      "after_state": {
+        "order": {
+          "sauce": "크림",
+          "noodle_type": "얇은면",
+          "noodle_portion": "normal",
+          "toppings": {
+            "양파": "low",
+            "버섯": "normal",
+            "소시지": "high",
+            "치즈": "low"
+          },
+          "restrictions": [
+            {
+              "target": "게살",
+              "reason": "allergy"
+            }
+          ]
+        },
+        "preferences": [],
+        "pending": null,
+        "history": [
+          {
+            "role": "assistant",
+            "content": "안녕하세요! 저는 스파게티 밀키트 주문을 도와드리는 로봇이에요. 먼저 면 종류와 소스, 원하시는 면 양을 말씀해 주세요."
+          },
+          {
+            "role": "user",
+            "content": "면은 얇은면으로 보통 양으로 주고, 소스는 느끼한 걸로 추천해줘."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면은 보통 양으로 골랐어요. 소스는 크림으로 추천드릴게요. 크림으로 정할까요?"
+          },
+          {
+            "role": "user",
+            "content": "크림으로 선택할게 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "얇은면 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "양파랑 버섯 둘 다 적게 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "양파와 버섯을 모두 적은 양으로 골랐어요. 이대로 담을까요?"
+          },
+          {
+            "role": "user",
+            "content": "버섯만 보통 양으로 바꿔서 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "양파 적게, 버섯 보통 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "게살 알러지가 있어서 소시지만 많이 바로 담아줘."
+          },
+          {
+            "role": "assistant",
+            "content": "소시지 많이 담기를 시작해요."
+          },
+          {
+            "role": "assistant",
+            "content": "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+          },
+          {
+            "role": "user",
+            "content": "페퍼론치노는 빼고 치즈만 적게 골라서 바로 담아."
+          },
+          {
+            "role": "assistant",
+            "content": "치즈 적게 담기를 시작해요."
+          }
+        ],
+        "action_history": [
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "noodle_type": "얇은면",
+              "noodle_portion": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "sauce": "크림"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": [],
+            "future_changes": [
+              {
+                "field": "sauce",
+                "value": "크림"
+              }
+            ]
+          },
+          {
+            "type": "task_completed",
+            "section": "noodle",
+            "task": {
+              "class": "얇은면",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "noodle",
+            "outcome": "completed",
+            "next_section": "veggie"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.양파": "low",
+              "toppings.버섯": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.버섯": "normal"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "양파",
+              "repeat_count": 1
+            }
+          },
+          {
+            "type": "task_completed",
+            "section": "veggie",
+            "task": {
+              "class": "버섯",
+              "repeat_count": 2
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "veggie",
+            "outcome": "completed",
+            "next_section": "meat"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.소시지": "high"
+            },
+            "restriction_added": [
+              {
+                "target": "게살",
+                "reason": "allergy"
+              }
+            ],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          },
+          {
+            "type": "task_completed",
+            "section": "meat",
+            "task": {
+              "class": "소시지",
+              "repeat_count": 3
+            }
+          },
+          {
+            "type": "section_transition",
+            "section": "meat",
+            "outcome": "completed",
+            "next_section": "extra"
+          },
+          {
+            "type": "turn_applied",
+            "order_changes": {
+              "toppings.치즈": "low"
+            },
+            "restriction_added": [],
+            "restriction_removed": [],
+            "preference_added": [],
+            "preference_removed": []
+          }
+        ]
+      },
+      "commit": true,
+      "pending": {
+        "before": null,
+        "after": null
+      },
+      "policy": {
+        "status": "pass",
+        "reason": "execution_allowed",
+        "execute": true,
+        "conflicts": []
+      },
+      "robot_before": {
+        "section": "extra",
+        "task_queue": [],
+        "active_task": null,
+        "completed_tasks": [
+          {
+            "class": "얇은면",
+            "repeat_count": 2
+          },
+          {
+            "class": "양파",
+            "repeat_count": 1
+          },
+          {
+            "class": "버섯",
+            "repeat_count": 2
+          },
+          {
+            "class": "소시지",
+            "repeat_count": 3
+          }
+        ],
+        "robot_started": true
+      },
+      "physical_bridge": null,
+      "source": [
+        {
+          "agent": "decision",
+          "id": "DA31-CORE-compound-T09-D",
+          "representative_id": "DA31-CORE-compound-T09-D",
+          "source_path": "training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/candidate/natural_order_delta_r1/records/decision/train_candidate_seen.jsonl",
+          "source_file_sha256": "1cbe37bfa30c32986e34fc6ed939f968c8daa0a648042c74637bb6f7572af755",
+          "target_sha256": "d1de06491cfb797ee61ee3c79359a3386f1afc9879c04b923d363c19abda6c3e",
+          "ledger_status": "KEEP",
+          "provenance": {
+            "source_turn": "DA31-CORE-compound-T09",
+            "source_type": "DA31_literal_gold",
+            "split": "train_candidate"
+          }
+        }
+      ],
+      "status": "KEEP",
+      "training_inclusion": "NOT_TRAINED_OR_NOT_PROVEN",
+      "notes": {
+        "trace_id": "DA31-CORE-compound-T09",
+        "authored_turn_sha256": "b3415e9a76ead24c9eb441aae7f194a02e0603f782a8ca82b847158207bd23e6",
+        "before_sha256": "a2980bc6da7b9f66edcebf40b7f29beb2d278dd8d381ac85b2f2b5b745a0cb07",
+        "after_sha256": "6d4a1a23b3878b79a2ddaa252b9e579101f2dbd3089081cea570a2df6120a8db",
+        "model_inference": false,
+        "ROS": false
+      }
+    }
+  ]
+}

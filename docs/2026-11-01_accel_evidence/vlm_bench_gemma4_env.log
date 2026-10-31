@@ -1,0 +1,10 @@
+{"class": "얇은면", "images": 6, "in_tokens": 1947, "out_tokens": 37, "preprocess_s": 0.045, "first_token_s": 0.612, "full_s": 2.104}
+{"class": "버섯", "images": 7, "in_tokens": 2326, "out_tokens": 52, "preprocess_s": 0.05, "first_token_s": 0.749, "full_s": 2.803}
+{"class": "소시지", "images": 7, "in_tokens": 2361, "out_tokens": 49, "preprocess_s": 0.038, "first_token_s": 0.757, "full_s": 2.724}
+{"class": "치즈", "images": 7, "in_tokens": 2325, "out_tokens": 51, "preprocess_s": 0.041, "first_token_s": 0.75, "full_s": 2.805}
+{"class": "뚜껑", "images": 6, "in_tokens": 1870, "out_tokens": 37, "preprocess_s": 0.046, "first_token_s": 0.589, "full_s": 2.029}
+{"class": "오일", "images": 7, "in_tokens": 2388, "out_tokens": 88, "preprocess_s": 0.05, "first_token_s": 0.771, "full_s": 4.345}
+{"class": "양파", "images": 7, "in_tokens": 2335, "out_tokens": 51, "preprocess_s": 0.066, "first_token_s": 0.759, "full_s": 2.825}
+{"class": "크림", "images": 7, "in_tokens": 2388, "out_tokens": 69, "preprocess_s": 0.063, "first_token_s": 0.771, "full_s": 3.583}
+SUMMARY 5.13.1 {"images": 6.75, "in_tokens": 2242.5, "out_tokens": 54.25, "preprocess_s": 0.05, "first_token_s": 0.72, "full_s": 2.902}
+PEAK_GiB 9.08
