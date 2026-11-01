@@ -241,7 +241,17 @@ class TransformNode(Node):
             'frame_id': 'base',
         }
 
-        if class_name in {'onion', 'mushroom'}:
+        if class_name in {'noodle_thin', 'noodle_thick'}:
+            output = {
+                    'class_name': class_name,
+                    'x': float(p_base[0]) + 0.015,
+                    'y': float(p_base[1]),
+                    'z': float(p_base[2]) - 0.005,
+                    'yaw': -yaw_camera_deg,
+                    'frame_id': 'base',
+                }
+
+        elif class_name in {'onion', 'mushroom'}:
             output = {
                     'class_name': class_name,
                     'x': float(p_base[0]) + 0.01,

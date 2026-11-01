@@ -6,7 +6,7 @@ import numpy as np
 DOF = 6
 
 # SPOON_PICK_POSITION = np.array([0.249, 0.275, 0.35], dtype=float)
-SPOON_PICK_POSITION = np.array([0.253, 0.275, 0.345], dtype=float) ## 확정
+SPOON_PICK_POSITION = np.array([0.253, 0.265, 0.34], dtype=float) ## 확정
 SPOON_Q6 = math.radians(-90.0)
 
 class CPMotion:
@@ -37,8 +37,9 @@ class CPMotion:
 
         # 치즈 / 페퍼론치노 접근
         if class_name == 'cheese':
-            q_approach_lift = np.deg2rad([1.5, -1.4, 0.0, 87.0, 91.5, 0.0])
-            q_approach = np.deg2rad([1.5, 1.2, 0.0, 102.5, 73.0, 0.0])
+            q_approach_lift = np.deg2rad([0.5, -1.4, 0.0, 87.0, 91.5, 0.0])
+            q_approach = np.deg2rad([-94.5, 1.7, 93.0, 107.5, 65.0, 0.0])
+            # q_approach = np.deg2rad([0.5, 1.7, 0.0, 103, 73.0, 0.0])
         else:
             q_approach_lift = np.deg2rad([1.5, 2.6, 0.0, 85.0, 66.0, 0.0])
             q_approach = np.deg2rad([1.5, 15.4, 0.0, 85.0, 62.7, 0.0])
@@ -47,8 +48,8 @@ class CPMotion:
         q_touch_1 = q_approach.copy()
 
         if class_name == 'cheese':
-            q_touch_1[0] -= math.radians(95.0)
-            q_touch_1[2] = math.radians(90.0)
+            q_touch_1[0] -= math.radians(0.0)
+            q_touch_1[2] = math.radians(93.0)  ###
         else:
             q_touch_1 = np.deg2rad([-90.5, 2.3, 90.0, 108.5, 45.5, -30.0])
 
@@ -74,6 +75,16 @@ class CPMotion:
 
         q_release_2 = q_release_1.copy()
         q_release_2[5] -= math.radians(100.0)
+
+        spoon_back_position = SPOON_PICK_POSITION.copy()
+
+        xy = spoon_back_position[:2]
+        xy_dir = xy / np.linalg.norm(xy)
+
+        spoon_back_position[:2] -= xy_dir * 0.03
+
+        q_spoon_back = self.kinematics.solve_cp_path(
+            spoon_back_position, q_spoon_pick, SPOON_Q6)
 
         commands_1 = [
             ('motion', [q_spoon_pre_pick, q_spoon_pick]),
@@ -114,7 +125,7 @@ class CPMotion:
         commands.extend([
             ('motion', [q_spoon_lift, q_spoon_pick]),
             ('gripper', 'spoon_place:spoon', q_spoon_pick),
-            ('motion', [q_spoon_pre_pick_2])
+            ('motion', [q_spoon_back, q_spoon_pre_pick_2])
         ])
 
         return commands
