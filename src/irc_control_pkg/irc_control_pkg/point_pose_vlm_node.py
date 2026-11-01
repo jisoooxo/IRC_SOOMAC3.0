@@ -7,6 +7,7 @@ import rclpy
 from rclpy.node import Node
 from irc_control_pkg.kinematics_irc import IRCKinematics
 from irc_control_pkg.cp_motion import CPMotion
+from irc_control_pkg.reset_motion import ResetMotion
 from std_msgs.msg import Empty, Bool, Float64MultiArray, MultiArrayDimension, String, Int16
 
 DOF = 6
@@ -47,6 +48,7 @@ class PointPoseNode(Node):
 
         self.kinematics = IRCKinematics(self.get_logger())
         self.cp_motion = CPMotion(self.kinematics)
+        self.reset_motion = ResetMotion(self.kinematics)
 
         self.grip_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints', 10)
         self.pack_plan_pub = self.create_publisher(Float64MultiArray, '/arm/joint_waypoints_pack', 10)
@@ -104,6 +106,10 @@ class PointPoseNode(Node):
 
     def control_motion_callback(self, msg):
         command = msg.data.strip()
+
+        if command == 'handoff':
+            self.plan_handoff()
+            return
 
         if command == 'point1':
             self.move_point1()
@@ -362,6 +368,15 @@ class PointPoseNode(Node):
         msg = Float64MultiArray()
         msg.data = q_target.tolist()
         self.joint_target_pub.publish(msg)
+
+    def plan_handoff(self):
+        waypoints = self.reset_motion.build_path()
+
+        self.publish_waypoints(
+            self.pack_plan_pub,
+            'pack_handoff',
+            *waypoints
+        )
 
     def move_home(self):
         self.home_pending = True

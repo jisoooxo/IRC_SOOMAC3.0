@@ -23,6 +23,9 @@ STATE_WAIT_VLM_READY = 'WAIT_VLM_READY'
 STATE_WAIT_VLM_CONFIRM = 'WAIT_VLM_CONFIRM'
 STATE_WAIT_HOME_DONE = 'WAIT_HOME_DONE'
 STATE_WAIT_LLM_DONE = 'WAIT_LLM_DONE'
+STATE_WAIT_FINAL_RAIL = 'WAIT_FINAL_RAIL'
+STATE_WAIT_HANDOFF_DONE = 'WAIT_HANDOFF_DONE'
+STATE_WAIT_FINAL_HOME = 'WAIT_FINAL_HOME'
 
 
 class MainNode(Node):
@@ -82,6 +85,11 @@ class MainNode(Node):
 
     ## 순서 
     def arm_motion_done_callback(self, _msg):
+        if self.state == STATE_WAIT_HANDOFF_DONE:
+            self.state = STATE_WAIT_FINAL_HOME
+            self.rail_home_pub.publish(Empty())
+            return
+    
         # 소스 동작 완료
         if self.state == STATE_WAIT_CP_DONE and self.current_class in SAUCE_CLASSES:
             self.state = STATE_WAIT_VLM_READY
@@ -157,9 +165,19 @@ class MainNode(Node):
 
         self.start_rail_motion()
 
-    def publish_llm_confirm_start(self):
+    def publish_llm_confirm_start(self):  ### 씹히고 있음 ㅜㅜ ###
         msg = Bool()
         msg.data = True
+
+        subscriber_count = (
+            self.llm_confirm_start_pub.get_subscription_count()
+        )
+
+        self.get_logger().warning(
+            f'[CONFIRM_START TX] True, '
+            f'subscriber_count={subscriber_count}'
+        )
+        
         self.llm_confirm_start_pub.publish(msg)
 
     def llm_done_callback(self, msg):
@@ -168,15 +186,16 @@ class MainNode(Node):
             return
 
         if not msg.data:
-            return  ## LLM이 주는 True 값을 받으면 나머지 초기화 시작
+            return
 
-        reset_msg = String()
-        reset_msg.data = 'reset'
-        self.reset_pub.publish(reset_msg)
-        self.get_logger().info('MAIN 초기화 완료')
+        # 최종 전달을 위한 레일 위치로 이동
+        self.state = STATE_WAIT_FINAL_RAIL
 
-        self.reset_main_values()
-        self.state = STATE_WAIT_START
+        rail_msg = String()
+        rail_msg.data = 'handoff'
+        self.rail_motion_pub.publish(rail_msg)
+
+        self.get_logger().info('최종 전달 위치로 레일 이동')
 
     ## ================ CONTROL ==================== ##
     def publish_control_plan(self):
@@ -212,18 +231,29 @@ class MainNode(Node):
 
     ## ============== VLM CONFIRM =============== ##
     def vlm_confirm_ready_callback(self, msg):
+
+        self.get_logger().warning(
+            f'[VLM_READY RX] msg={msg.data}, state={self.state}'
+        )
+
         if self.state != STATE_WAIT_VLM_READY:
+            self.get_logger().error(
+                f'[VLM_READY DROP] expected={STATE_WAIT_VLM_READY}, '
+                f'current={self.state}'
+            )
             return
 
         if not msg.data:
+            self.get_logger().error('[VLM_READY DROP] msg.data=False')
             return
 
         self.state = STATE_WAIT_VLM_CONFIRM
-        self.publish_llm_confirm_start()
 
-        self.get_logger().info(
-            f'VLM 재확인 시작: {self.current_class}'
+        self.get_logger().warning(
+            '[VLM_READY OK] confirm_start publish 직전'
         )
+
+        self.publish_llm_confirm_start()
 
     def vlm_confirm_callback(self, msg):
         if self.state != STATE_WAIT_VLM_CONFIRM:
@@ -257,6 +287,15 @@ class MainNode(Node):
 
     ## ================ RAIL ==================== ##
     def rail_home_done_callback(self, msg):
+        if self.state == STATE_WAIT_FINAL_HOME:
+            reset_msg = String()
+            reset_msg.data = 'final_reset'
+            self.reset_pub.publish(reset_msg)
+
+            self.reset_main_values()
+            self.state = STATE_WAIT_START
+            return
+    
         if self.state != STATE_WAIT_RAIL_HOME:
             return
 
@@ -292,6 +331,12 @@ class MainNode(Node):
         self.get_logger().info(f'Rail class: {self.current_class}')
 
     def rail_motion_done_callback(self, _msg):
+
+        if self.state == STATE_WAIT_FINAL_RAIL:
+            self.state = STATE_WAIT_HANDOFF_DONE
+            self.publish_control_motion('handoff')
+            return
+    
         if self.state != STATE_WAIT_RAIL_DONE:
             return
 

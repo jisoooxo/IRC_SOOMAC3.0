@@ -148,6 +148,24 @@ class MotionTrajectory:
 
             return trajectory
 
+        if phase == 'pack_handoff':
+            approach, ready, handoff, lift, home = [q.copy() for q in waypoints]
+
+            self.move(trajectory, q_start, approach, 2.0, True)
+            self.move(trajectory, approach, ready, 1.5, True)
+
+            self.hold(trajectory, ready, 0.3, pack_horizontal=True)
+
+            # 준비 자세 → 건네주는 자세 공압 TCP 기준 Cartesian 직선 이동
+            self.move_cartesian_pack(trajectory, ready, handoff, 2.0, step_m=0.003)
+
+            self.hold(trajectory, handoff, 0.3, pack_horizontal=True)
+
+            self.move(trajectory, handoff, lift, 1.5, True)
+            self.move(trajectory, lift, home, 3.0)
+
+            return trajectory
+
         if phase == 'sauce_full':
             pick, pick_lift, place_lift, place = [q.copy() for q in waypoints]
             q_home2 = CONTROL_READY2.copy()

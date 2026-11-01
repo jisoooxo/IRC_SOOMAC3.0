@@ -20,12 +20,12 @@ RAIL_ROTATIONS = {
     'onion': 60,
     'mushroom': 138,
     'pepperoncino': 375,
-    'cheese': 375,
+    'cheese': 385,
     'sauce_cream': 371,
     'sauce_oil': 371,
     'sauce_tomato': 371,
     'cover': 375,
-    # 건네주는 위치는 285
+    'handoff': 180,
 }
 
 
@@ -150,12 +150,16 @@ class RailBridge(Node):
         # 바로 실행 가능
         self.start_move(class_name=class_name, ahead=False)
 
-    def reset_callback(self, _msg):
-
+    def reset_callback(self, msg):
         self.command_queue.clear()
-
         self.pending_class = None
         self.pending_ahead = False
+
+        # 이미 최종 HOME까지 끝낸 뒤의 reset
+        if msg.data.strip() == 'final_reset':
+            self.move_home = False
+            self.get_logger().info('레일 상태 초기화 완료')
+            return
 
         self.move_home = True
 
