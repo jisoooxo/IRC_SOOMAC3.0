@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="990" viewBox="0 0 1700 990" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans CJK KR', system-ui, sans-serif">
+  <title>vLLM 서버와 ROS 2 노드 연결 구조</title>
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.1" fill="#3a3a3a"/>
+    </pattern>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a8a8a8"/>
+    </marker>
+    <style>
+      .ttl { font-size: 28px; font-weight: 700; fill: #ececec; }
+      .sub { font-size: 15px; fill: #a0a0a0; }
+      .gname { font-size: 18px; font-weight: 700; }
+      .gsub { font-size: 13px; fill: #b3b3b3; }
+      .card { fill: #262626; stroke-width: 1.5; }
+      .ct { font-size: 16px; font-weight: 650; fill: #ececec; }
+      .cb { font-size: 13.5px; fill: #c8c8c8; }
+      .cm { font-size: 13px; fill: #c8c8c8; font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace; }
+      .edge { fill: none; stroke: #8f8f8f; stroke-width: 2; }
+      .tedge { fill: none; stroke: #53dfdd; stroke-width: 1.6; stroke-opacity: 0.55; }
+      .pill { fill: #2f2f2f; stroke: #5a5a5a; stroke-width: 1; }
+      .pt { font-size: 13px; font-weight: 650; fill: #ececec; }
+      .pb { font-size: 12px; fill: #c8c8c8; }
+      .chip { stroke-width: 1.2; }
+      .chipt { font-size: 13px; font-weight: 600; fill: #ececec; }
+      .seg { font-size: 13px; font-weight: 600; fill: #111; }
+      .segw { font-size: 13px; font-weight: 600; fill: #ececec; }
+      .note { font-size: 13.5px; fill: #b3b3b3; }
+    </style>
+  </defs>
+
+  <rect width="1700" height="990" fill="#1e1e1e"/>
+  <rect width="1700" height="990" fill="url(#dots)"/>
+
+  <text x="40" y="50" class="ttl">vLLM 서버와 ROS 2 노드 연결 구조</text>
+  <text x="40" y="78" class="sub">LLM_BACKEND = "vllm"일 때 · 모두 같은 PC 안 · 2026-11-01 코드 기준 · 모델 계산은 서버, 판단 로직·ROS 통신은 노드</text>
+
+  <!-- ───────── 연결선: ROS 노드 → LLM 노드 ───────── -->
+  <path class="tedge" d="M380,202 C440,202 440,190 500,190"/>
+  <path class="tedge" d="M380,292 C440,292 440,200 500,200"/>
+  <path class="tedge" d="M380,392 C440,392 440,210 500,210"/>
+  <path class="tedge" d="M380,492 C440,492 440,220 500,220"/>
+  <path class="tedge" d="M380,622 C440,622 440,230 500,230"/>
+  <g fill="#53dfdd">
+    <circle cx="380" cy="202" r="4"/><circle cx="380" cy="292" r="4"/><circle cx="380" cy="392" r="4"/><circle cx="380" cy="492" r="4"/><circle cx="380" cy="622" r="4"/>
+    <circle cx="500" cy="190" r="3"/><circle cx="500" cy="200" r="3"/><circle cx="500" cy="210" r="3"/><circle cx="500" cy="220" r="3"/><circle cx="500" cy="230" r="3"/>
+  </g>
+
+  <!-- ───────── 그룹 1: ROS 2 노드 ───────── -->
+  <rect x="40" y="100" width="360" height="660" rx="16" fill="#53dfdd" fill-opacity="0.05" stroke="#53dfdd" stroke-width="1.5"/>
+  <text x="60" y="130" class="gname" fill="#53dfdd">ROS 2 Humble 노드들</text>
+  <text x="60" y="150" class="gsub">토픽으로 LLM 노드와 주고받는다</text>
+
+  <rect x="60" y="165" width="320" height="75" rx="10" class="card" stroke="#44cf6e"/>
+  <text x="76" y="189" class="ct">STT 노드</text>
+  <text x="76" y="210" class="cm">→ /stt_question   사용자 발화</text>
+  <text x="76" y="229" class="cm">← /stt/enable     말하는 중 끄기</text>
+
+  <rect x="60" y="255" width="320" height="75" rx="10" class="card" stroke="#7a7a7a"/>
+  <text x="76" y="279" class="ct">카메라·비전 노드</text>
+  <text x="76" y="300" class="cm">→ /vision/overlay_image</text>
+  <text x="76" y="319" class="cb">VLM 판정에 쓰는 카메라 영상</text>
+
+  <rect x="60" y="345" width="320" height="95" rx="10" class="card" stroke="#7a7a7a"/>
+  <text x="76" y="369" class="ct">UI 노드</text>
+  <text x="76" y="390" class="cm">→ /ui/start · /ui/reset</text>
+  <text x="76" y="409" class="cm">← /llm_response · /agent/status</text>
+  <text x="76" y="428" class="cm">← /stt/enable · /agent/vlm_snapshot</text>
+
+  <rect x="60" y="455" width="320" height="75" rx="10" class="card" stroke="#e0de71"/>
+  <text x="76" y="479" class="ct">TTS 노드</text>
+  <text x="76" y="500" class="cm">← /llm_response   읽어 줄 문장</text>
+  <text x="76" y="519" class="cb">cosyvoice3 환경</text>
+
+  <rect x="60" y="545" width="320" height="155" rx="10" class="card" stroke="#fb464c"/>
+  <text x="76" y="569" class="ct">로봇·레일 제어 (irc_control_pkg 등)</text>
+  <text x="76" y="590" class="cm">← /llm/plan · /llm/done</text>
+  <text x="76" y="609" class="cm">← /vlm/confirm     VLM 판정 결과</text>
+  <text x="76" y="628" class="cm">← /rail/move_ahead 레일 미리 이동</text>
+  <text x="76" y="647" class="cm">→ /llm/next · /llm/reset</text>
+  <text x="76" y="666" class="cm">→ /llm/confirm_start VLM 판정 시작</text>
+  <text x="76" y="688" class="cb">main_irc · main_vlm · 레일 노드</text>
+
+  <text x="60" y="728" class="gsub">→ LLM 노드로 보냄   ← LLM 노드가 보냄</text>
+  <text x="60" y="746" class="gsub">주요 토픽만 표시</text>
+
+  <!-- ───────── 그룹 2: LLM 노드 ───────── -->
+  <rect x="480" y="100" width="460" height="660" rx="16" fill="#a882ff" fill-opacity="0.06" stroke="#a882ff" stroke-width="1.5"/>
+  <text x="500" y="130" class="gname" fill="#a882ff">LLM 노드  llm_langgraph_node.py</text>
+  <text x="500" y="150" class="gsub">soomac_llm 환경 · Python 3.10 + rclpy · GPU 사용 0</text>
+
+  <rect x="500" y="165" width="420" height="80" rx="10" class="card" stroke="#a882ff"/>
+  <text x="516" y="189" class="ct">ROS 입출력</text>
+  <text x="516" y="211" class="cb">제어 토픽 → 작업 큐(최대 32개) · 카메라 프레임 → 별도 버퍼</text>
+  <text x="516" y="231" class="cb">발행: 응답 문장 · 조리 계획 · 상태 · VLM 결과</text>
+
+  <rect x="500" y="260" width="420" height="70" rx="10" class="card" stroke="#a882ff"/>
+  <text x="516" y="284" class="ct">워커 스레드 1개</text>
+  <text x="516" y="307" class="cb">큐에서 하나씩 꺼내 순서대로 처리 (LLM·VLM 함께)</text>
+
+  <rect x="500" y="345" width="420" height="130" rx="10" class="card" stroke="#a882ff"/>
+  <text x="516" y="369" class="ct">LangGraph + 정책</text>
+  <rect x="516" y="385" width="104" height="32" rx="16" class="chip" fill="#a882ff" fill-opacity="0.18" stroke="#a882ff"/>
+  <text x="568" y="406" class="chipt" text-anchor="middle">Decision</text>
+  <text x="634" y="406" class="cb" text-anchor="middle">→</text>
+  <rect x="648" y="385" width="148" height="32" rx="16" class="chip" fill="#a882ff" fill-opacity="0.18" stroke="#a882ff"/>
+  <text x="722" y="406" class="chipt" text-anchor="middle">Recommendation</text>
+  <text x="810" y="406" class="cb" text-anchor="middle">→</text>
+  <rect x="824" y="385" width="84" height="32" rx="16" class="chip" fill="#a882ff" fill-opacity="0.18" stroke="#a882ff"/>
+  <text x="866" y="406" class="chipt" text-anchor="middle">Response</text>
+  <text x="516" y="442" class="cb">주문 상태 · 정책 검사 · 실행 여부 판단은 모두 노드 안에서</text>
+  <text x="516" y="462" class="cb">Recommendation은 추천이 필요할 때만 호출</text>
+
+  <rect x="500" y="490" width="420" height="135" rx="10" class="card" stroke="#a882ff"/>
+  <text x="516" y="514" class="ct">VllmModel — HF 모델 자리에 끼우는 대리 객체</text>
+  <text x="516" y="537" class="cm">set_adapter("decision") → generate(토큰 ID)</text>
+  <text x="516" y="557" class="cb">processor: CPU에서 채팅 템플릿·토큰화만 (모델 안 올림)</text>
+  <text x="516" y="577" class="cb">input_budget: 입력 ≤ 10,240 − 출력 한도, 넘으면 옛 대화부터 뺌</text>
+  <text x="516" y="597" class="cb">XGrammar 출력 문법을 그대로 서버에 넘김</text>
+  <text x="516" y="615" class="cb">greedy · 한 번에 1개 요청</text>
+
+  <rect x="500" y="640" width="420" height="100" rx="10" class="card" stroke="#a882ff"/>
+  <text x="516" y="664" class="ct">VLM 판정 (make_call_vlm_remote)</text>
+  <text x="516" y="686" class="cb">카메라 최근 5장 + 참고·비교 이미지 1~2장 + 판정 프롬프트</text>
+  <text x="516" y="706" class="cb">어댑터 없이 기반 모델로 판정</text>
+  <text x="516" y="726" class="cb">결과 → /vlm/confirm · UI용 3분할 그림 → /agent/vlm_snapshot</text>
+
+  <!-- ───────── 연결선: LLM 노드 ↔ vLLM 서버 (HTTP) ───────── -->
+  <path class="edge" d="M920,515 C1050,515 1090,205 1220,205" marker-end="url(#arr)"/>
+  <path class="edge" d="M920,575 C1050,575 1090,447 1220,447" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <path class="edge" d="M920,690 C1050,690 1090,580 1220,580" marker-start="url(#arr)" marker-end="url(#arr)"/>
+
+  <rect x="945" y="318" width="250" height="78" rx="10" class="pill"/>
+  <text x="958" y="340" class="pt">① 노드 시작 때 한 번</text>
+  <text x="958" y="360" class="pb">GET /health  서버 준비 기다림</text>
+  <text x="958" y="379" class="pb">GET /v1/models  어댑터·최대 길이 검사</text>
+
+  <rect x="945" y="468" width="250" height="88" rx="10" class="pill"/>
+  <text x="958" y="490" class="pt">② 대화 판단 · 추천 · 응답</text>
+  <text x="958" y="509" class="cm" style="font-size:12px">POST /v1/completions</text>
+  <text x="958" y="527" class="pb">보냄: 어댑터 이름 + 토큰 ID + 문법 등</text>
+  <text x="958" y="545" class="pb">받음: 출력 토큰 ID</text>
+
+  <rect x="945" y="592" width="250" height="88" rx="10" class="pill"/>
+  <text x="958" y="614" class="pt">③ VLM 판정</text>
+  <text x="958" y="633" class="cm" style="font-size:12px">POST /v1/chat/completions</text>
+  <text x="958" y="651" class="pb">보냄: gemma4-base + 이미지 + 프롬프트</text>
+  <text x="958" y="669" class="pb">받음: 판정 문장</text>
+
+  <text x="1070" y="712" class="note" text-anchor="middle">HTTP · 127.0.0.1:8000</text>
+  <text x="1070" y="731" class="note" text-anchor="middle">(같은 PC 안에서만)</text>
+
+  <!-- ───────── 그룹 3: vLLM 서버 ───────── -->
+  <rect x="1200" y="100" width="460" height="660" rx="16" fill="#e9973f" fill-opacity="0.06" stroke="#e9973f" stroke-width="1.5"/>
+  <text x="1220" y="130" class="gname" fill="#e9973f">vLLM 서버  start_vllm_server.sh</text>
+  <text x="1220" y="150" class="gsub">soomac_vllm_server 환경 · Python 3.12 · vllm 0.32</text>
+
+  <rect x="1220" y="165" width="420" height="80" rx="10" class="card" stroke="#e9973f"/>
+  <text x="1236" y="189" class="ct">표준 양식 API</text>
+  <text x="1352" y="189" class="gsub">OpenAI와 같은 요청 양식 · 인터넷 안 씀</text>
+  <text x="1236" y="211" class="cm">/health · /v1/models</text>
+  <text x="1236" y="230" class="cm">/v1/completions · /v1/chat/completions</text>
+
+  <rect x="1220" y="260" width="420" height="110" rx="10" class="card" stroke="#e9973f"/>
+  <text x="1236" y="284" class="ct">엔진 기능</text>
+  <text x="1236" y="307" class="cb">자동 접두 캐시: 같은 system prompt 계산을 재사용(어댑터별)</text>
+  <text x="1236" y="327" class="cb">XGrammar: 출력 JSON 형식 강제</text>
+  <text x="1236" y="347" class="cb">CUDA graph · 결과 고정(VLLM_BATCH_INVARIANT=1)</text>
+
+  <rect x="1220" y="385" width="420" height="125" rx="10" class="card" stroke="#e9973f"/>
+  <text x="1236" y="409" class="ct">LoRA 어댑터 3개 — 요청마다 골라 씀</text>
+  <rect x="1236" y="423" width="106" height="32" rx="16" class="chip" fill="#e9973f" fill-opacity="0.18" stroke="#e9973f"/>
+  <text x="1289" y="444" class="chipt" text-anchor="middle">decision</text>
+  <rect x="1352" y="423" width="150" height="32" rx="16" class="chip" fill="#e9973f" fill-opacity="0.18" stroke="#e9973f"/>
+  <text x="1427" y="444" class="chipt" text-anchor="middle">recommendation</text>
+  <rect x="1512" y="423" width="112" height="32" rx="16" class="chip" fill="#e9973f" fill-opacity="0.18" stroke="#e9973f"/>
+  <text x="1568" y="444" class="chipt" text-anchor="middle">response</text>
+  <text x="1236" y="478" class="cm">models/vllm_adapters/</text>
+  <text x="1236" y="497" class="cb">학습 어댑터의 k_proj LoRA를 v_proj로 복사한 변환본</text>
+
+  <rect x="1220" y="525" width="420" height="110" rx="10" class="card" stroke="#e9973f"/>
+  <text x="1236" y="549" class="ct">기반 모델 gemma4-base</text>
+  <text x="1236" y="572" class="cb">Gemma 4 12B · NF4 4bit (bitsandbytes)</text>
+  <text x="1236" y="592" class="cb">어댑터를 학습한 정밀도와 같아야 답이 안 바뀐다</text>
+  <text x="1236" y="612" class="cb">VLM 판정은 어댑터 없이 여기로 바로</text>
+
+  <rect x="1220" y="650" width="420" height="90" rx="10" class="card" stroke="#e9973f"/>
+  <text x="1236" y="674" class="ct">메모리 설정</text>
+  <text x="1236" y="697" class="cb">GPU 비율 0.45 · 동시 처리 2 · 최대 10,240토큰</text>
+  <text x="1236" y="717" class="cb">KV 캐시 자리 10,717토큰 · 준비까지 약 2분 반</text>
+
+  <!-- ───────── GPU 메모리 ───────── -->
+  <text x="40" y="808" class="gname" fill="#ececec">GPU 메모리 (RTX PRO 4500 · 31.9GiB) — 같이 떠 있을 때</text>
+  <text x="40" y="830" class="gsub">각자 따로 잰 최대값(GiB 환산, 대략), 합계 약 26.0GiB. STT·TTS 상주 17턴 측정의 전체 최대는 25.97GiB이고, STT·TTS가 동시에 추론하면 +0.5GiB. 카메라·비전 노드는 미측정</text>
+  <rect x="40" y="845" width="1620" height="38" rx="6" fill="#2a2a2a" stroke="#3d3d3d"/>
+  <rect x="40" y="845" width="66" height="38" rx="6" fill="#7a7a7a"/>
+  <rect x="108" y="845" width="218" height="38" fill="#44cf6e"/>
+  <rect x="328" y="845" width="264" height="38" fill="#e0de71"/>
+  <rect x="594" y="845" width="772" height="38" fill="#e9973f"/>
+  <text x="217" y="869" class="seg" text-anchor="middle">STT 약 4.3</text>
+  <text x="460" y="869" class="seg" text-anchor="middle">TTS 약 5.2</text>
+  <text x="980" y="869" class="seg" text-anchor="middle">vLLM 서버 약 15.2 (모델 + LoRA + KV 캐시)</text>
+  <text x="73" y="902" class="note" text-anchor="middle">화면 약 1.3</text>
+  <line x1="1412" y1="838" x2="1412" y2="892" stroke="#fb464c" stroke-width="2"/>
+  <text x="1420" y="905" class="note" fill="#fb464c">27GiB 상한</text>
+  <text x="1366" y="902" class="note" text-anchor="end">LLM 노드는 GPU 0 (모델은 서버에)</text>
+
+  <text x="40" y="945" class="note">LLM_BACKEND = "hf"(현재 기본값)이면 vLLM 서버 없이 LLM 노드가 모델을 직접 GPU에 올린다(최대 14.1GB). 바꾸는 곳: llm_langgraph_node.py 61줄</text>
+  <text x="40" y="967" class="note">새 어댑터를 학습하면: convert_adapters_for_vllm.py로 변환 → 서버 재시작. 서버 어댑터가 현재 학습 결과와 다르면 노드가 시작을 거부한다(파일 해시 비교)</text>
+</svg>

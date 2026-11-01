@@ -15,14 +15,17 @@ from soomac_irc.agent_contract import (
     normalize_decision,
 )
 from soomac_irc.agent_prompts import DECISION_SYSTEM
+from soomac_irc.input_budget import InputBudgetError, check_static_budget, input_token_limit
 from soomac_irc.prefix_cache import PrefixKVCache
 
 DECISION_HISTORY_TURNS = 10
+DECISION_MAX_TOKENS = 1024
 # GL06 offline baseline/candidate/repair and 20-message stress measurements:
 # 8192 loses additional history with demos; 16384 is the minimum measured cap
 # preserving at least the GL05 baseline window. GPU cost acceptance is GL11.
-DECISION_INPUT_MAX_TOKENS = 16384
-DECISION_MAX_TOKENS = 1024
+# 2026-11-01: 서빙(vLLM max_model_len 10240) 한도에 맞춰 10240 - 출력 1024 = 9216으로 낮춘다.
+# 학습 max_length(decision 9216)와 같은 기준이다. 현재 실측 최대 입력은 8588토큰이라 평소에는 자르지 않는다.
+DECISION_INPUT_MAX_TOKENS = min(16384, input_token_limit(DECISION_MAX_TOKENS))
 DECISION_KEYS_ANY_ORDER = True
 
 
@@ -77,7 +80,7 @@ def build_decision_inputs(
         if history:
             model_input["recent_history"] = history[2:] if len(history) >= 2 else []
             continue
-        raise ValueError(f"Decision 입력 token 초과: {prompt_tokens}/{DECISION_INPUT_MAX_TOKENS}")
+        raise InputBudgetError(f"Decision 입력 token 초과: {prompt_tokens}/{DECISION_INPUT_MAX_TOKENS}")
 
 
 #################### 모델 JSON을 내부 Decision으로 변환 ####################
@@ -119,6 +122,8 @@ def make_call_decision(
         DECISION_SCHEMA,
         any_order=DECISION_KEYS_ANY_ORDER,
     )
+    # 프롬프트가 입력 한도를 넘을 만큼 길어졌으면 대화 도중이 아니라 시작할 때 멈춘다.
+    check_static_budget(processor, system_prompt or DECISION_SYSTEM, DECISION_INPUT_MAX_TOKENS, "Decision")
     prefix_cache = PrefixKVCache(processor, logger)
 
     @torch.inference_mode()

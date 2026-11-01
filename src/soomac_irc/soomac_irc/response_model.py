@@ -9,12 +9,15 @@ from xgrammar.contrib.hf import LogitsProcessor as XGrammarLogitsProcessor
 from soomac_irc.adapter_runtime import activate_adapter
 from soomac_irc.agent_contract import RESPONSE_SCHEMA, SessionState
 from soomac_irc.agent_prompts import GENERAL_RESPONSE_SYSTEM, MIXED_RESPONSE_SYSTEM, TASK_RESPONSE_SYSTEM
+from soomac_irc.input_budget import check_static_budget, fit_recent_history, input_token_limit
 from soomac_irc.prefix_cache import PrefixKVCache
 from soomac_irc.response_contract import (
     RESPONSE_HISTORY_TURNS, build_response_model_input, validate_response_output,
 )
 
 RESPONSE_MAX_TOKENS = 512
+# 2026-11-01: 서빙 한도(10240) - 출력 512 = 9728. 넘으면 오래된 대화부터 뺀다(현재 실측 최대 8408).
+RESPONSE_INPUT_MAX_TOKENS = input_token_limit(RESPONSE_MAX_TOKENS)
 RESPONSE_SYSTEM_BY_ROUTE = {
     "task": TASK_RESPONSE_SYSTEM,
     "general": GENERAL_RESPONSE_SYSTEM,
@@ -31,6 +34,8 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
     stop_ids = list(dict.fromkeys(i for i in stop_ids if isinstance(i, int) and i >= 0))
     tokenizer_info = xgr.TokenizerInfo.from_huggingface(tokenizer, vocab_size=len(tokenizer), stop_token_ids=stop_ids)
     compiled_grammar = xgr.GrammarCompiler(tokenizer_info).compile_json_schema(RESPONSE_SCHEMA)
+    for route_name, route_system in RESPONSE_SYSTEM_BY_ROUTE.items():
+        check_static_budget(processor, route_system, RESPONSE_INPUT_MAX_TOKENS, f"Response/{route_name}")
     prefix_cache = PrefixKVCache(processor, logger)
 
     @torch.inference_mode()
@@ -58,14 +63,14 @@ def make_call_response(model, processor, logger=None, adapter_name: str | None =
         ]
         trace = {"stage": "response", "route": route, "model_input": copy.deepcopy(model_input), "messages": copy.deepcopy(messages)}
         try:
-            inputs = processor.apply_chat_template(
-                messages,
-                add_generation_prompt=True,
-                tokenize=True,
-                return_dict=True,
-                return_tensors="pt",
-                enable_thinking=False,
-            ).to(model.device)
+            # 서빙 한도를 넘으면 가장 오래된 대화부터 뺀다. 평소(한도 이하)에는 입력이 그대로다.
+            messages, inputs, dropped = fit_recent_history(
+                processor, RESPONSE_SYSTEM_BY_ROUTE[route], model_input, RESPONSE_INPUT_MAX_TOKENS, f"Response/{route}",
+            )
+            if dropped:
+                trace.update({"model_input": copy.deepcopy(model_input), "messages": copy.deepcopy(messages),
+                              "history_trimmed_messages": dropped})
+            inputs = inputs.to(model.device)
             prompt_tokens = inputs["input_ids"].shape[1]
             generate_args = {
                 **inputs,

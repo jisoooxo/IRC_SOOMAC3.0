@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1040" viewBox="0 0 1700 1040" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans CJK KR', system-ui, sans-serif">
+  <title>LLM 추론 구조 비교 — 처음, 지금 기본값, vLLM</title>
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#3a3a3a"/></pattern>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a8a8a8"/></marker>
+    <style>
+      .ttl { font-size: 28px; font-weight: 700; fill: #ececec; }
+      .sub { font-size: 15px; fill: #a0a0a0; }
+      .gname { font-size: 18px; font-weight: 700; }
+      .gsub { font-size: 13px; fill: #b3b3b3; }
+      .ct { font-size: 15.5px; font-weight: 650; fill: #ececec; }
+      .cb { font-size: 13.5px; fill: #c8c8c8; }
+      .cm { font-size: 12.5px; fill: #c8c8c8; font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace; }
+      .edge { fill: none; stroke: #8f8f8f; stroke-width: 2; }
+      .note { font-size: 13px; fill: #a8a8a8; }
+      .tag { font-size: 12px; font-weight: 700; }
+      .chev { font-size: 40px; fill: #6a6a6a; }
+      .barw { font-size: 13px; font-weight: 600; fill: #ffffff; }
+      .big { font-size: 34px; font-weight: 750; }
+      .val { font-size: 15px; font-weight: 650; fill: #ececec; }
+    </style>
+  </defs>
+  <rect width="1700" height="1040" fill="#1e1e1e"/><rect width="1700" height="1040" fill="url(#dots)"/>
+<text x="40" y="50" class="ttl">LLM 추론 구조 비교 — 처음 → 지금 기본값 → vLLM</text>
+<text x="40" y="78" class="sub">ROS 토픽·LangGraph·정책·프롬프트·어댑터 학습 결과는 세 경우 모두 같다. 바뀐 것은 모델을 어디서, 어떻게 계산하느냐뿐이다.</text>
+<rect x="40" y="100" width="520" height="60" rx="12" fill="#8a8a8a" fill-opacity="0.12" stroke="#8a8a8a" stroke-width="1.5"/>
+<text x="58" y="126" class="gname" fill="#d0d0d0">① 처음 (시작 전)</text>
+<text x="58" y="148" class="gsub">LLM_BACKEND=&quot;hf&quot; · 캐시 없음 · gemma4_env</text>
+<text x="575" y="140" class="chev" text-anchor="middle">›</text>
+<rect x="40" y="180" width="520" height="56" rx="10" fill="#262626" stroke="#5a5a5a" stroke-width="1.5"/>
+<text x="58" y="203" class="ct">ROS 2 노드들 (STT · UI · TTS · 카메라 · 로봇)</text>
+<text x="58" y="224" class="cb">토픽 그대로 — 세 경우 모두 같음</text>
+<path d="M300.0,236 L300.0,262" class="edge" marker-end="url(#arr)"/>
+<text x="312.0" y="254.0" class="note">토픽</text>
+<rect x="590" y="100" width="520" height="60" rx="12" fill="#a882ff" fill-opacity="0.12" stroke="#a882ff" stroke-width="1.5"/>
+<text x="608" y="126" class="gname" fill="#a882ff">② 지금 기본값 — HF + 접두 캐시</text>
+<text x="608" y="148" class="gsub">LLM_BACKEND=&quot;hf&quot; · PREFIX_CACHE_ENABLED=True · soomac_llm</text>
+<text x="1125" y="140" class="chev" text-anchor="middle">›</text>
+<rect x="590" y="180" width="520" height="56" rx="10" fill="#262626" stroke="#5a5a5a" stroke-width="1.5"/>
+<text x="608" y="203" class="ct">ROS 2 노드들 (STT · UI · TTS · 카메라 · 로봇)</text>
+<text x="608" y="224" class="cb">토픽 그대로 — 세 경우 모두 같음</text>
+<path d="M850.0,236 L850.0,262" class="edge" marker-end="url(#arr)"/>
+<text x="862.0" y="254.0" class="note">토픽</text>
+<rect x="1140" y="100" width="520" height="60" rx="12" fill="#e9973f" fill-opacity="0.12" stroke="#e9973f" stroke-width="1.5"/>
+<text x="1158" y="126" class="gname" fill="#e9973f">③ vLLM 서버 (선택, 로봇 시험 대기)</text>
+<text x="1158" y="148" class="gsub">LLM_BACKEND=&quot;vllm&quot; · LLM 노드와 서버가 각자 다른 환경</text>
+<rect x="1140" y="180" width="520" height="56" rx="10" fill="#262626" stroke="#5a5a5a" stroke-width="1.5"/>
+<text x="1158" y="203" class="ct">ROS 2 노드들 (STT · UI · TTS · 카메라 · 로봇)</text>
+<text x="1158" y="224" class="cb">토픽 그대로 — 세 경우 모두 같음</text>
+<path d="M1400.0,236 L1400.0,262" class="edge" marker-end="url(#arr)"/>
+<text x="1412.0" y="254.0" class="note">토픽</text>
+<rect x="40" y="264" width="520" height="306" rx="14" fill="#a882ff" fill-opacity="0.06" stroke="#a882ff" stroke-width="1.5"/>
+<text x="58" y="290" class="ct" fill="#a882ff">LLM 노드  llm_langgraph_node.py</text>
+<text x="58" y="311" class="gsub">gemma4_env (STT와 같은 환경) · Python 3.10</text>
+<rect x="56" y="324" width="488" height="46" rx="10" fill="#262626" stroke="#5a5a5a" stroke-width="1.5"/>
+<text x="72" y="352" class="cb">작업 큐 → 워커 1개 → LangGraph (D → Q → P) · 정책</text>
+<rect x="56" y="384" width="488" height="172" rx="10" fill="#262626" stroke="#3987e5" stroke-width="1.5"/>
+<text x="72" y="408" class="ct">모델 — 노드 안에서 GPU에 직접 올림</text>
+<text x="72" y="431" class="cb">Gemma 4 12B · NF4 + LoRA 3개 (HF transformers + PEFT)</text>
+<text x="72" y="451" class="cb">어댑터를 이름으로 전환 · VLM은 어댑터 끄고 같은 모델</text>
+<text x="72" y="477" class="cb" fill="#ff9a9d">model.generate()가 호출마다 입력 전체를 처음부터 계산</text>
+<text x="72" y="497" class="cm">transformers 5.13.1 · peft 0.19.1 · bitsandbytes 0.49.2</text>
+<text x="72" y="517" class="cb">슬라이딩 층 KV가 안 잘리는 버그가 있는 버전</text>
+<text x="72" y="540" class="cb">LLM 모델의 GPU는 이 노드 몫 (STT·TTS는 따로 씀)</text>
+<rect x="590" y="264" width="520" height="306" rx="14" fill="#a882ff" fill-opacity="0.06" stroke="#a882ff" stroke-width="1.5"/>
+<text x="608" y="290" class="ct" fill="#a882ff">LLM 노드  llm_langgraph_node.py</text>
+<text x="608" y="311" class="gsub">soomac_llm (LLM 전용 새 환경) · Python 3.10</text>
+<rect x="1056" y="294" width="40" height="22" rx="11" fill="#44cf6e" fill-opacity="0.2" stroke="#44cf6e"/>
+<text x="1076.0" y="309.5" class="tag" text-anchor="middle" fill="#44cf6e">바뀜</text>
+<rect x="606" y="324" width="488" height="46" rx="10" fill="#262626" stroke="#5a5a5a" stroke-width="1.5"/>
+<text x="622" y="352" class="cb">작업 큐 → 워커 1개 → LangGraph (D → Q → P) · 정책</text>
+<rect x="606" y="384" width="488" height="172" rx="10" fill="#262626" stroke="#3987e5" stroke-width="1.5"/>
+<text x="622" y="408" class="ct">모델 — 노드 안에서 GPU에 직접 올림</text>
+<text x="622" y="431" class="cb">Gemma 4 12B · NF4 + LoRA 3개 (HF transformers + PEFT)</text>
+<text x="622" y="451" class="cb">어댑터를 이름으로 전환 · VLM은 어댑터 끄고 같은 모델</text>
+<text x="622" y="477" class="cb" fill="#8ef0a8">prefix_cache: 같은 system prompt의 KV를 저장해 재사용</text>
+<text x="622" y="497" class="cb">(어댑터·프롬프트별 저장. 적중하면 뒷부분만 계산)</text>
+<text x="622" y="517" class="cm">transformers 5.14.1 · peft 0.21.0 · bitsandbytes 0.50.2</text>
+<text x="622" y="540" class="cb" fill="#8ef0a8">+ clone: 캐시 1개 1.97 → 0.445GiB</text>
+<rect x="1040" y="396" width="40" height="22" rx="11" fill="#44cf6e" fill-opacity="0.2" stroke="#44cf6e"/>
+<text x="1060.0" y="411.5" class="tag" text-anchor="middle" fill="#44cf6e">바뀜</text>
+<rect x="1140" y="264" width="520" height="140" rx="14" fill="#a882ff" fill-opacity="0.06" stroke="#a882ff" stroke-width="1.5"/>
+<text x="1158" y="290" class="ct" fill="#a882ff">LLM 노드  llm_langgraph_node.py</text>
+<text x="1158" y="311" class="gsub">soomac_llm 환경 · 모델 안 올림 · GPU 0</text>
+<rect x="1156" y="324" width="488" height="66" rx="10" fill="#262626" stroke="#5a5a5a" stroke-width="1.5"/>
+<text x="1172" y="349" class="cb">작업 큐 → 워커 1개 → LangGraph (D → Q → P) · 정책</text>
+<text x="1172" y="372" class="cb" fill="#8ef0a8">VllmModel: 모델 자리 대리 객체 → 토큰 ID를 HTTP로</text>
+<rect x="1606" y="294" width="40" height="22" rx="11" fill="#44cf6e" fill-opacity="0.2" stroke="#44cf6e"/>
+<text x="1626.0" y="309.5" class="tag" text-anchor="middle" fill="#44cf6e">바뀜</text>
+<path d="M1400.0,404 L1400.0,430" class="edge" marker-end="url(#arr)"/>
+<text x="1412.0" y="422.0" class="note">HTTP · 127.0.0.1:8000</text>
+<rect x="1140" y="432" width="520" height="138" rx="14" fill="#e9973f" fill-opacity="0.08" stroke="#e9973f" stroke-width="1.5"/>
+<text x="1158" y="457" class="ct" fill="#e9973f">vLLM 서버 — 별도 프로세스</text>
+<text x="1158" y="478" class="gsub">soomac_vllm_server 환경 · Python 3.12 · vllm 0.32</text>
+<text x="1158" y="503" class="cb">Gemma 4 12B · NF4 + LoRA 3개(변환본) · VLM 판정도 여기</text>
+<text x="1158" y="524" class="cb">자동 접두 캐시(어댑터별) · CUDA graph · XGrammar</text>
+<text x="1158" y="545" class="cb">결과 고정 켬 · GPU 비율 0.45 · 최대 10,240토큰</text>
+<rect x="1567" y="440" width="79" height="22" rx="11" fill="#44cf6e" fill-opacity="0.2" stroke="#44cf6e"/>
+<text x="1606.5" y="455.5" class="tag" text-anchor="middle" fill="#44cf6e">새로 생김</text>
+<text x="40" y="600" class="ct">Decision 1번에 다시 계산하는 양 (캐시 적중 시)</text>
+<rect x="40" y="614" width="446" height="28" rx="4" fill="#3987e5" stroke="#3987e5" stroke-width="0"/>
+<text x="263.0" y="633" class="barw" text-anchor="middle">system prompt 약 6천 토큰(당시) — 매번 다시 계산</text>
+<rect x="488" y="614" width="32" height="28" rx="4" fill="#eb6834" stroke="#e9973f" stroke-width="0"/>
+<text x="528" y="633" class="note">대화</text>
+<text x="40" y="664" class="cb">읽기(prefill)가 시간 대부분 (추정)</text>
+<text x="590" y="600" class="ct">Decision 1번에 다시 계산하는 양 (캐시 적중 시)</text>
+<rect x="590" y="614" width="446" height="28" rx="4" fill="#2c4a6e" stroke="#3987e5" stroke-width="0"/>
+<text x="813.0" y="633" class="barw" text-anchor="middle">저장한 메모 재사용 (계산 안 함)</text>
+<rect x="1038" y="614" width="32" height="28" rx="4" fill="#eb6834" stroke="#e9973f" stroke-width="0"/>
+<text x="1078" y="633" class="note">대화</text>
+<text x="590" y="664" class="cb">읽기는 대부분 생략 · 쓰기(decode) 오버헤드는 남음 (추정)</text>
+<text x="1140" y="600" class="ct">Decision 1번에 다시 계산하는 양 (캐시 적중 시)</text>
+<rect x="1140" y="614" width="446" height="28" rx="4" fill="#2c4a6e" stroke="#3987e5" stroke-width="0"/>
+<text x="1363.0" y="633" class="barw" text-anchor="middle">엔진이 저장한 메모 재사용 (적중률 약 80%)</text>
+<rect x="1588" y="614" width="32" height="28" rx="4" fill="#eb6834" stroke="#e9973f" stroke-width="0"/>
+<text x="1628" y="633" class="note">대화</text>
+<text x="1140" y="664" class="cb">쓰기 쪽도 빨라짐 · CUDA graph·LoRA 커널 덕으로 추정 (미분리)</text>
+<rect x="40" y="684" width="520" height="212" rx="12" fill="#262626" stroke="#8a8a8a" stroke-width="1.5"/>
+<text x="58" y="730" class="big" fill="#ececec">기준</text>
+<text x="140" y="728" class="gsub">호출 1회 속도</text>
+<line x1="58" y1="745" x2="542" y2="745" stroke="#383838"/>
+<text x="58" y="764" class="cb" fill="#a0a0a0">호출 1회 평균</text>
+<text x="542" y="764" class="val" text-anchor="end">4.49초</text>
+<line x1="58" y1="772" x2="542" y2="772" stroke="#383838"/>
+<text x="58" y="791" class="cb" fill="#a0a0a0">Decision 1회</text>
+<text x="542" y="791" class="val" text-anchor="end">4.64초</text>
+<line x1="58" y1="799" x2="542" y2="799" stroke="#383838"/>
+<text x="58" y="818" class="cb" fill="#a0a0a0">17턴 시나리오</text>
+<text x="542" y="818" class="val" text-anchor="end">210.8초 ※</text>
+<line x1="58" y1="826" x2="542" y2="826" stroke="#383838"/>
+<text x="58" y="845" class="cb" fill="#a0a0a0">LLM 몫 GPU 최대</text>
+<text x="542" y="845" class="val" text-anchor="end">13.5GB (노드)</text>
+<line x1="58" y1="853" x2="542" y2="853" stroke="#383838"/>
+<text x="58" y="872" class="cb" fill="#a0a0a0">STT와 환경 공유</text>
+<text x="542" y="872" class="val" text-anchor="end">공유 (올리면 STT도 바뀜)</text>
+<rect x="590" y="684" width="520" height="212" rx="12" fill="#262626" stroke="#a882ff" stroke-width="1.5"/>
+<text x="608" y="730" class="big" fill="#ececec">3.0배</text>
+<text x="702" y="728" class="gsub">호출 1회 속도 (같은 10건)</text>
+<line x1="608" y1="745" x2="1092" y2="745" stroke="#383838"/>
+<text x="608" y="764" class="cb" fill="#a0a0a0">호출 1회 평균</text>
+<text x="1092" y="764" class="val" text-anchor="end">1.49초</text>
+<line x1="608" y1="772" x2="1092" y2="772" stroke="#383838"/>
+<text x="608" y="791" class="cb" fill="#a0a0a0">Decision 1회</text>
+<text x="1092" y="791" class="val" text-anchor="end">1.04초</text>
+<line x1="608" y1="799" x2="1092" y2="799" stroke="#383838"/>
+<text x="608" y="818" class="cb" fill="#a0a0a0">17턴 시나리오</text>
+<text x="1092" y="818" class="val" text-anchor="end">71.9초</text>
+<line x1="608" y1="826" x2="1092" y2="826" stroke="#383838"/>
+<text x="608" y="845" class="cb" fill="#a0a0a0">LLM 몫 GPU 최대</text>
+<text x="1092" y="845" class="val" text-anchor="end">14.1GB (노드)</text>
+<line x1="608" y1="853" x2="1092" y2="853" stroke="#383838"/>
+<text x="608" y="872" class="cb" fill="#a0a0a0">STT와 환경 공유</text>
+<text x="1092" y="872" class="val" text-anchor="end">분리</text>
+<rect x="1140" y="684" width="520" height="212" rx="12" fill="#262626" stroke="#e9973f" stroke-width="1.5"/>
+<text x="1158" y="730" class="big" fill="#ececec">약 8.5배</text>
+<text x="1292" y="728" class="gsub">호출 1회 속도 · 표본이 달라 참고치</text>
+<line x1="1158" y1="745" x2="1642" y2="745" stroke="#383838"/>
+<text x="1158" y="764" class="cb" fill="#a0a0a0">호출 1회 평균</text>
+<text x="1642" y="764" class="val" text-anchor="end">0.53초 (0.60) *</text>
+<line x1="1158" y1="772" x2="1642" y2="772" stroke="#383838"/>
+<text x="1158" y="791" class="cb" fill="#a0a0a0">Decision 1회</text>
+<text x="1642" y="791" class="val" text-anchor="end">0.28~0.54초 (0.60)</text>
+<line x1="1158" y1="799" x2="1642" y2="799" stroke="#383838"/>
+<text x="1158" y="818" class="cb" fill="#a0a0a0">17턴 시나리오</text>
+<text x="1642" y="818" class="val" text-anchor="end">36.0~37.2초 (0.45) †</text>
+<line x1="1158" y1="826" x2="1642" y2="826" stroke="#383838"/>
+<text x="1158" y="845" class="cb" fill="#a0a0a0">LLM 몫 GPU 최대</text>
+<text x="1642" y="845" class="val" text-anchor="end">15.6GB (서버, 0.45)</text>
+<line x1="1158" y1="853" x2="1642" y2="853" stroke="#383838"/>
+<text x="1158" y="872" class="cb" fill="#a0a0a0">STT와 환경 공유</text>
+<text x="1642" y="872" class="val" text-anchor="end">분리</text>
+<text x="40" y="930" class="note">※ 210.8초는 프롬프트가 지금보다 짧던 시점이라 직접 비교 불가. 같은 코드·프롬프트로 연달아 잰 비교는 ②→③ 71.9 → 32.8~33.5초(GPU 비율 0.60)</text>
+<text x="40" y="952" class="note">* ③ 호출 평균 0.53초·Decision 0.28~0.54초는 GPU 비율 0.60 시험값(실제 조건 6건). ①·②는 같은 로그 10건이라 1:1 비교 아님</text>
+<text x="40" y="974" class="note">† 운영값 0.45에서 17턴 36.0초(결과 고정 켬) / 37.2초(끔). GB는 nvidia-smi MiB ÷ 1000. ③은 STT·TTS 상주 시 PC 전체 25.97GiB(동시 추론 +0.5GiB 별도, 카메라·비전 미측정)</text>
+<text x="40" y="996" class="note">바꾸는 곳: llm_langgraph_node.py 61줄 LLM_BACKEND = &quot;hf&quot; | &quot;vllm&quot; · 캐시 끄기: prefix_cache.py 10줄 PREFIX_CACHE_ENABLED = False</text>
+</svg>

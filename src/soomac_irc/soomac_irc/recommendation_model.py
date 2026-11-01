@@ -14,12 +14,15 @@ from soomac_irc.agent_contract import (
 )
 from soomac_irc.agent_prompts import RECOMMENDATION_SYSTEM
 from soomac_irc.domain import AMOUNTS, NOODLE_TYPES, SAUCES, TOPPINGS
+from soomac_irc.input_budget import check_static_budget, fit_recent_history, input_token_limit
 from soomac_irc.llm_policy import build_recommendation_scope
 from soomac_irc.prefix_cache import PrefixKVCache
 from soomac_irc.response_contract import build_recommendation_model_input
 
 RECOMMENDATION_MAX_TOKENS = 1024
 RECOMMENDATION_HISTORY_TURNS = 10
+# 2026-11-01: 서빙 한도(10240) - 출력 1024 = 9216. 넘으면 오래된 대화부터 뺀다(현재 실측 최대 약 3.9k).
+RECOMMENDATION_INPUT_MAX_TOKENS = input_token_limit(RECOMMENDATION_MAX_TOKENS)
 
 
 #################### 추천 모델 호출 함수 만들기 ####################
@@ -31,6 +34,7 @@ def make_call_recommendation(model, processor, logger=None, adapter_name: str | 
     stop_ids = list(dict.fromkeys(i for i in stop_ids if isinstance(i, int) and i >= 0))
     tokenizer_info = xgr.TokenizerInfo.from_huggingface(tokenizer, vocab_size=len(tokenizer), stop_token_ids=stop_ids)
     compiled_grammar = xgr.GrammarCompiler(tokenizer_info).compile_json_schema(RECOMMENDATION_SCHEMA)
+    check_static_budget(processor, RECOMMENDATION_SYSTEM, RECOMMENDATION_INPUT_MAX_TOKENS, "Recommendation")
     prefix_cache = PrefixKVCache(processor, logger)
 
     @torch.inference_mode()
@@ -50,14 +54,14 @@ def make_call_recommendation(model, processor, logger=None, adapter_name: str | 
         ]
         trace = {"stage": "recommendation", "model_input": copy.deepcopy(model_input), "messages": copy.deepcopy(messages)}
         try:
-            inputs = processor.apply_chat_template(
-                messages,
-                add_generation_prompt=True,
-                tokenize=True,
-                return_dict=True,
-                return_tensors="pt",
-                enable_thinking=False,
-            ).to(model.device)
+            # 서빙 한도를 넘으면 가장 오래된 대화부터 뺀다. 평소(한도 이하)에는 입력이 그대로다.
+            messages, inputs, dropped = fit_recent_history(
+                processor, RECOMMENDATION_SYSTEM, model_input, RECOMMENDATION_INPUT_MAX_TOKENS, "Recommendation",
+            )
+            if dropped:
+                trace.update({"model_input": copy.deepcopy(model_input), "messages": copy.deepcopy(messages),
+                              "history_trimmed_messages": dropped})
+            inputs = inputs.to(model.device)
             prompt_tokens = inputs["input_ids"].shape[1]
             generate_args = {
                 **inputs,

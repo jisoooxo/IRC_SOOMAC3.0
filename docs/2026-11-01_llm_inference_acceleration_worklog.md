@@ -55,6 +55,11 @@ VLM 판정 1회: HF 2.53초 → vLLM 1.56초(실제 판정 프롬프트 8종, �
 | 31 | **결과 고정을 서버 기본값으로 켬**(사용자 결정), `.bashrc` 주석 갱신 | 끄기: `VLLM_BATCH_INVARIANT=0 soomac_vllm_server` | §22.2 |
 | 32 | NVFP4 LoRA 재학습 경로·어댑터 켜고 끄기 정리, GPT 의견 2회 팩트체크 | ModelOpt NVFP4 QLoRA 공식 예제 확인(Qwen3-8B). 재학습은 품질이 떨어질 때만 | §23 |
 | 33 | 시험 대상을 RedHatAI W4A4로 확정, coolthor 제외 | RedHatAI는 인증 조직이고 KV는 bf16. coolthor는 개인 배포라 다운로드를 중단하고 삭제 | §23.5 |
+| 34 | **사고**: NVFP4 시험 자동 시작 → FlashInfer FP4 커널 JIT 컴파일(동시 34개)이 RAM 62GB를 고갈 → 08:23 OOM으로 로그인 세션 종료(Codex 작업 포함) | `.done`을 aborted로 기록. 재시도는 메모리 상한(systemd-run) + `MAX_JOBS=2` + 사용자 승인 후 | §23.6 |
+| 35 | **방법 C**: 입력을 서빙 한도(10,240 − 출력)에 맞춤. 넘으면 오래된 대화부터 뺌, 시작 시 system prompt 검사, 서버 길이 fail-closed | 한도 이하 입력은 불변. Decision 프롬프트 여유 259토큰. Codex 2회 검토 반영. 테스트 929개 통과. GPU 17턴 동일성은 Codex 학습 종료 후 | §24 |
+| 36 | 계획 변경(사용자): 다른 어댑터 학습 먼저. 학습 후 확인 도구 작성: 변환 도구 이동, 17턴 3방식 실행·비교, 한 번에 실행하는 스크립트(단계별 RAM 상한), 노드의 어댑터 해시 검사 | GPU 실행 없음. CPU 확인 통과(변환 바이트 동일, 비교 도구 거짓 통과·거짓 실패 없음). Codex 2회 반영. 테스트 930개 | §25 |
+| 37 | 사용자 질문: 이전 vLLM 측정 때 RAM은? → **기록 없음**(GPU만 기록). 검사 도구에 RAM·OOM 안전선 추가: 묶음 전체 상한 44G + 단계별 상한, 1초 RAM 기록, vLLM 단계에 STT·TTS 상주, 보고서 판정 | GPU 실행 없음(Codex Decision profile 컨테이너 build04가 GPU 사용 중). CPU 시험·Codex 2회 반영 | §25.5 |
+| 38 | 팀원용 정리(사용자 요청, NVFP4는 시간상 보류): 속도 변천사 문서 [md](2026-11-01_llm_inference_speed_history.md) + 원리 그림·최종 비교 차트 [html](2026-11-01_llm_inference_speed_history.html). 라이브러리 버전 팩트체크 절 포함 | Codex 검수 반대 8건(설정 혼합 수치, VLM 합성/실제 혼합, 80~97%, Python ≥3.11, 입력/출력 한도 표기, 실행 시간, 추정 표시) 전부 반영. worklog 결과 고정 기본값 표기 충돌 수정 | 이 표 |
 
 ## 3. 바꾼 파일
 
@@ -67,7 +72,9 @@ VLM 판정 1회: HF 2.53초 → vLLM 1.56초(실제 판정 프롬프트 8종, �
 | `src/soomac_irc/soomac_irc/vllm_client.py` (신규) | vLLM 서버 클라이언트, `VllmModel` 대리 객체, 원격 VLM, 어댑터·길이 검사 | `LLM_BACKEND="vllm"`일 때만 사용 |
 | `llm_langgraph_node.py` | `LLM_BACKEND` 상수, 모델 로드·VLM 연결 2곳 분기 | 기본 `"hf"` = 기존과 동일. 다른 세션의 미커밋 변경이 같은 파일에 함께 있음 |
 | `src/soomac_irc/test/test_vllm_backend.py` (신규) | 서버 없이 도는 단위 테스트 6개 | 전체 919개 통과 |
-| `tools/vllm_server/start_vllm_server.sh` (신규) | 서버 실행(NF4, LoRA 3개, 오프라인, 0.45/2/10240). 실험용 옵션 `VLLM_SPEC_MODEL`(MTP), `VLLM_BATCH_INVARIANT`(결과 고정), 기본 꺼짐 | — |
+| `src/soomac_irc/soomac_irc/input_budget.py` · `test_input_budget.py` (신규) | 입력 길이 한도·자르기·시작 검사(방법 C). Decision 상한 16,384 → 9,216 | 한도 이하면 입력 불변. 전체 929개 통과 |
+| `tools/vllm_server/{check_after_training.sh,convert_adapters_for_vllm.py,run_scenario.py,compare_scenario_runs.py}` (신규) | 학습 후 확인 도구(§25). `vllm_client.py`에 어댑터 원본 해시 검사 추가 | GPU를 쓰는 실행은 사용자가 학습 후 직접 |
+| `tools/vllm_server/start_vllm_server.sh` (신규) | 서버 실행(NF4, LoRA 3개, 오프라인, 0.45/2/10240). 옵션 `VLLM_SPEC_MODEL`(MTP, 기본 꺼짐), `VLLM_BATCH_INVARIANT`(결과 고정, **기본 켬**, 사용자 결정) | — |
 | `docs/2026-11-01_llm_inference_acceleration.md`, 이 worklog, `docs/2026-11-01_accel_evidence/`(63개) | 결과·근거·스크립트 | — |
 
 `model_runtime.py`, 프롬프트(`agent_prompts.py`·`prompt_examples.py`), 그래프·정책은 **수정하지 않았다**(데이터 담당 하네스가 해시로 고정 감시).
@@ -116,6 +123,8 @@ VLM 판정 1회: HF 2.53초 → vLLM 1.56초(실제 판정 프롬프트 8종, �
 - `pkill -f`가 자기 명령줄까지 잡아 시험 스크립트가 중단됨 → PID로 정리하고 스크립트를 새로 작성했다.
 - `~/.codex/config.toml`의 `gpt-6.1-sol`은 계정이 거부해 모든 교차검증을 `-m gpt-5.6-sol`로 실행했다(CLAUDE.md 기재와 다름).
 
+- **NVFP4 시험 자동 시작으로 FlashInfer JIT 컴파일이 RAM을 고갈시켜 로그인 세션 종료(08:23).** 원인: `MAX_JOBS`를 설정하지 않음 + 메모리 상한 없이 자동 시작. 이후 무거운 작업은 메모리 상한 안에서, 승인 후에만 실행한다(본문 §23.6).
+
 ## 7. 되돌리기
 
 | 되돌릴 것 | 방법 |
@@ -129,8 +138,8 @@ VLM 판정 1회: HF 2.53초 → vLLM 1.56초(실제 판정 프롬프트 8종, �
 
 1. **로봇 스택 실전 시험**(사용자): `soomac_vllm_server` → `LLM_BACKEND="vllm"` → `soomac_llm`. nvtop 전체 메모리(카메라·비전 포함), 대화·VLM 동작 확인
 2. vLLM 비결정성 관찰: 같은 시나리오 반복 시 갈리는 턴 기록
-3. 입력 길이 계약: 서버 10,240 vs Decision 앱 상한 16,384. 프롬프트가 늘면 `VLLM_MAX_LEN` 조정(메모리 증가)
+3. 입력 길이: 방법 C로 해결(§24). 남은 것: GPU가 비면 HF 17턴 동일성 확인. Decision 프롬프트 여유 259토큰(데이터 담당 전달)
 4. 선택: NVFP4 + 기존 어댑터 14건 비교(약 30분). 크게 다르면 재학습 판단은 데이터 담당
 4-2. 데이터 담당 전달: 소스가 빈 상태의 "바로 담아"에서 소스('토마토') 지어내기(§21.3)
-5. 어댑터 재학습 후: `convert_adapters_for_vllm.py` 실행 → 서버 재시작(노드가 불일치를 감지해 시작을 거부함)
+5. 어댑터 재학습 후: `bash tools/vllm_server/check_after_training.sh --preflight` → 통과하면 같은 명령을 옵션 없이 실행(변환·HF/vLLM 17턴·C 동일성 비교를 한 번에, §25)
 6. 커밋은 하지 않았다. 다른 세션 변경과 섞여 있어 사용자 판단으로 나눠서 커밋해야 한다

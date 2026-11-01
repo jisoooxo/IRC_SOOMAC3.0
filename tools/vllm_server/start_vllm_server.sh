@@ -4,7 +4,8 @@
 # 로봇 스택을 쓸 때만 켜고, 끄면 GPU를 전부 돌려준다. 인터넷 없이 동작하도록 오프라인 변수를 고정한다.
 #
 # 어댑터는 vLLM용 변환본(글로벌 k_eq_v 층의 k_proj LoRA를 v_proj로 복제)을 쓴다.
-# 어댑터를 새로 학습하면 docs/2026-11-01_accel_evidence/convert_adapters_for_vllm.py로 변환한 뒤 경로를 바꾼다.
+# 어댑터를 새로 학습하면 model_runtime.py 경로를 바꾸고 tools/vllm_server/convert_adapters_for_vllm.py로 변환한 뒤 서버를 다시 시작한다.
+# 학습 후 한 번에 확인: tools/vllm_server/check_after_training.sh
 set -euo pipefail
 
 ENV_PY_BIN=/home/roma/miniconda3/envs/soomac_vllm_server/bin

@@ -1,5 +1,7 @@
 # 새 학습본 조립·검수 작업 기록
 
+> **최신 실행 후속:** 기존 build03 원격 template 불일치를 수정한 build04 TAR의 실제 검증·게시를 완료했다. [현재 제작/학습 결과](2026-11-01_decision_build04_processor_fix.md)를 따른다. 원본 `compound_semantics_20261101_r2` 데이터와 model pins는 유지했고, Response1,992행 추가 의미검수에서 확증 새 FIX/HOLD0이라 삭제하지 않았다. P/Q CPU preflight 후 NVFP4 대기 철회 승인으로 새 로컬 Response→Recommendation 순차 launcher를 시작했다. 현재 입력/배치 준비(P started/Q pending)이며 본 학습 optimizer 성공이나 새 모델 시연 합격으로 확대하지 않는다. 이전 r3 실행 폴더를 재개한 것이 아니다.
+
 [실행 계획](<IRC LLM Final dataset rebuild plan.md>) · [기존 감사](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/RESULT.md)
 → 기존 판정 장부를 먼저 연결하고 최신 계약의 영향 행만 다시 확인한다.
 

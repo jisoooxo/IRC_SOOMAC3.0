@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM 추론 속도 변천사 — 원리와 최종 비교</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --bar: #2a78d6;
+    --bar-soft: #cde2fb;
+    --bar-dim: #c3c2b7;
+    --warn-bg: #fff4dc;
+    --code-bg: #f0efec;
+    --good: #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #f0efec;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255,255,255,0.10);
+      --bar: #3987e5;
+      --bar-soft: #184f95;
+      --bar-dim: #5b5a55;
+      --warn-bg: #3a2f14;
+      --code-bg: #262624;
+      --good: #0ca30c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 30px; line-height: 1.3; margin: 0 0 8px; }
+  h2 { font-size: 22px; margin: 56px 0 12px; padding-top: 12px; border-top: 1px solid var(--grid); }
+  h3 { font-size: 17px; margin: 28px 0 8px; }
+  p, li { color: var(--ink); }
+  .sub { color: var(--ink-2); margin: 0 0 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; margin: 16px 0; }
+  .hero { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-end; }
+  .hero .fig { font-size: 56px; font-weight: 650; line-height: 1; }
+  .hero .lbl { color: var(--ink-2); font-size: 15px; margin-top: 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 18px; }
+  .tile { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--page); }
+  .tile .k { color: var(--ink-2); font-size: 13px; }
+  .tile .v { font-size: 22px; font-weight: 600; }
+  .tile .d { color: var(--muted); font-size: 13px; }
+  .ce { border-left: 3px solid var(--axis); padding: 4px 0 4px 14px; margin: 14px 0; color: var(--ink-2); font-size: 15px; }
+  .ce b { color: var(--ink); }
+  .warn { background: var(--warn-bg); border-radius: 8px; padding: 10px 14px; font-size: 15px; margin: 12px 0; }
+  code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+  pre { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 14px; line-height: 1.5; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 8px 0; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  nav.toc { columns: 2; font-size: 15px; }
+  nav.toc a { color: var(--ink); }
+  a { color: var(--bar); }
+
+  /* 차트 */
+  .chart-title { font-weight: 600; margin: 0; }
+  .chart-sub { color: var(--ink-2); font-size: 14px; margin: 2px 0 14px; }
+  .chart { position: relative; }
+  .row { display: grid; grid-template-columns: 210px 1fr; align-items: center; min-height: 40px; }
+  .row .name { font-size: 14px; color: var(--ink); padding-right: 12px; line-height: 1.3; }
+  .row .name small { display: block; color: var(--muted); font-size: 12px; }
+  .track { position: relative; height: 40px; }
+  .chart { padding-right: 14px; }
+  .gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+  .baseline { position: absolute; top: 0; bottom: 0; left: 0; width: 1px; background: var(--axis); }
+  .bar {
+    position: absolute; left: 0; top: 9px; height: 22px; background: var(--bar);
+    border-radius: 0 4px 4px 0; cursor: default; outline: none;
+  }
+  .bar.dim { background: var(--bar-dim); }
+  .bar:hover, .bar:focus-visible { filter: brightness(1.15); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--ink-2); }
+  .bar .hit { position: absolute; left: 0; right: -8px; top: -9px; bottom: -9px; }
+  .val { position: absolute; top: 9px; line-height: 22px; font-size: 13px; color: var(--ink); white-space: nowrap; padding-left: 8px; font-variant-numeric: tabular-nums; }
+  .axis { display: grid; grid-template-columns: 210px 1fr; }
+  .axis .ticks { position: relative; height: 20px; font-size: 12px; color: var(--muted); }
+  .axis .ticks span { position: absolute; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+  details { margin-top: 10px; font-size: 14px; }
+  summary { color: var(--ink-2); cursor: pointer; }
+  #tip {
+    position: fixed; pointer-events: none; z-index: 10; display: none;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); max-width: 300px;
+  }
+  #tip .tv { font-weight: 650; font-size: 15px; color: var(--ink); }
+  #tip .tn { color: var(--ink-2); }
+  #tip .tx { color: var(--muted); margin-top: 2px; }
+
+  /* 원리 그림 */
+  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin: 14px 0; overflow-x: auto; }
+  .tokens { display: flex; gap: 2px; align-items: center; flex-wrap: nowrap; }
+  .tok { height: 26px; border-radius: 3px; font-size: 12px; display: flex; align-items: center; justify-content: center; color: #fff; white-space: nowrap; padding: 0 6px; }
+  .tok.sys { background: var(--bar); }
+  .tok.sys.reuse { background: var(--bar-soft); color: var(--ink); }
+  .tok.dyn { background: #eb6834; }
+  .tok.out { background: var(--bar-dim); color: var(--ink); }
+  .dlabel { font-size: 13px; color: var(--ink-2); margin: 10px 0 4px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-top: 12px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .layers { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; align-items: center; font-size: 13px; }
+  .win { position: relative; height: 22px; background: var(--grid); border-radius: 3px; }
+  .win > div { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+  .boxes { display: flex; gap: 14px; align-items: stretch; flex-wrap: wrap; }
+  .box { flex: 1 1 240px; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--page); font-size: 14px; }
+  .box > b { display: block; margin-bottom: 4px; }
+  .arrow { align-self: center; color: var(--muted); font-size: 22px; }
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps li { counter-increment: s; padding-left: 34px; position: relative; margin: 8px 0; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%; background: var(--code-bg); text-align: center; font-size: 13px; line-height: 24px; color: var(--ink-2); }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); color: var(--ink-2); margin-left: 6px; vertical-align: 2px; }
+  @media (max-width: 640px) {
+    .row, .axis { grid-template-columns: 120px 1fr; }
+    nav.toc { columns: 1; }
+    .hero .fig { font-size: 44px; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<h1>LLM 추론 속도 변천사</h1>
+<p class="sub">같은 모델(Gemma 4 12B, NF4) · 같은 LoRA 어댑터 3개로 로봇의 대답 대기 시간을 줄인 과정과 원리. 숫자는 이 PC의 측정값이고, 추정은 "추정"이라고 적었다.<br>
+2026-11-01 · 브랜치 <code>llm_final_2</code> · 측정 장비 RTX PRO 4500 Blackwell 32GB · 상세 근거: <code>docs/2026-11-01_llm_inference_acceleration.md</code></p>
+
+<div class="card">
+  <div class="hero">
+    <div>
+      <div class="fig">약 8.5배</div>
+      <div class="lbl">LLM 호출 1회 평균 4.49초 → 0.53초<br>(실제 로그 입력. 원래 HF 10건, vLLM 실제 조건 6건이라 1:1 비교는 아님)</div>
+    </div>
+  </div>
+  <div class="tiles">
+    <div class="tile"><div class="k">Decision 1회</div><div class="v">4.64 → 0.28~0.54초</div><div class="d">시작 전 → vLLM</div></div>
+    <div class="tile"><div class="k">17턴 시나리오 (같은 코드·프롬프트)</div><div class="v">71.9 → 33.5초</div><div class="d">HF 기본값 → vLLM(측정용 0.60). 운영값 0.45는 36~37초</div></div>
+    <div class="tile"><div class="k">VLM 판정 1회</div><div class="v">2.53 → 1.56초</div><div class="d">실제 카메라 이미지 8종, HF → vLLM, 판정 8/8 동일</div></div>
+    <div class="tile"><div class="k">GPU 전체 (STT·TTS 포함)</div><div class="v">25.97GiB</div><div class="d">상한 27GiB 안</div></div>
+  </div>
+</div>
+
+<nav class="toc card">
+  <a href="#final">1. 최종 속도 비교</a><br>
+  <a href="#why">2. 왜 느렸나 — prefill과 decode</a><br>
+  <a href="#s1">3. 1단계: 접두 KV 캐시</a><br>
+  <a href="#s2">4. 2단계: 새 환경과 슬라이딩 층</a><br>
+  <a href="#lib">5. 라이브러리 버전 팩트체크</a><br>
+  <a href="#s3">6. 3단계: vLLM 서버</a><br>
+  <a href="#s3b">7. 결과 고정</a><br>
+  <a href="#c">8. 입력 길이 한도 (방법 C)</a><br>
+  <a href="#no">9. 시도했지만 안 쓴 것</a><br>
+  <a href="#rules">10. 팀원이 알아 둘 규칙</a>
+</nav>
+
+<!-- ───────────────────────── 1. 최종 비교 ───────────────────────── -->
+<h2 id="final">1. 최종 속도 비교</h2>
+
+<div class="card">
+  <p class="chart-title">LLM 호출 1회 평균 시간 (초, 짧을수록 빠름)</p>
+  <p class="chart-sub">실제 로그 입력, 접두 캐시가 적중하는 호출 기준. vLLM은 측정 건수가 달라(6건) 대략의 크기로 본다. 막대에 마우스를 올리면 설명이 나온다.</p>
+  <div class="chart" id="c-call"></div>
+  <details><summary>표로 보기</summary>
+    <table><tr><th>단계</th><th class="n">평균(초)</th><th>측정 조건</th></tr>
+      <tr><td>원래 HF (캐시 없음)</td><td class="n">4.49</td><td>캐시 적중 10건, 기존 환경</td></tr>
+      <tr><td>HF + 접두 캐시 + soomac_llm</td><td class="n">1.49</td><td>같은 10건</td></tr>
+      <tr><td>vLLM 서버 (NF4)</td><td class="n">0.53</td><td>실제 조건 6건(입력은 다르고 공통 앞부분만 캐시)</td></tr>
+    </table>
+  </details>
+</div>
+
+<div class="card">
+  <p class="chart-title">17턴 시나리오 전체 시간 (초)</p>
+  <p class="chart-sub">사용자 필수 시나리오 17턴을 실제 대화 상태를 누적하며 실행. 회색 막대는 프롬프트가 지금보다 짧던 시점이라 나머지와 직접 비교하면 안 된다.</p>
+  <div class="chart" id="c-17"></div>
+  <details><summary>표로 보기</summary>
+    <table><tr><th>단계</th><th class="n">17턴(초)</th><th>비고</th></tr>
+      <tr><td>시작 전: HF, 캐시 없음</td><td class="n">210.8</td><td>당시 프롬프트 기준(비교 불가)</td></tr>
+      <tr><td>HF 5.13.1 + 접두 캐시</td><td class="n">103.0</td><td>아래 줄과 같은 코드·프롬프트</td></tr>
+      <tr><td>HF + 캐시 + soomac_llm (현재 기본값)</td><td class="n">71.9</td><td>vLLM과 같은 코드·프롬프트</td></tr>
+      <tr><td>vLLM 0.60 설정</td><td class="n">33.5</td><td>GPU 상한 27GiB 초과 설정(측정용)</td></tr>
+      <tr><td>vLLM 0.45 (운영값)</td><td class="n">37.2</td><td>STT·TTS 상주</td></tr>
+      <tr><td>vLLM 0.45 + 결과 고정 (서버 기본값)</td><td class="n">36.0</td><td>STT·TTS 상주</td></tr>
+    </table>
+  </details>
+</div>
+
+<div class="card">
+  <p class="chart-title">Agent별 호출 1회 (초)</p>
+  <p class="chart-sub">같은 실제 로그 입력, 캐시 적중 10건 평균. 환경만 바꾸면 약 7%, 캐시를 켜야 크게 줄어든다.</p>
+  <table>
+    <tr><th>Agent</th><th class="n">원래<br>(기존 환경, 캐시 끔)</th><th class="n">새 환경<br>캐시 끔</th><th class="n">새 환경<br>캐시 켬</th><th>vLLM (실제 조건)</th></tr>
+    <tr><td>Decision</td><td class="n">4.64</td><td class="n">4.34</td><td class="n"><b>1.04</b></td><td>0.28~0.54</td></tr>
+    <tr><td>Response task</td><td class="n">4.68</td><td class="n">4.33</td><td class="n"><b>1.59</b></td><td>0.68~0.74</td></tr>
+    <tr><td>Recommendation</td><td class="n">5.08</td><td class="n">4.61</td><td class="n"><b>3.09</b></td><td>—</td></tr>
+    <tr><td>Response general</td><td class="n">2.51</td><td class="n">2.34</td><td class="n"><b>1.84</b></td><td>—</td></tr>
+    <tr><td><b>평균</b></td><td class="n">4.49</td><td class="n">4.16</td><td class="n"><b>1.49</b></td><td>0.53 (6건)</td></tr>
+  </table>
+  <p class="chart-sub" style="margin-top:10px">Recommendation은 출력이 약 57토큰으로 길어 쓰기(decode) 비중이 커서 캐시 효과가 작다. vLLM 열은 측정 건수가 달라 Agent별 빈칸이 있다.</p>
+</div>
+
+<div class="card">
+  <p class="chart-title">17턴 시나리오 안에서 본 체감 시간 (중앙값, 초)</p>
+  <table>
+    <tr><th></th><th class="n">HF 기본값</th><th class="n">vLLM</th></tr>
+    <tr><td>한 턴 (Decision → Response)</td><td class="n">3.14</td><td class="n"><b>1.33</b></td></tr>
+    <tr><td>Decision</td><td class="n">1.36</td><td class="n"><b>0.57</b></td></tr>
+    <tr><td>Response</td><td class="n">1.93</td><td class="n"><b>0.79</b></td></tr>
+  </table>
+  <p class="chart-sub" style="margin-top:10px">vLLM 열은 메모리 비율 0.60 설정의 측정값이다. 운영값 0.45는 17턴 전체가 약 11% 길다(33.5 → 37.2초).</p>
+</div>
+
+<div class="card">
+  <p class="chart-title">GPU 메모리 — 빨라진 대가</p>
+  <table>
+    <tr><th>단계</th><th class="n">최대 GPU</th><th>재는 범위</th></tr>
+    <tr><td>시작 전</td><td class="n">13.5GB</td><td>LLM 노드 하나</td></tr>
+    <tr><td>1단계 접두 캐시 (버그 있는 라이브러리)</td><td class="n">21.9GB</td><td>LLM 노드 하나</td></tr>
+    <tr><td>2단계 soomac_llm</td><td class="n">14.1GB</td><td>LLM 노드 하나</td></tr>
+    <tr><td>3단계 vLLM 0.45</td><td class="n">25.97GiB</td><td><b>PC 전체</b>(vLLM 서버 + STT + TTS + 화면 + 시험 클라이언트)</td></tr>
+  </table>
+  <p class="chart-sub" style="margin-top:10px">vLLM 줄은 범위가 달라 위 세 줄과 직접 비교하지 않는다. STT·TTS 동시 추론 증가분(+0.5GiB)을 더하면 약 26.5GiB로, 상한 27GiB까지 여유 약 0.5GiB다. 카메라·비전 노드는 아직 재지 않았다.</p>
+</div>
+
+<div class="card">
+  <p class="chart-title">구조 비교 — 처음 → 지금 기본값 → vLLM</p>
+  <p class="chart-sub">ROS 토픽·그래프·정책·프롬프트·어댑터는 세 경우 모두 같다. 바뀐 것은 모델을 어디서, 어떻게 계산하느냐뿐이다. 그림을 누르면 크게 열린다.</p>
+  <a href="2026-11-01_llm_architecture_compare.svg"><img src="2026-11-01_llm_architecture_compare.svg" alt="처음(HF, 캐시 없음), 지금 기본값(HF + 접두 캐시), vLLM 서버 세 구조를 나란히 비교한 그림" style="width:100%;height:auto;display:block;border-radius:8px"></a>
+</div>
+
+<!-- ───────────────────────── 2. 왜 느렸나 ───────────────────────── -->
+<h2 id="why">2. 왜 느렸나 — prefill과 decode</h2>
+
+<p>LLM은 대답 한 번에 두 단계를 거친다.</p>
+<table>
+  <tr><th>단계</th><th>하는 일</th><th>비유</th><th>우리 경우 (Decision, 추정)</th></tr>
+  <tr><td><b>prefill</b> (읽기)</td><td>입력 토큰 전체를 한 번에 읽고, 토큰마다 "메모"(K·V 값)를 만든다</td><td>시험지 지문을 처음부터 끝까지 읽기</td><td>입력 6천~8천 토큰, 약 2.5~3초</td></tr>
+  <tr><td><b>decode</b> (쓰기)</td><td>메모를 보며 출력 토큰을 한 개씩 만든다</td><td>답을 한 글자씩 쓰기</td><td>출력 약 20토큰, 토큰당 약 75ms</td></tr>
+</table>
+<p>이 메모를 <b>KV 캐시</b>라고 부른다. 다음 토큰을 만들 때 앞 토큰들의 메모를 <b>다시 계산하지 않고 읽기만</b> 한다. 위 시간은 계측기로 직접 나눈 값이 아니라 로그 회귀와 마이크로벤치로 나눈 추정이다.</p>
+
+<div class="diagram">
+  <div class="dlabel">Decision 입력 한 번의 모양 (토큰 수 비율대로)</div>
+  <div class="tokens">
+    <div class="tok sys" style="flex: 93">system prompt — 매번 똑같음 (6,040토큰, 93~97%)</div>
+    <div class="tok dyn" style="flex: 5">대화·상태</div>
+    <div class="tok out" style="flex: 2; min-width: 34px">출력</div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--bar)"></i>매번 같은 부분</span>
+    <span><i style="background:#eb6834"></i>호출마다 바뀌는 부분</span>
+    <span><i style="background:var(--bar-dim)"></i>출력(약 20토큰)</span>
+  </div>
+</div>
+
+<table>
+  <tr><th>Agent</th><th class="n">전체 입력</th><th class="n">매번 같은 앞부분</th></tr>
+  <tr><td>Decision</td><td class="n">6,209~6,481</td><td class="n">6,040 (93~97%)</td></tr>
+  <tr><td>Recommendation</td><td class="n">3,832</td><td class="n">3,338 (87%)</td></tr>
+  <tr><td>Response task</td><td class="n">5,962~6,611</td><td class="n">5,280 (80~89%)</td></tr>
+</table>
+<p class="chart-sub">당시 측정값. 지금은 프롬프트가 늘어 Decision 입력이 약 8천 토큰이다.</p>
+
+<div class="ce"><b>원인</b>: 호출마다 <code>model.generate()</code>를 새로 불러, 6천 토큰짜리 같은 지문을 매번 처음부터 다시 읽었다.<br>
+<b>결과</b>: 이 반복을 없애는 것이 가장 큰 개선이 될 것으로 보고 여기서 시작했다.</div>
+
+<!-- ───────────────────────── 3. 접두 캐시 ───────────────────────── -->
+<h2 id="s1">3. 1단계 — 접두 KV 캐시 <span class="tag">HF 안에서</span></h2>
+
+<p>같은 앞부분(접두)의 메모는 한 번만 만들어 저장한다. 다음 호출부터는 <b>달라지는 뒷부분만</b> 읽는다.</p>
+
+<div class="diagram">
+  <div class="dlabel">첫 호출 — 전부 계산하고 앞부분 메모를 저장</div>
+  <div class="tokens">
+    <div class="tok sys" style="flex: 93">system prompt 계산 → 메모 저장</div>
+    <div class="tok dyn" style="flex: 5">대화</div>
+    <div class="tok out" style="flex: 2; min-width: 34px">출력</div>
+  </div>
+  <div class="dlabel">두 번째 호출부터 — 저장한 메모를 꺼내 쓰고 뒷부분만 계산</div>
+  <div class="tokens">
+    <div class="tok sys reuse" style="flex: 93">저장한 메모 재사용 (계산 안 함)</div>
+    <div class="tok dyn" style="flex: 5">대화</div>
+    <div class="tok out" style="flex: 2; min-width: 34px">출력</div>
+  </div>
+</div>
+
+<h3>지킨 조건</h3>
+<ol class="steps">
+  <li><b>어댑터마다 따로 저장한다.</b> LoRA 어댑터가 다르면 같은 문장이라도 메모 값이 다르다. 저장 키는 (어댑터 이름, system prompt 해시)다. 프롬프트가 바뀌면 해시가 바뀌어 자동으로 새로 만든다.</li>
+  <li><b>토큰 단위로 앞부분이 완전히 같을 때만</b> 재사용한다. 다르면 처음부터 계산한다.</li>
+  <li>끄는 스위치: <code>prefix_cache.py</code>의 <code>PREFIX_CACHE_ENABLED = False</code></li>
+</ol>
+
+<table>
+  <tr><th></th><th class="n">캐시 끔</th><th class="n">캐시 켬</th></tr>
+  <tr><td>Decision 1회</td><td class="n">5.1~7.6초</td><td class="n"><b>1.0~3.5초</b></td></tr>
+  <tr><td>한 턴 (Decision + Response)</td><td class="n">10.4~14.1초</td><td class="n"><b>2.8~6.7초</b></td></tr>
+  <tr><td>최대 GPU</td><td class="n">13.5GB</td><td class="n">21.9GB ⚠</td></tr>
+</table>
+
+<h3>왜 답이 가끔 달라지나 — 계산 순서 차이</h3>
+<p>캐시를 쓰면 "6천 토큰을 한 번에" 하던 계산이 "6천 + 나머지"로 나뉜다. 4bit(NF4)·bf16 행렬곱은 한 번에 계산하는 줄 수에 따라 덧셈 순서가 달라져 소수점 끝자리가 바뀐다. 두 후보 토큰 점수가 거의 같은 지점에서는 이 작은 차이로 1등이 뒤집힌다.</p>
+<ul>
+  <li>예: "소시지만 많이 골라줘" → 캐시를 켜면 소시지를 식단 제한으로 등록 (17턴 중 1지점)</li>
+  <li>캐시를 끈 결과가 "정답"인 것도 아니다. 원래 <code>generate()</code>도 decode 단계마다 같은 크기의 차이를 겪는다.</li>
+  <li>다음 토큰 점수를 직접 비교해, 이번 차이가 구현 실수가 아니라 계산 순서 차이임을 확인했다.</li>
+</ul>
+<div class="ce"><b>원인</b>: 캐시·엔진·양자화 등 속도를 바꾸는 거의 모든 방법은 계산 순서를 바꾼다.<br>
+<b>결과</b>: 채택 판정은 "토큰이 똑같나"가 아니라 <b>"17턴 시나리오에서 주문·실행·commit 값이 같나"</b>로 한다. 이후 모든 단계에 이 기준을 썼다.</div>
+
+<!-- ───────────────────────── 4. 새 환경 ───────────────────────── -->
+<h2 id="s2">4. 2단계 — 새 환경 <code>soomac_llm</code>과 슬라이딩 층</h2>
+
+<p>Gemma 4의 48층은 두 종류다. 대부분의 층은 최근 1,024토큰만 본다.</p>
+
+<div class="diagram">
+  <div class="layers">
+    <div><b>슬라이딩 층 40개</b><br><span style="color:var(--muted)">최근 1,024토큰만 봄<br>(지난 1,023 + 지금 1)</span></div>
+    <div class="win"><div style="left:84%; right:0; background:var(--bar)"></div></div>
+    <div><b>글로벌 층 8개</b><br><span style="color:var(--muted)">처음부터 전부 봄</span></div>
+    <div class="win"><div style="left:0; right:0; background:var(--bar)"></div></div>
+    <div style="color:var(--ink-2)">버그 있던 버전<br>(슬라이딩 층 저장량)</div>
+    <div class="win"><div style="left:0; right:0; background:var(--bar-dim)"></div></div>
+  </div>
+  <div class="legend"><span>가로 = 입력 6천 토큰 전체</span><span><i style="background:var(--bar)"></i>필요한 메모</span><span><i style="background:var(--bar-dim)"></i>버그로 전부 저장하던 메모</span></div>
+</div>
+
+<p>transformers 5.13.1은 버그(<code>layer_types[:-0]</code>이 빈 목록이 됨)로 <b>슬라이딩 층의 메모도 전부 저장</b>했다. Decision 접두 캐시 하나가 1.97GiB였다.</p>
+
+<ol class="steps">
+  <li>5.14.0에서 고쳐진 것을 확인했다. <b>기존 <code>gemma4_env</code>는 그대로 두고</b> LLM 노드 전용 새 환경 <code>soomac_llm</code>을 설치했다. STT·TTS는 원래 환경을 계속 쓴다(라이브러리 내용은 <a href="#lib">5절</a>).</li>
+  <li>업그레이드만으로는 메모리가 줄지 않았다. 잘라낸 메모가 원래의 큰 저장 공간을 여전히 붙잡고 있었기 때문이다(PyTorch의 view). 그래서 저장 직후 <b>필요한 부분만 새로 복사(clone)</b>하게 했다.</li>
+  <li>첫 시도는 실패했다. <code>torch.inference_mode()</code> 안에서는 "view인가"를 알려 주는 정보(<code>_base</code>)가 비어 있었다. 그래서 "저장 공간이 실제 내용보다 크면 복사"하는 방식으로 바꿨다.</li>
+</ol>
+
+<table>
+  <tr><th>같은 코드·같은 프롬프트</th><th class="n">기존 환경</th><th class="n">soomac_llm</th></tr>
+  <tr><td>Decision 캐시 1개</td><td class="n">1.97GiB</td><td class="n"><b>0.445GiB</b></td></tr>
+  <tr><td>17턴 시나리오</td><td class="n">103.0초</td><td class="n"><b>71.9초</b> (−30%)</td></tr>
+  <tr><td>최대 GPU</td><td class="n">21.8GB</td><td class="n"><b>14.1GB</b></td></tr>
+</table>
+<div class="ce"><b>원인</b>: 메모리는 슬라이딩 층이 1,023토큰 대신 6천 토큰을 들고 있던 탓이다. 속도 30%는 transformers·peft·bitsandbytes·xgrammar·clone을 함께 바꾼 결과다(기여 분해는 5절).<br>
+<b>결과</b>: 메모리가 캐시 이전 수준(14GB)으로 돌아왔고 30% 더 빨라졌다. <b>이것이 지금 기본값이다.</b></div>
+
+<!-- ───────────────────────── 5. vLLM ───────────────────────── -->
+<!-- ───────────────────────── 5. 라이브러리 ───────────────────────── -->
+<h2 id="lib">5. 라이브러리 버전 — 무엇을 올렸고, 무엇은 올려도 소용없었나</h2>
+
+<h3>환경 구성</h3>
+<div class="diagram">
+  <div class="boxes">
+    <div class="box"><b><code>gemma4_env</code> (기존, 그대로 둠)</b>STT 노드<br>Python 3.10 · torch 2.12.1<br>transformers 5.13.1 · peft 0.19.1<br>bitsandbytes 0.49.2 · xgrammar 0.2.5</div>
+    <div class="box"><b><code>soomac_llm</code> (신규)</b>LLM 노드 (ROS Humble)<br>Python 3.10 · torch 2.12.1<br>transformers <b>5.14.1</b> · peft <b>0.21.0</b><br>bitsandbytes <b>0.50.2</b> · xgrammar <b>0.2.8</b></div>
+    <div class="box"><b><code>soomac_vllm_server</code> (신규)</b>vLLM 서버<br>Python 3.12 · torch 2.13.0<br>vllm 0.32.0 · transformers 5.19.0<br>bitsandbytes 0.50.2 · xgrammar 0.2.8</div>
+  </div>
+  <div class="legend"><span>참고: 학습 도커는 torch 2.8.0 · transformers 5.13.0 · peft 0.21.0 · bitsandbytes 0.50.2</span></div>
+</div>
+<ul>
+  <li><code>soomac_llm</code>은 LLM 노드가 실제로 import하는 외부 라이브러리 12개만 깔았다(코드에서 자동 추출). 패키지 150개(기존 363개), <code>pip check</code> 충돌 0건(기존 1건).</li>
+  <li>peft·bitsandbytes는 <b>학습 도커와 같은 버전</b>으로 맞췄다. 기존 실행 환경은 학습보다 오래된 버전이었다.</li>
+  <li>기존 <code>gemma4_env</code>를 올리지 않은 이유: STT 노드 2개가 같은 환경을 쓴다. transformers를 올리면 STT도 같이 바뀐다.</li>
+</ul>
+
+<h3>외부 분석·소문 팩트체크</h3>
+<table>
+  <tr><th>주장</th><th>판정</th><th>근거</th></tr>
+  <tr><td>transformers 5.13.x는 Gemma 4에서 슬라이딩 층 목록이 사라진다(<code>[:-0]</code>)</td><td><b>사실</b></td><td>5.13.1 <code>cache_utils.py:1565-1566</code>. 5.14.0에서 수정(PR #47118)</td></tr>
+  <tr><td>5.14로 올리면 캐시 메모리 문제가 해결된다</td><td><b>틀림(실측)</b></td><td>저장 길이는 1,023으로 줄지만 실제 GPU 메모리는 그대로(1.968 → 1.967GiB). view가 원본을 붙잡는다. <b>+ clone 1줄</b>이 있어야 0.444GiB</td></tr>
+  <tr><td>PyTorch 2.15로 올리면 빨라진다</td><td><b>근거 없음</b></td><td>2.14·2.15의 가속 기능은 torch.compile이나 NVFP4 가중치가 전제다. 우리는 둘 다 안 쓴다. 2.15는 Python 3.11 이상이라 ROS 노드에서 못 쓴다</td></tr>
+  <tr><td>CUDA 13.2는 드라이버 R595가 필요하다</td><td><b>틀림</b></td><td>PyTorch 2.15 릴리스 노트: CUDA 13 wheel은 드라이버 580 이상. 현재 580.178.04</td></tr>
+  <tr><td>vLLM을 LLM 노드 환경에 바로 깔면 된다</td><td><b>불가</b></td><td>vLLM 0.32 요구: Python ≥3.11, torch==2.13.0, transformers ≥5.16.1·&lt;5.20, xgrammar==0.2.8. ROS Humble은 Python 3.10이라 전부 충돌 → 별도 서버</td></tr>
+</table>
+
+<h3>버전을 올린 것 자체의 효과 — 작다</h3>
+<div class="card">
+  <p class="chart-title">호출 1회 평균 (초, 같은 로그 입력, 캐시 켬)</p>
+  <p class="chart-sub">하나씩 바꿔 가며 잰 값. 차이 일부는 측정 오차(±4%) 안이다.</p>
+  <div class="chart" id="c-lib"></div>
+  <details><summary>표로 보기</summary>
+    <table><tr><th>환경</th><th class="n">평균(초)</th></tr>
+      <tr><td>transformers 5.13.1</td><td class="n">1.85</td></tr>
+      <tr><td>→ 5.14.1</td><td class="n">1.65</td></tr>
+      <tr><td>→ + peft·bitsandbytes·xgrammar</td><td class="n">1.51</td></tr>
+      <tr><td>→ + clone</td><td class="n">1.49</td></tr>
+    </table>
+  </details>
+</div>
+<p>캐시 없이 환경만 바꾸면 약 7%만 빨라진다(4.49 → 4.16초). 새 버전이 줄인 건 decode 때 슬라이딩 층이 훑는 길이인데, 캐시가 없으면 시간 대부분이 prefill이기 때문이다. clone의 효과는 주로 메모리다.</p>
+<div class="ce"><b>원인</b>: 라이브러리 업그레이드는 버그를 고칠 뿐, 매번 같은 지문을 다시 읽는 구조는 그대로다.<br>
+<b>결과</b>: "버전만 올리면 빨라진다"는 기대는 맞지 않았다. 큰 효과는 캐시(1단계)와 엔진 교체(6절)에서 나왔다.</div>
+
+<h2 id="s3">6. 3단계 — vLLM 서버</h2>
+
+<h3>왜 엔진을 바꿨나</h3>
+<p>2단계 뒤에 남은 시간은 대부분 <b>decode</b>였다. 토큰당 약 55~75ms 중 실제 행렬곱은 약 14ms다. 나머지는 파이썬이 GPU에 명령을 하나씩 내리는 비용과 LoRA를 따로 계산하는 비용으로 <b>추정</b>한다(나눠서 재지는 않았다).</p>
+
+<table>
+  <tr><th>vLLM 기능</th><th>원리</th></tr>
+  <tr><td>CUDA graph</td><td>GPU 명령 묶음을 미리 녹화해 두고 통째로 재생한다. 토큰마다 파이썬이 명령을 하나씩 내리는 비용이 크게 줄어든다(재생 비용과 graph 밖 작업은 남는다)</td></tr>
+  <tr><td>자동 접두 캐시</td><td>1단계를 엔진이 블록 단위로 알아서 한다. 어댑터별로 구분한다</td></tr>
+  <tr><td>멀티 LoRA</td><td>어댑터 3개를 올려 두고 요청마다 골라 쓴다. LoRA 전용 커널을 쓴다</td></tr>
+  <tr><td>XGrammar</td><td>출력 JSON 형식 강제 (기존과 같은 문법)</td></tr>
+</table>
+<p class="chart-sub">기능별로 몇 %씩 기여했는지는 따로 재지 않았다.</p>
+
+<h3>구조 — 노드는 그대로, 모델 호출만 서버로</h3>
+<div class="diagram" style="padding:8px">
+  <a href="2026-11-01_vllm_ros2_architecture.svg"><img src="2026-11-01_vllm_ros2_architecture.svg" alt="vLLM 서버와 ROS 2 노드 연결 구조: ROS 노드들은 토픽으로 LLM 노드와 주고받고, LLM 노드는 HTTP로 vLLM 서버에 모델 계산을 맡긴다" style="width:100%;height:auto;display:block;border-radius:8px"></a>
+</div>
+<p class="chart-sub">그림을 누르면 크게 열린다. ROS 노드 ↔ LLM 노드는 기존 토픽 그대로이고, 바뀐 것은 LLM 노드 ↔ vLLM 서버 사이(HTTP)뿐이다.</p>
+<div class="ce"><b>원인</b>: ROS Humble은 Python 3.10에 묶여 있고, vLLM 0.32는 Python 3.11 이상·torch 2.13이 필요하다(5절).<br>
+<b>결과</b>: 한 환경에 넣을 수 없어 별도 서버로 나눴다. 노드는 <code>LLM_BACKEND = "hf" | "vllm"</code> 한 줄로 고른다.</div>
+
+<h3>넘어야 했던 함정 3개</h3>
+<ol class="steps">
+  <li><b>LoRA가 V에 안 붙는 문제 (k_eq_v)</b><br>
+    Gemma 4 글로벌 층은 V를 따로 계산하지 않고 K 계산 결과를 그대로 V로 쓴다. 그래서 HF에서는 <code>k_proj</code> LoRA가 K와 V 양쪽에 반영된다. vLLM은 기본 가중치는 V 자리에 복사하지만 LoRA는 K 자리에만 붙인다.<br>
+    → <code>k_proj</code> LoRA를 <code>v_proj</code> 이름으로 한 벌 더 복사한 변환본을 만든다(어댑터당 텐서 16개, 재학습 없음). 같은 정밀도 비교 일치가 7/14 → 11/14로 올랐다. 도구: <code>tools/vllm_server/convert_adapters_for_vllm.py</code></li>
+  <li><b>기반 모델 정밀도는 학습 때와 같아야 한다</b><br>
+    어댑터는 NF4(4bit) 위에서 학습됐다(QLoRA). 기반만 BF16(16bit)으로 바꿔도 HF끼리 14건 중 <b>12건의 답이 달라졌다.</b> 그래서 vLLM도 NF4로 올린다. 이 조건에서 HF-NF4와 12/14 일치(Decision·Recommendation 전부 일치, 차이 2건은 Response 문장 표현).</li>
+  <li><b>입력을 조각내 계산하는 기본값</b><br>
+    서버 기본값(한 번에 2,496토큰)이면 6~8천 토큰 입력을 나눠 계산한다. 이때 일치가 9/14였고, 12,288로 올려 한 번에 계산하게 하자 10/14가 됐다(인과는 추정).</li>
+</ol>
+
+<h3>GPU 메모리 맞추기 — 상한 27GiB, STT·TTS 동시 상주</h3>
+<p>vLLM은 시작할 때 GPU 메모리의 정해진 비율을 상한으로 잡는다. 그 안에서 모델·CUDA graph·작업 공간을 뺀 나머지가 KV 캐시 공간이 된다. 동시 처리 수를 256 → 2로 줄이면 CUDA graph와 작업 공간이 줄어, 같은 비율에서 KV 자리가 늘어난다.</p>
+<table>
+  <tr><th>비율 : 동시 처리 : 최대 길이</th><th class="n">GPU 전체 최대</th><th class="n">KV 토큰</th><th class="n">17턴</th></tr>
+  <tr><td>0.60 : 256 : 12288</td><td class="n">31.2GB</td><td class="n">19,666</td><td class="n">34.1초</td></tr>
+  <tr><td>0.50 : 2 : 10240</td><td class="n">27.9GB</td><td class="n">15,659</td><td class="n">34.2초</td></tr>
+  <tr><td><b>0.45 : 2 : 10240 (기본값)</b></td><td class="n"><b>26.6GB = 25.97GiB</b></td><td class="n">10,717</td><td class="n">37.2초</td></tr>
+  <tr><td>0.42 : 2 : 10240</td><td class="n">기동 실패</td><td class="n">KV 부족</td><td class="n">—</td></tr>
+</table>
+
+<!-- ───────────────────────── 6. 결과 고정 ───────────────────────── -->
+<h2 id="s3b">7. 결과 고정 <code>VLLM_BATCH_INVARIANT=1</code></h2>
+<ul>
+  <li><b>문제</b>: vLLM은 같은 입력을 두 번 돌려도 17턴 중 1턴이 달랐다(16/17). 캐시 적중 여부나 묶음 처리 상태에 따라 계산 경로가 바뀌는 것으로 추정한다.</li>
+  <li><b>원리</b>: 행렬곱·softmax 같은 계산을 묶음 크기·순서와 관계없이 같은 결과를 내는 결정적 커널로 바꾼다. <b>재현성 기능이지 정확도 기능이 아니다.</b> 틀린 답도 매번 똑같이 틀린다.</li>
+  <li><b>결과</b>(운영 설정 0.45 + STT·TTS 상주): 같은 서버에서 17턴 2회 반복 <b>17/17 일치</b>, 17턴 36.0초(끈 경우 37.2초와 비슷), GPU 25.8GiB.</li>
+  <li><b>비용</b>: 0.55 설정에서 따로 쟀을 때 호출 1회 +26%, 17턴 +5%(33.2 → 35.0초).</li>
+  <li><b>결정</b>: 서버 기본값으로 켬. 끄려면 <code>VLLM_BATCH_INVARIANT=0 soomac_vllm_server</code></li>
+  <li><b>주의</b>: 같은 "설정" 안에서만 고정된다. 메모리 비율을 바꾸면 답이 달라질 수 있다(0.55 vs 0.45에서 14/17).</li>
+</ul>
+<div class="ce"><b>원인</b>: 로봇 시험에서 "어제는 됐는데 오늘은 안 된다"를 재현할 수 있어야 한다.<br>
+<b>결과</b>: 문제가 생기면 같은 입력으로 다시 돌려 같은 오류를 볼 수 있다.</div>
+
+<!-- ───────────────────────── 7. C ───────────────────────── -->
+<h2 id="c">8. 입력 길이 한도 — 방법 C <span class="tag">속도가 아니라 안전장치</span></h2>
+<p>vLLM 서버는 "입력 + 출력"이 10,240토큰을 넘는 요청을 거부한다. 그런데 Decision 입력 상한은 16,384였고 Recommendation·Response는 상한이 없었다. 대화가 길어지면 <b>실행 도중 대화가 멈출 수 있었다.</b> 서버 최대 길이를 올리면 KV 공간이 더 필요하다. 지금 비율(0.45)에서는 기동이 실패할 수 있고, 비율을 올리면 27GiB를 넘을 수 있다. 그래서 입력 쪽을 맞췄다.</p>
+<ul>
+  <li>입력 상한 = 10,240 − 출력 한도<table style="max-width:420px"><tr><th>Agent</th><th class="n">출력 한도</th><th class="n">입력 상한</th></tr><tr><td>Decision</td><td class="n">1,024</td><td class="n">9,216</td></tr><tr><td>Recommendation</td><td class="n">1,024</td><td class="n">9,216</td></tr><tr><td>Response</td><td class="n">512</td><td class="n">9,728</td></tr></table></li>
+  <li>넘으면 <b>가장 오래된 대화부터</b> 뺀다. 한도 이하에서는 입력이 한 글자도 바뀌지 않는다.</li>
+  <li>노드 시작 때 system prompt 길이를 검사한다. 너무 길면 대화 도중이 아니라 시작할 때 멈춘다.</li>
+</ul>
+<div class="warn">⚠ <b>Decision system prompt 여유는 259토큰이다.</b> 이보다 더 늘리면 노드가 시작하지 않는다. 늘려야 하면 <code>input_budget.py</code>의 <code>SERVING_MAX_MODEL_LEN</code>과 서버 <code>VLLM_MAX_LEN</code>을 함께 올린다(GPU 메모리 증가).</div>
+
+<!-- ───────────────────────── 8. 안 쓴 것 ───────────────────────── -->
+<h2 id="no">9. 시도했지만 쓰지 않은 것</h2>
+<table>
+  <tr><th>방법</th><th>원리</th><th>결과</th><th>판단</th></tr>
+  <tr><td>FlashAttention</td><td>어텐션 계산을 GPU 고속 메모리 안에서 끝내는 커널</td><td>글로벌 층의 head 크기 512를 이 GPU(SM120)에서 지원하는 버전이 없다. 어텐션을 0으로 만들어도 Decision의 17~21%뿐(마이크로벤치 기반 추정 상한)</td><td>불가</td></tr>
+  <tr><td>FP8</td><td>가중치를 8bit로</td><td>이전 시험에서 더 느렸다</td><td>제외 (사용자 결정)</td></tr>
+  <tr><td>MTP<br>(추측 디코딩)</td><td>작은 보조 모델이 다음 2토큰을 미리 추측하고, 본 모델이 한 번에 검증한다. 맞으면 여러 토큰을 한 번에 확정한다</td><td>동작은 했다. 추측 적중 76%, 속도 이득 3~6%. GPU 약 +2GiB, 실행마다 답이 흔들림(13/17). vLLM은 MTP+LoRA를 공식 지원하지 않는다</td><td>미채택</td></tr>
+  <tr><td>NVFP4<br>(W4A4)</td><td>언어모델 가중치와 계산을 4bit 부동소수점으로(이미지·음성 입력층과 출력층은 제외). 이 GPU에 FP4 전용 연산기가 있다</td><td>어댑터가 NF4에 맞춰 학습돼 답이 크게 달라질 위험(BF16만 바꿔도 12/14가 바뀐 결과로 본 추정, 미측정). 첫 시도 때 커널 컴파일이 RAM을 다 써 로그인 세션이 종료됐다</td><td><b>시간상 보류</b></td></tr>
+</table>
+<p class="chart-sub">NVFP4를 다시 할 때 조건: 메모리 상한(<code>systemd-run -p MemoryMax=…</code>) 안에서, <code>MAX_JOBS=2</code>로, 사용자 승인 후. 품질이 떨어지면 NVFP4 위에서 어댑터를 다시 학습해야 한다(NVIDIA ModelOpt QLoRA, Gemma 4 적용은 미검증).</p>
+
+<!-- ───────────────────────── 9. 규칙 ───────────────────────── -->
+<h2 id="rules">10. 팀원이 알아 둘 규칙 5개</h2>
+<ol class="steps">
+  <li><b>속도를 바꾸면 답이 조금 달라질 수 있다.</b> 계산 순서가 바뀌어 거의 동점인 토큰이 뒤집힌다. 다만 차이가 다 이것은 아니다. vLLM의 LoRA 누락처럼 실제 구현 불일치도 있었다. 구현이 같은지 먼저 확인하고, 판정은 17턴 시나리오의 주문·실행·commit 값으로 한다.</li>
+  <li><b>어댑터는 NF4(QLoRA)로 학습하고 추론도 NF4로 한다.</b> 기반 정밀도가 다르면 답이 크게 바뀐다.</li>
+  <li><b>어댑터를 새로 학습하면</b> vLLM용 변환을 다시 하고 서버를 다시 켠다. 한 번에 확인하는 명령:
+<pre># 조건만 확인 (GPU 안 씀)
+bash tools/vllm_server/check_after_training.sh --preflight
+# 변환 → HF·vLLM 17턴 → 비교 (약 10~15분 예상, 실측 전)
+bash tools/vllm_server/check_after_training.sh</pre>
+    노드는 서버 어댑터가 현재 학습 결과와 다르면(파일 해시 비교) 시작을 거부한다.</li>
+  <li><b>프롬프트를 늘릴 때</b> Decision 여유 259토큰을 확인한다.</li>
+  <li><b>GPU 무거운 작업은 메모리 상한 안에서 돌린다.</b> 이 PC는 swap이 없어 RAM이 바닥나면 바로 프로그램이 강제 종료된다.</li>
+</ol>
+
+<h3>지금 상태</h3>
+<table>
+  <tr><th>항목</th><th>상태</th></tr>
+  <tr><td>기본 실행</td><td>HF + 접두 캐시 + <code>soomac_llm</code> (<code>LLM_BACKEND="hf"</code>)</td></tr>
+  <tr><td>vLLM</td><td>선택 백엔드. 실제 로봇 스택(STT·TTS·카메라 동시)에서 시험 전</td></tr>
+  <tr><td>쓰는 법</td><td>터미널 1 <code>soomac_vllm_server</code> (준비 약 2분 반) → <code>llm_langgraph_node.py</code>의 <code>LLM_BACKEND = "vllm"</code> → 터미널 2 <code>soomac_llm</code></td></tr>
+  <tr><td>되돌리기</td><td><code>LLM_BACKEND = "hf"</code> / 캐시는 <code>PREFIX_CACHE_ENABLED = False</code></td></tr>
+  <tr><td>남은 일</td><td>① 어댑터 재학습 후 <code>check_after_training.sh</code> ② 로봇 실전 시험(카메라 포함 GPU 메모리) ③ NVFP4 보류</td></tr>
+</table>
+
+</main>
+<div id="tip" role="tooltip"><div class="tv"></div><div class="tn"></div><div class="tx"></div></div>
+
+<script>
+(function () {
+  const tip = document.getElementById("tip");
+  const tv = tip.querySelector(".tv"), tn = tip.querySelector(".tn"), tx = tip.querySelector(".tx");
+
+  function show(el, x, y) {
+    tv.textContent = el.dataset.value;
+    tn.textContent = el.dataset.name;
+    tx.textContent = el.dataset.note || "";
+    tip.style.display = "block";
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(x + 14, window.innerWidth - w - 8) + "px";
+    tip.style.top = Math.max(8, y - h - 10) + "px";
+  }
+  function hide() { tip.style.display = "none"; }
+
+  function bars(id, rows, max, step, unit) {
+    const root = document.getElementById(id);
+    rows.forEach(r => {
+      const row = document.createElement("div"); row.className = "row";
+      const name = document.createElement("div"); name.className = "name";
+      name.textContent = r.name;
+      if (r.sub) { const s = document.createElement("small"); s.textContent = r.sub; name.appendChild(s); }
+      const track = document.createElement("div"); track.className = "track";
+      for (let t = step; t <= max; t += step) {
+        const g = document.createElement("div"); g.className = "gridline"; g.style.left = (t / max * 100) + "%"; track.appendChild(g);
+      }
+      const base = document.createElement("div"); base.className = "baseline"; track.appendChild(base);
+      const bar = document.createElement("div");
+      bar.className = "bar" + (r.dim ? " dim" : "");
+      bar.style.width = (r.v / max * 100) + "%";
+      bar.tabIndex = 0;
+      bar.dataset.value = r.v.toFixed(r.d === undefined ? (max > 10 ? 1 : 2) : r.d) + unit;
+      bar.dataset.name = r.name + (r.sub ? " · " + r.sub : "");
+      bar.dataset.note = r.note || "";
+      bar.setAttribute("aria-label", bar.dataset.name + ": " + bar.dataset.value + (r.note ? ". " + r.note : ""));
+      const hit = document.createElement("div"); hit.className = "hit"; bar.appendChild(hit);
+      bar.addEventListener("pointermove", e => show(bar, e.clientX, e.clientY));
+      bar.addEventListener("pointerleave", hide);
+      bar.addEventListener("focus", () => { const b = bar.getBoundingClientRect(); show(bar, b.right, b.top); });
+      bar.addEventListener("blur", hide);
+      track.appendChild(bar);
+      const val = document.createElement("div"); val.className = "val";
+      val.style.left = (r.v / max * 100) + "%";
+      val.textContent = r.label || bar.dataset.value;
+      track.appendChild(val);
+      row.appendChild(name); row.appendChild(track);
+      root.appendChild(row);
+    });
+    const axis = document.createElement("div"); axis.className = "axis";
+    axis.appendChild(document.createElement("div"));
+    const ticks = document.createElement("div"); ticks.className = "ticks";
+    for (let t = 0; t <= max; t += step) {
+      const s = document.createElement("span"); s.style.left = (t / max * 100) + "%"; s.textContent = t; ticks.appendChild(s);
+    }
+    axis.appendChild(ticks); root.appendChild(axis);
+  }
+
+  bars("c-call", [
+    { name: "원래 HF", sub: "캐시 없음", v: 4.49, note: "기존 환경, 캐시 적중 10건 평균" },
+    { name: "HF + 접두 캐시", sub: "soomac_llm (현재 기본값)", v: 1.49, label: "1.49초 · 3.0배", note: "같은 10건" },
+    { name: "vLLM 서버", sub: "NF4 + LoRA 3개", v: 0.53, label: "0.53초 · 8.5배", note: "실제 조건 6건: 입력은 다르고 공통 앞부분만 캐시" }
+  ], 5, 1, "초");
+
+  bars("c-lib", [
+    { name: "transformers 5.13.1", sub: "기존 gemma4_env", v: 1.85 },
+    { name: "→ 5.14.1", sub: "슬라이딩 층 버그 수정", v: 1.65 },
+    { name: "→ + peft·bnb·xgrammar", sub: "학습 버전에 맞춤", v: 1.51 },
+    { name: "→ + clone", sub: "soomac_llm 최종", v: 1.49, note: "속도 차이는 오차 안. 효과는 주로 메모리(1.97 → 0.445GiB)" }
+  ], 2.25, 0.5, "초");
+
+  bars("c-17", [
+    { name: "시작 전", sub: "HF, 캐시 없음", v: 210.8, dim: true, label: "210.8초 · 비교 불가", note: "프롬프트가 지금보다 짧던 시점. 아래 막대와 직접 비교하지 않는다" },
+    { name: "HF + 접두 캐시", sub: "기존 환경 5.13.1", v: 103.0, note: "아래 줄과 같은 코드·프롬프트" },
+    { name: "HF + 캐시 + soomac_llm", sub: "현재 기본값", v: 71.9, note: "vLLM 줄들과 같은 코드·프롬프트" },
+    { name: "vLLM 0.60", sub: "측정용, 27GiB 초과", v: 33.5, note: "2회 32.8 / 33.5초" },
+    { name: "vLLM 0.45", sub: "운영 메모리 설정", v: 37.2, note: "STT·TTS 상주" },
+    { name: "vLLM 0.45 + 결과 고정", sub: "서버 기본값", v: 36.0, note: "STT·TTS 상주, 같은 서버 2회 반복 17/17 일치" }
+  ], 275, 50, "초");
+})();
+</script>
+</body>
+</html>

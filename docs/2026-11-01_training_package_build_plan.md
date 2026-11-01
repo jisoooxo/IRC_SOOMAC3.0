@@ -1,19 +1,27 @@
 # 최신 데이터 전용 학습 패키지 제작·검수 계획
 
+> **사용자 최신 Goal — TAR 먼저:** 기존 로컬 학습은 사용자 요청으로 중단했다. [속도 우선 계획](2026-11-01_speed_first_training_plan.md)에 따라 최신 데이터를 보존하며 Decision build05 TAR의 모드/배치/메모리 설정과 실제 GPU 저장·재개 검증을 먼저 완료한다. 그 뒤 로컬 Response→Recommendation을 순차 본 학습한다. 원격 업로드·학습 시작은 사용자가 담당한다. 아래 build04/초기 실행 상태는 과거 이력이다.
+
+> **최종 현황:** 기존 build03 기반 build04 TAR 제작·CPU90건·실제 GPU 저장/실패/native 복원·57layer/TAR SHA·실제 Docker load까지 완료했다. [현재 결과](2026-11-01_decision_build04_processor_fix.md)의 build04를 사용한다. 데이터/model pins는 동일하다. Response 추가 의미검수1,992행은 확증 새 FIX/HOLD0이며 P/Q preflight 후 사용자 승인대로 새 로컬 순차 launcher를 시작했다(session86950/PID764128, 초기 입력/배치 준비, P started/Q pending). 실제 서버 실행·모델 품질 합격은 미확인이다. 아래 ‘수정 미구현/진행 중/NVFP4 필수대기’는 이전 시점 이력이다.
+
+> **최신 사용자 변경 / 원격 실패:** NVFP4 완료 대기는 해제한다. 로컬은 Response 의미 추가 검수·문제 행 국소 교정/제외 후 Response→Recommendation 순차 학습이며 실제 GPU 여유는 계속 검사한다. build03 원격 실행은 `base model drift: chat_template.jinja`로 실패했다. 공식 기본 commit의 template/tokenizer_config와 로컬 pins 불일치를 확인했으며 [현재 조사](2026-11-01_build03_model_metadata_failure.md)를 따른다. 아래 과거 NVFP4 필수 대기·원격 준비 완료는 당시 기록이고 현재 실행 승인/상태가 아니다. 새 TAR 수정은 아직 미구현이며 같은 입력 단순 재시도 금지다.
+
 [작업 기록](2026-11-01_dataset_rebuild_worklog.md) · [설정 점검](2026-11-01_training_parameter_check.md)
 → Decision 원격용 TAR·최적화/복원 시험을 먼저 완료하고, Claude NVFP4 시험 종료와 GPU 여유가 확인된 뒤 로컬 Response→Recommendation 본 학습을 순차 자동 실행한다.
 
 ## 0. 최신 실행 순서·승인 갱신 (2026-11-01)
 
+**추가 사용자 결정:** 기존 NVFP4 시험은 별도 Claude 기록상 시스템 RAM OOM으로 중단됐으나, 사용자가 `NVFP4 재시험이 끝날 때까지 학습 대기`를 선택했다. 과거 aborted/done 기록은 이번 로컬 학습 시작 신호가 아니다. 새 재시험 종료와 GPU 반환이 확인될 때까지 본 학습 금지를 유지하며, Decision TAR 제작·검증은 계속한다.
+
 사용자 최신 지시가 아래의 과거 ‘본 학습 금지/제작만’ 범위보다 우선한다. 원격 대상은 사용자가 **Decision으로 확정**했다. 이제 세 Agent의 총시간 비교로 원격 대상을 다시 고르는 작업은 하지 않는다. 이는 원격 총시간 실측을 확보했다는 뜻은 아니다.
 
 1. 최신 고정 데이터로 Decision 원격 학습 이미지와 TAR를 제작하고, 유한한 최적화 profile 및 승인된 짧은 GPU 저장→의도적 실패→재개 시험을 완료한다. 기본 CMD는 실학습용으로 하며 시험용 TAR와 혼동하지 않는다.
 2. 결과와 검증 영수증을 남기고 GPU를 반환한다. 이후 **Claude가 NVFP4 시험을 담당**한다. 이 작업자는 NVFP4·추론 Runtime·캐시·VLM 코드에 관여하거나 그 프로세스를 중단하지 않는다.
-3. Claude NVFP4 시험의 **명시적 완료 신호**와 GPU 여유를 모두 확인한다. GPU가 일시적으로 비었다는 이유로 시험 종료를 추측하지 않는다. 결과의 성공/실패와 ‘시험 종료·GPU 반환’은 구분한다. 완료 신호 인터페이스와 경로는 실제 구현 뒤 기록한다(현재 미구현).
+3. Claude NVFP4 재시험의 **명시적 완료 신호**와 GPU 여유를 모두 확인한다. GPU가 일시적으로 비었다는 이유로 시험 종료를 추측하지 않는다. 결과의 성공/실패와 ‘시험 종료·GPU 반환’은 구분한다. 인터페이스는 구현됐으며 새 gate는 `runs/r5_package_test_20261101_build02/LOCAL_READY_AFTER_NVFP4_RETEST.json`이다. 옛 aborted/done 기록을 채택하지 않는다. 실제 명령·프로세스는 [인계 문서](2026-11-01_nvfp4_to_training_handoff.md)를 따른다.
 4. 위 조건과 학습 preflight를 통과하면 로컬 **Response→Recommendation**을 별도 프로세스로 순차 학습한다. 최신 데이터/학습 환경·모델 경로를 검증하며, 추론용 NVFP4 결과를 학습 설정에 자동 적용하지 않는다.
 5. 첫 Agent 검증 완료 후에만 다음 Agent를 시작한다. OOM/저장 손상/설정 불일치면 중단하고 마지막 정상 체크포인트를 보존한다. 사용자 재개 시 같은 릴리즈의 완료 체크포인트에서 복원한다. 무한 자동 재시도·자동 batch 변경·동시 학습은 하지 않는다.
 
-**현재 상태:** Goal active. 순서와 조건은 기록 완료. common 런타임·완료 신호 연동·실제 GPU 시험·이미지/TAR 완성·자동 학습은 아직 미완료이다. ‘학습 자동 이어가기’ 승인은 위 순서 충족 후의 로컬 두 Agent에 한정된다. 원격 업로드/실행, 기존 adapter 교체/삭제, ROS, commit/push는 승인하지 않았다.
+**현재 상태(14:34 KST):** 잘못된 build02 assets 경로를 교정한 **build03**의 실제 GPU 저장/실패/복원·최종 TAR·Docker load가 완료됐다. 실제 서버 재접수는 미확인이다. 새 로컬 waiting session12238/PID679304가 build03 새 NVFP4 재시험 gate를 기다리며 본 학습은0회다. 옛 launcher는 종료했다. Goal UI는 외부 NVFP4 의존성 blocked이며 완료로 승격하지 않았다. TAR SHA/관측·6시간 제한은 [worklog](2026-11-01_training_package_build_worklog.md)와 [현재 인계](2026-11-01_nvfp4_to_training_handoff.md)를 따른다. ‘학습 자동 이어가기’ 승인은 위 순서 충족 후의 로컬 두 Agent에 한정된다. 원격 업로드/실행, 기존 adapter 교체/삭제, ROS, commit/push는 승인하지 않았다.
 
 Cause: 사용자가 Decision 원격용과 Claude 시험 이후의 로컬 자동 학습 순서를 명확히 지정했다.
 

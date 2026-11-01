@@ -1,5 +1,6 @@
 import base64
 import contextlib
+import hashlib
 import io
 import json
 import time
@@ -188,10 +189,19 @@ def served_adapter_roots() -> dict:
     return {model["id"]: model.get("root") for model in served_models() if model["id"] != VLLM_BASE_MODEL}
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def check_served_adapters(expected: dict, served_roots: dict) -> None:
     # 서버가 올린 변환본이 지금 model_runtime이 가리키는 학습 결과에서 만들어졌는지 확인한다.
     # 새 Adapter로 바꿨는데 변환·서버 재시작을 잊으면 예전 Adapter로 조용히 도는 것을 막는다.
-    # 한계: 같은 경로에 다시 변환만 하고 서버를 재시작하지 않은 경우는 잡지 못한다(변환 후 반드시 재시작).
+    # 변환 기록에 원본 해시가 있으면(2026-11-01 이후 변환본) 같은 경로에 다시 학습한 경우도 잡는다.
+    # 한계: 다시 변환만 하고 서버를 재시작하지 않은 경우는 잡지 못한다(변환 후 반드시 재시작).
     for name, source in expected.items():
         if source is None:
             continue
@@ -200,10 +210,14 @@ def check_served_adapters(expected: dict, served_roots: dict) -> None:
             raise VllmError(f"vLLM 서버에 {name} Adapter가 등록되지 않음. 서버 실행 인자 확인")
         record = Path(root) / "CONVERSION.json"
         if not record.is_file():
-            raise VllmError(f"{name} vLLM용 변환 기록 없음: {record}. convert_adapters_for_vllm.py로 만든 경로인지 확인")
-        converted_from = Path(json.loads(record.read_text(encoding="utf-8"))["source"]).resolve()
+            raise VllmError(f"{name} vLLM용 변환 기록 없음: {record}. tools/vllm_server/convert_adapters_for_vllm.py로 만든 경로인지 확인")
+        conversion = json.loads(record.read_text(encoding="utf-8"))
+        converted_from = Path(conversion["source"]).resolve()
         if converted_from != Path(source).resolve():
             raise VllmError(f"{name} 서버 Adapter가 현재 Adapter와 다름: 변환 원본 {converted_from} / 현재 {source}. 다시 변환 후 서버 재시작")
+        expected_hash = conversion.get("source_sha256")
+        if expected_hash is not None and _sha256(Path(source) / "adapter_model.safetensors") != expected_hash:
+            raise VllmError(f"{name} Adapter 파일이 변환 뒤에 바뀜: {source}. tools/vllm_server/convert_adapters_for_vllm.py로 다시 변환 후 서버 재시작")
 
 
 def load_vllm_backend(model_path: str, adapter_paths: dict):
@@ -214,6 +228,12 @@ def load_vllm_backend(model_path: str, adapter_paths: dict):
     models = served_models()
     check_served_adapters(adapter_paths, {m["id"]: m.get("root") for m in models if m["id"] != VLLM_BASE_MODEL})
     max_model_len = next((m.get("max_model_len") for m in models if m["id"] == VLLM_BASE_MODEL), None)
+    # 노드는 SERVING_MAX_MODEL_LEN 기준으로 입력을 맞춘다. 서버 한도가 더 작으면 긴 입력이 거부되므로 시작을 막는다.
+    from soomac_irc.input_budget import SERVING_MAX_MODEL_LEN
+    if not isinstance(max_model_len, int):
+        raise VllmError(f"vLLM 서버가 {VLLM_BASE_MODEL}의 max_model_len을 알려주지 않음({max_model_len!r}). 서버 확인 필요")
+    if max_model_len < SERVING_MAX_MODEL_LEN:
+        raise VllmError(f"vLLM 서버 최대 길이 {max_model_len} < 노드 입력 기준 {SERVING_MAX_MODEL_LEN}. VLLM_MAX_LEN을 올려 서버 재시작")
     processor = AutoProcessor.from_pretrained(model_path, local_files_only=True)
     return VllmModel(max_model_len=max_model_len), processor
 
