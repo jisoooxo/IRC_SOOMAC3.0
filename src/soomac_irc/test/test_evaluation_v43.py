@@ -391,6 +391,29 @@ def test_response_amount_synonyms_are_semantic_not_literal():
     assert grade.passed, grade.to_dict()
 
 
+@pytest.mark.parametrize("verb", ["선택되어 있어요", "선택돼 있어요", "선택되어 있습니다"])
+def test_response_current_selection_amount_must_match_confirmed_order(verb):
+    case = response_case()
+    case["input"]["confirmed_order"]["toppings"] = {"양파": "low"}
+    case["input"]["applied_this_turn"]["order_changes"] = {}
+    correct = grade_response_prediction(case, f"양파는 소량으로 {verb}")
+    wrong = grade_response_prediction(case, f"양파는 보통 양으로 {verb}")
+    assert correct.passed, correct.to_dict()
+    assert "selected_amount_contradiction" in {item.code for item in wrong.violations}
+
+
+@pytest.mark.parametrize("reply", [
+    "양파가 보통 양으로 선택되어 있어요?",
+    "양파는 보통 양으로 선택되어 있지 않아요.",
+])
+def test_response_selection_question_or_negation_is_not_current_amount_claim(reply):
+    case = response_case()
+    case["input"]["confirmed_order"]["toppings"] = {"양파": "low"}
+    case["input"]["applied_this_turn"]["order_changes"] = {}
+    grade = grade_response_prediction(case, reply)
+    assert "selected_amount_contradiction" not in {item.code for item in grade.violations}
+
+
 def test_response_preference_replacement_can_name_removed_and_active_values():
     case = response_case()
     case["input"]["applied_this_turn"]["order_changes"] = {}

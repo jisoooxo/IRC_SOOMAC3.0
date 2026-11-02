@@ -1,12 +1,15 @@
-# Decision Unsloth remote image package — validation pending
+# Decision Unsloth remote image package — candidate v3 correctness blocked
 
 This directory prepares a separate batch-entrypoint image for lab spec 2.9.
 The shared `tools/unsloth_training/production.py` has a Decision/container
 CPU path and its candidate image built. The first candidate GPU smoke loaded
 the official stack but stopped before step 1 at the Trainer loss-kwargs guard.
 The patched production source passed the same 16-row HF Trainer CPU test in
-the official image and was packaged as candidate v3, not yet GPU-tested.
-GPU correctness and resume gates remain open. This is **not** a submit-ready
+the official image and was packaged as candidate v3. Actual image GPU HF/native/smart
+probes now complete, but both Unsloth paths differ from HF loss/logits and all48
+LoRA-gradient layers beyond observed A/A noise. See [actual results](../../docs/2026-11-01_unsloth_remote_v3_validation.md).
+Final export stopped per the validation brief. Resume and new-adapter vLLM gates
+were not run after this correctness failure. This is **not** a submit-ready
 TAR. Do not upload/start/replace the running
 Decision job from this package.
 

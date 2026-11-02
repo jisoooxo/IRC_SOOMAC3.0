@@ -53,7 +53,9 @@ _CLAUSE_BOUNDARY = re.compile(
     r"[;:]\s*|(?<=요)[,\s]\s*|(?<=[니었았였했겠]다)[,\s]\s*|(?<=[았었였했랐]고)[,\s]\s*|(?<=[게죠지어아]),\s*"
 )
 _EXECUTION_QUESTION = re.compile(r"(?:담을|담아\s*드릴|진행할|시작할|투입할)까요")
-_SELECTION_VERB = re.compile(r"선택했|골랐|저장했|바꿨|변경했|수정했")
+_SELECTION_VERB = re.compile(
+    r"선택했|선택(?:돼|되어)\s*있(?:어요|습니다)|골랐|저장했|바꿨|변경했|수정했"
+)
 # 수량 없이 병렬로 묶인 재료는 뒤 재료의 서술을 공유한다("양파와 버섯은 모두 많이").
 _PARALLEL_LINK = re.compile(r"(?:\s*소스)?\s*(?:와|과|이랑|랑|하고|및|,)\s*")
 _REVOKED_PREFERENCE = re.compile(r"철회|취소|지워|지울")

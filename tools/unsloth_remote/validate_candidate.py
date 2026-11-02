@@ -15,6 +15,28 @@ import os
 from pathlib import Path
 import re
 import sys
+from collections import Counter
+
+
+class RuntimeAudit:
+    """Observe Python checkpoint execution and effective fused dropout, no math patch."""
+    def __init__(self):
+        self.calls = Counter()
+        self.dropout = Counter()
+
+    def profile(self, frame, event, arg):
+        source = frame.f_code.co_filename
+        name = frame.f_code.co_qualname
+        if event == 'call' and ('gradient_checkpointing.py' in source or 'torch/utils/checkpoint.py' in source):
+            if name.endswith(('.forward', '.backward')) or 'checkpoint' in name.lower():
+                self.calls[name] += 1
+        if event == 'return' and name.endswith('_lora_dropout_p'):
+            self.dropout[str(arg)] += 1
+        if event == 'call' and name.endswith('_dropout_forward'):
+            self.dropout['forward_p=' + str(frame.f_locals.get('p'))] += 1
+
+    def summary(self):
+        return {'checkpoint_calls': dict(self.calls), 'fused_dropout': dict(self.dropout)}
 
 
 def main():
@@ -30,7 +52,7 @@ def main():
     import benchmark
     benchmark.BASE, benchmark.RELEASE = Path('/model'), Path('/app')
     benchmark.PROCESS_BUDGET, benchmark.RESERVE = 32_000_000_000, 1024**3
-    output = benchmark.output_dir(args.output)
+    output = args.output
     receipt = benchmark.read(args.prepared / 'QUALITY_PREPARE.json')
     if benchmark.sha(args.prepared / 'REPRESENTATIVES.json') != receipt['representatives_sha256']:
         raise ValueError('encoded input changed')
@@ -39,16 +61,20 @@ def main():
     if len(row['input_ids']) != 8608:
         raise ValueError('expected sealed longest Decision input8608')
     if args.timing:
-        proof = benchmark.read(args.equivalence) if args.equivalence else {}
-        if proof.get('selected') != args.mode or proof.get('status') != 'GC_EQUIVALENCE_PASS':
-            raise ValueError('timing requires passing exact selected GC proof')
+        from candidate_proof import verify_timing_proof
+        if not args.equivalence or not args.initial:
+            raise ValueError('timing requires bound proof and initial weights')
+        proof = verify_timing_proof(args.equivalence, args.mode,
+            benchmark.sha(args.prepared / 'REPRESENTATIVES.json'), benchmark.sha(args.initial))
     fd, budget = None, None
     result = {'status': 'FAILED', 'gc': args.mode, 'production_changed': False,
+              'diagnostic_script_sha256': benchmark.sha(Path(__file__)),
               'source_manifest_sha256': receipt['source_manifest_sha256'],
               'prepared_sha256': benchmark.sha(args.prepared / 'REPRESENTATIVES.json'),
               'optimizer_updates': 0}
     try:
         fd = benchmark.acquire_gpu_lock()
+        output = benchmark.output_dir(output)
         os.environ.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', UNSLOTH_RETURN_LOGITS='1')
         if args.mode != 'hf':
             import unsloth  # noqa: F401
@@ -100,8 +126,14 @@ def main():
         result['loader_gc_calls'] = calls
         result['packages'] = {k: importlib.metadata.version(k) for k in
                              ('torch', 'transformers', 'peft', 'unsloth', 'unsloth-zoo', 'bitsandbytes')}
+        if args.timing and result['packages'] != proof['identity']['packages']:
+            raise ValueError('timing package stack changed from comparison')
         result['checkpoint_functions'] = {n: str(getattr(m, '_gradient_checkpointing_func'))[:250]
             for n, m in model.named_modules() if hasattr(m, '_gradient_checkpointing_func')}
+        result['gradient_checkpointing_flags'] = {n: bool(m.gradient_checkpointing)
+            for n, m in model.named_modules() if hasattr(m, 'gradient_checkpointing')}
+        result['initial_lora_B_nonzero'] = sum(int(torch.count_nonzero(p))
+            for n, p in initial.items() if 'lora_B' in n)
         processor = AutoProcessor.from_pretrained('/app/assets/model-processor', local_files_only=True)
         batch = DataCollatorForSeq2Seq(tokenizer=processor.tokenizer, padding=True,
             label_pad_token_id=-100, pad_to_multiple_of=8, return_tensors='pt')([
@@ -111,6 +143,8 @@ def main():
         def thash(t):
             return hashlib.sha256(t.detach().contiguous().cpu().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()
         result['input_hashes'] = {k: thash(v) for k, v in selected.items()}
+        if args.timing and result['input_hashes'] != proof['identity']['input_hashes']:
+            raise ValueError('timing selected labels/mask/input changed from comparison')
         dropouts = [(m, m.p) for n, m in model.named_modules()
                     if 'lora_dropout' in n and isinstance(m, torch.nn.Dropout)]
         if not dropouts or any(abs(p-.05) > 1e-9 for m, p in dropouts):
@@ -129,15 +163,22 @@ def main():
                     module.p = 0.0
                 model.zero_grad(set_to_none=True)
                 set_seed(42)
-                with torch.autocast('cuda', dtype=torch.bfloat16):
-                    pred = model(**selected, use_cache=False)
+                audit = RuntimeAudit()
+                if sys.getprofile() is not None:
+                    raise RuntimeError('another Python profiler is active')
+                sys.setprofile(audit.profile)
+                try:
+                    with torch.autocast('cuda', dtype=torch.bfloat16):
+                        pred = model(**selected, use_cache=False)
+                    (pred.loss / 16).backward()
+                finally:
+                    sys.setprofile(None)
                 logits = pred.logits.detach().float().cpu()
                 loss = float(pred.loss.detach())
                 ce = float(torch.nn.functional.cross_entropy(logits.reshape(-1, logits.shape[-1]),
                     selected['shift_labels'].detach().cpu().reshape(-1)))
                 if abs(loss-ce) > .001:
                     raise ValueError('native selected-logit CE drift')
-                (pred.loss / 16).backward()
                 gradient = torch.cat([(torch.zeros_like(p) if p.grad is None else p.grad).detach().float().cpu().flatten()
                                       for p in parameters])
                 if not torch.isfinite(gradient).all() or not torch.count_nonzero(gradient):
@@ -145,12 +186,18 @@ def main():
                 torch.save(logits, output / f'logits{repeat}.pt')
                 torch.save(gradient, output / f'gradient{repeat}.pt')
                 result['repeats'].append({'loss': loss, 'manual_ce': ce,
-                    'gradient_norm_fp64': float(gradient.double().norm()), 'diagnostic_dropout': 0.0})
+                    'gradient_norm_fp64': float(gradient.double().norm()), 'diagnostic_dropout': 0.0,
+                    'dropout_modules': len(dropouts),
+                    'dropout_all_zero': all(m.p == 0 for m, p in dropouts),
+                    'runtime': audit.summary()})
                 print(json.dumps({'phase': 'gc_probe_repeat', 'gc': args.mode, 'repeat': repeat,
                                   **result['repeats'][-1]}), flush=True)
                 del gradient, logits, pred
                 model.zero_grad(set_to_none=True)
                 budget.check(force=True)
+            for module, probability in dropouts:
+                module.p = probability
+            result['dropout_restored'] = all(m.p == p == .05 for m, p in dropouts)
             result['status'] = 'GC_PROBE_COMPLETE_NOT_EQUIVALENCE_PASS'
         else:
             for module, probability in dropouts:
@@ -178,7 +225,8 @@ def main():
         result['cpu_peak_rss_bytes'] = benchmark.process_peak_rss_bytes()
         if Path('/sys/fs/cgroup/memory.peak').exists():
             result['cgroup_memory_peak_bytes'] = int(Path('/sys/fs/cgroup/memory.peak').read_text())
-        benchmark.write_new(output / 'CANDIDATE_RESULT.json', result)
+        if output.is_dir():
+            benchmark.write_new(output / 'CANDIDATE_RESULT.json', result)
         if fd is not None:
             os.close(fd)
 

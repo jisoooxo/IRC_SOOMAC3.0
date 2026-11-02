@@ -1,0 +1,20 @@
+# Receipt-bearing final image: ONLY a layer extension of the exact GPU-tested smoke image
+# (Dockerfile.smoke). It restores the train ENTRYPOINT/CMD; /app/run_training.sh is the very
+# script the smoke exercised. check_final.py verifies RootFS lineage after the build.
+# Build context must contain gpu-validation/VALIDATION_RECEIPT.json and its three evidence
+# JSON files (loss, gradient, restore). Not usable until the GPU validation list passes.
+#   DOCKER_BUILDKIT=0 docker build -f Dockerfile.final \
+#     --build-arg TESTED_CANDIDATE_IMAGE=<candidate image ID sha256:...> \
+#     --build-arg TESTED_CANDIDATE_DIGEST=<same ID> -t <new final tag> <context>
+ARG TESTED_CANDIDATE_IMAGE=invalid-unset
+FROM ${TESTED_CANDIDATE_IMAGE}
+USER 0:0
+ARG TESTED_CANDIDATE_DIGEST
+COPY --chown=1000:1000 gpu-validation/ /app/gpu-validation/
+RUN TESTED_CANDIDATE_DIGEST="$TESTED_CANDIDATE_DIGEST" /opt/soomac/py/bin/python -c 'import hashlib,json,os,re; from pathlib import Path; root=Path("/app/gpu-validation"); p=root/"VALIDATION_RECEIPT.json"; d=json.loads(p.read_text()); e=d.get("evidence_files"); tested=os.environ["TESTED_CANDIDATE_DIGEST"]; assert re.fullmatch(r"sha256:[0-9a-f]{64}",tested) and d.get("tested_candidate_image_digest")==tested; assert d.get("status")=="PASS" and d.get("agent")=="decision" and isinstance(e,dict) and set(e)=={"loss","gradient","restore"}; names={"VALIDATION_RECEIPT.json"}; assert all(isinstance(x,dict) and set(x)=={"path","sha256"} and Path(x["path"]).name==x["path"] and x["path"].endswith(".json") for x in e.values()); names.update(x["path"] for x in e.values()); assert {q.name for q in root.iterdir()}==names; assert all((root/n).is_file() and not (root/n).is_symlink() and (root/n).stat().st_size<=65536 for n in names); assert all(hashlib.sha256((root/x["path"]).read_bytes()).hexdigest()==x["sha256"] for x in e.values())' && \
+    chmod -R a+rX /app/gpu-validation
+LABEL soomac.candidate.status="GPU_VALIDATED_RECEIPT_ATTACHED" \
+      soomac.tested_candidate="${TESTED_CANDIDATE_DIGEST}"
+USER 1000:1000
+ENTRYPOINT ["/app/run_training.sh"]
+CMD ["train"]

@@ -1,0 +1,31 @@
+# Smoke-validation image = c3 candidate + thin layer. Packages, benchmark.py, sealed
+# release/dataset/processor and model-loading policy are inherited byte-for-byte.
+# Changed/added files only:
+#   /app/tools/unsloth_training/production.py  = production_shared_slot.py: acquire_gpu_lock
+#                         tolerates the other tenant ONLY in a server shared slot (diff: 2 places)
+#   ENV SOOMAC_REMOTE_REQUESTED_BUDGET_BYTES=32000000000  tested budget == receipt budget
+#   /app/run_training.sh  driver check now fail-closed (UNKNOWN/malformed -> exit 69); same script
+#                         the final train image will run
+#   /app/smoke_entry.sh   job1: smoke + forced failure after step 5; job2 (LAB_RESUME=1): finish to 10
+#   /app/gpu_validate.py  one-row loss/gradient/env evidence after the resumed smoke
+#   DOCKER_BUILDKIT=0 docker build -f Dockerfile.smoke \
+#     --build-arg C3_IMAGE=sha256:86bb8967d128840004f31d392eb67f90e090066c8f112cbc3cbe165324e22a2c \
+#     -t soomac/decision-unsloth:golden-smoke-<date> <context with package/>
+ARG C3_IMAGE=invalid-unset
+FROM ${C3_IMAGE}
+USER 0:0
+COPY --chown=1000:1000 package/run_training.sh /app/run_training.sh
+COPY --chown=1000:1000 package/production_shared_slot.py /app/tools/unsloth_training/production.py
+COPY --chown=1000:1000 package/smoke_entry.sh /app/smoke_entry.sh
+COPY --chown=1000:1000 package/gpu_validate.py /app/gpu_validate.py
+RUN chmod 0555 /app/run_training.sh /app/smoke_entry.sh && chmod 0444 /app/gpu_validate.py && \
+    sh -n /app/run_training.sh && sh -n /app/smoke_entry.sh && \
+    /opt/soomac/py/bin/python -m py_compile /app/gpu_validate.py && \
+    rm -rf /app/__pycache__ && \
+    /opt/soomac/py/bin/python -c 'import hashlib; s=lambda p: hashlib.sha256(open(p,"rb").read()).hexdigest(); assert s("/app/tools/unsloth_training/production.py")=="962fc3d54bc278e9b42a22da02cb7085197bcf28981af77358fcdeaf0b32a883"; assert s("/app/tools/training_acceleration/benchmark.py")=="e89385b0e4257d3c0e7b7947a4a8c1bb7e67e8ce2e27873efd2afac8ed45394c"'
+ENV SOOMAC_REMOTE_REQUESTED_BUDGET_BYTES=32000000000
+LABEL soomac.candidate.status="GPU_SMOKE_VALIDATION_ONLY_NOT_FOR_TRAIN" \
+      soomac.smoke.base_c3="sha256:86bb8967d128840004f31d392eb67f90e090066c8f112cbc3cbe165324e22a2c"
+USER 1000:1000
+ENTRYPOINT ["/app/smoke_entry.sh"]
+CMD ["smoke-validation"]

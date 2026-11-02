@@ -1,0 +1,2900 @@
+{
+ "absl-py": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "absl-py",
+  "record_files": 54,
+  "requested": true,
+  "version": "2.5.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "accelerate": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "accelerate",
+  "record_files": 181,
+  "requested": true,
+  "version": "1.14.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "aiohappyeyeballs": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "aiohappyeyeballs",
+  "record_files": 17,
+  "requested": true,
+  "version": "2.7.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "aiohttp": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "aiohttp",
+  "record_files": 139,
+  "requested": true,
+  "version": "3.14.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "aiosignal": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "aiosignal",
+  "record_files": 10,
+  "requested": true,
+  "version": "1.4.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "aiosqlite": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "aiosqlite",
+  "record_files": 26,
+  "requested": false,
+  "version": "0.22.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "annotated-doc": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "annotated-doc",
+  "record_files": 12,
+  "requested": true,
+  "version": "0.0.4",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "annotated-types": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "annotated-types",
+  "record_files": 10,
+  "requested": false,
+  "version": "0.8.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "anyio": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "anyio",
+  "record_files": 97,
+  "requested": true,
+  "version": "4.14.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "apache-tvm-ffi": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "apache-tvm-ffi",
+  "record_files": 300,
+  "requested": false,
+  "version": "0.1.13.post3",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_24_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "async-timeout": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "async-timeout",
+  "record_files": 10,
+  "requested": false,
+  "version": "4.0.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "attrs": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "attrs",
+  "record_files": 56,
+  "requested": true,
+  "version": "26.1.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "audioread": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "audioread",
+  "record_files": 22,
+  "requested": true,
+  "version": "3.1.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "bcrypt": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "bcrypt",
+  "record_files": 11,
+  "requested": false,
+  "version": "5.0.0",
+  "wheel_tags": [
+   "cp39-abi3-manylinux_2_34_x86_64"
+  ]
+ },
+ "bitsandbytes": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "bitsandbytes",
+  "record_files": 147,
+  "requested": true,
+  "version": "0.49.2",
+  "wheel_tags": [
+   "py3-none-manylinux_2_24_x86_64"
+  ]
+ },
+ "blinker": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "blinker",
+  "record_files": 13,
+  "requested": true,
+  "version": "1.9.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "build": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "build",
+  "record_files": 34,
+  "requested": false,
+  "version": "1.5.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "certifi": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "certifi",
+  "record_files": 14,
+  "requested": true,
+  "version": "2026.10.23",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "cffi": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "cffi",
+  "record_files": 50,
+  "requested": true,
+  "version": "2.0.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "charset-normalizer": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "charset-normalizer",
+  "record_files": 37,
+  "requested": true,
+  "version": "3.4.7",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "chromadb": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "chromadb",
+  "record_files": 502,
+  "requested": true,
+  "version": "1.5.9",
+  "wheel_tags": [
+   "cp39-abi3-manylinux_2_17_x86_64",
+   "cp39-abi3-manylinux2014_x86_64"
+  ]
+ },
+ "click": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "click",
+  "record_files": 41,
+  "requested": true,
+  "version": "8.4.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "coloredlogs": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "coloredlogs",
+  "record_files": 23,
+  "requested": false,
+  "version": "15.0.1",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "contourpy": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "contourpy",
+  "record_files": 43,
+  "requested": true,
+  "version": "1.3.2",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "cuda-bindings": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "cuda-bindings",
+  "record_files": 114,
+  "requested": true,
+  "version": "13.3.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_24_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "cuda-pathfinder": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "cuda-pathfinder",
+  "record_files": 68,
+  "requested": true,
+  "version": "1.5.6",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "cuda-toolkit": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "cuda-toolkit",
+  "record_files": 5,
+  "requested": true,
+  "version": "13.0.2",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "cut-cross-entropy": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "cut-cross-entropy",
+  "record_files": 19,
+  "requested": true,
+  "version": "25.1.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "cycler": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "cycler",
+  "record_files": 10,
+  "requested": true,
+  "version": "0.12.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "datasets": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "datasets",
+  "record_files": 144,
+  "requested": true,
+  "version": "4.8.5",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "decorator": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "decorator",
+  "record_files": 11,
+  "requested": true,
+  "version": "5.3.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "diffusers": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "diffusers",
+  "record_files": 1058,
+  "requested": true,
+  "version": "0.41.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "dill": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "dill",
+  "record_files": 102,
+  "requested": true,
+  "version": "0.4.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "distro": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "distro",
+  "record_files": 15,
+  "requested": false,
+  "version": "1.9.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "dnspython": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "dnspython",
+  "record_files": 304,
+  "requested": false,
+  "version": "2.8.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "docstring-parser": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "docstring_parser",
+  "record_files": 16,
+  "requested": true,
+  "version": "0.18.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "durationpy": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "durationpy",
+  "record_files": 12,
+  "requested": false,
+  "version": "0.10",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "einops": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "einops",
+  "record_files": 33,
+  "requested": true,
+  "version": "0.8.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "email-validator": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "email-validator",
+  "record_files": 27,
+  "requested": false,
+  "version": "2.3.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "exceptiongroup": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "exceptiongroup",
+  "record_files": 19,
+  "requested": true,
+  "version": "1.3.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "faiss-cpu": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "faiss-cpu",
+  "record_files": 65,
+  "requested": true,
+  "version": "1.14.3",
+  "wheel_tags": [
+   "cp310-abi3-manylinux_2_27_x86_64",
+   "cp310-abi3-manylinux_2_28_x86_64"
+  ]
+ },
+ "fastapi": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "fastapi",
+  "record_files": 103,
+  "requested": true,
+  "version": "0.129.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "fastapi-cli": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "fastapi-cli",
+  "record_files": 26,
+  "requested": true,
+  "version": "0.0.23",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "fastapi-cloud-cli": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "fastapi-cloud-cli",
+  "record_files": 52,
+  "requested": true,
+  "version": "0.13.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "fastar": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "fastar",
+  "record_files": 11,
+  "requested": false,
+  "version": "0.11.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "filelock": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "filelock",
+  "record_files": 35,
+  "requested": true,
+  "version": "3.29.4",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "flask": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "Flask",
+  "record_files": 58,
+  "requested": true,
+  "version": "3.1.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "flatbuffers": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "flatbuffers",
+  "record_files": 25,
+  "requested": false,
+  "version": "25.12.19",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "fonttools": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "fonttools",
+  "record_files": 702,
+  "requested": true,
+  "version": "4.63.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "frozenlist": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "frozenlist",
+  "record_files": 13,
+  "requested": true,
+  "version": "1.8.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_5_x86_64",
+   "cp310-cp310-manylinux1_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "fsspec": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "fsspec",
+  "record_files": 63,
+  "requested": true,
+  "version": "2026.2.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "googleapis-common-protos": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "googleapis-common-protos",
+  "record_files": 268,
+  "requested": false,
+  "version": "1.75.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "greenlet": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "greenlet",
+  "record_files": 129,
+  "requested": false,
+  "version": "3.5.4",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_24_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "grpcio": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "grpcio",
+  "record_files": 124,
+  "requested": true,
+  "version": "1.83.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "h11": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "h11",
+  "record_files": 30,
+  "requested": true,
+  "version": "0.16.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "hf-transfer": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "hf_transfer",
+  "record_files": 8,
+  "requested": true,
+  "version": "0.1.9",
+  "wheel_tags": [
+   "cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64"
+  ]
+ },
+ "hf-xet": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "hf-xet",
+  "record_files": 9,
+  "requested": false,
+  "version": "1.6.0",
+  "wheel_tags": [
+   "cp38-abi3-manylinux_2_17_x86_64",
+   "cp38-abi3-manylinux2014_x86_64"
+  ]
+ },
+ "httpcore": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "httpcore",
+  "record_files": 69,
+  "requested": true,
+  "version": "1.0.9",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "httptools": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "httptools",
+  "record_files": 28,
+  "requested": false,
+  "version": "0.8.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_5_x86_64",
+   "cp310-cp310-manylinux1_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "httpx": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "httpx",
+  "record_files": 55,
+  "requested": true,
+  "version": "0.28.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "httpx-sse": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "httpx-sse",
+  "record_files": 17,
+  "requested": false,
+  "version": "0.4.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "huggingface-hub": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "huggingface_hub",
+  "record_files": 199,
+  "requested": true,
+  "version": "1.33.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "humanfriendly": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "humanfriendly",
+  "record_files": 40,
+  "requested": false,
+  "version": "10.0",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "idna": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "idna",
+  "record_files": 29,
+  "requested": true,
+  "version": "3.18",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "importlib-metadata": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "importlib_metadata",
+  "record_files": 20,
+  "requested": true,
+  "version": "9.0.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "importlib-resources": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "importlib_resources",
+  "record_files": 67,
+  "requested": false,
+  "version": "7.1.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "iniconfig": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "iniconfig",
+  "record_files": 15,
+  "requested": false,
+  "version": "2.3.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "interegular": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "interegular",
+  "record_files": 19,
+  "requested": false,
+  "version": "0.3.3",
+  "wheel_tags": [
+   "py37-none-any"
+  ]
+ },
+ "itsdangerous": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "itsdangerous",
+  "record_files": 23,
+  "requested": true,
+  "version": "2.2.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "jinja2": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "Jinja2",
+  "record_files": 58,
+  "requested": true,
+  "version": "3.1.6",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "jiter": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "jiter",
+  "record_files": 11,
+  "requested": false,
+  "version": "0.16.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "joblib": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "joblib",
+  "record_files": 218,
+  "requested": true,
+  "version": "1.5.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "json5": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "json5",
+  "record_files": 17,
+  "requested": true,
+  "version": "0.17.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "jsonpatch": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "jsonpatch",
+  "record_files": 11,
+  "requested": false,
+  "version": "1.33",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "jsonpointer": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "jsonpointer",
+  "record_files": 10,
+  "requested": false,
+  "version": "3.1.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "jsonschema": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "jsonschema",
+  "record_files": 82,
+  "requested": false,
+  "version": "4.26.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "jsonschema-specifications": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "jsonschema-specifications",
+  "record_files": 33,
+  "requested": false,
+  "version": "2025.9.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "kiwisolver": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "kiwisolver",
+  "record_files": 14,
+  "requested": true,
+  "version": "1.5.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_12_x86_64",
+   "cp310-cp310-manylinux2010_x86_64"
+  ]
+ },
+ "kubernetes": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "kubernetes",
+  "record_files": 3478,
+  "requested": false,
+  "version": "36.0.3",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "langchain": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langchain",
+  "record_files": 69,
+  "requested": true,
+  "version": "1.2.9",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langchain-classic": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langchain-classic",
+  "record_files": 2656,
+  "requested": true,
+  "version": "1.0.8",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langchain-community": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langchain-community",
+  "record_files": 2417,
+  "requested": true,
+  "version": "0.4.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langchain-core": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langchain-core",
+  "record_files": 366,
+  "requested": true,
+  "version": "1.4.8",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langchain-huggingface": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langchain-huggingface",
+  "record_files": 35,
+  "requested": true,
+  "version": "1.2.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langchain-openai": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langchain-openai",
+  "record_files": 54,
+  "requested": true,
+  "version": "1.3.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langchain-protocol": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langchain-protocol",
+  "record_files": 11,
+  "requested": true,
+  "version": "0.0.18",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langchain-text-splitters": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langchain-text-splitters",
+  "record_files": 33,
+  "requested": true,
+  "version": "1.1.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langgraph": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langgraph",
+  "record_files": 135,
+  "requested": true,
+  "version": "1.0.8",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langgraph-checkpoint": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langgraph-checkpoint",
+  "record_files": 46,
+  "requested": true,
+  "version": "4.1.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langgraph-checkpoint-sqlite": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langgraph-checkpoint-sqlite",
+  "record_files": 23,
+  "requested": true,
+  "version": "3.1.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langgraph-prebuilt": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langgraph-prebuilt",
+  "record_files": 17,
+  "requested": true,
+  "version": "1.0.7",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langgraph-sdk": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langgraph-sdk",
+  "record_files": 27,
+  "requested": true,
+  "version": "0.3.4",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "langsmith": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "langsmith",
+  "record_files": 591,
+  "requested": false,
+  "version": "0.10.15",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "lazy-loader": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "lazy-loader",
+  "record_files": 9,
+  "requested": true,
+  "version": "0.5",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "librosa": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "librosa",
+  "record_files": 87,
+  "requested": true,
+  "version": "0.11.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "llvmlite": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "llvmlite",
+  "record_files": 85,
+  "requested": true,
+  "version": "0.48.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "lm-format-enforcer": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "lm-format-enforcer",
+  "record_files": 48,
+  "requested": true,
+  "version": "0.11.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "lxml": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "lxml",
+  "record_files": 205,
+  "requested": true,
+  "version": "6.1.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_26_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "markdown": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "Markdown",
+  "record_files": 75,
+  "requested": true,
+  "version": "3.10.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "markdown-it-py": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "markdown-it-py",
+  "record_files": 143,
+  "requested": true,
+  "version": "4.2.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "markupsafe": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "MarkupSafe",
+  "record_files": 15,
+  "requested": true,
+  "version": "3.0.3",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "matplotlib": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "matplotlib",
+  "record_files": 884,
+  "requested": true,
+  "version": "3.10.9",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "mdurl": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "mdurl",
+  "record_files": 19,
+  "requested": true,
+  "version": "0.1.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "mmh3": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "mmh3",
+  "record_files": 13,
+  "requested": false,
+  "version": "5.2.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_5_x86_64",
+   "cp310-cp310-manylinux1_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "mpmath": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "mpmath",
+  "record_files": 181,
+  "requested": true,
+  "version": "1.3.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "msgpack": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "msgpack",
+  "record_files": 16,
+  "requested": true,
+  "version": "1.2.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "msgspec": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "msgspec",
+  "record_files": 25,
+  "requested": true,
+  "version": "0.22.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "multidict": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "multidict",
+  "record_files": 17,
+  "requested": true,
+  "version": "6.7.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "multiprocess": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "multiprocess",
+  "record_files": 74,
+  "requested": true,
+  "version": "0.70.19",
+  "wheel_tags": [
+   "py310-none-any"
+  ]
+ },
+ "nest-asyncio": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "nest-asyncio",
+  "record_files": 8,
+  "requested": true,
+  "version": "1.6.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "networkx": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "networkx",
+  "record_files": 1150,
+  "requested": true,
+  "version": "3.4.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "numba": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "numba",
+  "record_files": 1549,
+  "requested": true,
+  "version": "0.66.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "numpy": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "numpy",
+  "record_files": 1499,
+  "requested": true,
+  "version": "2.2.6",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "nvidia-cublas": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cublas",
+  "record_files": 16,
+  "requested": true,
+  "version": "13.1.1.3",
+  "wheel_tags": [
+   "py3-none-manylinux_2_27_x86_64"
+  ]
+ },
+ "nvidia-cuda-cupti": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cuda-cupti",
+  "record_files": 49,
+  "requested": true,
+  "version": "13.0.85",
+  "wheel_tags": [
+   "py3-none-manylinux_2_25_x86_64"
+  ]
+ },
+ "nvidia-cuda-nvrtc": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cuda-nvrtc",
+  "record_files": 12,
+  "requested": true,
+  "version": "13.0.88",
+  "wheel_tags": [
+   "py3-none-manylinux2010_x86_64",
+   "py3-none-manylinux_2_12_x86_64"
+  ]
+ },
+ "nvidia-cuda-runtime": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cuda-runtime",
+  "record_files": 101,
+  "requested": true,
+  "version": "13.0.96",
+  "wheel_tags": [
+   "py3-none-manylinux2014_x86_64",
+   "py3-none-manylinux_2_17_x86_64"
+  ]
+ },
+ "nvidia-cudnn-cu13": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cudnn-cu13",
+  "record_files": 29,
+  "requested": true,
+  "version": "9.20.0.48",
+  "wheel_tags": [
+   "py3-none-manylinux_2_27_x86_64"
+  ]
+ },
+ "nvidia-cufft": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cufft",
+  "record_files": 13,
+  "requested": true,
+  "version": "12.0.0.61",
+  "wheel_tags": [
+   "py3-none-manylinux2014_x86_64",
+   "py3-none-manylinux_2_17_x86_64"
+  ]
+ },
+ "nvidia-cufile": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cufile",
+  "record_files": 10,
+  "requested": true,
+  "version": "1.15.1.6",
+  "wheel_tags": [
+   "py3-none-manylinux2014_x86_64",
+   "py3-none-manylinux_2_17_x86_64"
+  ]
+ },
+ "nvidia-curand": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-curand",
+  "record_files": 25,
+  "requested": true,
+  "version": "10.4.0.35",
+  "wheel_tags": [
+   "py3-none-manylinux_2_27_x86_64"
+  ]
+ },
+ "nvidia-cusolver": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cusolver",
+  "record_files": 15,
+  "requested": true,
+  "version": "12.0.4.66",
+  "wheel_tags": [
+   "py3-none-manylinux_2_27_x86_64"
+  ]
+ },
+ "nvidia-cusparse": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cusparse",
+  "record_files": 10,
+  "requested": true,
+  "version": "12.6.3.3",
+  "wheel_tags": [
+   "py3-none-manylinux2014_x86_64",
+   "py3-none-manylinux_2_17_x86_64"
+  ]
+ },
+ "nvidia-cusparselt-cu13": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-cusparselt-cu13",
+  "record_files": 9,
+  "requested": true,
+  "version": "0.8.1",
+  "wheel_tags": [
+   "py3-none-manylinux2014_x86_64"
+  ]
+ },
+ "nvidia-nccl-cu13": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-nccl-cu13",
+  "record_files": 59,
+  "requested": true,
+  "version": "2.29.7",
+  "wheel_tags": [
+   "py3-none-manylinux_2_18_x86_64"
+  ]
+ },
+ "nvidia-nvjitlink": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-nvjitlink",
+  "record_files": 9,
+  "requested": true,
+  "version": "13.0.88",
+  "wheel_tags": [
+   "py3-none-manylinux2010_x86_64",
+   "py3-none-manylinux_2_12_x86_64"
+  ]
+ },
+ "nvidia-nvshmem-cu13": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-nvshmem-cu13",
+  "record_files": 66,
+  "requested": true,
+  "version": "3.4.5",
+  "wheel_tags": [
+   "py3-none-manylinux2014_x86_64",
+   "py3-none-manylinux_2_17_x86_64"
+  ]
+ },
+ "nvidia-nvtx": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "nvidia-nvtx",
+  "record_files": 43,
+  "requested": true,
+  "version": "13.0.85",
+  "wheel_tags": [
+   "py3-none-manylinux1_x86_64",
+   "py3-none-manylinux_2_5_x86_64"
+  ]
+ },
+ "oauthlib": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "oauthlib",
+  "record_files": 156,
+  "requested": false,
+  "version": "3.3.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "onnxruntime": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "onnxruntime",
+  "record_files": 625,
+  "requested": false,
+  "version": "1.23.2",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_27_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "openai": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "openai",
+  "record_files": 3005,
+  "requested": false,
+  "version": "2.52.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "opencv-python": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "opencv-python",
+  "record_files": 144,
+  "requested": true,
+  "version": "4.13.0.92",
+  "wheel_tags": [
+   "cp37-abi3-manylinux_2_28_x86_64"
+  ]
+ },
+ "opentelemetry-api": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "opentelemetry-api",
+  "record_files": 78,
+  "requested": false,
+  "version": "1.44.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "opentelemetry-exporter-otlp-proto-common": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "opentelemetry-exporter-otlp-proto-common",
+  "record_files": 26,
+  "requested": false,
+  "version": "1.44.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "opentelemetry-exporter-otlp-proto-grpc": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "opentelemetry-exporter-otlp-proto-grpc",
+  "record_files": 19,
+  "requested": false,
+  "version": "1.44.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "opentelemetry-proto": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "opentelemetry-proto",
+  "record_files": 74,
+  "requested": false,
+  "version": "1.44.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "opentelemetry-sdk": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "opentelemetry-sdk",
+  "record_files": 132,
+  "requested": false,
+  "version": "1.44.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "opentelemetry-semantic-conventions": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "opentelemetry-semantic-conventions",
+  "record_files": 260,
+  "requested": false,
+  "version": "0.65b0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "orjson": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "orjson",
+  "record_files": 13,
+  "requested": false,
+  "version": "3.11.9",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "ormsgpack": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "ormsgpack",
+  "record_files": 16,
+  "requested": false,
+  "version": "1.12.2",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "overrides": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "overrides",
+  "record_files": 19,
+  "requested": false,
+  "version": "7.7.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "packaging": {
+  "direct_url": null,
+  "installer": "",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "packaging",
+  "record_files": 24,
+  "requested": false,
+  "version": "26.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pandas": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pandas",
+  "record_files": 2930,
+  "requested": true,
+  "version": "2.3.3",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_24_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "peft": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "peft",
+  "record_files": 446,
+  "requested": true,
+  "version": "0.19.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pillow": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pillow",
+  "record_files": 239,
+  "requested": true,
+  "version": "12.3.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_27_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "pip": {
+  "direct_url": {
+   "dir_info": {},
+   "url": "file:///home/task_178229373358736/croot/pip_1782293756958/work"
+  },
+  "installer": "conda",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pip",
+  "record_files": 866,
+  "requested": true,
+  "version": "26.1.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "platformdirs": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "platformdirs",
+  "record_files": 25,
+  "requested": true,
+  "version": "4.10.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pluggy": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pluggy",
+  "record_files": 23,
+  "requested": false,
+  "version": "1.6.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pooch": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pooch",
+  "record_files": 58,
+  "requested": true,
+  "version": "1.9.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "propcache": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "propcache",
+  "record_files": 19,
+  "requested": true,
+  "version": "0.5.2",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "protobuf": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "protobuf",
+  "record_files": 115,
+  "requested": true,
+  "version": "7.35.1",
+  "wheel_tags": [
+   "cp310-abi3-manylinux2014_x86_64"
+  ]
+ },
+ "psutil": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "psutil",
+  "record_files": 28,
+  "requested": true,
+  "version": "7.2.2",
+  "wheel_tags": [
+   "cp36-abi3-manylinux_2_12_x86_64",
+   "cp36-abi3-manylinux2010_x86_64",
+   "cp36-abi3-manylinux_2_28_x86_64"
+  ]
+ },
+ "pyarrow": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pyarrow",
+  "record_files": 860,
+  "requested": true,
+  "version": "25.0.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "pybase64": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pybase64",
+  "record_files": 28,
+  "requested": false,
+  "version": "1.5.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_5_x86_64",
+   "cp310-cp310-manylinux1_x86_64",
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "pycparser": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pycparser",
+  "record_files": 22,
+  "requested": true,
+  "version": "3.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pydantic": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pydantic",
+  "record_files": 218,
+  "requested": true,
+  "version": "2.12.5",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pydantic-core": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pydantic_core",
+  "record_files": 13,
+  "requested": true,
+  "version": "2.41.5",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64"
+  ]
+ },
+ "pydantic-extra-types": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pydantic-extra-types",
+  "record_files": 55,
+  "requested": true,
+  "version": "2.11.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pydantic-settings": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pydantic-settings",
+  "record_files": 51,
+  "requested": true,
+  "version": "2.13.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pygments": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "Pygments",
+  "record_files": 687,
+  "requested": true,
+  "version": "2.20.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pyparsing": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pyparsing",
+  "record_files": 42,
+  "requested": true,
+  "version": "3.3.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pypika": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "PyPika",
+  "record_files": 39,
+  "requested": false,
+  "version": "0.51.1",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "pyproject-hooks": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pyproject_hooks",
+  "record_files": 14,
+  "requested": false,
+  "version": "1.2.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pytest": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pytest",
+  "record_files": 174,
+  "requested": true,
+  "version": "9.1.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "python-dateutil": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "python-dateutil",
+  "record_files": 45,
+  "requested": true,
+  "version": "2.9.0.post0",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "python-docx": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "python-docx",
+  "record_files": 221,
+  "requested": true,
+  "version": "1.2.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "python-dotenv": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "python-dotenv",
+  "record_files": 25,
+  "requested": false,
+  "version": "1.2.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "pytz": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "pytz",
+  "record_files": 624,
+  "requested": true,
+  "version": "2026.2",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "pyyaml": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "PyYAML",
+  "record_files": 44,
+  "requested": true,
+  "version": "6.0.3",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "referencing": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "referencing",
+  "record_files": 33,
+  "requested": false,
+  "version": "0.37.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "regex": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "regex",
+  "record_files": 16,
+  "requested": true,
+  "version": "2026.6.28",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "requests": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "requests",
+  "record_files": 47,
+  "requested": true,
+  "version": "2.34.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "requests-oauthlib": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "requests-oauthlib",
+  "record_files": 36,
+  "requested": false,
+  "version": "2.0.0",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "requests-toolbelt": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "requests-toolbelt",
+  "record_files": 75,
+  "requested": false,
+  "version": "1.0.0",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "rich": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "rich",
+  "record_files": 207,
+  "requested": true,
+  "version": "15.0.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "rich-toolkit": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "rich-toolkit",
+  "record_files": 51,
+  "requested": false,
+  "version": "0.20.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "rignore": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "rignore",
+  "record_files": 11,
+  "requested": false,
+  "version": "0.8.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "rpds-py": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "rpds-py",
+  "record_files": 10,
+  "requested": false,
+  "version": "0.30.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "safetensors": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "safetensors",
+  "record_files": 24,
+  "requested": true,
+  "version": "0.8.0",
+  "wheel_tags": [
+   "cp310-abi3-manylinux_2_17_x86_64",
+   "cp310-abi3-manylinux2014_x86_64"
+  ]
+ },
+ "scikit-learn": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "scikit-learn",
+  "record_files": 1580,
+  "requested": true,
+  "version": "1.7.2",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "scipy": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "scipy",
+  "record_files": 2338,
+  "requested": true,
+  "version": "1.15.3",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "sentence-transformers": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "sentence-transformers",
+  "record_files": 383,
+  "requested": true,
+  "version": "5.7.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "sentencepiece": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "sentencepiece",
+  "record_files": 21,
+  "requested": true,
+  "version": "0.2.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_27_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "sentry-sdk": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "sentry-sdk",
+  "record_files": 394,
+  "requested": false,
+  "version": "2.66.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "setuptools": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "setuptools",
+  "record_files": 788,
+  "requested": true,
+  "version": "81.0.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "shellingham": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "shellingham",
+  "record_files": 22,
+  "requested": true,
+  "version": "1.5.4",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "six": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "six",
+  "record_files": 9,
+  "requested": true,
+  "version": "1.17.0",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "sniffio": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "sniffio",
+  "record_files": 19,
+  "requested": false,
+  "version": "1.3.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "soundfile": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "soundfile",
+  "record_files": 16,
+  "requested": true,
+  "version": "0.14.0",
+  "wheel_tags": [
+   "py2-none-manylinux_2_28_x86_64",
+   "py3-none-manylinux_2_28_x86_64"
+  ]
+ },
+ "soxr": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "soxr",
+  "record_files": 15,
+  "requested": true,
+  "version": "1.1.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_27_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "sqlalchemy": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "SQLAlchemy",
+  "record_files": 531,
+  "requested": false,
+  "version": "2.0.51",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "sqlite-vec": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "sqlite-vec",
+  "record_files": 8,
+  "requested": false,
+  "version": "0.1.9",
+  "wheel_tags": [
+   "py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux1_x86_64"
+  ]
+ },
+ "starlette": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "starlette",
+  "record_files": 74,
+  "requested": false,
+  "version": "0.52.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "structlog": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "structlog",
+  "record_files": 30,
+  "requested": true,
+  "version": "26.1.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "sympy": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "sympy",
+  "record_files": 3106,
+  "requested": true,
+  "version": "1.14.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "tenacity": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "tenacity",
+  "record_files": 31,
+  "requested": false,
+  "version": "9.1.4",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "tensorboard": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "tensorboard",
+  "record_files": 535,
+  "requested": true,
+  "version": "2.21.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "tensorboard-data-server": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "tensorboard-data-server",
+  "record_files": 9,
+  "requested": true,
+  "version": "0.7.2",
+  "wheel_tags": [
+   "py3-none-manylinux_2_31_x86_64"
+  ]
+ },
+ "threadpoolctl": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "threadpoolctl",
+  "record_files": 8,
+  "requested": true,
+  "version": "3.6.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "tiktoken": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "tiktoken",
+  "record_files": 22,
+  "requested": false,
+  "version": "0.13.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "tokenizers": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "tokenizers",
+  "record_files": 47,
+  "requested": true,
+  "version": "0.22.2",
+  "wheel_tags": [
+   "cp39-abi3-manylinux_2_17_x86_64",
+   "cp39-abi3-manylinux2014_x86_64"
+  ]
+ },
+ "tomli": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "tomli",
+  "record_files": 14,
+  "requested": false,
+  "version": "2.4.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "torch": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "torch",
+  "record_files": 14234,
+  "requested": true,
+  "version": "2.12.1+cu130",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "torchao": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "torchao",
+  "record_files": 969,
+  "requested": true,
+  "version": "0.17.0+cu130",
+  "wheel_tags": [
+   "cp310-abi3-manylinux_2_28_x86_64",
+   "cp310-abi3-manylinux_2_24_x86_64"
+  ]
+ },
+ "torchaudio": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "torchaudio",
+  "record_files": 166,
+  "requested": true,
+  "version": "2.11.0+cu130",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "torchvision": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "torchvision",
+  "record_files": 382,
+  "requested": true,
+  "version": "0.27.1+cu130",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "tqdm": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "tqdm",
+  "record_files": 73,
+  "requested": true,
+  "version": "4.68.3",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "transformers": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "transformers",
+  "record_files": 5076,
+  "requested": true,
+  "version": "5.13.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "triton": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "triton",
+  "record_files": 478,
+  "requested": true,
+  "version": "3.7.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_27_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "trl": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "trl",
+  "record_files": 370,
+  "requested": true,
+  "version": "1.8.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "typeguard": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "typeguard",
+  "record_files": 21,
+  "requested": true,
+  "version": "4.6.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "typer": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "typer",
+  "record_files": 42,
+  "requested": true,
+  "version": "0.25.1",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "typing-extensions": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "typing_extensions",
+  "record_files": 8,
+  "requested": true,
+  "version": "4.15.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "typing-inspection": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "typing-inspection",
+  "record_files": 13,
+  "requested": false,
+  "version": "0.4.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "tyro": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "tyro",
+  "record_files": 63,
+  "requested": true,
+  "version": "1.0.16",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "tzdata": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "tzdata",
+  "record_files": 657,
+  "requested": true,
+  "version": "2026.3",
+  "wheel_tags": [
+   "py2-none-any",
+   "py3-none-any"
+  ]
+ },
+ "unsloth": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "unsloth",
+  "record_files": 2383,
+  "requested": true,
+  "version": "2026.10.11",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "unsloth-zoo": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "unsloth_zoo",
+  "record_files": 281,
+  "requested": true,
+  "version": "2026.10.11",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "urllib3": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "urllib3",
+  "record_files": 80,
+  "requested": true,
+  "version": "2.7.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "uuid-utils": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "uuid_utils",
+  "record_files": 14,
+  "requested": false,
+  "version": "0.17.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "uvicorn": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "uvicorn",
+  "record_files": 89,
+  "requested": true,
+  "version": "0.41.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "uvloop": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "uvloop",
+  "record_files": 69,
+  "requested": false,
+  "version": "0.22.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "watchfiles": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "watchfiles",
+  "record_files": 25,
+  "requested": false,
+  "version": "1.2.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ },
+ "websocket-client": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "websocket-client",
+  "record_files": 74,
+  "requested": false,
+  "version": "1.9.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "websockets": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "websockets",
+  "record_files": 108,
+  "requested": false,
+  "version": "16.1.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_5_x86_64",
+   "cp310-cp310-manylinux1_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "werkzeug": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "Werkzeug",
+  "record_files": 117,
+  "requested": true,
+  "version": "3.1.8",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "wheel": {
+  "direct_url": null,
+  "installer": "",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "wheel",
+  "record_files": 21,
+  "requested": false,
+  "version": "0.47.0",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "xformers": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "xformers",
+  "record_files": 79,
+  "requested": true,
+  "version": "0.0.35",
+  "wheel_tags": [
+   "py39-none-manylinux_2_28_x86_64"
+  ]
+ },
+ "xgrammar": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "xgrammar",
+  "record_files": 44,
+  "requested": true,
+  "version": "0.2.8",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_27_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "xxhash": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "xxhash",
+  "record_files": 14,
+  "requested": true,
+  "version": "3.8.1",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "yarl": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "yarl",
+  "record_files": 27,
+  "requested": true,
+  "version": "1.24.2",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64",
+   "cp310-cp310-manylinux_2_28_x86_64"
+  ]
+ },
+ "zipp": {
+  "direct_url": null,
+  "installer": "uv",
+  "location": "/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/lib/python3.10/site-packages",
+  "name": "zipp",
+  "record_files": 14,
+  "requested": true,
+  "version": "4.1.2",
+  "wheel_tags": [
+   "py3-none-any"
+  ]
+ },
+ "zstandard": {
+  "direct_url": null,
+  "installer": "pip",
+  "location": "/home/roma/miniconda3/envs/gemma4_env/lib/python3.10/site-packages",
+  "name": "zstandard",
+  "record_files": 14,
+  "requested": false,
+  "version": "0.25.0",
+  "wheel_tags": [
+   "cp310-cp310-manylinux_2_17_x86_64",
+   "cp310-cp310-manylinux2014_x86_64"
+  ]
+ }
+}

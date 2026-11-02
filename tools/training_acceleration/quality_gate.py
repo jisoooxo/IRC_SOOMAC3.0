@@ -343,16 +343,125 @@ def _chunked_diff(torch, a, b):
         maximum = max(maximum, float((y-x).abs().max()))
         allclose &= bool(torch.allclose(x, y, atol=1e-4, rtol=1e-3))
     an, bn = float(accum[0].sqrt()), float(accum[1].sqrt())
+    cosine = (1.0 if an == bn == 0 else 0.0 if an == 0 or bn == 0
+              else max(-1.0, min(1.0, float(accum[2])/(an*bn))))
     return {'reference_norm': an, 'candidate_norm': bn,
-            'cosine': float(accum[2])/max(an*bn, 1e-30),
+            'cosine': cosine,
             'relative_l2_error': float(accum[3].sqrt())/max(an, 1e-30),
             'max_absolute': maximum, 'allclose_original_tolerance': allclose,
             'finite': bool(torch.isfinite(accum).all()), 'reduction': 'FP64_chunked'}
 
 
+def independent_targets(torch, batch, selected):
+    """Derive next-token targets from full labels, independently of scored_suffix."""
+    labels = batch['labels']
+    if labels.shape[0] != 1 or labels[0, 0].item() != -100:
+        raise ValueError('one masked-prefix row required')
+    target_indexes = (labels[0] != -100).nonzero(as_tuple=False).flatten()
+    positions = target_indexes - 1
+    targets = labels[:, target_indexes]
+    if (not torch.equal(selected['logits_to_keep'], positions)
+            or not torch.equal(selected['shift_labels'], targets)):
+        raise ValueError('selected causal targets differ from full labels')
+    if any(selected[k] is not batch[k] for k in ('input_ids', 'labels', 'attention_mask')):
+        raise ValueError('scored_suffix replaced original input/mask/labels')
+    return targets
+
+
+def local_objective(args):
+    """Three agent-specific eval CE checks; optimizer/resume tested by production smoke."""
+    import production
+    production.configure_environment(argparse.Namespace(execution_environment='local'))
+    prepared = benchmark.read(args.prepared / 'QUALITY_PREPARE.json')
+    if (prepared['release_sha256'] != benchmark.sha(benchmark.RELEASE / 'RELEASE.json')
+            or prepared['source_manifest_sha256'] != benchmark.MANIFEST_SHA
+            or benchmark.sha(args.prepared / 'REPRESENTATIVES.json') != prepared['representatives_sha256']):
+        raise ValueError('prepared representatives identity changed')
+    representatives = [r for r in benchmark.read(args.prepared / 'REPRESENTATIVES.json')['rows']
+                       if r['agent'] == args.agent]
+    if len(representatives) != 3 or {r['category'] for r in representatives} != {'short', 'long', 'multiturn'}:
+        raise ValueError('need exactly short/long/multiturn for this agent')
+    _, manifest, _ = production.source_preflight(args.agent)
+    destination = benchmark.output_dir(args.output)
+    result = {'status': 'FAILED', 'agent': args.agent, 'optimizer_updates': 0,
+              'production_changed': False, 'functional_quality': 'NOT_TESTED',
+              'representatives_sha256': prepared['representatives_sha256'], 'cases': []}
+    fd, budget = None, None
+    try:
+        fd = benchmark.acquire_gpu_lock()
+        import unsloth  # noqa: F401
+        import torch
+        from transformers import AutoProcessor, DataCollatorForSeq2Seq
+        from budget import Budget
+        from loss import scored_suffix
+        import core
+        budget = Budget(benchmark.PROCESS_BUDGET, benchmark.RESERVE)
+        processor = AutoProcessor.from_pretrained(production.PROCESSOR, local_files_only=True)
+        core.DATASET_ROOT = production.DATASET
+        core.MAX_LENGTH = manifest['max_length'][args.agent]
+        cfg = core.STAGE_CONFIGS[args.agent]
+        cfg['schema_path'] = production.DATASET / f'contract/{args.agent}_schema.json'
+        if args.agent == 'response':
+            cfg['systems_path'] = production.DATASET / 'contract/response_system_by_route.json'
+        else:
+            cfg['system_path'] = production.DATASET / f'contract/{args.agent}_system.txt'
+        prompts, validator = core.load_contract(args.agent)
+        source = {r['id']: r for r in rows(production.DATASET / f'records/{args.agent}/train.jsonl')}
+        for row in representatives:
+            original = source[row['id']]
+            encoded = core.encode_record(args.agent, copy.deepcopy(original), processor, prompts, validator)
+            if (digest(original['input']) != row['source_input_sha256']
+                    or encoded['input_ids'] != row['input_ids'] or encoded['labels'] != row['labels']
+                    or row['attention_mask'] != [1] * encoded['length']
+                    or len(original['input'].get('recent_history') or []) != row['history_messages']):
+                raise ValueError('full representative input/history/labels changed')
+        model, optimizer, parameters, names = benchmark.model_and_optimizer(
+            'unsloth', args.agent, torch, max_seq_length=core.MAX_LENGTH)
+        result['initial_lora_B_all_zero'] = all(not bool(torch.count_nonzero(p))
+            for n, p in zip(names, parameters) if 'lora_B' in n)
+        model.eval()
+        collator = DataCollatorForSeq2Seq(tokenizer=processor.tokenizer, padding=True,
+            label_pad_token_id=-100, pad_to_multiple_of=8, return_tensors='pt')
+        for row in representatives:
+            batch = {k: v.to('cuda') for k, v in collator([
+                {k: copy.deepcopy(row[k]) for k in ('input_ids', 'labels', 'attention_mask')}]).items()}
+            selected = scored_suffix(batch)
+            targets = independent_targets(torch, batch, selected)
+            with torch.no_grad(), torch.autocast('cuda', dtype=torch.bfloat16):
+                out = model(**selected, use_cache=False)
+            ce = torch.nn.functional.cross_entropy(out.logits.float().reshape(-1, out.logits.shape[-1]),
+                                                  targets.reshape(-1))
+            loss, reference = float(out.loss), float(ce)
+            if not math.isfinite(loss) or not math.isfinite(reference) or abs(loss-reference) > .001:
+                raise RuntimeError('independent native masked CE mismatch')
+            item = {'id': row['id'], 'category': row['category'],
+                    'tokens': len(row['input_ids']), 'padded_tokens': int(batch['input_ids'].shape[1]),
+                    'history_messages': row['history_messages'], 'targets': targets.numel(),
+                    'input_ids_sha256': row['input_ids_sha256'], 'labels_sha256': row['labels_sha256'],
+                    'model_loss': loss, 'independent_ce': reference, 'absolute_delta': abs(loss-reference)}
+            result['cases'].append(item)
+            print(json.dumps({'event': 'local_objective_case', **item}), flush=True)
+            del out, ce, batch, selected, targets
+            budget.check(force=True)
+        result.update(status='LOCAL_REPRESENTATIVE_OBJECTIVE_PASS_NOT_FUNCTIONAL_QUALITY_PASS',
+            max_length=core.MAX_LENGTH, production_dropout=.05,
+            model_builder_sha256=benchmark.model_builder_fingerprint(), packages=production.versions(),
+            release_sha256=prepared['release_sha256'], source_manifest_sha256=benchmark.MANIFEST_SHA)
+    finally:
+        if budget:
+            result.update(budget.summary())
+            budget.close()
+        result['cpu_peak_rss_bytes'] = benchmark.process_peak_rss_bytes()
+        benchmark.write_new(destination / 'LOCAL_OBJECTIVE.json', result)
+        if fd is not None:
+            os.close(fd)
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('prepare', 'probe', 'compare'))
+    parser.add_argument('command', choices=('prepare', 'probe', 'compare', 'local-objective'))
+    parser.add_argument('--agent', choices=('response', 'recommendation'))
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--prepared', type=Path)
     parser.add_argument('--engine', choices=('baseline', 'unsloth'))
@@ -366,7 +475,11 @@ def main():
         parser.error('probe needs prepared/engine and Unsloth needs initial LoRA')
     if args.command == 'compare' and (not args.baseline or not args.unsloth):
         parser.error('compare needs both probe directories')
-    result = prepare(args.output) if args.command == 'prepare' else probe(args) if args.command == 'probe' else compare(args)
+    if args.command == 'local-objective' and (not args.prepared or not args.agent):
+        parser.error('local-objective needs prepared and agent')
+    result = (local_objective(args) if args.command == 'local-objective' else
+              prepare(args.output) if args.command == 'prepare' else
+              probe(args) if args.command == 'probe' else compare(args))
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
 
 

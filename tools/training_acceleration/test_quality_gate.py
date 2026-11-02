@@ -9,6 +9,22 @@ import quality_gate as gate
 
 
 class QualityCPU(unittest.TestCase):
+    def test_independent_targets_includes_first_answer_and_excludes_masked_prefix(self):
+        import torch
+        batch = {'input_ids': torch.tensor([[0, 0, 10, 11, 12, 13]]),
+                 'labels': torch.tensor([[-100, -100, -100, -100, 12, 13]]),
+                 'attention_mask': torch.tensor([[0, 0, 1, 1, 1, 1]])}
+        selected = {**batch, 'logits_to_keep': torch.tensor([3, 4]),
+                    'shift_labels': torch.tensor([[12, 13]])}
+        self.assertTrue(torch.equal(gate.independent_targets(torch, batch, selected), torch.tensor([[12, 13]])))
+        with self.assertRaisesRegex(ValueError, 'causal targets'):
+            gate.independent_targets(torch, batch, {**selected, 'logits_to_keep': torch.tensor([4, 5])})
+        with self.assertRaisesRegex(ValueError, 'causal targets'):
+            gate.independent_targets(torch, batch, {**selected, 'shift_labels': torch.tensor([[13, 12]])})
+        with self.assertRaisesRegex(ValueError, 'replaced original'):
+            gate.independent_targets(torch, batch, {**selected, 'input_ids': batch['input_ids'].clone()})
+        self.assertFalse(torch.cuda.is_initialized())
+
     def test_normalized_utterance_preserves_meaningful_words(self):
         self.assertEqual(gate.normalize('  바로 담아줘! '), gate.normalize('바로담아줘'))
         self.assertNotEqual(gate.normalize('담지 마'), gate.normalize('담아'))

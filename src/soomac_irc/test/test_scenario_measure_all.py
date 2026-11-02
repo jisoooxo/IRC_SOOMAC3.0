@@ -33,6 +33,9 @@ def test_semantic_failure_does_not_stop_measure_all_or_force_robot_stage(monkeyp
     assert all(row["robot_before"]["section"] == "noodle" for row in rows)
     assert all(row["after"]["order"]["toppings"] == {} for row in rows)
     assert summary["plans"] == [] and summary["passed"] is False
+    assert summary["reply_sources"] == {"response_model": 0, "runtime_fixed": expected_turns,
+                                         "response_error_fallback": 0}
+    assert summary["response_auto_flagged_turns"] == []
     assert len(rows[-1]["after"]["history"]) == 1 + expected_turns * 2
     if measure_all:
         assert rows[-1]["expected_section"] == "extra"

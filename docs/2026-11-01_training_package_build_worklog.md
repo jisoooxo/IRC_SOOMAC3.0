@@ -1,5 +1,519 @@
 # Decision 원격 패키지와 로컬 순차 학습 — 실제 작업 기록
 
+## 2026-11-02 11:37 KST — Response220step 관측
+
+Response 기존 service PID1405238이220/624step에 도달했다. 최신5step train loss0.1555, grad_norm3.317, learning_rate3.769e-5, epoch2.115이며 유한하다. 동일 PID 하나만 로컬 GPU compute에 있으며 Recommendation 대기 service PID1416620은 별도 학습을 시작하지 않았다. 최신 무결한 full-state는checkpoint208, best validation은150step0.8207007646560669다. 표시 ETA20:16:52는 P만의 잠정값이며 Q·기능평가 시간을 포함하지 않는다. 다음 정기 validation은250step이다. 로컬 학습 설정·데이터·기존 HF 자산을 변경하지 않았고, 원격 Decision도 이 작업에서 조작하지 않았다.
+
+Cause: 같은 Response 본 학습에서 추가5개 optimizer update가 완료됐다. 2epoch validation 손실 상승의 원인은 여전히 미확정이다.
+Effect: 학습 전진과 유한 loss·gradient를 확인했다. 최종 기능 품질은 실제 모델 평가 전까지 미판정이다.
+
+## 2026-11-02 11:23 KST — Response215step·평가 사례 국소 점검
+
+Response 기존 service PID1405238이215/624step에 도달했다. 최신5step train loss0.174, grad_norm6.696, learning_rate3.824e-5, epoch2.067이며 유한하다. 동일 PID 하나만 로컬 GPU compute에 있고 Q 대기 service PID1416620은 별도 학습을 시작하지 않았다. 최신 무결한 full-state는checkpoint208이며 best validation은150step0.8207007646560669다. 표시 ETA16:53:06은 P만의 잠정값이다. 로컬 데이터·학습 설정·기존 HF 자산은 변경하지 않았다. 원격 Decision의 사용자 주도 변경은 아래 별도 기록을 따른다.
+
+최종 품질 평가 후보24건을 읽기 전용으로 국소 점검했다. D/Q/P 각8건이 있고, Q05·Q06의 근거 없는 새 추천량 `normal`은 top-level `strict_required_proposal_fields`와 `functional_eval.grade()`에 실제로 연결돼 있다. Q03의 크림 기대에는 과거 대화의 느끼한 소스 선호가 근거로 들어 있다. Response 사례는 선택량·실행 여부·허위 완료 주장·불필요한 추천 억제를 나눠 검사한다. 이는 평가 설계 점검이며 실제 모델 예측·독립 의미 승인이나 일반화 성적이 아니다.
+
+Cause: 같은 Response 본 학습이 추가5개 optimizer update를 완료했고, 최종 평가기의 수량 규칙 연결을 확인할 필요가 있었다.
+Effect: 로컬 학습 전진과 평가 규칙 연결을 확인했다. 2epoch validation 상승 원인 및 모델 기능 합격은 아직 미확정이다.
+
+## 2026-11-02 11:20 KST — 원격 Decision: Unsloth t1 학습 진행, HF build05 사용자 취소
+
+**경과 (원격 `http://100.112.9.90:8787`, 공유 슬롯 2개 = 물리 GPU 1장)**
+1. Unsloth s2 smoke를 빈 슬롯에서 실행했다. job1 `5e5605eb`는 step 5 저장 후 의도적으로 실패했다. job2 `caae7370`은 RAM 8g를 줘서 step 6에서 OOM-kill(exit 137)됐다. job3 `8c48edbf`는 RAM 32g로 job1에서 재개해 step 10과 GPU 검증까지 끝냈다.
+2. 영수증은 PASS다. native CE 차이 0, LoRA B 328/328 nonzero, 복원 4/4, GPU peak 13,735,297,024 B, compile_threads 24다. golden 수치 동등성은 UNKNOWN으로 남겼다.
+3. 영수증을 붙인 train 이미지 t1(`sha256:4e7279e7…`, TAR SHA `1a449c3a…`)을 만들었다. 사용자가 웹으로 올려 job `9099313a`(shared, RAM 32g, CPU 8, shm 4g)로 학습을 시작했다.
+4. HF build05 `16e600df`는 10:55:01에 사용자가 취소했다. 상태는 step 263/1,638(0.965 에폭, 본 샘플 4,208/4,360)이다. checkpoint는 보존돼 있고 마지막 저장은 09:33이다(50 step 간격이라 step 250으로 추정).
+
+**속도 (Codex 교차검증: 3개 조건부 찬성, 2개 찬성)**
+
+| | 혼자 사용 | 공유 중 |
+|---|---|---|
+| HF | 175.7초/step, 약 738 tok/s | 370.6초/step |
+| Unsloth | 128.4초/step, 1,012 tok/s (step 62→70, 8 step 중간값) | 278.4초/step, 466 tok/s |
+
+11:15 상태: Unsloth step 70/1,638, loss 0.046, skipped 0, OOM 없음.
+
+Cause: 공유 중에는 두 작업이 GPU 연산을 나눠 써서 둘 다 느렸다. HF를 취소한 뒤부터 Unsloth가 GPU를 혼자 쓴다.
+Effect: Unsloth 단독 중간값은 HF 단독보다 step당 약 27% 짧다(전체 환산 약 58시간 대 80시간). 8 step 측정이라 확정하지 않고 더 긴 구간으로 다시 잰다.
+
+TAR 명세는 [Decision Unsloth 학습 TAR 명세서](2026-11-02_unsloth_decision_tar_spec.md)에 따로 정리했다.
+명세서 10절에 AI 에이전트용 재생성 절차를 넣었다(lock 파일로 c3 컨텍스트 재현 확인, 실패 시 멈추는 블록, Codex 지적 5건 반영). `build_final_golden.py`에 `--cpuset-cpus` 인자를 추가했다(기본값 24-31이라 기존 동작은 같음).
+
+## 2026-11-02 11:09 KST — Response210step 관측
+
+Response 기존 service PID1405238이210/624step까지 전진했다. 최신5step train loss0.1856, grad_norm2.713, learning_rate3.879e-5, epoch2.019이며 유한하다. 최신 무결한 full-state는checkpoint208이고 2epoch validation loss0.9426263570785522, best는150step0.8207007646560669다. 동일 PID가 GPU compute에 있고 Recommendation 대기 service PID1416620은 별도 학습을 시작하지 않았다. 표시 ETA21:50:31은 P만의 잠정값이다. 다음 정기 validation은250step이다. 데이터·학습 정책·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 2epoch 검증 뒤 기존 본 학습이 추가2개 optimizer update를 완료했다. Validation 손실 상승의 원인은 여전히 미확정이다.
+Effect: 학습은 계속되고 최신 train loss·gradient는 유한하다. 최종 기능 합격이나 208step 개선을 주장하지 않는다.
+
+## 2026-11-02 11:02 KST — Response 2epoch/208step 검증·저장
+
+기존 Response 본 학습이208/624step(2epoch)을 마치고152행 validation을 실행했다. trainer_state의 eval_loss는0.9426263570785522로, 150step0.8207007646560669 →200step0.8739794492721558에 이어 두 번 상승했다. 최저 validation checkpoint는150step 그대로다. `resume_marker()`가 checkpoint208의 필수7파일 SHA·설정·trainer step 일치를 검증했다. checkpoint208과 `step_208_epoch_2.000_adapter`의 adapter safetensors SHA는 모두 `f145c60c807dad707466c4a53b3d1a7631942fdc91198f3dcb1e761cc53f5e2a`다. 동일 service PID1405238은 학습 단계로 복귀했고 Q 대기 PID1416620은 별도 GPU 학습을 시작하지 않았다. 표시 ETA16:18:36은 P만의 잠정값이다. 데이터·학습 설정·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 연속된 validation 손실 상승의 정확한 원인은 아직 확인되지 않았다. 과적합 또는 수치적 불안정 여부는 현재 집계값만으로 구분할 수 없다.
+Effect: 208step 저장본은 무결하지만 best는150step이다. 6epoch 정책을 임의 변경하지 않고 다음 검증 및 최종 기능 평가에서 품질을 판정한다.
+
+## 2026-11-02 10:46 KST — Response205step 관측
+
+Response 기존 service PID1405238이205/624step에 도달했다. 최신5step train loss0.1901, grad_norm11.2, learning_rate3.932e-5, epoch1.971이며 유한하다. GPU compute PID는 동일한1405238 하나이며 Recommendation 대기 PID1416620은 별도 학습을 시작하지 않았다. 최신 무결한 full-state는checkpoint200이다. 200step validation loss0.8739794492721558은 best150step의0.8207007646560669보다 높아, best는 여전히150step이다. 2epoch 종료208step validation·저장이 다음 관문이다. 학습 설정·데이터·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 동일 학습이200step 검증 이후 추가5개 optimizer update를 완료했다.
+Effect: 서비스가 계속 전진하고 loss·gradient가 유한함을 확인했다. 검증 손실 상승의 원인은 미확정이며 최종 기능 품질도 미평가다.
+
+## 2026-11-02 10:33 KST — Response200step validation·checkpoint 확인
+
+기존 Response 본 학습이200/624step을 완료하고152행 validation을 실행했다. trainer_state의 정확한 eval_loss는0.8739794492721558로, 150step의0.8207007646560669보다0.05327868461608887 높다. 새 best라고 하지 않으며 trainer_state의 best_model_checkpoint도150step 그대로다. 최신5step train loss0.1861, grad_norm32.1, learning_rate3.985e-5, epoch1.923이며 유한하다. `resume_marker()`가checkpoint200의7개 필수 파일 SHA·설정·trainer step 일치를 확인했다. checkpoint200과 `step_200_epoch_1.923_adapter`의 adapter safetensors SHA는 모두 `bb7a13faa8476bf06b50b21fa9046d4d01bbab8cc36ef764f5d3ea436a438556`이다. 서비스는 같은 PID로 학습 단계에 복귀했다. 설정·데이터·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: validation 손실 상승의 원인은 현재 미확정이다. 서로 다른 입력 구간의 train loss만으로 설명할 수 없다.
+Effect: 200step 저장본은 무결하지만 best는150step이다. 후속 validation과 실제 시나리오 평가 전에는 품질 합격을 선언하지 않는다.
+
+## 2026-11-02 10:10 KST — Response195step 관측
+
+Response 기존 service PID1405238이195/624step에 도달했다. 최신5step train loss0.1985, grad_norm3.899, learning_rate4.037e-5, epoch1.875이며 유한하다. 같은 PID 하나만 GPU compute에 있으며 Recommendation 대기 service PID1416620은 별도 학습을 시작하지 않았다. 최신 검증 완료 checkpoint150의 validation loss는0.8207007646560669이다. 표시 ETA21:58:10은 Response만의 잠정 추정치이며 Q와 기능 평가 시간은 포함하지 않는다. 다음 정기 validation·저장은200step이다. 학습 설정·데이터·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 동일 Response 본 학습이 추가5개 optimizer update를 완료했다.
+Effect: 학습 전진과 유한한 loss·gradient를 확인했다. 200step 결과와 기능 평가는 여전히 미완료다.
+
+## 2026-11-02 09:55 KST — Response190step 관측
+
+기존 Response service PID1405238이190/624step에 도달했다. 최신5step train loss0.1671, grad_norm7.287, learning_rate4.088e-5, epoch1.827이며 유한하다. GPU compute 목록에는 동일 PID 하나만 있으며 Recommendation 대기 service PID1416620은 별도 학습을 시작하지 않았다. 최신 검증 완료 checkpoint는150step, validation loss0.8207007646560669이다. 표시 ETA19:43:23은 Response만의 변동 추정치로 Q와 기능 평가 시간을 포함하지 않는다. 200step validation과 최종 기능 평가는 아직 남아 있다. 학습 설정·데이터·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 같은 본 학습 프로세스가 추가5개 optimizer update를 완료했다.
+Effect: 진행과 유한한 loss·gradient를 확인했다. 다음 정기 validation·저장 관문은200step이다.
+
+## 2026-11-02 09:41 KST — Response185step 관측
+
+Response 동일 서비스 PID1405238이185/624step에 도달했다. 최신5step train loss0.2168, grad_norm3.685, learning_rate4.137e-5, epoch1.779이며 유한하다. 이는180step loss0.177과 다른 학습 입력 구간이다. 최신 봉인 validation은150step0.8207007646560669, 무결한 full-state는checkpoint150이다. Q 대기 PID1416620은 별도 GPU 학습을 시작하지 않았다. 표시 ETA22:04:46은 P만의 잠정치다. 학습 설정·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 동일 Response 본 학습에서 추가5개 optimizer update가 완료됐다.
+Effect: 전진과 유한 loss·gradient를 확인했다. 다음 validation200step과 실제 기능 평가는 남아 있다.
+
+## 2026-11-02 09:26 KST — Response180step 관측
+
+Response 동일 서비스 PID1405238이180/624step에 도달했다. 최신5step train loss0.177, grad_norm7.746, learning_rate4.186e-5, epoch1.731이며 유한하다. 이전175step 기록의 norm12.08에 이어 170step 단발 상승은 반복되지 않았다. 최신 봉인 validation은150step0.8207007646560669, 무결한 full-state는checkpoint150이다. Q 대기 PID1416620은 별도 GPU 학습을 시작하지 않았다. 표시 ETA23:45:47은 P만의 잠정치다. 학습 설정·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 기존 Response 학습이 추가5개 optimizer update를 완료했다.
+Effect: 같은 프로세스의 전진과 유한 loss·gradient를 확인했다. 다음 봉인 validation은200step이며 기능 평가는 아직 미완료다.
+
+## 2026-11-02 09:12 KST — Response175step·gradient 재확인
+
+Response 동일 서비스 PID1405238이175/624step에 도달했다. 최신5step train loss0.2126, grad_norm12.08, learning_rate4.233e-5, epoch1.683이며 유한하다. 170step의grad_norm184.9는 이번175step 기록에서는 반복되지 않았지만 원인을 특정하지는 않는다. 설정된 max_grad_norm1.0을 바꾸거나 학습을 재시작하지 않았다. 최신 봉인 validation은150step0.8207007646560669, 무결한 full-state는checkpoint150이다. Q 대기 PID1416620은 GPU 학습을 시작하지 않았다. 표시 ETA23:58:59는 P만의 잠정치다. 기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 직전 높은 gradient norm의 원인은 여전히 미확정이다.
+Effect: 다음 기록에서는 norm12.08로 낮아진 사실을 확인했다. 품질 판정은200step validation과 기능 평가를 기다린다.
+
+## 2026-11-02 08:57 KST — Response170step·gradient spike 관측
+
+Response 동일 서비스 PID1405238이170/624step에 도달했다. 최신5step train loss0.2277, grad_norm184.9, learning_rate4.279e-5, epoch1.635다. 최근10개 기록의 grad_norm보다 높은 단발 수치지만 유한하고, 학습 코드의 `max_grad_norm=1.0` gradient clipping 설정은 그대로다. 이는 원인 미확정 관측으로 남기며 품질 정상/실패를 단정하지 않는다. 최신 봉인 validation은150step0.8207007646560669, 최신 무결한 full-state는checkpoint150이다. Q 대기 PID1416620은 GPU 학습을 시작하지 않았다. 표시 ETA23:12:48은 P만의 잠정치다. 기존 학습·설정·원격 Decision·HF 자산은 변경하지 않았다.
+
+Cause: 이 구간의 gradient norm 상승 원인은 아직 확인되지 않았다.
+Effect: 값을 기록하고 다음 loss·gradient 및200step validation에서 지속 여부를 확인한다. 단발 수치만으로 학습을 중단하지 않는다.
+
+## 2026-11-02 08:42 KST — Response165step 관측
+
+Response 동일 서비스 PID1405238이165/624step에 도달했다. 최신5step train loss0.158, grad_norm2.565, learning_rate4.324e-5, epoch1.587이며 유한하다. 이전160step loss0.254와는 서로 다른 입력 구간이다. 최신 봉인 validation은150step0.8207007646560669, 무결한 full-state는checkpoint150이다. Q 대기 PID1416620은 여전히 별도 GPU 학습을 시작하지 않았다. 표시 ETA21:54:16은 P만의 잠정치다. 학습 설정·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 기존 Response 학습에서 추가5개 optimizer update가 완료됐다.
+Effect: 같은 본 학습의 전진과 유한 loss·gradient를 확인했다. 다음 validation200step과 최종 기능 평가는 미완료다.
+
+## 2026-11-02 08:28 KST — Response160step 관측
+
+Response 동일 서비스 PID1405238이160/624step에 도달했다. 최신5step train loss0.254, grad_norm33.27, learning_rate4.368e-5, epoch1.538이며 유한하다. 앞155step loss0.2181과는 다른 학습 구간이므로 이것만으로 품질 악화라 판정하지 않는다. 최신 봉인 validation은150step0.8207007646560669, 무결한 full-state는checkpoint150이다. Q 대기 PID1416620은 별도 GPU 학습을 시작하지 않았다. 표시 ETA22:40:01은 P만의 잠정값이다. 데이터·설정·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 기존 학습에서 추가5개 optimizer update가 완료됐다.
+Effect: Response 전진과 유한 loss·gradient를 확인했다. 다음 봉인 validation은200step이며 기능 평가는 아직 미완료다.
+
+## 2026-11-02 08:13 KST — Response155step 관측
+
+Response 동일 서비스 PID1405238이155/624step으로 전진했다. 최신5step train loss0.2181, grad_norm22.84, learning_rate4.41e-5, epoch1.49이며 유한하다. 이는150step 봉인 validation loss0.8207007646560669와 다른 지표다. 최신 무결한 full-state는checkpoint150이고, Q 대기 서비스 PID1416620은 여전히 Q GPU 학습을 시작하지 않았다. 표시 ETA23:41:59는 Response만의 잠정값이다. 학습 설정·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 150step 검증·저장 뒤 기존 학습이 추가5개 optimizer update를 완료했다.
+Effect: 검증된 복구 지점을 유지하며 Response 본 학습이 지속됨을 확인했다. 최종 기능 평가는 남아 있다.
+
+## 2026-11-02 07:58 KST — Response150step validation·full-state 검증
+
+Response 동일 서비스 PID1405238이150/624 optimizer step에 도달했고 봉인 validation152행의 `eval_loss=0.8207007646560669`, 평가시간423.6877초를 실제 `checkpoint-150/trainer_state.json`에서 확인했다. 104step의0.8582091331보다 낮아졌으며 현 best metric/checkpoint는0.8207007646560669/`checkpoint-150`이다. 이는 기능 시나리오 합격을 뜻하지 않는다. 최신5step train loss0.233, grad_norm32.42, learning_rate4.452e-5, epoch1.442는 별도 학습 로그다.
+
+`resume_marker()`는 checkpoint150의 필수 full-state7파일 SHA·config·trainer step150을 통과했다. `step_150_epoch_1.442_adapter/adapter_model.safetensors`와 checkpoint150 원본 PEFT의 SHA256은 모두 `0dff7abb659705469e583e93d5f0255a36d6b2194d38ca84800ec18f6e2a5321`이다. P 서비스와 Q CPU 대기 서비스 PID1416620은 active이며 Q GPU 학습은 시작하지 않았다. 실제 P 재시작은 하지 않았고 이전 폐기용 복원 시험의 증거를 그대로 사용한다. 표시 ETA24:16:20은 P만의 잠정치이며 Q·최종 평가를 포함하지 않는다. 기존 HF·원격 Decision·학습 정책을 변경하지 않았다.
+
+Cause: 정기150step 전체 validation과 저장이 완료됐다.
+Effect: 더 낮은 검증 손실과 무결한 최신 복구 지점을 확보했다. 남은 Response474step·Q234step·실제 기능 평가는 미완료다.
+
+## 2026-11-02 07:37 KST — Response145step 관측
+
+Response 동일 서비스 PID1405238이145/624step에 도달했다. 최신5step train loss0.2413, grad_norm33.65, learning_rate4.492e-5, epoch1.394이며 유한하다. 앞 구간140step loss0.1847과의 차이는 다른 입력 묶음의 학습 손실이며 validation 악화의 증거가 아니다. Q 대기 서비스 PID1416620은 GPU 학습을 시작하지 않았다. 최신 무결성 확인 full-state는104step, 다음 정기 validation/save는150step이다. 표시 ETA26:00:38은 Response만의 잠정치다. 설정·데이터·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 동일 본 학습에서 추가5개 optimizer update가 완료됐다.
+Effect: 학습이 유지되고 loss·gradient가 유한함을 확인했다. 150step 검증 결과는 아직 없다.
+
+## 2026-11-02 07:22 KST — Response140step 관측
+
+Response 동일 서비스 PID1405238이140/624step으로 전진했다. 최신5step train loss0.1847, grad_norm15.15, learning_rate4.53e-5, epoch1.346이며 유한하다. 이전135step loss0.218과는 서로 다른 구간이다. 봉인 validation의 최신 확인치는104step0.8582091331이고 full-state checkpoint104가 최신 무결성 확인 지점이다. 다음 평가·저장은150step이다. Recommendation 대기 서비스 PID1416620은 active이고 GPU 학습을 시작하지 않았다. 표시 ETA23:42:38은 Response만의 변동 추정치다. 학습 서비스·데이터·설정·원격 Decision·기존 HF 자산을 변경하지 않았다.
+
+Cause: 기존 학습에서 추가5개 optimizer update가 완료됐다.
+Effect: Response 진행과 유한 loss·gradient를 확인했다. 새 validation·기능 품질은 아직 미확인이다.
+
+## 2026-11-02 07:08 KST — Response135step 관측
+
+Response 동일 service PID1405238이135/624step까지 전진했다. 최신5step train loss0.218, grad_norm69.21, learning_rate4.567e-5, epoch1.298이며 모두 유한하다. 이는 봉인 validation 점수가 아니고 checkpoint104가 최신 무결성 확인 지점이다. Recommendation 대기 PID1416620은 Q GPU 학습을 시작하지 않았다. Response·Q 서비스나 학습 설정을 변경하지 않았다.
+
+Cause: 기존 본 학습이 추가5개 optimizer update를 완료했다.
+Effect: 동일 프로세스의 정상 전진과 유한 loss·gradient를 확인했다. 150step validation·기능평가는 아직 남아 있다.
+
+## 2026-11-02 07:06 KST — 연결 복구 후 기존 본 학습 확인
+
+Goal은 active이며 동일 Response service PID1405238이134/624step까지 전진했다. Recommendation 순차 대기 service PID1416620은 active이고 별도 GPU 프로세스는 없다. GPU compute PID는1405238 하나다. 마지막 완료된 train loss 기록은130step의0.2408이며 새 validation 결과로 해석하지 않는다. 마지막 무결성 확인 full-state는checkpoint104, 다음 예정 검증·저장은150step이다. 최종 평가용 CPU 도구 `test_eval_frozen_cases.py`와 `test_stage_vllm_candidates.py`를 재실행해6건 PASS했다. 재연결 후 학습 서비스·checkpoint·원격 Decision·기존 HF 자산을 변경하거나 중복 실행하지 않았다. 현재 로그 ETA24:42:55는 Response만의 변동 추정치이며 Q·기능평가를 포함하지 않는다.
+
+Cause: 연결이 끊긴 동안 실제 학습이 중단됐는지 미확인 상태였다.
+Effect: 기존 PID의 계속 실행·GPU 단독 점유·Q 대기를 확인해 정상 지점에서 관찰을 재개했다. 모델 품질 합격은 아직 미판정이다.
+
+## 2026-11-02 06:52 KST — Response130step 관측
+
+Response 동일 서비스 PID1405238이130/624step에 도달했다. 최신5step train loss0.2408, grad_norm13.56, learning_rate4.603e-5, epoch1.25이며 값은 유한하다. 125step loss0.1992와는 서로 다른 학습 구간이다. 마지막 검증된 full-state는checkpoint104, 봉인 validation loss0.8582091331이며 다음 정기 평가·저장은150step이다. Q 대기 서비스 PID1416620은 별도 GPU 학습을 시작하지 않았다. 본 학습 설정·기존 HF·원격 Decision은 변경하지 않았다.
+
+Cause: 기존 Response 학습이5개 optimizer update를 추가 완료했다.
+Effect: 정상 전진과 유한 loss·gradient를 확인했다. 시나리오 품질 판정은 여전히 미완료다.
+
+## 2026-11-02 06:37 KST — Response125step 관측
+
+같은 Response 서비스 PID1405238이125/624step에 도달했다. 최신5step train loss0.1992, grad_norm27.48, learning_rate4.638e-5, epoch1.202이며 값은 유한하다. 최신 full-state 검증 지점은checkpoint104, 봉인 validation loss0.8582091331 그대로다. 다음 정기 validation/save는150step이다. Q 대기 서비스 PID1416620은 계속 active이며 GPU 학습을 시작하지 않았다. 학습 설정·원격 Decision·HF checkpoint는 변경하지 않았다.
+
+Cause: 동일 production 프로세스에서5개 optimizer update가 추가 완료됐다.
+Effect: 학습 지속과 유한 loss·gradient를 확인했다. 새 검증 점수와 실제 기능 평가는 아직 남아 있다.
+
+## 2026-11-02 06:23 KST — Response120step 관측
+
+Response 동일 서비스 PID1405238이120/624step에 도달했다. 최신5step train loss0.1950, grad_norm46.66, learning_rate4.67e-5, epoch1.154이며 값은 유한하다. 이는 봉인 validation 손실이 아닌 학습 구간 로그다. 최신 무결성 확인 checkpoint104/validation loss0.8582091331은 그대로이며, 다음 정기 validation/save는150step이다. Q 대기 PID1416620은 GPU를 쓰지 않았다. 학습 설정·원격 Decision·HF checkpoint는 변경하지 않았다.
+
+Cause: 같은 Response production 프로세스가 다시5개 optimizer update를 완료했다.
+Effect: 정상 전진과 유한 loss·gradient를 확인했다. 최종 기능 품질은 아직 미검증이다.
+
+## 2026-11-02 06:13 KST — 최종 vLLM 평가용 변환 경로 격리
+
+기존 `convert_adapters_for_vllm.py`의 기본 실행은 운영 `models/vllm_adapters`를 교체하고 `check_after_training.sh`도 이 경로를 쓴다는 점을 코드로 확인했다. 새 `tools/training_acceleration/stage_vllm_candidates.py`는 원본 D/Q/P PEFT 경로 3개와 존재하지 않는 새 출력 폴더를 명시적으로 요구한다. 기존 K→V 변환 함수 자체를 재사용하되 프로세스 내부의 출력 루트를 새 폴더로 바꾸고, 운영 루트·기존 출력·원본과 겹치는 경로·변환본을 입력으로 쓰는 경우를 거부한다. 각 원본/변환본 SHA, 원본 설정 동일성, global K→V 추가 텐서 수를 영수증에 기록한다. 서버·GPU 추론·운영 경로 변경은 하지 않았다.
+
+CPU fixture 검사는3건 PASS다. 첫 pytest 호출은 ROS 자동 플러그인의 누락된 `lark` 때문에 **테스트 수집 전에** 실패했다. `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`로 같은 테스트를 재실행해3건 PASS했으며, 이를 GPU 모델 로딩 합격으로 세지 않는다. 실제 완성 adapter staging·포트18001 vLLM 로딩은 P/Q 학습 후 남아 있다. 기존 Response PID1405238과 Q 대기 PID1416620은 유지했다.
+
+Cause: 기본 변환 명령을 최종 후보 시험에 쓰면 운영 변환본을 덮어쓸 수 있다.
+Effect: 후보별 격리 변환 경로와 원본 보존 검사를 확보했다. 최종 모델 품질은 아직 미검증이다.
+
+## 2026-11-02 06:09 KST — Response115step 관측
+
+Response 동일 서비스 PID1405238이115/624step에 도달했다. 최신5step train loss0.2674, grad_norm5.527, learning_rate4.702e-5, epoch1.106이며 값은 유한하다. 110step loss0.2229보다 높지만 서로 다른5step 학습 구간이고 다음 봉인 validation은150step이므로 품질 악화라고 판정하지 않는다. Q 대기 서비스 PID1416620은 계속 active이며 별도 GPU 학습은 없다. 마지막 무결성 확인 checkpoint104와 기존 학습 정책은 그대로다.
+
+Cause: 같은 Response production 프로세스가 5개 optimizer update를 더 완료했다.
+Effect: 학습 지속과 유한 gradient를 확인했다. 새 validation·최종 기능 결과는 아직 없다.
+
+## 2026-11-02 06:00 KST — 최종 PEFT 후보 선택 기준 확인
+
+`production.py:781-805`를 읽어 본 학습 완료 시 각 adapter의 `best_adapter`와 `epoch_6_adapter`가 별도 PEFT export로 저장되고 영수증에 각각 해시가 남는 것을 확인했다. 최저 validation loss가 실제 누적 주문 시나리오의 최고 조합이라는 보장은 없다. [로컬 본 학습 계획](2026-11-01_local_unsloth_production_plan.md)에 P/Q 두 후보씩을 원본 PEFT·vLLM로딩 및 고정24건/17턴 평가에 대조하고 기존 Decision 기준이라는 한계를 명시했다. 학습·운영 adapter 경로·원격 Decision은 건드리지 않았다. 관측된 P step은112/624이고 Q는 대기 중이다.
+
+Cause: 완료 영수증에 서로 다른 두 후보가 생기는데 validation best 하나만 고르면 사용자가 요구한 실제 대화 성능을 놓칠 수 있다.
+Effect: 학습 종료 후 두 후보의 해시·기능을 비교해 선택하도록 평가 범위를 확정했다. 실제 품질 점수는 아직 없다.
+
+## 2026-11-02 05:54 KST — Response110step 실제 학습 지속
+
+기존 Response 서비스 PID1405238이 **110/624 optimizer step**으로 전진했다. 최신 5step 구간 train loss는0.2229, grad_norm10.43, learning_rate4.732e-5, epoch1.058이다. 직전105step의 loss0.3295·grad_norm97.74와는 서로 다른 학습 구간이며, 이 변화만으로 기능·일반화 개선을 선언하지 않는다. 최신 무결성 확인 full-state는 checkpoint104이고 봉인 validation152행의 eval_loss0.8582091331이다. 다음 정기 validation/save는150step이며 Recommendation 대기 서비스 PID1416620은 별도 GPU 학습을 시작하지 않았다. `production.py` SHA `86638bad3614a633b6fa023694f5c7b37ca840e9e37177be0eeff9d6a27e3208`은 시작 기록과 동일하다. 기존 HF·원격 Decision·운영 ROS는 변경하지 않았다.
+
+Cause: 같은 Response production 프로세스가 첫 에폭 저장 뒤 6개 update를 추가 완료했다.
+Effect: 학습 지속과 유한 loss·gradient를 확인했다. 최종 adapter 및 시나리오 품질 검증은 아직 남아 있다.
+
+## 2026-11-02 05:49 KST — 고정 기능평가 24건 정답 재대조
+
+최종 GPU 추론 전에 봉인 사례 `NEW_FUNCTIONAL_CASES.json`의 D/Q/P 각 8건을 입력·기존 주문·pending·robot section·기대 필드와 직접 대조했다. D01의 면 선택+소스 추천 요청, D02의 크림 후보 수락+즉시 실행 및 기존 면 low 보존, D03의 버섯 normal 변경+양파 low 보존, D04의 게살 allergy+소시지 high 실행, D05의 페퍼론치노 제외+치즈 low 실행, D06/D07의 비실행과 기존 주문 보존, D08의 앞선 버섯 low 실행은 주어진 상태와 서로 모순되지 않는다. Q01~Q08은 실제 메뉴 소스가 오일/토마토/크림이라는 점을 확인하고, 느끼한 취향→크림, 느끼함 회피·크림/오일 제한→토마토, 매운맛 제한+느끼한 선호→크림, 게살 allergy→소시지, 수량 근거 없는 새 후보→normal이 각 입력과 맞는지 검토했다. P01~P08은 `confirmed_order`·`applied_this_turn`·`starting_now`를 대조해 수량 변경, 보존, 실행/비실행, 알레르기, 페퍼론치노 부재가 입력과 맞는지 확인했다. 봉인 파일과 학습 데이터는 수정하지 않았다.
+
+이는 같은 작업자의 **평가 정답 사전 검토**이며 독립 승인이나 실제 adapter 품질 합격이 아니다. 특히 24건은 이미 알려진 시나리오의 새 표현이라 독립 주제 일반화 점수로 세지 않는다. 모델 추론 후 자동 채점과 한국어 답변의 별도 의미 검토, 실제 17턴 누적 회귀가 남아 있다. Response 본 학습은 동일 PID1405238의 108/624step, Recommendation은 동일 PID1416620으로 순차 대기 중임을 읽기 전용 확인했다.
+
+Cause: 자동 채점 대상 자체가 잘못되면 이후 모델 실패/성공 판정도 왜곡된다.
+Effect: 현재 24건에는 새로 발견된 입력-정답 모순이 없다는 제한된 검토 근거를 남겼고, 모델 품질 판정은 계속 보류한다.
+
+## 2026-11-02 05:43 KST — 누적 시나리오 답변 출처 분리·수량 경고 기록
+
+17턴 시나리오의 `manual_scenario_stack_probe.py`는 기존에 주문·실행·물리 plan을 검사했지만 각 reply가 실제 Response 모델에서 왔는지, `finalize_task`의 Python 고정 실행 안내인지 명시하지 않았다. 현재 graph는 `policy.execute=true`이고 작업 항목이 있으면 `build_execution_started_reply`를 사용하며 `call_response`를 호출하지 않는다. 이 코드 경로를 읽어 확인했다. 평가 전용 턴 결과에 `reply_evidence.source`를 `response_model`/`runtime_fixed`/`response_error_fallback`으로 분리하고 에피소드 요약에 출처별 건수·자동 경고 턴을 집계한다. 모델 호출이 실제 존재하는 턴에만 기존 Response 사실 검사기의 수량 모순·허위 완료·실행 질문 등 자동 플래그를 붙인다. 이 정규식 경고는 기존 주문·실행 gate의 `passed`에 합치지 않고 별도 의미 검토 후보로 남긴다. 고정 답변은 자동 모델 합격으로 세지 않으며 모든 턴의 독립 의미 검토는 계속 필수다. 그래프·운영 코드·학습 데이터·체크포인트는 변경하지 않았다.
+
+올바른 소량 선택 답변과 잘못된 보통량+“이미 담았습니다” 답변을 대조해 후자는 `selected_amount_contradiction`·`unverified_completion_reply`로 표시됨을 확인했다. 새 출처 테스트·기존 measure-all·Response 검사·고정24건 도구를 묶어 CPU50건 PASS, GPU 추론 미실행이다. Response 학습은 같은 PID1405238의105/624step, Q 대기 PID1416620 active 상태로 유지했다.
+
+Cause: 실행 승인 턴의 Python 안내와 다른 턴의 Response 모델 답변을 동일한 시나리오 reply로만 기록해 모델 책임 범위를 구분할 수 없었다.
+Effect: 최종 누적 평가에서 누가 답했는지와 확인된 사실 오류 자동 경고를 턴별로 볼 수 있다. 자연어 품질 합격은 아직 아니다.
+
+## 2026-11-02 05:37 KST — Response 1/6에폭 완료, step104 평가·저장 검증
+
+Response 동일 서비스 PID1405238이 1에폭 끝인104/624 optimizer step에 도달했다. 생산 `Callback.on_epoch_end`가 `eval_strategy=steps`와 별도로 정기 전체 validation·저장을 요청하므로 step100 직후104에서 다시 평가한 것은 코드상 예정된 동작이다. 봉인 validation152행의 `eval_loss=0.8582091331`, 평가시간443.803초를 checkpoint104의 `trainer_state.json`에서 읽었다. step100의0.8593374491보다0.0011283159 낮으며 현재 best metric/checkpoint는0.8582091331/`checkpoint-104`다. 작은 감소 한 번을 기능 합격이나 일반화 증거로 확대하지 않는다.
+
+`verify_checkpoint(checkpoint-104, step=104)`는 필수 full-state7파일 SHA·trainer/영수증·학습 설정을 통과했고, `resume_marker(output, 동일 config)`가104step을 가리켰다. `step_104_epoch_1.000_adapter/adapter_model.safetensors`와 checkpoint104 adapter의 SHA256은 모두 `bc5ff518e9008e09bf1948a7a5d83bb7b0654830ed1b8e7db02243b600c4948d`다. 저장 후 같은 PID가105step으로 전진해 다음 5step 구간 train loss0.3295, grad_norm97.74, epoch1.01을 기록했다. P/Q 서비스는 기존 PID1405238/1416620으로 active이고 Q GPU 학습은 아직 미시작이다. 실제 본 학습의 중단·재시작은 하지 않았다. 로그 ETA25:38:18은 입력 길이·평가 시간에 따라 변하는 잠정값이고 Q/최종 품질평가를 포함하지 않는다. 기존 HF checkpoint·원격 Decision은 변경하지 않았다.
+
+Cause: 첫 에폭의104번째 update 뒤 설정된 에폭 종료 validation과 full-state 저장이 수행됐다.
+Effect: 1/6에폭의 검증 손실과 무결한 재개 지점을 확보했다. Response 나머지5에폭 및 Q·기능평가는 남아 있다.
+
+## 2026-11-02 05:26 KST — 종료 후 D/Q/P 고정 기능평가 실행 경로 준비
+
+Response 동일 PID1405238이103/624step으로 진행 중이며 Q 대기 PID1416620은 GPU 학습을 시작하지 않았다. 학습과 병행해 기존 봉인 기능평가24건(D/Q/P 각8)을 실제 원본 PEFT adapter로 추론하는 `tools/training_acceleration/eval_frozen_cases.py`를 추가했다. 각 사례의 입력을 현재 runtime builder로 재생성해 봉인 입력과 정확히 일치하는지 확인하고, Decision의 정규화 전 sparse JSON과 Q proposal/P reply를 기존 `functional_eval.grade`에 전달한다. 새 출력 폴더에는 사례·adapter·평가 코드 SHA를 고정하며 평가 중 소스 변경 시 결과 게시 전에 실패한다. GPU 사용 중에는 기존 락과 compute 검사로 추론을 거부한다. 운영 adapter 경로를 바꾸거나 ROS·원격 Decision을 호출하지 않는다.
+
+현재 단계에서는 **CPU 사전검사만** 실행했다. 봉인24건 SHA `855a000c0fbb26546b83c5d2a22ffac3d2592f27161e9ba97fb4c2e125d8aa06`, 재생성 입력24/24 일치, 새 실행기+기존 자동 채점 테스트13건 PASS, `git diff --check` PASS다. 실제 최종 P/Q adapter 추론·자동 점수·독립 한국어 의미 검토·17턴 폐회로 평가는 미실행이며, 단위 테스트로 품질 합격이라고 하지 않는다.
+
+Cause: 봉인된 기능평가 사례와 채점기는 있었지만, 최종 D/Q/P adapter 출력24건을 같은 계약으로 수집하는 실행 경로가 없었다.
+Effect: GPU가 반환되면 학습/서빙 설정을 바꾸지 않고 24건 실제 추론과 사전 고정 채점을 재현할 수 있다.
+
+## 2026-11-02 05:20 KST — Response100step 두 번째 validation·checkpoint 검증
+
+동일 P 서비스 PID1405238이100/624step에 도달했다. train logging loss0.2769, grad_norm38.5, learning_rate4.787e-5, epoch0.9615이다. 봉인된 validation152행의 두 번째 `eval_loss=0.8593374491`, 평가시간442.8868초를 checkpoint100의 `trainer_state.json`에서 확인했다. 첫50step `eval_loss=0.8667919636`보다0.0074545145 낮다. 현재 best metric/checkpoint는0.8593374491/`checkpoint-100`이다. 이는 두 평가 지점의 수치 비교이며 최종 기능 품질 합격은 아니다.
+
+`verify_checkpoint(checkpoint-100, step=100)`가 필수 full-state7파일의 SHA·trainer/영수증 step·설정을 검증했고, `resume_marker(output, 동일 config)`도100step을 가리켰다. `step_100_epoch_0.962_adapter/adapter_model.safetensors`와 checkpoint100 안의 adapter SHA256은 모두 `3093a56d21c327728cdb407181074d884ec0ffad217d8ad68c7dd1cb2d6d11e5`로 일치한다. 저장 후 같은 PID가101step으로 전진했다. 실제 본 학습을 중단해 재개한 것은 아니다. P와 Q CPU 대기 서비스가 각각 기존 PID1405238/1416620으로 active인 것을 확인했다. Q 학습은 시작되지 않았다. 로그의 ETA26:31:30은 잠정치이며 Q 학습과 최종 품질평가 시간은 포함하지 않는다. 기존 HF checkpoint와 원격 Decision은 변경하지 않았다.
+
+Cause: 100번째 optimizer update 뒤 정기152행 평가와 full-state 저장이 완료됐다.
+Effect: 개선된 두 번째 검증 손실과 무결성 검증된 step100 재개 지점을 확보했다. 실제 시나리오 평가는 여전히 남아 있다.
+
+## 2026-11-02 04:56 KST — Response95step 관측
+
+동일 P 서비스 PID1405238이95/624step에 도달했다. train logging loss0.3125, grad_norm4.517, learning_rate4.813e-5, epoch0.9135다. 이전90step loss0.3774와 다른5step 구간이며 정기 validation의 변화가 아니다. Q CPU 대기 PID1416620은 active다. 마지막 검증된 full-state/validation은50step이고 다음 정기 평가/저장은100step이다. 표시 ETA23:20:20은 잠정치로 전체 학습·Q·품질평가 완료 시각을 뜻하지 않는다. 학습 설정·체크포인트·원격 Decision은 변경하지 않았다.
+
+Cause: 같은 Response 본 학습에서 5 optimizer update가 추가 완료됐다.
+Effect: 유한 train loss·gradient와 순차 대기를 확인했다. 100step 검증이 남았다.
+
+## 2026-11-02 04:41 KST — Response90step 관측
+
+동일 P 서비스 PID1405238이90/624step에 도달했다. train logging loss0.3774, grad_norm10.31, learning_rate4.837e-5, epoch0.8654다. 이전85step loss0.3492와 서로 다른5step 구간이며 이 상승 하나로 품질 악화라고 판정하지 않는다. Q CPU 대기 PID1416620은 active다. 마지막 검증된 full-state·validation은50step이고 다음 정기 평가/저장은100step이다. 표시 ETA27:14:04는 잠정치다. 오류 문자열은 없으며 학습 설정·checkpoint·원격 Decision은 변경하지 않았다.
+
+Cause: 같은 Response 본 학습에서 5 optimizer update가 추가 완료됐다.
+Effect: 유한 train loss·gradient와 순차 학습 지속을 확인했다. 다음100step validation이 필요하다.
+
+## 2026-11-02 04:26 KST — Response85step 관측
+
+동일 P 서비스 PID1405238이85/624step에 도달했다. train logging loss0.3492, grad_norm12.67, learning_rate4.859e-5, epoch0.8173이다. 80step loss0.3675와 다른5step 구간이며 검증 점수와 구분한다. Q CPU 대기 PID1416620은 active다. 최신 검증된 full-state와 validation은50step 그대로이고 다음 정기 평가/저장은100step이다. 표시 ETA28:53:44는 잠정치다. 오류 문자열은 없으며 학습 설정·checkpoint·원격 Decision은 변경하지 않았다.
+
+Cause: 같은 Response 본 학습에서 5 optimizer update가 추가 완료됐다.
+Effect: 정상 진행과 유한 loss·gradient를 확인했다. 최종 기능 품질은 여전히 미검증이다.
+
+## 2026-11-02 04:10 KST — Response80step 관측
+
+동일 P 서비스 PID1405238이80/624step에 도달했다. train logging loss0.3675, grad_norm5.142, learning_rate4.88e-5, epoch0.7692다. 이전75step loss0.4075와 다른5step 구간이며 이 감소를 validation·시나리오 품질 합격으로 확대하지 않는다. Q CPU 대기 PID1416620은 active다. 마지막 검증된 full-state와 validation은50step이고 다음 정기 평가/저장은100step이다. 표시 ETA26:56:40은 잠정치다. 학습 설정·체크포인트·원격 Decision은 변경하지 않았다.
+
+Cause: 동일한 Response 본 학습에서 5 optimizer update가 추가 완료됐다.
+Effect: 유한 train loss·gradient와 순차 학습 상태를 확인했다. 기능 평가는 여전히 미완료다.
+
+## 2026-11-02 03:54 KST — Response75step 관측
+
+동일 P 서비스 PID1405238이75/624step에 도달했다. train logging loss0.4075, grad_norm18.31, learning_rate4.899e-5, epoch0.7212다. 70step loss0.4573과 다른5step 학습 구간이며, 이 감소를 validation·기능 품질 합격으로 보지 않는다. Q CPU 대기 PID1416620은 active다. 최신 검증된 full-state·validation은50step이고 다음 정기 평가/저장은100step이다. 표시 ETA28:50:02는 입력 길이와 최근 속도에 따라 변한다. 별도 GPU 학습/추론·재시작·원격 변경은 하지 않았다.
+
+Cause: 같은 Response 본 학습에서 5 optimizer update가 추가 완료됐다.
+Effect: 학습 지속과 유한 loss·gradient를 확인했다. 최종 품질 검증은 미완료다.
+
+## 2026-11-02 03:37 KST — Response70step 관측
+
+동일 P 서비스 PID1405238이70/624step에 도달했다. train logging loss0.4573, grad_norm6.26, learning_rate4.916e-5, epoch0.6731이다. 이전65step loss0.4559와 서로 다른5step 구간이므로 단순 수치 차이로 validation 품질을 판정하지 않는다. Q CPU 대기 PID1416620은 active다. 마지막 검증된 full-state·validation은50step 그대로이며 다음 정기 평가/저장은100step이다. 로그 ETA33:50:01은 최근 입력 길이·처리시간에 민감한 잠정치다. 순간 GPU 사용률100%, 전력149.97/150W, 온도71°C, 메모리13,621MiB를 읽기 전용으로 관측했다. 이것만으로 전력 제한이 이번5step 속도 변동의 원인이라고 단정하지 않는다. 생산 코드·설정·GPU 전력 한도는 변경하지 않았다.
+
+Cause: 같은 Response 본 학습에서 5 optimizer update가 추가 완료됐다.
+Effect: 학습 지속과 유한 loss·gradient를 확인했다. 최종 품질 평가는 아직 남았다.
+
+## 2026-11-02 03:20 KST — Response65step 관측
+
+동일 P 서비스 PID1405238이65/624step에 도달했다. train logging loss0.4559, grad_norm10.34, learning_rate4.932e-5, epoch0.625다. 60step loss0.4442와 다른5step 구간이며 이 작은 상승만으로 품질 악화라고 판단하지 않는다. Q CPU 대기 PID1416620은 active다. 최신 정기 validation과 검증된 full-state는50step 그대로이고, 다음 정기 validation/save는100step이다. 표시 ETA30:13:00은 잠정치다. GPU에 추가로 보인 약622MiB PID1590246은 `rustdesk --server`이며 두 번째 학습이 아니다. 이 프로세스를 종료하거나 학습을 재시작하지 않았다.
+
+Cause: 같은 Response 본 학습에서 5 optimizer update가 추가 완료됐고 접속 서버도 GPU 메모리 일부를 사용 중이다.
+Effect: 학습 지속과 유한 loss·gradient를 확인했다. 최종 품질 판정은 미완료다.
+
+## 2026-11-02 03:05 KST — Response60step 관측
+
+동일 P 서비스 PID1405238이60/624step에 도달했다. train logging loss0.4442, grad_norm5.892, learning_rate4.946e-5, epoch0.5769이다. 55step loss0.5396과 서로 다른5step 구간이며 최종 품질이나 validation 추세가 아니다. Q CPU 대기 PID1416620은 active다. 최신 정기 validation과 검증된 full-state는50step 그대로이며, 다음 정기 validation/save는100step이다. 표시 ETA30:29:42는 입력 길이에 따라 흔들리는 잠정치다. 별도 GPU 학습/추론·재시작·원격 변경은 하지 않았다.
+
+Cause: 동일한 본 학습 프로세스에서 5 optimizer update가 추가 완료됐다.
+Effect: 유한 train loss·gradient와 순차 대기 유지가 확인됐다. 모델 품질 판정은 여전히 미완료다.
+
+## 2026-11-02 02:50 KST — Response55step 학습 지속 확인
+
+동일한 P 서비스 PID1405238이55/624step에 도달했다. 최신 logging train loss0.5396, grad_norm13.82, learning_rate4.959e-5, epoch0.5288이다. 이전50step loss0.5864와 다른 5step 구간이며 validation 추세로 해석하지 않는다. 현재 정상 full-state는 검증한 checkpoint50, 마지막 validation은50step eval_loss0.8668이다. Q CPU 대기 서비스 PID1416620은 active다. 콘솔 ETA29:44:00은 잠정 표시다. 학습·Q 순차 정책·원격 Decision·HF checkpoint는 변경하지 않았다.
+
+Cause: checkpoint50 저장 이후 같은 본 학습 프로세스가 5 optimizer update를 더 완료했다.
+Effect: 저장 후 학습 지속과 유한 train loss·gradient를 확인했다. 다음 정기 validation/save는100step이다.
+
+## 2026-11-02 02:40 KST — Response 평가 오탐 1건 교정
+
+P06의 정답 가능한 거절문 “추가 재료는 추천해 드리지는 않겠습니다”를 기존 `no_new_recommendation` 검사기가 새 추천으로 잘못 판정하는 것을 재현했다. `functional_eval.py`에서 이 명시적 부정 구문만 긍정 추천 검색 전에 제외했다. 같은 답변 뒤 “치즈는 추천드립니다”를 붙인 반례는 여전히 실패한다. 관련 CPU 평가 테스트 273개 통과, `git diff --check` 통과. 이 교정은 평가기에만 적용됐고 현재 Response 학습 코드·봉인 데이터·원격 Decision·HF checkpoint는 건드리지 않았다. 이는 한 부정 표현에 대한 검사이며 한국어 답변의 독립 의미 승인을 대체하지 않는다.
+
+Cause: 검사기의 단순 긍정 어구 검색이 “추천해 드리지는 않겠습니다”의 부정을 읽지 못했다.
+Effect: 같은 거절 답변을 거짓 실패로 세지 않으면서 실제 새 추천은 계속 실패로 검출한다.
+
+## 2026-11-02 02:36 KST — Response 첫 정기 validation·checkpoint50 검증
+
+동일 P PID1405238에서50/624step, train logging loss0.5863889694, grad_norm11.5993747711, epoch0.4807692308을 확인했다. 전체 봉인 validation152행의 첫 `eval_loss=0.8667919636`, 평가시간435.9968초가 실제 `trainer_state.json`과 stdout에 일치한다. 이는 **첫 validation 한 점**이며 추세·시나리오 품질 합격이나 6epoch 완료가 아니다. 현재 best metric/checkpoint도 이 첫 평가의0.8667919636/`checkpoint-50`이다.
+
+`resume_marker()`가 step50을 가리키며 `verify_checkpoint(checkpoint-50, checkpoint-5의 동일 config, step=50)`가 full-state 필수7파일 SHA, trainer/영수증 step, 학습 설정 일치로 통과했다. 별도 `step_50_epoch_0.481_adapter/adapter_model.safetensors`의 SHA256 `446075a66d3c62026c2b777aca913b19898d3baf05a0bd623b8c5a1292f6bf32`가 checkpoint50의 adapter 파일과 정확히 같다. 실제 본 학습을 중단해 재개하지 않았으며, 지금 검증은 저장·export 무결성이지 재개 시행이나 최종 vLLM 모델 품질 시험이 아니다. Q 대기는 active이고 원격 Decision·기존 HF 자산은 변경하지 않았다.
+
+Cause: 50번째 optimizer update 뒤 정기152행 평가와 full-state 저장이 완료됐다.
+Effect: 첫 검증 손실과 재개 가능한 step50 체크포인트를 확보했다. 최종 합격은 이후 validation 추이·adapter 로딩·누적 시나리오가 필요하다.
+
+## 2026-11-02 02:14 KST — Response45step 관측
+
+동일 P 서비스 PID1405238에서45/624step, train logging loss0.5904, grad_norm6.418, learning_rate4.979e-5, epoch0.4327을 확인했다. Q CPU 대기 PID1416620도 active다. 표시 ETA29:41:50은 잠정치이며,40step loss0.7106과 서로 다른 학습 구간이다. 마지막 검증된 production checkpoint는5step이다. 다음 정기 validation/save는50step이며 현재 validation 값이나 새 checkpoint 합격을 미리 주장하지 않는다.
+
+Cause: 실제 optimizer update45회와 새 train logging 구간이 완료됐다.
+Effect: 학습이 유한 loss·gradient로 이어지고 있음을 확인했다. 고정 validation 및 기능 평가는 아직 남아 있다.
+
+## 2026-11-02 01:58 KST — Response40step 관측
+
+동일 PID1405238에서40/624step, train logging loss0.7106, grad_norm6.58, learning_rate4.987e-5, epoch0.3846을 확인했다.35step loss0.6368과는 다른 학습 구간이며 고정 validation 점수의 반전으로 해석하지 않는다. Q CPU 대기 PID1416620은 active다. 표시 ETA28:25:35는 잠정치다. 마지막 검증된 production checkpoint는5step이고 첫 정기 validation/save는50step이다.
+
+저장 공간도 읽기 전용으로 확인했다. 같은 파일시스템 여유는161GiB, inode 여유는 약8,928만 개이며 실제 checkpoint5는409MiB다. `save_total_limit=None`으로 정기 checkpoint를 보존하는 현재 정책을 바꾸지 않는다. 이 시점에 확인된 저장 공간 부족 징후는 없으나, 향후 다른 작업의 디스크 사용 증가까지 보장하는 계산은 아니다.
+
+Cause: 실제 optimizer update40회와 새 train logging 구간이 완료됐다.
+Effect: 유한 loss·gradient를 확인했으며, 모델 품질 판단은50step validation과 이후 기능 평가까지 보류한다.
+
+## 2026-11-02 01:47 KST — Response36step·불필요한 실행 재질문 평가 보강
+
+동일 P PID1405238이36/624step으로 진행 중이며 Q 대기 PID1416620은 active다. 고정 새 기능평가 24건(D/Q/P 각8)의 입력·정답·상태 핵심 필드를 CPU에서 다시 읽었다. 이 국소 검토에서 새로운 명시적 필드 모순은 발견하지 못했지만, 독립 의미 승인이나 실제 모델 합격으로 기록하지 않는다.
+
+P01의 “지금 담지는 마시고요”에 “양파를 보통으로 바꿨어요. 지금 담을까요?”가 기존 자동 평가에서 통과하는 공백을 재현했다. 사례의 `no_execution_question=true`를 `functional_eval.grade`가 읽어 실제 실행 재질문을 실패로 남기도록 연결했다. 이어 P06의 “새 추천은 하지 마세요”에 “치즈도 추천드릴게요”가 통과하는 공백도 재현해 `no_new_recommendation=true`의 명시적 새 추천 표현을 실패로 남겼다. “추천하지 않겠습니다”는 금지 위반으로 세지 않는 대조를 추가했다. 선택 질문·부정 설명·모든 한국어 추천 표현까지 완전 판정하는 일반 한국어 판별기는 아니므로 P 응답은 수동 사실 검수도 유지한다. 관련 평가기/기능평가 CPU 테스트 **273건 PASS**, diff 검사 PASS. 학습 코드·데이터·가중치·기존 checkpoint·원격 작업은 변경하지 않았다.
+
+Cause: 평가 사례에 이미 선언된 금지 조건을 실제 채점 함수가 사용하지 않았다.
+Effect: 즉시 실행을 거절하거나 완료한 뒤 반복해서 “담을까요?”라고 묻거나 새 재료를 추천하는 답변을 자동 합격으로 세지 않는다.
+
+## 2026-11-02 01:44 KST — Response35step 새 loss 관측
+
+동일 Response PID1405238에서35/624step, train logging loss0.6368, grad_norm8.771, learning_rate4.992e-5, epoch0.3365를 확인했다.30step loss0.743과는 다른 minibatch 구간이며 고정 validation 비교가 아니다. 표시 ETA28:34:18은 잠정치다. Q CPU 대기는 계속 active이고 최초 정기 validation/save는50step이다.
+
+Cause: 본 학습의 optimizer update35회와 다음 logging 구간이 완료됐다.
+Effect: loss·gradient가 유한한 채 학습이 이어지고 있음을 확인했다. 기능 품질은 여전히 미판정이다.
+
+## 2026-11-02 01:41 KST — Response34step·수량 허위 응답 평가 공백 수정
+
+동일 Response PID1405238은34/624step으로 진행 중이고 Q CPU 대기 PID1416620도 active다. 최신 train loss 관측은30step의0.743이며 새 validation은 아직 없다. 첫 정기 validation/save는50step, 마지막 검증된 production checkpoint는5step이다. 학습기·봉인 데이터·원격 Decision·HF checkpoint는 변경하지 않았다.
+
+기능 평가의 고정 P05 사례(확정 양파 low, 실제 투입 없음)를 직접 대조했다. “양파는 조금 선택돼 있고 아직 담지는 않았어요”는 통과하고 “이미 담았어요”는 거부했으나, **“양파는 보통 양으로 선택되어 있어요”를 잘못 통과**시켰다. 원인은 평가기 `_SELECTION_VERB`가 현재 상태 서술 `선택되어/선택돼 있어요`를 인식하지 못한 것이다. 평가기 정규식에 이 두 현재형과 `선택되어 있습니다`만 추가하고, 올바른 low/잘못된 normal·질문·부정의 국소 대조 테스트를 추가했다. 관련 평가기 테스트 **263건 PASS**, `git diff --check` PASS다. 이 CPU 검사는 평가기의 확인된 공백 하나를 막은 것으로, 새 모델의 실제 답변이나 전체 한국어 의미 판정 합격을 뜻하지 않는다. 최종 출력은 계속 별도 수동 사실 검수와 누적 시나리오 평가가 필요하다.
+
+Cause: 수량 모순 검사가 과거형 선택 동사만 찾고 현재형 확정 주문 설명을 놓쳤다.
+Effect: 미투입 주문의 거짓 완료 주장뿐 아니라 현재 선택량 low→normal 허위 설명도 자동 평가에서 실패로 기록된다.
+
+## 2026-11-02 01:29 KST — Response30step 관측
+
+동일 Response PID1405238에서30/624step, logging loss0.743, grad_norm85.26, learning_rate4.997e-5, epoch0.2885 확인.25step loss0.9304와는 서로 다른 학습 구간이다. 표시ETA28:50:01은 잠정치다. Q대기PID1416620은 active이며 마지막 검증된 checkpoint는step5, 첫 정기 validation/save는50step이다.
+
+Cause: 본 학습의 optimizer update30회가 완료됐다.
+Effect: 유한한 loss·gradient를 확인했으나 validation·기능 품질은 아직 미판정이다.
+
+## 2026-11-02 01:15 KST — Response25step 관측
+
+동일 PID1405238에서25/624step, logging loss0.9304, grad_norm5.242, learning_rate4.999e-5, epoch0.2404 확인.20step logging loss1.25보다 낮지만 validation 결과는 아직 없다. Q대기PID1416620도 active다. 표시ETA28:58:45는 잠정치다. 마지막 검증된 production checkpoint는 step5이고 최초 정기 validation/save는50step이다.
+
+Cause: 기존 학습 서비스의 update25회와 새 logging 구간이 끝났다.
+Effect: 손실·gradient가 유한한 상태로 진행 중임을 확인했다. 최종 품질 판정은 보류한다.
+
+## 2026-11-02 00:59 KST — Response20step 관측
+
+동일 PID1405238에서20/624step, logging loss1.25, grad_norm10.84, learning_rate5e-5, epoch0.1923 확인.20step warmup 완료는 설정된 학습 정책에 따른 것이다. Q대기PID1416620도 active다. 표시ETA29:50:08은 초기20step 근거의 잠정치이며 validation/기능 합격을 뜻하지 않는다. 마지막 정상 checkpoint는5step, 최초 정기 validation/save는50step이다. 새 GPU 프로세스, 재시작, 학습 설정·데이터 변경은 없다.
+
+Cause: 실제 optimizer update20회와 warmup 구간이 완료됐다.
+Effect: 현재 loss와 gradient는 유한하지만 학습 품질 판정은 validation과 기능 평가까지 보류한다.
+
+## 2026-11-02 00:44 KST — Response15step 관측
+
+동일 PID1405238에서15/624step, logging loss2.118, grad_norm34.99, learning_rate3.684e-5, epoch0.1442 확인.10step loss2.586 대비 낮으나 서로 다른 구간의 train loss이며 validation/기능 합격은 아니다. 표시ETA29:30:17은 잠정치다. Q대기PID1416620 active, 학습 재시작·GPU중복·설정 변경은 없다. 마지막 검증된 저장본은checkpoint5, 최초 정기 validation/save는50step이다.
+
+Cause: 기존 live 학습을 기다린 결과 새15step logging 값을 확보했다.
+Effect: 유한 loss/gradient로 진행 중임을 확인했다. 전체 학습 및 기능 평가 완료 전까지 Goal을 활성 상태로 유지한다.
+
+## 2026-11-02 00:29 KST — Response10step 관측
+
+동일 학습 서비스에서8→9→10/624step 진행 확인. 최신 loss2.586, grad_norm18.34, epoch0.09615이며 표시ETA29:07:53은 잠정치다.5step의loss2.696보다 낮지만 서로 다른 minibatch 구간이므로 검증 품질 합격을 뜻하지 않는다. 마지막 정상 저장본checkpoint5, 다음 정기 validation/save50step. Recommendation은 기존CPU대기를 유지한다. 새GPU프로세스·환경·데이터·학습코드·원격변경은 없다.
+
+Cause: 기존 live PID의 실제 update와 새 logging 결과를 확보했다.
+Effect: 본 학습 진행을 확인했으며 validation/기능 평가는 미완료로 유지한다.
+
+## 2026-11-02 00:18 KST — 본 학습 유지·최종 평가 경로 준비
+
+Response6/624step, 동일PID1405238, Q CPU대기PID1416620, GPU compute1개를 확인했다. 기존 시나리오 하네스에 평가용 원본 adapter CLI3개와 localhost18001 process-local override를 추가했다. 운영 runtime/서버/학습기/원격 Decision은 변경하지 않았다. 새 경로 선택4건+기존 measure-all2건 pytest6PASS; 실제 GPU 평가는 아직 실행하지 않는다. 자세한 입력 옵션·한계는 [학습 계획 최신 절](2026-11-01_local_unsloth_production_plan.md)에 기록했다.
+
+Cause: 최종 새 adapter를 운영 경로에 배포하지 않고 검증할 경로가 필요하다.
+Effect: 기존 누적 대화 하네스를 격리 서버에서 재사용할 준비를 마쳤고 현재 본 학습에는 간섭하지 않았다.
+
+## 2026-11-02 00:15 KST — 실제 checkpoint5 확인·평가 입력 교정
+
+Response production5/624step, loss2.696. 기존 `checkpointing.resume_marker/verify_checkpoint`로 checkpoint5의 adapter/config/optimizer/scheduler/RNG/trainer/training_args 7파일 SHA 검증 통과. 동일 P PID1405238과 Q CPU 대기 PID1416620 유지, GPU compute는 P 하나다. 표시 ETA31시간54분은5step 잠정값이다. 유한 grad_norm1887은 추가 추이를 관찰하며 기존 clipping1.0/학습 정책은 바꾸지 않았다. 재개나 중복 실행 없이 진행한다.
+
+평가용 `heldout_cases.py`, `functional_eval.py`, `test_functional_eval.py`만 교정했다. 실제 builder로 Q/P scope/실행항목을 생성하고 멀티턴 근거를 보완했다. Q03은 소스 포함 요청을 소스-only로 오판하지 않으며 소스 누락·매운 후보·임의 수량에는 실패한다. CPU9건PASS, train/validation 정확 중복0, D/Q/P각8건 v4 신규 동결. 학습 데이터는 변경하지 않았다. 상세 경로·해시·검수 지적과 남은 제한은 [본 학습 계획 최신 절](2026-11-01_local_unsloth_production_plan.md)을 따른다. 실제 모델 평가/전체 학습 완료는 아직 아니다.
+
+Cause: 저장된 본 학습 상태와 평가기 입력의 정확성을 각각 확인해야 한다.
+Effect: checkpoint는 복원 가능한 형식의 무결성 검증을 통과했고 평가 오판 후보를 제거했다. Goal은 active, 원격 Decision/HF/운영 환경은 보존한다.
+
+## 2026-11-02 00:02 KST — Response Unsloth production 첫 step 확인
+
+후속 Q 대기 등록 완료: `soomac-unsloth-recommendation-queue-r5-20261101.service` PID1416620, CPU `waiting_for_response` 확인. GPU는 P PID1405238 하나다. 실제 command는 systemd ExecStart와 같은 부모의 `recommendation.queue.log`에 연결한다. 기존 `launch.py`가 P 정상 종료 및 full-state 완료→Q objective/save5/resume10/PEFT/update 검수→234step을 순차 호출한다. P/Q 실패 시 멈추며 자동 재시작·원격 접근은 없다. `After`로 P 서비스 참조를 유지하되 서비스가 사라지면 영수증이 있어도 차단한다. 두 우회 조건(선택적 대기/검수, 서비스 소실의 완료 간주)을 교차검수에서 지적받아 등록 전에 제거했다. CPU22건PASS, Codex `/tmp/soomac_local_queue_delta.out`에서 CPU waiter 등록 가능 판정. 실제 Q 학습 완료로 보고하지 않는다.
+
+**실제 본 학습 1/624step, loss2.756, grad_norm88.86**. 첫 update219.15초, 로그 ETA37시간55분은1step 기준 잠정치다. 기존 실행기·데이터·학습 정책 그대로 신규 durable출력에서 진행한다. 상세 사전 증거와 현재 상태는 [실행 계획](2026-11-01_local_unsloth_production_plan.md)의 최신 절을 따른다. 첫 production checkpoint는5step 예정이며 현재 저장됐다고 주장하지 않는다.
+
+실제 명령(PID1405238, service `soomac-unsloth-response-r5-20261101.service`):
+
+```bash
+/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_20261101_r5/env/bin/python -u /home/roma/IRC_SOOMAC3.0/tools/unsloth_training/production.py --mode train --agent response --output /home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/r5_unsloth_local_authorized_20261101/response --batch 1 --benchmark-result /tmp/soomac-training-accel-20261101/quality_warm_response_v2/RESULT.json --smoke-output /tmp/soomac-training-accel-20261101/authorized_response_smoke_v1 --loss-evidence /tmp/soomac-training-accel-20261101/response_unsloth_native_loss3/RESULT.json
+```
+
+로그: `/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/r5_unsloth_local_authorized_20261101/response.training.log`。systemd user service로 네트워크/대화 연결 종료와 독립 실행한다. 원래 HF/원격 Decision/운영 adapter는 변경하지 않았다.
+
+vLLM staging `/tmp/soomac-unsloth-vllm-stage-ucnbYMm7/VLLM_LOAD_INFERENCE.json`에서 새 P smoke adapter 로딩·8399/1490/7656 prompt token 수·JSON schema 통과. 세 답변은 각각 치즈low선택+실행질문, 실제 완료기록이 존재하는 면/소스 완료 안내, 추천거절+주문보존이었다. 원본 입력을 대조했으며 허위 완료 발화를 합격으로 넘기지 않았다. 이 영수증의 `prompt_sha256` 이름은 실제로 대표파일 전체 SHA를 담은 메타데이터이므로 개별 prompt hash로 해석하지 않는다. 격리 서버scope는 종료하고GPU반환 확인 후 본 학습을 시작했다.
+
+Cause: 저장/목적함수/재로드/실제 서빙의 필요한 로컬 관문을 통과했다.
+Effect: 문서 작성이나 벤치마크에 머물지 않고 승인된 Response production을 시작했다. 최종 모델 품질은 validation 및 기능 평가 뒤 별도로 판정한다.
+
+## 재개 후 확인 — Response 사전 검증 진행, 본 학습 아직 미시작
+
+후속 `get_goal`에서 **active**를 확인했다. 아래 paused 관측은 인터럽트 직후 이력이다. 표준 PEFT 새 프로세스 재로드도 통과했고656개 tensor가 정확히 일치, forward가 finite였다. 임시 staging `/tmp/soomac-unsloth-vllm-stage-ucnbYMm7`에 기존 변환기만 재사용했다. 원본656개는 그대로이며 global K→V16개를 정확히 복제, config도 byte 일치했다. 운영 경로를 교체하지 않고 기존 D/Q 변환본과 새 P 시험 adapter를 별도 포트18001, 기존 vLLM0.32 launcher로 로딩 중이다. GPU lock 및 systemd RAM40G 상한을 적용했다.
+
+기존 resume 프로세스는 exit0, **10/10step**으로 끝났다. `verify_smoke_output` 완료 영수증 SHA는 `f12fe2cca4e2110ee7efe14ea9b6d7e564ba60f231158bccee0f7dd42766e20f`다. adapter/optimizer/scheduler/RNG 복원 네 항목이 모두 일치했다. 원래 checkpoint5 adapter SHA도 그대로이며, checkpoint5→10에서 656/656 tensor가 변경됐고 328개 LoRA B가 nonzero, 모든 저장 tensor가 finite였다. 마지막 train 로그 loss1.38, eval_loss1.25. 작은 폐기용 표본의 결과이며 본 학습/기능 합격을 뜻하지 않는다.
+
+`authorized_response_objective_v1/LOCAL_OBJECTIVE.json`에서 원본 재인코딩·history·labels·다음 토큰 target 정렬 검증을 통과했다. long8430/short1507/multiturn7678토큰의 masked CE 차이는 각각0/2.384e-7/0이다. production.py는 변경하지 않았다. 현재 다음 검사는 `authorized_response_peft_reload_v1`의 새 표준 PEFT 프로세스 로딩이며, 본 학습은 아직 시작하지 않았다.
+
+Codex 기존 검수와 델타 검수(`/tmp/soomac_authorized_local_checks_review.out`, `/tmp/soomac_local_objective_delta_review.out`)가 완료됐다. 새 차단 버그는 없다는 조건부 판정이다. 지적한 Q 상한은 `source_preflight` 실제 결과5120, P는9216으로 확인했다. 목적함수 도구의 agent별 3표본/독립 target 계산과 PEFT 도구의 agent 선택을 국소 보완했고 CPU6건 통과했다. 전체 모델 기능 합격이나 HF/Unsloth 비트 동등성 승인이 아니다.
+
+Cause: 네트워크 단절과 실제 프로세스 종료는 별개이며, 기존 결과에 학습 재개·재로드 근거를 연결해야 한다.
+Effect: 환경 전수조사와 완료 실험을 반복하지 않고, 남은 PEFT→격리 vLLM→Response 본 학습 순서로 진행한다. 원격 Decision과 기존 checkpoint는 보존한다.
+
+## 연결 중단 후 재개 — 승인된 로컬 Unsloth 사전 시험
+
+사용자가 인터넷 복구 후 기존 Goal을 마지막 정상 지점에서 이어가도록 지시했다. 환경37개/백업8개 감사와 학습·서빙 코드 추적은 반복하지 않았다. 직전 수정은 실행 승인·진행 경계를 `2026-11-01_local_unsloth_production_plan.md`에 추가한 것이며, 기존 dirty 파일을 되돌리거나 패키지를 변경하지 않았다.
+
+실제 `/tmp/soomac-training-accel-20261101/authorized_response_smoke_v1`에서 Response smoke가5step 저장 후 **의도한** `intentional smoke failure after committed step 5`로 종료했다.5step loss1.483, eval_loss1.884이며 전체 품질 합격을 뜻하지 않는다. 원본은 `attempt-bdd811367a50427d80611fc41ce05cc5/response/checkpoint-5`, adapter SHA `67e3e19c0aec2e99c24834fc25ef72359c7ac0e2a02e18d7064b765f55147ab5`다. 재접속 뒤 native marker/전체 상태 파일 검증 PASS를 확인했다. 재개 로그가 없고 GPU compute 목록도 비어 있어 이전 재개 명령이 실행되지 않았음을 확인한 뒤 동일 실행기의 `--resume auto`를 한 번 실행했다. 새 로그 `/tmp/soomac-training-accel-20261101/authorized_response_resume_v1.log`. **본 학습은 아직0step**이다.
+
+CPU 실행기16건 및 P/Q benchmark identity 검사는 통과했다. 학습venv/soomac_llm/soomac_vllm_server에서 같은 JSON 멀티턴 예시의 CPU tokenization은 모두 ID SHA `6a80aae135d8392ef1c9f1ba79a12356d7a82c2f74d1c11da215da3ebd246c35`, template SHA `0986b54bd64f08e2d2971708d2e1eb78b6563ee22d9dca1688f93dd7de37b8b7`로 일치했다. vocab262144/BOS2/EOS1/PAD0/turn106/left padding이 같았다. 이 한 예시로 전체 데이터나 실제 vLLM 로딩 합격을 주장하지 않는다.
+
+Codex CLI `/tmp/soomac_authorized_local_checks_review.out`는 네트워크 실패 후 실제 PID1376268에서 읽기 전용 검수를 계속하고 있어 중복 실행하지 않았다. Orca 병렬 worker는 runtime_unavailable로 미시작이다. Goal 도구는 인터럽트 뒤 paused로 관측됐고 제공 도구로 active 변경은 불가능하다. 사용자 재개 지시가 유효하므로 허가된 작업을 계속하며 완료로 처리하지 않는다.
+
+남은 순서: native resume 종료 검증 → 대표 목적함수/PEFT 재로드 → 격리 vLLM 검증 → 실제 Response 본 학습 → Recommendation 사전 검증/순차 학습 → 기능 평가. 원격 Decision·기존 HF checkpoint·운영 adapter·데이터/history는 변경하지 않았다.
+
+## 최신 사용자 결정 — 로컬 Unsloth Response → Recommendation 본 학습 우선
+
+[실행 계획](2026-11-01_local_unsloth_production_plan.md)을 작성했다. 사용자는 짧은 목적함수·gradient/update·저장/재로드 검증 후 로컬 Unsloth 본 학습 시작과 순차 실행을 승인했다. 이번에는 마지막 요청에 따라 계획·기록부터 정리하며 GPU 실행/본 학습 시작은 하지 않았다. 이전 `본 학습 미승인` 상태는 이 로컬 P/Q 조건부 승인으로 대체한다. 기존 원격 Decision 변경 승인은 포함하지 않는다.
+
+기존 production.py와 launch.py를 재사용한다. 신규 데이터·history 축약·6epoch 변경·HF full-state 이식은 하지 않는다. 로컬 Response warm 평균232.230초/update와 Q cold131.381초/update는 폐기용 실험 결과다. 로컬 Unsloth production은 아직 미시작이고, 저장/재개 및 대표 장문·단문·멀티턴 목적함수 점검은 남아 있다. 과거 HF Response 본 학습 step6/보존 checkpoint5와 혼동하지 않는다.
+
+Loss 차이만으로 학습 오류를 확정하지 않으며 HF 비트 일치를 필수로 요구하지 않는다. 원격 candidate v3의 큰 수치 차이와 미확정 원인은 그대로 기록하고, 다른 패키지 조합의 로컬 P/Q에 실패 판정을 자동 전파하지 않는다. 실제 tokens/labels/정규화/학습 대상·update·저장 복원 오류는 여전히 차단한다. 사전 실행 검증과 최종 모델 기능 합격을 분리한다.
+
+Cause: 원격 후보의 동등성 조사와 로컬 본 학습 실행 조건이 섞여 있었다.
+Effect: 로컬 검증→Response 본 학습→Recommendation 순차 학습으로 우선순위를 고정하고 기존 실패 증거와 정상 checkpoint는 보존한다.
+
+계획의 Codex gpt-6-sol/high 검수는 조건부 찬성이다. 지적한 실행기 줄을 직접 확인하고 P/Q별 사전 목적함수·실제 update 합격, 새 프로세스 PEFT 로딩, 본 학습 5step loss 기록 간격을 계획에 명시했다. 문서·STATE만 변경했으며 이번에 학습 코드는 수정하거나 실행하지 않았다. 검수 로그는 `/tmp/soomac_local_unsloth_plan_review.out`이다.
+
+## 최신 결과 — Unsloth candidate v3 수치 불합격, 제출 TAR 중단
+
+22:26 KST까지 실제 candidate v3 HF/native/smart의 새 프로세스 A/A 진단과48층 FP64 비교를 마쳤다. HF loss3.917093 두 번, 두 Unsloth 경로 loss4.086672 각각 두 번이다. loss/logits의 같은 경로 A/A 변동은0인데 HF 대비 loss 차이는0.169579, logits 상대L2는2.656%다. gradient 상대L2는 native130.44~130.97%/smart129.75~130.42%로 각 경로 A/A 약1.36~2.26%를 초과하고48/48층이 기준을 벗어났다. 기준을 완화하지 않았다. `GC_EQUIVALENCE.json` status=BLOCKED/selected=null이며 최종 원인은 미확정이다. smart GC 단독 원인이라고 결론내리지 않는다.
+
+GC actual forward48회는 각 경로에 맞는 함수를 확인했다. 다만 compiled fused dropout callback은 Python profiler에 잡히지 않아 그 확률 직접 관측은 미확인으로 기록했다. module.p0·초기B0·마지막.05 복원은 확인했다. 관측 한계를 지워 숫자를 합격으로 만들지 않으며, forward loss 반례는 dropout callback 부재와 독립적이다.
+
+Claude brief의 ‘둘 다 실패하면 중단·보고’에 따라 candidate v3의 warm optimizer timing·adapter export·vLLM staging/실제 로드·저장/실패/재개·final TAR 게시를 진행하지 않았다. 이는 사용자 원격 학습을 중단했다는 뜻이 아니다. 종료 후 로컬 Docker/GPU compute 목록은 비었으며 production·원격·정상 checkpoint·데이터는 불변이다. timing proof 결속 코드와 실제 관측 검사 보강에 대한 CPU19건은 통과했지만 이를 실제 GPU timing/재개 합격으로 세지 않는다. 자세한 수치·버전·시나리오 증거는 [최종 검증 문서](2026-11-01_unsloth_remote_v3_validation.md)에 있다.
+
+### 위 결과 이전의 진행 기록 — 중복 검수하지 않음
+
+추가 독립 Codex CLI gpt-6-sol/high는 STOP 판정에 동의했다. 수치 proof 재계산 부재와 native checkpoint 부분문자열 허점을 지적받았다. 후자는 exact-name 비교와 회귀로 교정했고, 전자는 검증된 수치 replay를 연결하기 전 timing 승인 함수를 무조건 차단해 닫았다. SHA helper 합격을 timing 승인으로 쓰지 않는다. 데이터 history/후속 게살 제한 단언도 보강했고 최신21 CPU검사·시나리오 영수증v3는 통과했다. 이를 새 GPU/adapter/재개/TAR 합격으로 세지 않는다. 권위 있는 현재 기록은 이 절과 연결된 최종 검증 문서이며 아래는 과거 진행 기록이다.
+
+사용자의 Claude `codex_brief_v3_validation.md`를 전부 읽고 실제 candidate v3 이미지 `bf465ad8543b…` 안에서 HF/Unsloth native/smart를 분리 대조한다. 기존 build05-speed 원격 작업·TAR·checkpoint·dataset은 수정하지 않는다. 상세 경로·버전·미완료 관문은 [원격 v3 검증](2026-11-01_unsloth_remote_v3_validation.md)에 기록한다.
+
+실제 봉인 train SHA를 확인한 시나리오 검사는 D26/Q1/P10행에서 통과했다. 크림 후보 확정+바로 담아, 버섯 normal 변경+바로 담아와 양파 low 보존, 게살 allergy+소시지 high 실행, 치즈 low+페퍼론치노 제외 실행, polite/directive variation을 확인했다. P 실행 시작 학습 행을 제외한 것은 기존 deterministic 시작 안내 정책이며, 학습 정답 누락이라고 다시 세지 않는다. 데이터 포함 합격을 모델 기능 합격으로 확대하지 않는다.
+
+Host Unsloth Response warmup2+timed3은 끝났고 233.358/231.685/231.647초, 평균232.230초/update다. 다른 패키지 버전의 host 속도를 원격 이미지의 Decision 정확성/속도 증거로 쓰지 않는다. 후보 이미지 HF A/A는 완료했고, native/smart는 실제 GC/dropout 관측을 포함해 대조 중이다. 이전 native loss 차이 원인은 확정하지 않았다. 초기328 lora_B가 전부0이므로 forward 차이를 LoRA dropout만으로 설명할 수 없다.
+
+원격 이미지 torch2.11/transformers5.17/PEFT0.21.2와 서버 env vLLM0.32/torch2.13/transformers5.19가 다름을 확인했다. 새 adapter export·vLLM staging 변환/실제 로딩·동일 entrypoint 저장/실패/재개는 아직 미완료다. 최종 TAR·PASS 영수증·원격 전환·본 학습 시작은 하지 않았다. Codex CLI gpt-6-sol/high 읽기 전용 검수도 수행했고, timing proof 결속 및 실제 관측 횟수 검사를 지적받았다. 관측 횟수 검사는 국소 보강했다. Timing 결속은 실행 전 필수 보완이며, 수치 대조 자체를 통과하지 못하면 timing/최종 TAR로 진행하지 않는다.
+
+Cause: 로컬 env의 로드/속도 성공만으로 다른 버전 원격 이미지의 학습 계산과 adapter 호환성을 보장할 수 없다.
+Effect: 실제 제출 이미지와 최신 데이터로 검증하고, 실패 후보를 production용 TAR라고 게시하지 않는다.
+
 ## 최신 완료 — 첫 SDPA 실인자/FP32 기준 출력 분리
 
 사용자 요청대로 전체 모델 반복을 멈추고 기존 도구에 `first-sdpa` 명령을 추가했다. A/B 각각 첫 layer0 low-level SDPA 호출 직후 중단한 GPU 진단이 exit0으로 완료됐다. 실제 low-level Q/K/V·bool mask·is_causal·scale·GQA·dtype/stride와 CUDA kernel을 기록했다. **B도 mask가 있었고 양쪽 is_causal=False**다. valid QKV bitwise 일치, 전체 valid bias 불일치0, 동일 유효 key 크기의 FP32 CPU reference는 표본7query×16head에서 bitwise 일치했다. 실제 BF16 CUTLASS 출력 A/B 상대L2는0.0290693%다. 최초 수치 차이는 mask 의미 누락보다 물리 길이/stride가 다른 BF16 실행으로 좁혀졌지만, 내부 CUDA 연산 및 큰 gradient 증폭 기전까지 확정하지 않았다.

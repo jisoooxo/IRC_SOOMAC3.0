@@ -88,6 +88,27 @@ def expected_after(order, tag):
     return expected
 
 
+def response_evidence(events, reply, episode, tag):
+    """Separate Response model output from runtime-owned fixed replies."""
+    attempts = [event for event in events if event.get("stage") == "response"]
+    if not attempts:
+        return {"source": "runtime_fixed", "automatic_pass": None,
+                "text_rule_flags": [], "semantic_review": "REQUIRES_INDEPENDENT_REVIEW"}
+    last = attempts[-1]
+    if last.get("error"):
+        return {"source": "response_error_fallback", "automatic_pass": False,
+                "text_rule_flags": ["response_model_error"],
+                "semantic_review": "REQUIRES_INDEPENDENT_REVIEW"}
+    from soomac_irc.evaluation_v43 import grade_response_prediction
+    grade = grade_response_prediction(
+        {"id": f"{episode}-{tag}", "route": last.get("route", "task"),
+         "input": last["model_input"]}, reply)
+    return {"source": "response_model", "automatic_pass": grade.passed,
+            "text_rule_flags": list(grade.text_rule_flags),
+            "all_violation_codes": [violation.code for violation in grade.violations],
+            "semantic_review": "REQUIRES_INDEPENDENT_REVIEW"}
+
+
 def run_episode(compound, model, processor, stream, *, measure_all=False):
     from soomac_irc.agent_contract import new_session_state, new_turn_state
     from soomac_irc.decision_model import make_call_decision
@@ -112,7 +133,10 @@ def run_episode(compound, model, processor, stream, *, measure_all=False):
     result_summary = {"episode": name, "planned_turns": len(steps), "observed_turns": 0,
                       "passed": False, "stopped_at": None, "plans": [], "unreached": [],
                       "physical_simulation_only": True, "actual_ros": False, "failed_turns": [],
-                      "measure_all": measure_all, "automatic_adoption": False}
+                      "measure_all": measure_all, "automatic_adoption": False,
+                      "reply_sources": {"response_model": 0, "runtime_fixed": 0,
+                                        "response_error_fallback": 0},
+                      "response_auto_flagged_turns": []}
     for index, (section, tag, text, execute) in enumerate(steps):
         if not measure_all:
             assert section == robot["section"], "fixture tried advancing without authorized execution"
@@ -127,6 +151,13 @@ def run_episode(compound, model, processor, stream, *, measure_all=False):
         session = copy.deepcopy(result["session"])
         traces = {stage: copy.deepcopy(call.trace_events) for stage,call in (
             ("decision",decision), ("recommendation",recommendation), ("response",response))}
+        reply_evidence = response_evidence(traces["response"], result["reply"], name, tag)
+        result_summary["reply_sources"][reply_evidence["source"]] += 1
+        if reply_evidence["automatic_pass"] is False:
+            result_summary["response_auto_flagged_turns"].append(
+                {"tag": tag, "source": reply_evidence["source"],
+                 "violation_codes": reply_evidence.get("all_violation_codes",
+                                                       reply_evidence["text_rule_flags"])})
         checks = {"order_matches": session["order"] == oracle_order,
                   "execute_matches": result["policy"]["execute"] is execute,
                   "section_matches": actual_section == section,
@@ -154,7 +185,8 @@ def run_episode(compound, model, processor, stream, *, measure_all=False):
         row = {"episode": name, "turn": index+1, "tag": tag, "user_text": text,
                "before": before, "after": copy.deepcopy(session), "robot_before": robot_before,
                "decision_final": result.get("decision"), "policy": result["policy"], "reply": result["reply"],
-               "traces": traces, "checks": checks, "passed": all(checks.values()),
+               "traces": traces, "reply_evidence": reply_evidence,
+               "checks": checks, "passed": all(checks.values()),
                "expected_section":section,"expected_order":copy.deepcopy(oracle_order),
                "latency_ms":elapsed_ms,"expected_plans":expected_plans,"actual_plans":actual_plans,
                "physical_simulation_only": True, "actual_ros": False}
@@ -188,27 +220,52 @@ def run_episode(compound, model, processor, stream, *, measure_all=False):
     return result_summary
 
 
-def main():
+def parse_arguments(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--out",type=Path,required=True)
     parser.add_argument("--measure-all",action="store_true")
-    args=parser.parse_args()
-    args.out.mkdir(parents=True,exist_ok=False)
+    for agent in ("decision", "response", "recommendation"):
+        parser.add_argument(f"--{agent}-adapter", type=Path,
+                            help="Original PEFT export, not the vLLM-converted directory; evaluation only")
+    parser.add_argument("--vllm-base-url", help="Evaluation server URL; only used by the vLLM wrapper")
+    return parser.parse_args(argv)
+
+
+def evaluation_paths(args, defaults):
+    paths = {}
+    for agent, default in defaults.items():
+        override = getattr(args, f"{agent}_adapter")
+        path = Path(override if override is not None else default).resolve()
+        for name in ("adapter_config.json", "adapter_model.safetensors"):
+            if not (path / name).is_file():
+                raise FileNotFoundError(path / name)
+        if override is not None and (path / "CONVERSION.json").exists():
+            raise ValueError("Use original PEFT export; converted directory belongs to the server")
+        paths[agent] = str(path)
+    return paths
+
+
+def main():
+    args = parse_arguments()
     from soomac_irc.model_runtime import load_model, MODEL_PATH, DECISION_ADAPTER_PATH, RESPONSE_ADAPTER_PATH, RECOMMENDATION_ADAPTER_PATH
     import torch
-    paths={"decision":DECISION_ADAPTER_PATH,"response":RESPONSE_ADAPTER_PATH,"recommendation":RECOMMENDATION_ADAPTER_PATH}
+    paths = evaluation_paths(args, {"decision": DECISION_ADAPTER_PATH,
+                                   "response": RESPONSE_ADAPTER_PATH,
+                                   "recommendation": RECOMMENDATION_ADAPTER_PATH})
+    args.out.mkdir(parents=True,exist_ok=False)
     pins={name:digest(ROOT/"src/soomac_irc/soomac_irc"/name) for name in (
         "agent_prompts.py","prompt_examples.py","prompt_contrast_examples.py","llm_langgraph.py","model_runtime.py")}
     dump(args.out/"PLAN.json",{"base":MODEL_PATH,"adapters":paths,"source_sha256":pins,
          "episodes":{"compound":scenario(True),"split_control":scenario(False)},
          "actual_ros":False,"training":False,"gold_order_repair":False,"physical_simulation_only":True,
-         "measure_all":args.measure_all,"acceptance_owner":"user"})
+         "measure_all":args.measure_all,"acceptance_owner":"user",
+         "vllm_base_url":args.vllm_base_url})
     assert not subprocess.check_output(["nvidia-smi","--query-compute-apps=pid","--format=csv,noheader,nounits"],text=True).strip(),"GPU occupied"
     dump(args.out/"IDENTITY.json",{"pid":os.getpid(),"started":time.time(),"adapters":{
         key:{"path":path,"weight_sha256":digest(Path(path)/"adapter_model.safetensors"),
              "config_sha256":digest(Path(path)/"adapter_config.json")} for key,path in paths.items()}})
     try:
-        model,processor=load_model(DECISION_ADAPTER_PATH,RESPONSE_ADAPTER_PATH,RECOMMENDATION_ADAPTER_PATH)
+        model,processor=load_model(paths["decision"],paths["response"],paths["recommendation"])
         assert all(p.device.type=="cuda" for p in model.parameters())
         with (args.out/"turns.jsonl").open("x",encoding="utf-8") as stream:
             outcomes=[run_episode(compound,model,processor,stream,measure_all=args.measure_all) for compound in (True,False)]

@@ -55,7 +55,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=('cuda-check', 'hf', 'native', 'smart', 'timing'))
     parser.add_argument('--gc', choices=('native', 'smart'), default='smart')
+    parser.add_argument('--root', type=Path, help='Fresh, absolute evidence directory; previous runs preserved')
     args = parser.parse_args()
+    global ROOT
+    if args.root:
+        if not args.root.is_absolute() or not str(args.root).startswith('/tmp/soomac-candidate-v3-'):
+            parser.error('--root must be an absolute /tmp/soomac-candidate-v3-* path')
+        ROOT = args.root
     if args.mode == 'cuda-check':
         cmd = command() + ['--entrypoint', '/opt/unsloth-venv/bin/python', IMAGE, '-c',
             'import torch; print(torch.__version__,torch.cuda.is_available()); '

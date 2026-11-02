@@ -301,8 +301,10 @@ class ProductionCpuTests(unittest.TestCase):
                 "--recommendation-benchmark-result", "/tmp/q-result.json",
                 "--recommendation-smoke-output", "/tmp/q-smoke",
                 "--recommendation-loss-evidence", "/tmp/q-loss.json",
-                "--recommendation-batch", "1"]
-        with patch.object(launch, "verified_response", side_effect=ValueError("P not complete")), \
+                "--recommendation-batch", "1", "--wait-response-unit", "soomac-unsloth-response-test.service",
+                "--recommendation-preflight-root", "/tmp/q-preflight", "--recommendation-prepared", "/tmp/prepared"]
+        with patch.object(launch, "wait_response_service"), \
+                patch.object(launch, "verified_response", side_effect=ValueError("P not complete")), \
                 patch.object(launch.subprocess, "run") as run:
             with self.assertRaisesRegex(ValueError, "P not complete"):
                 launch.main(argv)
@@ -316,6 +318,71 @@ class ProductionCpuTests(unittest.TestCase):
             production.parse(base)
         args = production.parse(base + ["--response-output", "/tmp/verified-p"])
         self.assertEqual(args.response_output, Path("/tmp/verified-p"))
+
+    def test_queue_waits_for_successful_response_exit(self):
+        running = "LoadState=loaded\nActiveState=active\nMainPID=42\nResult=success\nExecMainStatus=0\n"
+        done = "LoadState=loaded\nActiveState=inactive\nMainPID=0\nResult=success\nExecMainStatus=0\n"
+        with patch.object(launch.subprocess, "check_output", side_effect=[running, done]), \
+                patch.object(launch.time, "sleep") as sleep:
+            launch.wait_response_service("soomac-unsloth-response-test.service", Path("/tmp/no-receipt"))
+            sleep.assert_called_once_with(60)
+
+    def test_queue_rejects_failed_or_missing_response_service(self):
+        for state in ["LoadState=loaded\nActiveState=failed\nMainPID=0\nResult=exit-code\nExecMainStatus=1\n",
+                      "LoadState=not-found\nActiveState=inactive\n"]:
+            with tempfile.TemporaryDirectory() as temp, patch.object(launch.subprocess, "check_output", return_value=state):
+                with self.assertRaises(RuntimeError):
+                    launch.wait_response_service("soomac-unsloth-response-test.service", Path(temp))
+
+    def test_collected_service_rejected_even_with_completion_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            (Path(temp) / "training_complete.json").write_text("{}")
+            argv = ["--response-output", temp, "--recommendation-output", "/tmp/new-q",
+                    "--recommendation-benchmark-result", "/tmp/q-result.json",
+                    "--recommendation-smoke-output", "/tmp/q-smoke",
+                    "--recommendation-loss-evidence", "/tmp/q-loss.json", "--recommendation-batch", "1",
+                    "--wait-response-unit", "soomac-unsloth-response-test.service",
+                    "--recommendation-preflight-root", "/tmp/q-preflight", "--recommendation-prepared", "/tmp/prepared"]
+            with patch.object(launch.subprocess, "check_output", return_value="LoadState=not-found\n"), \
+                    patch.object(launch, "verified_response") as verify, \
+                    patch.object(launch.subprocess, "run") as run:
+                with self.assertRaisesRegex(RuntimeError, "service not found"):
+                    launch.main(argv)
+                run.assert_not_called()
+                verify.assert_not_called()
+
+    def test_queue_does_not_run_q_when_preflight_fails(self):
+        argv = ["--response-output", "/tmp/p", "--recommendation-output", "/tmp/new-q",
+                "--recommendation-benchmark-result", "/tmp/q-result.json",
+                "--recommendation-smoke-output", "/tmp/q-preflight/smoke",
+                "--recommendation-loss-evidence", "/tmp/q-loss.json", "--recommendation-batch", "1",
+                "--recommendation-preflight-root", "/tmp/q-preflight", "--recommendation-prepared", "/tmp/prepared",
+                "--wait-response-unit", "soomac-unsloth-response-test.service"]
+        with patch.object(launch, "wait_response_service"), patch.object(launch, "verified_response"), patch.object(production, "verify_benchmark_result"), \
+                patch.object(launch, "prepare_recommendation", side_effect=ValueError("Q check failed")), \
+                patch.object(launch.subprocess, "run") as run:
+            with self.assertRaisesRegex(ValueError, "Q check failed"):
+                launch.main(argv)
+            run.assert_not_called()
+
+    def test_queue_rejects_unrelated_service(self):
+        with patch.object(launch.subprocess, "check_output") as read:
+            with self.assertRaises(ValueError):
+                launch.wait_response_service("unrelated.service", Path("/tmp/p"))
+            read.assert_not_called()
+
+    def test_queue_requires_exit_and_all_preflight_arguments(self):
+        base = ["--response-output", "/tmp/p", "--recommendation-output", "/tmp/new-q",
+                "--recommendation-benchmark-result", "/tmp/q-result.json",
+                "--recommendation-smoke-output", "/tmp/q-preflight/smoke",
+                "--recommendation-loss-evidence", "/tmp/q-loss.json", "--recommendation-batch", "1"]
+        flags = ["--wait-response-unit", "soomac-unsloth-response-test.service",
+                 "--recommendation-preflight-root", "/tmp/q-preflight", "--recommendation-prepared", "/tmp/prepared"]
+        for omitted in range(0, len(flags), 2):
+            with patch.object(launch.subprocess, "run") as run:
+                with self.assertRaises(SystemExit):
+                    launch.main(base + flags[:omitted] + flags[omitted+2:])
+                run.assert_not_called()
 
 
 if __name__ == "__main__":

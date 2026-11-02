@@ -6,12 +6,22 @@ separate grounded-facts review; no exact sentence matching is used.
 import argparse
 import json
 from pathlib import Path
+import re
 import sys
 
 import benchmark
 
 sys.path.insert(0, str(Path(__file__).parents[2] / 'src/soomac_irc'))
 from soomac_irc import evaluation_v43 as evaluator
+
+
+_AFFIRMATIVE_NEW_RECOMMENDATION = re.compile(
+    r'추천(?:해|드려|드릴|드립니다|합니다|드리겠|할게|하겠)|'
+    r'권(?:해(?:요|드려|드릴|드립니다)|합니다)'
+)
+_NEGATED_NEW_RECOMMENDATION = re.compile(
+    r'(?:추천|권)(?:해\s*)?(?:드리)?지는?\s*않'
+)
 
 
 def grade(case, prediction):
@@ -30,6 +40,14 @@ def grade(case, prediction):
     else:
         result = evaluator.grade_response_prediction(row, prediction['reply'])
     failures = [{'code': v.code, 'path': v.path} for v in result.violations]
+    if agent == 'response' and (row.get('metadata') or {}).get('no_execution_question'):
+        if any(evaluator._is_question(clause) and evaluator._EXECUTION_QUESTION.search(clause)
+               for clause in evaluator._clauses(prediction['reply'])):
+            failures.append({'code': 'unwanted_execution_question', 'path': 'reply'})
+    if agent == 'response' and (row.get('metadata') or {}).get('no_new_recommendation'):
+        non_negated_reply = _NEGATED_NEW_RECOMMENDATION.sub('', prediction['reply'])
+        if _AFFIRMATIVE_NEW_RECOMMENDATION.search(non_negated_reply):
+            failures.append({'code': 'unwanted_new_recommendation', 'path': 'reply'})
     if agent == 'recommendation':
         actual = evaluator._proposal_fields(prediction['proposal'])
         # Existing generic grader deliberately permits flexible implicit amount.
@@ -38,6 +56,12 @@ def grade(case, prediction):
             if actual.get(field) != expected:
                 failures.append({'code': 'strict_authored_proposal_field', 'path': field,
                                  'expected': expected, 'actual': actual.get(field)})
+        default_amount = case.get('strict_new_amount_default')
+        if default_amount:
+            for field, amount in actual.items():
+                if (field == 'noodle_portion' or field.startswith('toppings.')) and amount != default_amount:
+                    failures.append({'code': 'ungrounded_new_amount', 'path': field,
+                                     'expected': default_amount, 'actual': amount})
     return {'id': row['id'], 'agent': agent, 'automated_pass': not failures,
             'failures': failures, 'semantic_review': 'pending',
             'runtime_transition_executed': False}

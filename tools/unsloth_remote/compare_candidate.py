@@ -11,15 +11,49 @@ import benchmark
 from quality_gate import _chunked_diff
 
 
+def require_runtime(report, mode):
+    flags = report.get('gradient_checkpointing_flags', {})
+    if not flags or not any(flags.values()) or report.get('dropout_restored') is not True:
+        raise ValueError(f'GC/dropout runtime evidence missing: {mode}')
+    for repeat in report['repeats']:
+        if repeat.get('dropout_all_zero') is not True or repeat.get('dropout_modules') != 328:
+            raise ValueError(f'diagnostic dropout not zero: {mode}')
+        runtime = repeat.get('runtime', {})
+        calls = runtime.get('checkpoint_calls', {})
+        expected = 'UnslothCheckpointFunction' if mode == 'smart' else 'CheckpointFunction'
+        # autograd's worker-thread backward is not observable by sys.setprofile
+        # on the main thread. Require real CheckpointFunction.forward calls plus
+        # the completed backward's independently stored nonzero gradient; do not
+        # invent a missing Python backward callback or relax numeric comparisons.
+        if (not any(name == expected + '.forward' and count > 0
+                    for name, count in calls.items())
+                or not repeat.get('gradient_norm_fp64', 0) > 0):
+            raise ValueError(f'actual checkpoint forward/completed backward unproven: {mode}')
+        if mode != 'hf':
+            drop = runtime.get('fused_dropout', {})
+            if (not drop or any(key not in ('0.0', 'forward_p=0.0') for key in drop)
+                    or not all(isinstance(n, int) and not isinstance(n, bool) and n > 0 for n in drop.values())):
+                raise ValueError(f'fused dropout not proven zero: {mode}: {drop}')
+
+
 def compare(root):
     import torch
     from safetensors import safe_open
     reports = {name: benchmark.read(root / name / 'CANDIDATE_RESULT.json') for name in ('hf', 'native', 'smart')}
     baseline = reports['hf']
+    runtime_issues = {}
     for mode, report in reports.items():
         if report.get('status') != 'GC_PROBE_COMPLETE_NOT_EQUIVALENCE_PASS' or len(report.get('repeats', [])) != 2:
             raise ValueError(f'incomplete probe: {mode}')
-        for key in ('initial_lora_sha256', 'trainable_names', 'prepared_sha256', 'input_hashes', 'packages'):
+        try:
+            require_runtime(report, mode)
+        except ValueError as error:
+            # Preserve numeric failure evidence even if Python profiling did
+            # not observe compiled fused dropout. Missing observation NEVER
+            # becomes a pass; final selection remains fail-closed below.
+            runtime_issues[mode] = str(error)
+        for key in ('initial_lora_sha256', 'trainable_names', 'prepared_sha256', 'input_hashes', 'packages',
+                    'diagnostic_script_sha256'):
             if report[key] != baseline[key]:
                 raise ValueError(f'{mode} differs in controlled identity: {key}')
     spans = {i: [] for i in range(48)}
@@ -42,7 +76,14 @@ def compare(root):
     result = {'status': 'GC_EQUIVALENCE_BLOCKED', 'selected': None,
         'criterion': 'cross-mode loss/logits/gradient within maximum observed same-path two-repeat noise; no raised tolerance',
         'note': 'two repeats bound this observation only, not a statistical population guarantee',
-        'same_path': {}, 'candidates': {}, 'production_authorized': False}
+        'same_path': {}, 'candidates': {}, 'production_authorized': False,
+        'runtime_control_issues': runtime_issues}
+    result['evidence_sha256'] = {str(path.relative_to(root)): benchmark.sha(path)
+        for mode in reports for path in [root / mode / 'CANDIDATE_RESULT.json',
+            root / mode / 'INITIAL_LORA.safetensors',
+            *(root / mode / f'{kind}{i}.pt' for kind in ('gradient', 'logits') for i in range(2))]}
+    result['identity'] = {key: baseline[key] for key in
+        ('initial_lora_sha256', 'prepared_sha256', 'input_hashes', 'packages', 'diagnostic_script_sha256')}
     for mode in reports:
         result['same_path'][mode] = {
             'gradient': _chunked_diff(torch, *gradients[mode]),
@@ -76,9 +117,10 @@ def compare(root):
                                              and v['cosine'] >= layer_cosine for v in ab)}
         global_pass = all(x['finite'] and x['relative_l2_error'] <= noise
                           and x['cosine'] >= observed_cosine for x in cross)
-        passed = (global_pass and all(v['within_observed_noise'] for v in layers.values())
+        numeric_pass = (global_pass and all(v['within_observed_noise'] for v in layers.values())
                   and loss_difference <= loss_noise and logits_diff['relative_l2_error'] <= logits_noise)
-        result['candidates'][mode] = {'passed': passed, 'gradient_cross': cross,
+        passed = numeric_pass and not any(n in runtime_issues for n in ('hf', mode))
+        result['candidates'][mode] = {'passed': passed, 'numeric_pass': numeric_pass, 'gradient_cross': cross,
             'gradient_AA_relativeL2_noise': noise, 'gradient_AA_min_cosine': observed_cosine,
             'loss_cross_max_delta': loss_difference, 'loss_AA_noise': loss_noise,
             'logits_cross': logits_diff, 'logits_AA_relativeL2_noise': logits_noise,

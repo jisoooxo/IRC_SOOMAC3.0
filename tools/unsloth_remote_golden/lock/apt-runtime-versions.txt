@@ -1,0 +1,4 @@
+gcc=4:11.2.0-1ubuntu1
+gcc-11=11.4.0-1ubuntu1~22.04.3
+libc6=2.35-0ubuntu3.15
+libc6-dev=2.35-0ubuntu3.15

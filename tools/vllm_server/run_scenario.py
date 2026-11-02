@@ -26,6 +26,19 @@ import soomac_irc.model_runtime as model_runtime  # noqa: E402
 from soomac_irc import decision_model, recommendation_model, response_model, vllm_client  # noqa: E402
 import manual_scenario_stack_probe as probe  # noqa: E402
 
+options = probe.parse_arguments()
+if options.vllm_base_url:
+    if mode != "vllm":
+        raise SystemExit("--vllm-base-url requires vllm mode")
+    # Process-local only: production client config and live adapters stay intact.
+    from urllib.parse import urlsplit
+    endpoint = urlsplit(options.vllm_base_url)
+    if (endpoint.scheme != "http" or endpoint.hostname not in {"127.0.0.1", "localhost"}
+            or endpoint.username or endpoint.password or endpoint.query or endpoint.fragment
+            or endpoint.path not in {"", "/"} or endpoint.port != 18001):
+        raise SystemExit("Staging override must use http://127.0.0.1:18001 (or localhost)")
+    vllm_client.VLLM_BASE_URL = options.vllm_base_url.rstrip("/")
+
 if mode == "hf-no-budget":
     # 상한은 호출할 때 모듈 전역에서 읽으므로 여기서 바꾸면 C 이전과 같은 입력이 된다.
     decision_model.DECISION_INPUT_MAX_TOKENS = 16384

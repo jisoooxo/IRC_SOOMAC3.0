@@ -14,7 +14,7 @@ def run(args):
     output = benchmark.output_dir(args.output)
     sys.path.insert(0, str(benchmark.RELEASE / 'common'))
     from checkpointing import verify_completion, member
-    complete = verify_completion(args.smoke, benchmark.RELEASE / 'RELEASE.json', 'response', benchmark.BASE)
+    complete = verify_completion(args.smoke, benchmark.RELEASE / 'RELEASE.json', args.agent, benchmark.BASE)
     if complete['config'].get('engine') != 'unsloth' or complete['config'].get('mode') != 'smoke':
         raise ValueError('only independently generated Unsloth smoke export is allowed')
     checkpoint = member(args.smoke, complete['checkpoint'], directory=True)
@@ -46,7 +46,11 @@ def run(args):
         if set(saved) != set(loaded) or not all(torch.equal(saved[k], loaded[k].detach().cpu()) for k in saved):
             raise RuntimeError('standard PEFT adapter tensor restore mismatch')
         processor = AutoProcessor.from_pretrained(benchmark.RELEASE / 'assets/model-processor', local_files_only=True)
-        row = next(r for r in benchmark.read(args.prepared / 'REPRESENTATIVES.json')['rows'] if r['agent'] == 'response' and r['category'] == 'short')
+        prepared = benchmark.read(args.prepared / 'QUALITY_PREPARE.json')
+        if (benchmark.sha(args.prepared / 'REPRESENTATIVES.json') != prepared['representatives_sha256']
+                or prepared['release_sha256'] != complete['config']['release_sha256']):
+            raise ValueError('representative identity differs from saved adapter')
+        row = next(r for r in benchmark.read(args.prepared / 'REPRESENTATIVES.json')['rows'] if r['agent'] == args.agent and r['category'] == 'short')
         batch = DataCollatorForSeq2Seq(tokenizer=processor.tokenizer, padding=True,
             label_pad_token_id=-100, pad_to_multiple_of=8, return_tensors='pt')([
                 {k: row[k] for k in ('input_ids', 'labels', 'attention_mask')}])
@@ -55,7 +59,7 @@ def run(args):
             prediction = model(**scored_suffix(batch), use_cache=False)
         if not torch.isfinite(prediction.loss) or not torch.isfinite(prediction.logits).all():
             raise RuntimeError('reloaded adapter inference is nonfinite')
-        result.update(status='STANDARD_PEFT_RELOAD_AND_FORWARD_PASS_NOT_FUNCTIONAL_QUALITY_PASS',
+        result.update(status='STANDARD_PEFT_RELOAD_AND_FORWARD_PASS_NOT_FUNCTIONAL_QUALITY_PASS', agent=args.agent,
             full_state_native_restore=restore, saved_adapter_tensor_count=len(saved),
             all_adapter_tensors_exactly_loaded=True, representative_id=row['id'],
             forward_loss=float(prediction.loss), checkpoint_step=complete['global_step'],
@@ -77,6 +81,7 @@ def run(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--agent', choices=('response', 'recommendation'), default='response')
     parser.add_argument('--smoke', type=Path, required=True)
     parser.add_argument('--prepared', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)

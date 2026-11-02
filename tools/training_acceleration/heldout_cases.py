@@ -4,6 +4,11 @@ These are review candidates until oracle audit passes. No fixed Response wording
 is used as model-output gold; fields/facts are graded, human semantics stays separate.
 """
 import copy
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).parents[2] / 'src/soomac_irc'))
+from soomac_irc.response_contract import build_recommendation_model_input, build_response_model_input
 
 
 def order(**patch):
@@ -18,18 +23,6 @@ def robot(section):
 
 def history(*pairs):
     return [{'role': role, 'content': text} for role, text in pairs]
-
-
-def scope():
-    return {'current_section': 'noodle', 'excluded_past_sections': [], 'sections': [
-        {'section': 'noodle', 'fields': ['noodle_type', 'noodle_portion', 'sauce'],
-         'options': ['얇은면', '넓은면', '크림', '토마토', '오일'], 'selected': {}},
-        {'section': 'veggie', 'fields': ['toppings.양파', 'toppings.버섯'],
-         'options': ['양파', '버섯'], 'selected': {}},
-        {'section': 'meat', 'fields': ['toppings.소시지', 'toppings.게살'],
-         'options': ['소시지', '게살'], 'selected': {}},
-        {'section': 'extra', 'fields': ['toppings.치즈', 'toppings.페퍼론치노'],
-         'options': ['치즈', '페퍼론치노'], 'selected': {}}]}
 
 
 def authored_cases():
@@ -78,6 +71,8 @@ def authored_cases():
         selected=order(toppings={'소시지': 'high'}),
         pending={'type': 'execution', 'source': 'preselected', 'section': 'meat',
                  'targets': ['소시지'], 'items': {'소시지': 'high'}},
+        previous=history(('user', '소시지를 많은 양으로 선택해 두세요.'),
+                         ('assistant', '고른 소시지를 지금 담을까요?')),
         required={'toppings.소시지': 'high', 'pending': None, 'execute': False})
     decision(7, '지금 바로 담지는 말아 주세요. 선택 내용은 지금 상태로 두면 됩니다.',
         {'route': 'task'}, selected=order(noodle_type='얇은면', noodle_portion='normal', sauce='토마토'),
@@ -118,13 +113,19 @@ def authored_cases():
                 'current_user_text': text, 'event': None, 'input_source': 'user',
                 'order': order(restrictions=copy.deepcopy(restrictions)), 'pending': None,
                 'preferences': preferences, 'recent_history': [], 'recommendation_action': 'request',
-                'recommendation_scope': scope(), 'restrictions': restrictions, 'robot_state': robot('noodle'),
+                'restrictions': restrictions, 'robot_state': robot('noodle'),
                 'supported_domain': {'amounts': ['low', 'normal', 'high'], 'noodle_types': ['얇은면', '넓은면'],
                     'sauces': ['크림', '토마토', '오일'], 'toppings': ['양파', '버섯', '소시지', '게살', '치즈', '페퍼론치노']}},
                 'target': {'proposal': proposal, 'reason_tags': []},
                 'metadata': {'dialogue_group': f'QG-NEW-Q-{index:02}', 'oracle_review': 'pending_independent_review',
                     'required_proposal_fields': fields, 'proposal_constraints': {'allowed_fields': list(fields),
                                                                               'exact_field_count': len(fields)}}}})
+        if index == 3:
+            # "소스까지 포함" is not a sauce-only request. Additional safe
+            # candidates are valid; sauce omission and invented amounts are not.
+            cases[-1]['record']['metadata']['proposal_constraints'] = {
+                'forbidden_fields': ['toppings.페퍼론치노']}
+            cases[-1]['strict_new_amount_default'] = 'normal'
 
     p_specs = [
         ('소량으로 고른 양파를 보통 양으로 수정만 해 주세요. 지금 담지는 마시고요.',
@@ -154,12 +155,52 @@ def authored_cases():
                                 if execute else [],
                 'future_changes': [], 'event': None, 'input_source': 'user',
                 'pending': None, 'next_prompt': None, 'preferences': [], 'recent_action_history': [],
-                'recent_history': [], 'recommendation_result': None, 'recommendation_scope': scope(),
+                'recent_history': [], 'recommendation_result': None,
                 'robot_state': robot(section), 'policy': {'status': 'pass', 'execute': execute,
                     'reason': 'commit' if execute else 'state_update_only', 'conflicts': []}},
             'metadata': {'dialogue_group': f'QG-NEW-P-{index:02}', 'oracle_review': 'pending_independent_review',
                          'human_review_required': True, 'no_new_recommendation': True,
                          'no_completion_claim': True, 'no_execution_question': True}}})
+    # These examples refer to earlier facts. Give the model the actual earlier
+    # utterances, not only a claim in the current message that history exists.
+    earlier = {
+        'QG-NEW-Q-03': history(
+            ('user', '자극적인 매운맛은 먹기 어려워요. 대신 진하고 느끼한 소스는 좋아합니다.'),
+            ('assistant', '매운맛 제한과 진한 소스 취향을 기억해 둘게요.')),
+        'QG-NEW-P-01': history(
+            ('user', '양파 소량을 선택 목록에 기록해 두고 기다려 주세요.'),
+            ('assistant', '양파는 적은 양으로 선택했고 아직 담기 시작하지 않았어요.')),
+        'QG-NEW-P-02': history(
+            ('user', '양파 분량은 소량으로, 버섯 분량은 넉넉하게 선택만 하겠습니다.'),
+            ('assistant', '양파는 적게, 버섯은 많이 선택해 두었어요.')),
+        'QG-NEW-P-03': history(
+            ('user', '소시지를 넉넉한 분량으로 목록에 골라 두세요.'),
+            ('assistant', '소시지는 많은 양으로 선택해 두었고 아직 담기는 시작하지 않았어요.')),
+        'QG-NEW-P-07': history(
+            ('user', '게살 알레르기가 있다는 정보를 기억하고 소시지는 보통으로 선택해 두세요.'),
+            ('assistant', '게살 알레르기를 기록했고 소시지는 보통 양으로 선택했어요.')),
+        'QG-NEW-P-08': history(
+            ('user', '치즈를 넉넉한 분량으로 먼저 골라 두겠습니다.'),
+            ('assistant', '치즈를 많은 양으로 선택했어요.')),
+    }
+    for case in cases:
+        if case['agent'] == 'decision':
+            continue
+        row, agent = case['record'], case['agent']
+        raw = row['input']
+        previous = earlier.get(row['id'], raw.get('recent_history', []))
+        session = {'order': raw.get('confirmed_order', raw.get('order')),
+                   'history': previous, 'preferences': raw['preferences'],
+                   'pending': raw['pending'], 'action_history': raw.get('recent_action_history', [])}
+        if agent == 'recommendation':
+            row['input'] = build_recommendation_model_input(session,
+                {'recommendation': {'action': raw['recommendation_action']}},
+                raw['robot_state'], raw['current_user_text'])
+        else:
+            row['input'] = build_response_model_input(raw['user_text'], session, raw['policy'],
+                raw['applied_this_turn'], raw['future_changes'], raw['recommendation_result'],
+                raw['next_prompt'], raw['robot_state'], row['route'])
+        row['metadata']['fixture_builder'] = 'runtime_response_contract'
     return cases
 
 
@@ -197,7 +238,10 @@ def freeze(destination):
         'cases_sha256': benchmark.sha(destination / 'NEW_FUNCTIONAL_CASES.json'),
         'source_manifest_sha256': benchmark.MANIFEST_SHA, 'leak_checks': leak_checks,
         'used_for_training': False, 'functional_predictions': 'not_yet_run',
-        'semantic_near_duplicate_risk': 'requires_independent_group_and_oracle_review',
+        'semantic_near_duplicate_risk': 'authored_paraphrases_of_known_scenario_families_not_independent_family_generalization',
+        'fixture_code_sha256': benchmark.sha(Path(__file__)),
+        'runtime_builder_sha256': {name: benchmark.sha(Path(__file__).parents[2] / 'src/soomac_irc/soomac_irc' / name)
+                                  for name in ('response_contract.py', 'llm_policy.py')},
         'trained_required_demo': 'must_be_reported_separately_not_blind_holdout'}
     benchmark.write_new(destination / 'NEW_HOLDOUT_RECEIPT.json', receipt)
     return receipt
