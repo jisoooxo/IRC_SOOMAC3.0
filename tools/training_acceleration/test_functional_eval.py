@@ -99,10 +99,45 @@ class FunctionalControls(unittest.TestCase):
                     bad['proposal']['toppings'][key.split('.', 1)[1]] = 'high'
                     self.assertFalse(functional_eval.grade(case, bad)['automated_pass'])
 
+    def test_frozen_recommendation_oracle_retains_default_amount_checks(self):
+        import copy
+        cases = {c['record']['id']: {'agent': c['agent'], 'record': c['record']}
+                 for c in heldout_cases.authored_cases() if c['agent'] == 'recommendation'}
+        for case_id, topping in [('QG-NEW-Q-05', '양파'), ('QG-NEW-Q-06', '버섯')]:
+            case = cases[case_id]
+            self.assertTrue(functional_eval.grade(case, case['record']['target'])['automated_pass'])
+            bad = copy.deepcopy(case['record']['target'])
+            bad['proposal']['toppings'][topping] = 'high'
+            self.assertIn('strict_authored_proposal_field',
+                          {item['code'] for item in functional_eval.grade(case, bad)['failures']})
+        case = cases['QG-NEW-Q-03']
+        bad = copy.deepcopy(case['record']['target'])
+        bad['proposal']['toppings']['치즈'] = 'high'
+        self.assertIn('ungrounded_new_amount',
+                      {item['code'] for item in functional_eval.grade(case, bad)['failures']})
+
     def test_unverified_completion_never_becomes_automatic_pass(self):
         for case in heldout_cases.authored_cases():
             if case['agent'] == 'response':
                 self.assertFalse(functional_eval.grade(case, {'reply': '모두 다 담았어요. 작업을 완료했습니다.'})['automated_pass'])
+
+    def test_passive_completion_claim_requires_completion_evidence(self):
+        case = next(c for c in heldout_cases.authored_cases() if c['record']['id'] == 'QG-NEW-P-05')
+        for reply in ('양파는 이미 소량으로 담겨 있어요.', '양파는 이미 소량으로 담겨있습니다.'):
+            result = functional_eval.grade(case, {'reply': reply})
+            self.assertFalse(result['automated_pass'], reply)
+            self.assertTrue(
+                {'unverified_completion_reply', 'unverified_item_completion'}
+                & {item['code'] for item in result['failures']}, reply,
+            )
+        for reply in ('양파는 아직 담겨 있지 않아요.', '양파는 안 담겨 있어요.'):
+            result = functional_eval.grade(case, {'reply': reply})
+            self.assertFalse(
+                {'unverified_completion_reply', 'unverified_item_completion'}
+                & {item['code'] for item in result['failures']}, reply,
+            )
+        mixed = functional_eval.grade(case, {'reply': '양파는 안 담겨 있어요. 버섯은 이미 담겨 있어요.'})
+        self.assertIn('unverified_completion_reply', {item['code'] for item in mixed['failures']})
 
     def test_nonspicy_request_allows_safe_full_proposal_but_requires_sauce(self):
         import copy

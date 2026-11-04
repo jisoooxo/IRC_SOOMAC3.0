@@ -444,6 +444,24 @@ def test_response_unauthorized_start_claim_fails():
     assert "unauthorized_execution_reply" in {item.code for item in grade.violations}
 
 
+@pytest.mark.parametrize("reply", [
+    "담기는 아직 시작하지 않을게요.",
+    "담기는 시작 안 할게요.",
+    "담기는 아직 시작되지 않았어요.",
+    "담기는 시작하지 않았어요. 버섯 투입은 시작할게요.",
+])
+def test_response_negated_start_only_suppresses_that_start(reply):
+    case = response_case()
+    case["input"]["user_text"] = "잠깐 기다려 주세요."
+    case["input"]["applied_this_turn"]["order_changes"] = {}
+    grade = grade_response_prediction(case, reply)
+    codes = {item.code for item in grade.violations}
+    if "버섯 투입은 시작할게요" in reply:
+        assert "unauthorized_execution_reply" in codes
+    else:
+        assert "unauthorized_execution_reply" not in codes, grade.to_dict()
+
+
 def test_response_execution_question_is_not_a_start_claim():
     grade = grade_response_prediction(response_case(), "게살은 적은 양으로 준비했어요. 담기를 진행할까요?")
     assert grade.passed, grade.to_dict()

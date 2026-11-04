@@ -28,7 +28,11 @@ from soomac_irc.domain import (
 _MISSING = object()
 _CORE_SESSION_FIELDS = ("order", "preferences", "pending")
 _EXECUTION_STARTED = re.compile(r"(?:담기|조리|작업|투입).{0,8}(?:시작|진행)|시작(?:할게|합니다|했)")
-_COMPLETION_CLAIM = re.compile(r"(?:완료|다\s*됐|끝났|성공(?:했|입니다)|담았(?:어요|습니다))")
+_NEGATED_EXECUTION_SUFFIX = re.compile(
+    r"\s*(?:하지(?:는|도)?\s*(?:않|못)|안\s*(?:하|할)|못\s*(?:하|할)|"
+    r"되(?:지|진)\s*(?:않|못)|된\s*적\s*없)"
+)
+_COMPLETION_CLAIM = re.compile(r"(?:완료|다\s*됐|끝났|성공(?:했|입니다)|담았(?:어요|습니다)|담겨\s*있(?:어요|습니다|다|죠))")
 _AMOUNT_CUE = re.compile(r"적게|조금|소량|보통|평범|많이|넉넉|듬뿍|low|normal|high", re.I)
 _AMOUNT_PATTERNS = {
     "low": re.compile(r"적(?:게|은)|조금|소량|low", re.I),
@@ -41,10 +45,11 @@ _INTERNAL_RESPONSE = re.compile(
 )
 _SENTENCE = re.compile(r"[^.!?\n]+[.!?]?")
 _NEGATED_COMPLETION = re.compile(
-    r"(?:완료된|끝난|담은).{0,12}(?:아직\s*)?(?:없|아니)|아직.{0,12}(?:완료|끝|담).{0,8}(?:않|못)"
+    r"(?:완료된|끝난|담은).{0,12}(?:아직\s*)?(?:없|아니)|아직.{0,12}(?:완료|끝|담).{0,8}(?:않|못)|"
+    r"안\s*담겨\s*있"
 )
 _ITEM_COMPLETION = re.compile(
-    r"담았(?:어요|습니다)|담기.{0,5}완료|투입.{0,5}완료|완료(?:됐|되었|했|예요|입니다)|"
+    r"담았(?:어요|습니다)|담겨\s*있(?:어요|습니다|다|죠)|담기.{0,5}완료|투입.{0,5}완료|완료(?:됐|되었|했|예요|입니다)|"
     r"다\s*(?:됐|되었)|끝났|성공(?:했|입니다)"
 )
 # 질문·조건문·정정 판정은 절 단위로 한다. 한 절의 질문이 같은 문장의 다른 절 주장을 지우지 않는다.
@@ -126,13 +131,14 @@ def _is_question(text: str) -> bool:
 
 
 def _claims_execution_started(reply: str) -> bool:
-    # 질문·조건문 절은 시작 주장이 아니지만, 다른 절의 질문이 시작 주장을 지우지 않는다.
-    return any(
-        _EXECUTION_STARTED.search(clause)
-        and not _is_question(clause)
-        and not _CONDITIONAL_START.search(clause)
-        for clause in _clauses(reply)
-    )
+    # 질문·조건문·부정은 시작 주장이 아니다. 같은 절의 다른 긍정 주장은 보존한다.
+    for clause in _clauses(reply):
+        if _is_question(clause) or _CONDITIONAL_START.search(clause):
+            continue
+        for match in _EXECUTION_STARTED.finditer(clause):
+            if not _NEGATED_EXECUTION_SUFFIX.match(clause[match.end():]):
+                return True
+    return False
 
 
 def _claims_completion(reply: str) -> bool:

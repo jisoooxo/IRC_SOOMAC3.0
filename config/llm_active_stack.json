@@ -2,17 +2,21 @@
   "active": false,
   "all_gates_pass": false,
   "selection_source": "src/soomac_irc/soomac_irc/model_runtime.py explicit path constants",
-  "note": "Informational mirror only. User-authorized latest-best robot-test paths; semantic acceptance is unverified. No automatic manifest adoption.",
+  "note": "Informational mirror only. User-authorized P best150/Q epoch6; correct-Decision scenario passed. Individual errors remain; actual Decision/robot integration unverified. No automatic manifest adoption.",
   "labels": {
     "decision": "learning_first_v5_best_step750_epoch2.944417",
-    "recommendation": "learning_first_v5_best_step100_epoch2.642140",
-    "response": "learning_first_v5_best_step50_epoch0.551724"
+    "recommendation": "conversation_r5_unsloth_epoch6_step234",
+    "response": "conversation_r5_unsloth_best_step150_epoch1.4423077"
   },
   "selected": {
     "decision": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/remote_all_a519cf_20261031_r2/results/checkpoints/attempt-d8a4ee465c95443daa47e2caf7fa1ee4/decision/best_adapter",
-    "recommendation": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/local_v6_batch_20261028/recommendation-c492d6c7538b/attempt-8f34316e864e429ba8ebdbd8b60f8a8a/recommendation/best_adapter",
-    "response": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/local_v6_batch_20261028/response-b1acc16-resume-bed9d88cbc5a/full/attempt-2b74a8919fce4e5690767295942c27d5/response/best_adapter"
+    "recommendation": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/r5_unsloth_local_authorized_20261101/recommendation/attempt-9726a651729b41a6bd73d0b2a0bea084/recommendation/checkpoint-234",
+    "response": "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/r5_unsloth_local_authorized_20261101/response/attempt-63872c5d7d584aab81aa73bbb6cc0155/response/checkpoint-150"
   },
-  "source_evaluation": "training/learning_first_v43/final/goals/GL10/docker_v5_20261028/best_stack_regression_20261031/RESULT.md",
-  "candidate_status": "user_authorized_robot_test_unverified"
+  "source_evaluation": "training/learning_first_v43/final/goals/GL10/qp_vllm_validation_20261103_r4/continuation_attempt2/FINAL_REPORT.md",
+  "candidate_status": "user_authorized_robot_test_unverified",
+  "execution_reply_evaluation": "training/learning_first_v43/final/goals/GL10/qp_multiturn_reference_20261103/REVIEW.md",
+  "execution_reply_mode": "fixed",
+  "previous_selection_snapshot": "training/learning_first_v43/final/goals/GL10/qp_adoption_execution_reply_20261103/before/llm_active_stack.json",
+  "execution_reply_reason": "Expanded correct-D multiturn: P said mushroom high although confirmed_order and starting_now were low. Fixed execution speech restored; selected adapters unchanged."
 }

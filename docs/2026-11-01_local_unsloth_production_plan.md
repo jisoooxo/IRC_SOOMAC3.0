@@ -5,6 +5,20 @@
 
 ## 1. 최신 사용자 결정과 현재 상태
 
+### 2026-11-03 14:52 KST — 두 본 학습 완료, 통합 품질 미합격
+
+Response624step/6epoch와 Recommendation234step/6epoch 모두 정상 종료했다. 각 full-state·완료 영수증·best/epoch6 원본 PEFT와 실제 원본 PEFT 추론·격리 vLLM0.32 변환/로딩을 확인했다. 봉인24건에서 P best/epoch6 모두8/8, Q best7/8·epoch6 8/8이지만 **기존 D를 고정한 네 조합의17턴 누적 회귀는 모두 실패**했다. Q가 전 조합에서 한 번도 호출되지 않았고 P의 무근거 추천/허위 크림 선택도 관측됐다. 학습 성공과 기능 합격을 분리하고 운영 adapter를 교체하지 않는다. 상세 근거는 [2026-11-03 품질 결과](2026-11-03_unsloth_local_quality_result.md)다.
+
+Cause: 기존 D의 추천·복합 실행 누락과 P의 state 밖 발화가 실사용 흐름을 끊었다.
+Effect: 새 원격 D 도착 뒤 같은 회귀를 재평가하고 P 오류를 국소 보강할 근거가 확보됐다.
+
+### 2026-11-03 09:09 KST — Response 정상 완료, Recommendation 사전 검증 진행
+
+Response는6epoch/624step 정상 종료했고 `production.verify_response_completion()`이 full-state·두 원본 PEFT export·영수증을 통과했다. 최종 validation loss1.1994315385818481, best는step150의0.8207007646560669이다. **학습 실행 완료이지 기능 품질 합격은 아니다.** 기존 Q 대기 서비스는 자동으로 Q 대표 입력 목적함수 검증을 통과했고, 저장·실패·재개/재로드 사전 검증을 진행 중이다. Q 본 학습과 P/Q 후보 기능 평가는 미완료다. 상세 경로·SHA는 [worklog](2026-11-01_training_package_build_worklog.md)와 [STATE](training_acceleration_20261101/STATE.json)를 따른다.
+
+Cause: Response 정상 종료와 완료 영수증이 Q 대기 실행기의 시작 조건을 충족했다.
+Effect: 중복 학습 없이 Q GPU 사전 검증으로 넘어갔다. 운영 adapter는 교체하지 않았다.
+
 ### 2026-11-02 00:59 KST — 20/624step, warmup 완료
 
 Response 동일 서비스/PID1405238은20/624step, loss1.25, grad_norm10.84, learning_rate5e-5, epoch0.1923이다. 설정된20step warmup이 완료됐고, Q CPU 대기 서비스 PID1416620도 active다. 표시ETA29:50:08은 잠정치이며 최초 validation/save50step 전에는 최종 성능을 판정하지 않는다. 현재 마지막 검증된 production checkpoint는 step5다. 학습 정책·데이터·원격 Decision·HF checkpoint와 운영 adapter를 변경하지 않았다.
@@ -118,9 +132,9 @@ Python: `/home/roma/IRC_SOOMAC3.0/training/learning_first_v43/training_release_2
 
 1. **계획·기록 정렬 — 완료.** 승인과 과거 실험/본 학습을 구분하고 문서·STATE의 낡은 미승인 표기를 정정한다.
 2. **로컬 Response 사전 점검 — 완료.** 대표 입력의 목적함수, 저장·실패·재개, 표준 PEFT 및 격리 vLLM 로딩을 확인했다. 세부 증거는 이 문서의 최신 상태 절에 있다.
-3. **Response 본 학습 시작 — 완료, 전체 학습 진행 중.** 새 durable 출력에 `mode=train`, 6epoch/624step으로 실행했다. 기존 HF checkpoint는 재개 원본으로 지정하지 않았다.
-4. **Recommendation 준비와 순차 실행 — CPU 대기 등록 완료, Q 학습 미시작.** Response 정상 완료와 GPU 반환 뒤 기존 대기 실행기가 Q 사전 GPU 검증과 6epoch/234step 학습을 순차 진행한다. P 실패를 성공으로 바꿔 Q로 넘어가지 않는다.
-5. **진행·결과 검증 — 미완료.** 5step 간격 train loss와 50step validation/checkpoint를 기록한다. 최종 adapter의 실제 기능·누적 대화 평가는 학습 완료 후 GPU 충돌 없이 별도로 확인한다.
+3. **Response 본 학습 — 6epoch/624step 정상 완료, 기능 품질 미판정.** 새 durable 출력에 `mode=train`으로 실행했고 완료 영수증·full-state·두 원본 PEFT export를 검증했다. 기존 HF checkpoint는 재개 원본으로 지정하지 않았다.
+4. **Recommendation 준비와 순차 실행 — 완료.** Response 정상 종료 뒤 기존 대기 실행기가 Q 대표 목적함수·저장→실패→재개·PEFT 재로드를 통과하고 6epoch/234step 본 학습을 완료했다. 서비스 정상 종료·GPU 반환·최종 영수증을 확인했다.
+5. **진행·결과 검증 — 저장/단일 턴/격리 vLLM 완료, 통합 품질 미합격.** 5step train loss, 50step 및 epoch 종료 validation/checkpoint를 기록했다. 공통 `checkpointing.verify_completion(..., "recommendation", ...)`이234step·full-state·export 해시를 확인했고 `trainer_state.json`은 epoch6이다. P/Q 두 후보를 원본 PEFT로 실제 로딩해 봉인24건을 네 조합에서 추론하고, 임시 vLLM0.32 포트18001에서 네 조합17턴을 완료했다. 이 평가에서 모두 통합 실패했으므로 기능 합격/운영 교체는 미완료다. 자세한 실패는 [품질 결과](2026-11-03_unsloth_local_quality_result.md)에 있다.
 
 **P/Q 각각의 사전 합격 기록 완료 전에는 해당 `mode=train`을 시작하지 않는다.** 기존 runner의 한 행 CE 관문·학습 도중 gradient 검사만으로 이 사전 검증을 대신하지 않는다. 짧은/장문/멀티턴의 목적함수, train 모드 gradient와 실제 값 변경, 저장→새 프로세스 재개→update, 표준 PEFT adapter 새 프로세스 로딩을 각 agent에서 확인한다. adapter 파일 export/해시 확인은 실제 로딩 합격이 아니다. 기존 도구를 재사용하고 미비한 증거 연결만 국소 보완한다.
 
@@ -130,6 +144,10 @@ P 평가: 없는 주문/수량/실행 완료 사실을 말하지 않기, 변경�
 
 **최종 adapter 선택은 검증 손실만으로 끝내지 않는다.** `production.py`는 P/Q마다 `best_adapter`(최저 eval loss)와 `epoch_6_adapter`(마지막 full-state)의 원본 PEFT 두 개를 별도로 내보내고 `training_complete.json.exports`에 SHA를 남긴다. 완료 영수증과 두 export 해시·표준 PEFT/vLLM 로딩을 확인한 뒤, P 두 후보와 Q 두 후보를 동일한 봉인24건에 각각 적용하고, 기존 Decision을 고정한 2×2 조합의17턴 회귀를 비교한다. 턴별 D/Q/P 실제 호출·응답 출처·주문 필드·실행·허위 완료/수량 발화를 함께 기록한다. 점수 높은 조합도 사용자 승인 전 운영 경로에 교체하지 않으며, 최신 원격 Decision이 도착하지 않은 경우 그 조합의 결론은 기존 Decision 기준으로 한정한다.
 
+**모델 출력을 보기 전 고정한 품질 판정 기준:** P와 Q의 두 후보 각각에 동일한 봉인 8건씩 적용하고, 스키마/필드 자동 검사 결과와 독립적인 문맥·사실성 검수를 별도로 기록한다. 운영 추천 후보의 합격은 해당 P 8/8, Q 8/8과 허위 주문·수량·실행 완료·근거 없는 추천 0건, 그리고 기존 D 고정 2×2의 두 에피소드(복합 6턴·분리 11턴)에서 `order_matches`·`execute_matches`·`plans_match`·추천 후보 근거·history 보존·model error 없음이 전 턴 통과해야 한다. `manual_scenario_stack_probe.py`의 `measure_all`은 실패 뒤 턴까지 진단하려는 모드이므로, 이 모드에서 끝까지 실행했다는 것만으로 합격 처리하지 않는다. Response가 호출되지 않은 고정 안내는 `runtime_fixed`로 표시해 모델 품질 근거에서 제외한다. 현재 봉인 24건 중 D 8건은 기존 Decision의 별도 진단이며 새 원격 D의 성적이 아니다. 자동 검사 통과는 독립 의미 검수나 실제 로봇 완료 증거가 아니다. 모든 후보가 미달이면 정상 학습 완료와 **품질 미합격**을 함께 보고하고, 운영 adapter를 교체하지 않는다.
+
+봉인 영수증의 exact input/발화/group 누출 검사는 모두 음성이지만, 이 24건은 알려진 시나리오 계열의 재표현이다. 따라서 8/8 및 17턴 합격도 **이 계열의 회귀 통과**이지 새로운 주문 유형 전반으로의 일반화 보증은 아니다. 최종 보고에서 이 한계를 숨기지 않는다.
+
 격리 vLLM 검증에는 기본 `convert_adapters_for_vllm.py`나 `check_after_training.sh`를 직접 실행하지 않는다. 이 둘의 기본 출력은 운영 `models/vllm_adapters`이고 경로 교체를 포함한다. 새 `tools/training_acceleration/stage_vllm_candidates.py`는 기존 K→V 변환 함수를 **새 평가 폴더 안에서만** 재사용하며 원본 해시·변환 해시·설정 동일성을 기록한다. CPU fixture 3건은 PASS이고 실제 완성 P/Q의 변환·포트18001 로딩은 학습 종료 후 별도로 확인한다. 현재 운영 adapter나 서버를 변경하지 않았다.
 
 ## 5. 시간·상태 보고
@@ -138,7 +156,7 @@ Response 232.230초×624 = **약40시간15분**, Recommendation cold 131.381초�
 
 보고에는 `사전 검증 / 본 학습 시작 여부 / optimizer step·전체 step / loss·최신 정상 checkpoint / ETA / 남은 품질 위험`을 분리한다. 완료 step 수만으로 모델 품질 완료를 선언하지 않는다.
 
-현재: **Response 본 학습 진행 중, Recommendation CPU 대기, 최종 기능 평가 미완료.** 과거의 “본 학습 미시작”은 작성 당시 기록일 뿐이다. 최신 step·loss·checkpoint는 [STATE](training_acceleration_20261101/STATE.json)와 [worklog](2026-11-01_training_package_build_worklog.md)를 우선한다.
+현재: **Response·Recommendation 본 학습 모두 정상 완료, 봉인 단일 턴 평가 완료, 기존 Decision 기준 통합 품질 미합격.** 과거의 “본 학습 미시작”과 “진행 중”은 작성 당시 기록일 뿐이다. 새 원격 D 재평가와 P의 무근거 발화 보강 전 운영 adapter는 교체하지 않는다. 최신 근거는 [품질 결과](2026-11-03_unsloth_local_quality_result.md)와 [STATE](training_acceleration_20261101/STATE.json)를 우선한다.
 
 읽기 전용 Codex `gpt-6-sol/high` 교차검수는 조건부 찬성이다. 실제 production.py의 한 행 CE 관문, smoke 복원 검사, adapter export, logging_steps=5를 직접 대조하여 위의 agent별 사전 합격·실제 재로드 구분·loss 기록 간격을 명시했다. 검수 로그: `/tmp/soomac_local_unsloth_plan_review.out`. 문서/STATE JSON·diff 검사는 완료했으며 학습 코드나 GPU 검사를 이번 문서 작업에서 실행하지 않았다.
 

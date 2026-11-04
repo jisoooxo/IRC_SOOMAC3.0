@@ -1117,7 +1117,7 @@ def test_structured_execution_started_reply_ignores_stale_history():
     ]
 
     assert build_execution_started_reply(session, "veggie") == (
-        "양파 적게, 버섯 많이 담기를 시작해요."
+        "양파는 적게, 버섯은 많이 담을게요."
     )
 
 
@@ -1135,8 +1135,8 @@ def test_execution_allowed_bypasses_response_model():
     result = graph.invoke(new_turn_state(session, "바로 담아", robot_state(section="veggie")))
 
     assert result["policy"]["execute"] is True
-    assert result["reply"] == "양파 적게 담기를 시작해요."
-    assert result["session"]["history"][-1]["content"] == "양파 적게 담기를 시작해요."
+    assert result["reply"] == "양파를 적은 양으로 담을게요."
+    assert result["session"]["history"][-1]["content"] == "양파를 적은 양으로 담을게요."
 
 
 def test_status_turn_keeps_execution_pending():

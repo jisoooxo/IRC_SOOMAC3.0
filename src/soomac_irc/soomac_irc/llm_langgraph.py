@@ -185,44 +185,51 @@ def build_preselected_section_confirmation(session: _SessionState, section: str)
     }
 
 
-def _with_object_particle(word: str) -> str:
-    """한글 단어에 목적격 조사를 붙이고 그 외 문자열은 안전한 병기형을 쓴다."""
+def _with_particle(word: str, consonant: str, vowel: str) -> str:
+    """받침에 맞는 조사를 붙인다. 한글이 아니면 두 형태를 병기한다."""
     if not word:
         return word
     code = ord(word[-1])
     if 0xAC00 <= code <= 0xD7A3:
-        return f"{word}{'을' if (code - 0xAC00) % 28 else '를'}"
-    return f"{word}을(를)"
+        return f"{word}{consonant if (code - 0xAC00) % 28 else vowel}"
+    return f"{word}{consonant}({vowel})"
+
+
+def _describe_portioned_items(items: list[dict]) -> str:
+    """검증된 재료·수량만 표현한다. 주문을 해석하거나 변경하지 않는다."""
+    amount_words = {"low": "적은 양으로", "normal": "보통 양으로", "high": "많이"}
+    names = [str(entry["item"]) for entry in items]
+    amount = items[0].get("amount")
+    if all(entry.get("amount") == amount for entry in items) and amount in amount_words:
+        joined = names[0]
+        for name in names[1:]:
+            joined = f"{_with_particle(joined, '과', '와')} {name}"
+        return f"{_with_particle(joined, '을', '를')} {amount_words[amount]}"
+
+    mixed_words = {"low": "적게", "normal": "보통 양으로", "high": "많이"}
+    return ", ".join(
+        f"{_with_particle(str(entry['item']), '은', '는')} {mixed_words[entry['amount']]}"
+        if entry.get("amount") in mixed_words
+        else _with_particle(str(entry["item"]), "을", "를")
+        for entry in items
+    )
 
 
 def build_preselected_confirmation_reply(pending: dict) -> str:
     # Graph 밖에서 section이 바뀔 때 사용할 안전한 기본 확인 문장이다.
     items = pending.get("items") or pending.get("candidate", {}).get("toppings", {})
-    amount_word = {"low": "적게", "normal": "보통", "high": "많이"}
-    descriptions = []
-    for name, amount in items.items():
-        description = _with_object_particle(str(name))
-        if amount in amount_word:
-            description = f"{description} {amount_word[amount]}"
-        descriptions.append(description)
-    target = ", ".join(descriptions) if descriptions else "미리 고른 재료를"
-    return f"미리 고른 {target} 담을까요?"
+    entries = [{"item": name, "amount": amount} for name, amount in items.items()]
+    target = _describe_portioned_items(entries) if entries else "재료를"
+    return f"미리 고르신 {target} 담을까요?"
 
 
 def build_execution_started_reply(session: _SessionState, section: str) -> str:
     """실제로 시작된 현재 section 작업만으로 결정적인 안내 문장을 만든다."""
-    amount_word = {"low": "적게", "normal": "보통", "high": "많이"}
     items = section_execution_items(session["order"], section)
     if not items:
         raise ValueError(f"{section}에서 시작 안내를 만들 작업이 없음")
 
-    descriptions = [
-        f"{entry['item']} {amount_word[entry['amount']]}"
-        if entry.get("amount") in amount_word
-        else str(entry["item"])
-        for entry in items
-    ]
-    return f"{', '.join(descriptions)} 담기를 시작해요."
+    return f"{_describe_portioned_items(items)} 담을게요."
 
 
 def _pending_prompt(pending: dict | None) -> dict | None:
@@ -507,7 +514,13 @@ def build_graph(
     call_decision: Callable,
     call_recommendation: Callable,
     call_response: Callable,
+    *,
+    execution_reply_mode: str = "fixed",
 ):
+    # Model mode changes speech only; order validation and execution stay in Python.
+    # Legacy callers keep fixed speech; the node explicitly selects its reviewed mode.
+    if execution_reply_mode not in {"fixed", "model"}:
+        raise ValueError("execution_reply_mode must be fixed or model")
     from langgraph.graph import END, START, StateGraph
 
     def interpret_decision(state: _TurnState) -> dict:
@@ -1074,7 +1087,10 @@ def build_graph(
         elif reason == "completed_restriction_conflict":
             next_prompt = {"type": "completed_restriction_conflict", "conflicts": copy.deepcopy(state["policy"].get("conflicts", []))}
 
-        if state["policy"].get("execute"):
+        if state["policy"].get("execute") and (
+            execution_reply_mode == "fixed"
+            or not section_execution_items(state["session"]["order"], state["robot_state"]["section"])
+        ):
             # 실행 허용 상태는 Response 생성보다 실제 section 작업 목록을 단일 진실로 사용한다.
             # 빈 optional section의 명시적 제거+commit은 node가 section 전환 문장으로 교체한다.
             starting_items = section_execution_items(
@@ -1104,8 +1120,11 @@ def build_graph(
                     raise ValueError("Response reply is empty or not a string")
             except Exception as error:
                 # Speech failure must not undo validated restrictions or a rejected execution.
-                # This exceptional fault message never claims an order/start/completion.
-                reply = RESPONSE_FAILURE_REPLY
+                # An authorized start still needs its accurate execution announcement.
+                reply = (
+                    build_execution_started_reply(state["session"], state["robot_state"]["section"])
+                    if state["policy"].get("execute") else RESPONSE_FAILURE_REPLY
+                )
                 response_failed = True
                 state["policy"] = dict(state["policy"], response_error={"type": type(error).__name__})
 

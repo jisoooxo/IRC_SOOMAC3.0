@@ -60,8 +60,8 @@ def _resolve_runtime_adapter_paths() -> tuple[str, str, str | None, str | None]:
     return (*rollback[:3], "; ".join(errors) or None)
 
 
-# 2026-10-31 사용자 지정: 최신 학습 best 세 개로 실물 테스트를 준비한다.
-# best는 validation loss 기준이며 전체 의미 회귀 합격 모델이라는 뜻은 아니다.
+# 2026-11-03 사용자 승인: P best150 / Q epoch6, 정상-D 필수 시나리오 검증본.
+# Decision은 기존 경로 유지. 전체 입력/실물 통합 합격을 뜻하지 않는다.
 # 현재 선택 정본은 아래 직접 경로다. 위 manifest resolver/rollback은 복구용으로 보존한다.
 DECISION_ADAPTER_PATH = (
     "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/"
@@ -70,13 +70,13 @@ DECISION_ADAPTER_PATH = (
 )
 RECOMMENDATION_ADAPTER_PATH = (
     "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/"
-    "local_v6_batch_20261028/recommendation-c492d6c7538b/"
-    "attempt-8f34316e864e429ba8ebdbd8b60f8a8a/recommendation/best_adapter"
+    "r5_unsloth_local_authorized_20261101/recommendation/"
+    "attempt-9726a651729b41a6bd73d0b2a0bea084/recommendation/checkpoint-234"
 )
 RESPONSE_ADAPTER_PATH = (
     "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/"
-    "local_v6_batch_20261028/response-b1acc16-resume-bed9d88cbc5a/full/"
-    "attempt-2b74a8919fce4e5690767295942c27d5/response/best_adapter"
+    "r5_unsloth_local_authorized_20261101/response/"
+    "attempt-63872c5d7d584aab81aa73bbb6cc0155/response/checkpoint-150"
 )
 RUNTIME_ADOPTION_ERROR = None
 DECISION_ADAPTER_NAME = "decision"

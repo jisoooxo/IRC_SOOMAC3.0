@@ -40,11 +40,12 @@ def grade(case, prediction):
     else:
         result = evaluator.grade_response_prediction(row, prediction['reply'])
     failures = [{'code': v.code, 'path': v.path} for v in result.violations]
-    if agent == 'response' and (row.get('metadata') or {}).get('no_execution_question'):
+    metadata = row.get('metadata') or {}
+    if agent == 'response' and metadata.get('no_execution_question'):
         if any(evaluator._is_question(clause) and evaluator._EXECUTION_QUESTION.search(clause)
                for clause in evaluator._clauses(prediction['reply'])):
             failures.append({'code': 'unwanted_execution_question', 'path': 'reply'})
-    if agent == 'response' and (row.get('metadata') or {}).get('no_new_recommendation'):
+    if agent == 'response' and metadata.get('no_new_recommendation'):
         non_negated_reply = _NEGATED_NEW_RECOMMENDATION.sub('', prediction['reply'])
         if _AFFIRMATIVE_NEW_RECOMMENDATION.search(non_negated_reply):
             failures.append({'code': 'unwanted_new_recommendation', 'path': 'reply'})
@@ -52,14 +53,20 @@ def grade(case, prediction):
         actual = evaluator._proposal_fields(prediction['proposal'])
         # Existing generic grader deliberately permits flexible implicit amount.
         # These authored cases have an explicit new normal-default policy oracle.
-        for field, expected in case.get('strict_required_proposal_fields', {}).items():
+        # Frozen case files retain record.metadata but may omit the generator's
+        # top-level strict_* hints. Grade the sealed oracle, not only the builder.
+        required = case.get('strict_required_proposal_fields') or metadata.get('required_proposal_fields') or {}
+        for field, expected in required.items():
             if actual.get(field) != expected:
                 failures.append({'code': 'strict_authored_proposal_field', 'path': field,
                                  'expected': expected, 'actual': actual.get(field)})
         default_amount = case.get('strict_new_amount_default')
+        if default_amount is None and required and not evaluator._AMOUNT_CUE.search(
+                str(row.get('input', {}).get('current_user_text') or '')):
+            default_amount = 'normal'
         if default_amount:
             for field, amount in actual.items():
-                if (field == 'noodle_portion' or field.startswith('toppings.')) and amount != default_amount:
+                if (field == 'noodle_portion' or field.startswith('toppings.')) and field not in required and amount != default_amount:
                     failures.append({'code': 'ungrounded_new_amount', 'path': field,
                                      'expected': default_amount, 'actual': amount})
     return {'id': row['id'], 'agent': agent, 'automated_pass': not failures,

@@ -205,7 +205,7 @@ def test_latest_best_recommendation_adapter_artifacts_exist():
     assert (root / "adapter_model.safetensors").is_file()
 
 
-def test_explicit_latest_best_paths_match_unverified_informational_manifest():
+def test_explicit_paths_match_unverified_informational_manifest():
     manifest = json.loads(model_runtime.RUNTIME_ADOPTION_MANIFEST.read_text(encoding="utf-8"))
     assert manifest["active"] is False
     assert manifest["all_gates_pass"] is False
@@ -218,7 +218,7 @@ def test_explicit_latest_best_paths_match_unverified_informational_manifest():
     assert actual == manifest["selected"]
     for path in actual.values():
         root = Path(path)
-        assert root.is_absolute() and root.name == "best_adapter"
+        assert root.is_absolute()
         config = json.loads((root / "adapter_config.json").read_text(encoding="utf-8"))
         assert config["peft_type"] == "LORA"
         assert (root / "adapter_model.safetensors").is_file()

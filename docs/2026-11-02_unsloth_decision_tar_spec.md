@@ -138,10 +138,10 @@ step당 토큰 수는 두 엔진이 같다(약 129,700~130,000 tok/step).
 | | 혼자 사용 | 공유 중 |
 |---|---|---|
 | HF build05 | 약 176초/step, 약 738 tok/s (step 0→222) | 약 371초/step (step 222→263) |
-| Unsloth t1 | 약 128초/step, 약 1,012 tok/s (step 62→70, **8 step뿐인 중간값**) | 약 278초/step, 약 466 tok/s (step 5→62) |
+| Unsloth t1 | 약 128초/step, 약 1,013 tok/s (step 62→84, 22 step) | 약 278초/step, 약 466 tok/s (step 5→62) |
 
-- 전체 1,638 step 환산(혼자): HF 약 80시간, Unsloth 약 58시간 (중간값 기준, 추정)
-- Unsloth 단독 값은 HF 취소(10:55:01) 이후 8 step 측정이라 확정값이 아니다. 더 긴 구간으로 다시 잰다.
+- 전체 1,638 step 환산(혼자): HF 약 80시간, Unsloth 약 58시간. Unsloth가 step당 약 27% 짧다.
+- Unsloth 단독 값은 HF 취소(10:55:01) 뒤 8 step(128.4초)과 22 step(128.2초)에서 같게 나왔다. step 84 기준 남은 시간은 약 55시간이다.
 
 ## 9. 알려진 한계
 

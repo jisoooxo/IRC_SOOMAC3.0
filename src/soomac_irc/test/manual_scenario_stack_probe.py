@@ -109,7 +109,7 @@ def response_evidence(events, reply, episode, tag):
             "semantic_review": "REQUIRES_INDEPENDENT_REVIEW"}
 
 
-def run_episode(compound, model, processor, stream, *, measure_all=False):
+def run_episode(compound, model, processor, stream, *, measure_all=False, execution_reply_mode="fixed"):
     from soomac_irc.agent_contract import new_session_state, new_turn_state
     from soomac_irc.decision_model import make_call_decision
     from soomac_irc.recommendation_model import make_call_recommendation
@@ -121,7 +121,7 @@ def run_episode(compound, model, processor, stream, *, measure_all=False):
     decision = make_call_decision(model, processor, adapter_name="decision")
     recommendation = make_call_recommendation(model, processor, adapter_name="recommendation")
     response = make_call_response(model, processor, adapter_name="response")
-    graph = build_graph(decision, recommendation, response)
+    graph = build_graph(decision, recommendation, response, execution_reply_mode=execution_reply_mode)
     greeting, announcements = fixture_text()
     session = new_session_state()
     session["history"].append({"role": "assistant", "content": greeting})
@@ -131,6 +131,7 @@ def run_episode(compound, model, processor, stream, *, measure_all=False):
     steps = scenario(compound)
     oracle_order = new_session_state()["order"]
     result_summary = {"episode": name, "planned_turns": len(steps), "observed_turns": 0,
+                      "execution_reply_mode": execution_reply_mode,
                       "passed": False, "stopped_at": None, "plans": [], "unreached": [],
                       "physical_simulation_only": True, "actual_ros": False, "failed_turns": [],
                       "measure_all": measure_all, "automatic_adoption": False,

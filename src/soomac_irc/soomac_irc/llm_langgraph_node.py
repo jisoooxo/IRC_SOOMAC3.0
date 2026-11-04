@@ -56,14 +56,19 @@ from soomac_irc.domain import SECTION_ORDER
 # lid/sauce 자동 실행 안내와 안전 fallback, 사용자 주문 턴은 이 토글과 별개다.
 hard_cording_response = True
 
+# 사용자 실행 턴의 안내: "model"은 검증된 P 출력, "fixed"는 항목·수량 고정 안내.
+# 2026-11-03 확장 멀티턴에서 P가 버섯 low를 high로 발화하여 fixed로 복귀. model은 시험용.
+EXECUTION_REPLY_MODE = "fixed"
+
 # 모델 실행 위치. "hf": 이 노드가 모델을 직접 GPU에 올림(기존).
 # "vllm": tools/vllm_server/start_vllm_server.sh로 띄운 서버에 요청(노드는 모델을 올리지 않음).
-LLM_BACKEND = "hf"
+LLM_BACKEND = "vllm"
 
 ENABLE_VLM = True
 ENABLE_VLM_UI_IMAGES = True
 ENABLE_UNCERTAIN_RETAKE = False
-VLM_JUDGE_REASON_SPEAK = False
+# 명확한 FAIL일 때만 기존 VLM 근거를 안내에 붙인다. 추가 모델 호출은 없다.
+VLM_JUDGE_REASON_SPEAK = True
 
 BY_VLM_NUM = 3
 IMAGE_TOPIC_TYPE = CompressedImage # Image가 될수도 일단 CompressedImage임
@@ -163,7 +168,11 @@ class LLMLangGraphNode(Node):
         self.call_decision = call_decision
         self.call_recommendation = call_recommendation
         self.call_response = call_response
-        self.graph = build_graph(call_decision, call_recommendation, call_response)
+        self.execution_reply_mode = EXECUTION_REPLY_MODE
+        self.graph = build_graph(
+            call_decision, call_recommendation, call_response,
+            execution_reply_mode=self.execution_reply_mode,
+        )
 
 
         # 메인 스레드 -> callback 오면 큐에 ㄱㄱ
@@ -462,7 +471,8 @@ class LLMLangGraphNode(Node):
             raw_text,
             outcome["policy_reply"],
             speak_reason=VLM_JUDGE_REASON_SPEAK,
-            allow_reason=outcome["allow_spoken_reason"],
+            # 발화 범위만 선택한다. 판정/재시도 outcome과 토픽 발행은 위에서 완료된다.
+            allow_reason=verdict == "fail",
         ) 
         self._publish_reply(reply) 
         self.get_logger().info(
@@ -484,6 +494,9 @@ class LLMLangGraphNode(Node):
                 "raw": raw_text,
                 "verdict": verdict,
                 "outcome": copy.deepcopy(outcome),
+                "spoken_reply": reply,
+                "spoken_reason_enabled": VLM_JUDGE_REASON_SPEAK,
+                "spoken_reason_allowed": verdict == "fail",
                 "session": copy.deepcopy(self.graph_state),
                 "robot_state": self._build_robot_state(),
             },
@@ -578,13 +591,13 @@ class LLMLangGraphNode(Node):
         # 선택 질문은 자연어 대화 기록에 남긴다.
         # 아직 사용자가 고른 후보가 아니므로 별도의 pending은 만들지 않는다.
         if self.section == "veggie":
-            return "다음은 야채를 고르실 차례입니다. 양파와 버섯 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+            return "이제 야채를 골라 주세요. 양파와 버섯 중 어떤 걸 얼마나 담을까요? 원하지 않으면 '다음 단계'라고 말씀해 주세요."
 
         if self.section == "meat":
-            return "다음은 육류를 고르실 차례입니다. 소시지와 게살 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+            return "이제 소시지와 게살 중 골라 주세요. 어떤 걸 얼마나 담을까요? 원하지 않으면 '다음 단계'라고 말씀해 주세요."
 
         if self.section == "extra":
-            return "다음은 추가 재료 차례입니다. 치즈와 페퍼론치노 중 원하는 재료와 양을 말씀해 주세요. 원하지 않으면 다음 단계라고 말씀하셔도 돼요."
+            return "이제 추가 재료를 골라 주세요. 치즈와 페퍼론치노 중 어떤 걸 얼마나 담을까요? 원하지 않으면 '다음 단계'라고 말씀해 주세요."
 
         raise ValueError(f"사용자 선택 안내가 없는 section : {self.section}")
     
@@ -1387,7 +1400,14 @@ class LLMLangGraphNode(Node):
                 return
 
             if self._start_current_section():
-                published_reply = build_execution_started_reply(self.graph_state, self.section)
+                model_reply = result["reply"]
+                published_reply = (
+                    model_reply
+                    if getattr(self, "execution_reply_mode", "fixed") == "model"
+                    and not result["policy"].get("response_error")
+                    and isinstance(model_reply, str) and model_reply.strip()
+                    else build_execution_started_reply(self.graph_state, self.section)
+                )
                 if self.graph_state["history"] and self.graph_state["history"][-1]["role"] == "assistant":
                     self.graph_state["history"][-1]["content"] = published_reply
                 else:
