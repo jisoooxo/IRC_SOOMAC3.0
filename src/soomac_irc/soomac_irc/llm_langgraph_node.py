@@ -27,6 +27,7 @@ from soomac_irc.model_runtime import (
     make_call_vlm,
 )
 from soomac_irc.vllm_client import VllmModel, load_vllm_backend, make_call_vlm_remote
+from soomac_irc.startup_warmup import warmup_vllm_agents
 from soomac_irc.decision_model import make_call_decision
 from soomac_irc.agent_contract import new_session_state, new_turn_state
 from soomac_irc.llm_langgraph import (
@@ -63,6 +64,8 @@ EXECUTION_REPLY_MODE = "fixed"
 # 모델 실행 위치. "hf": 이 노드가 모델을 직접 GPU에 올림(기존).
 # "vllm": tools/vllm_server/start_vllm_server.sh로 띄운 서버에 요청(노드는 모델을 올리지 않음).
 LLM_BACKEND = "vllm"
+# 노드 입력 수신 전에 D/Q/P를 각 1회 호출. False는 기존 시작 동작.
+LLM_STARTUP_WARMUP = True
 
 ENABLE_VLM = True
 ENABLE_VLM_UI_IMAGES = True
@@ -119,6 +122,14 @@ class LLMLangGraphNode(Node):
                     RECOMMENDATION_ADAPTER_NAME: RECOMMENDATION_ADAPTER_PATH,
                     RESPONSE_ADAPTER_NAME: RESPONSE_ADAPTER_PATH,
                 })
+                if LLM_STARTUP_WARMUP:
+                    warmup_vllm_agents(self.model, self.processor, {
+                        "decision": DECISION_ADAPTER_NAME,
+                        "recommendation": RECOMMENDATION_ADAPTER_NAME,
+                        "response": RESPONSE_ADAPTER_NAME,
+                    }, self.get_logger())
+                else:
+                    self.get_logger().info("LLM 시작 워밍업 생략 (LLM_STARTUP_WARMUP=False)")
             else:
                 self.model, self.processor = load_model(
                     DECISION_ADAPTER_PATH,
@@ -215,6 +226,7 @@ class LLMLangGraphNode(Node):
         # 실질적으로 돌아가는 내부 로직용 워커 스레드(콜백은 메인에서, 일은 내부 스레드에서 ㅇㅇ)
         self._worker = threading.Thread(target=self.worker_loop, name="llm_langgraph_worker", daemon=True)
         self._worker.start()
+        self.get_logger().info("LLM 입력 준비 완료")
         self.get_logger().info("김도현 박지수 이준미 주재영 수맥 3.0 파이팅")
 
 
