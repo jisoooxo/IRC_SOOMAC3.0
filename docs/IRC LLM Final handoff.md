@@ -1,5 +1,11 @@
 # IRC LLM Final — 계정 전환 인수인계
 
+**최신 VRAM 검증(2026-11-05): 현재16K/.58은 Qwen STT·TTS·LLM 동시 부하에서31.37GiB/여유0.49GiB로 guard 중단했다. 임시12K/.50은28.97GiB/여유2.89GiB로 완주, 필수17/17·추가history trim0이다.** [측정 보고서](2026-11-05_stack_vram_12k_review.md). 운영 기본값은 아직16K/.58이며12K는 미적용 후보이다. 측정노드/GPU는 모두 반환했다. 마이크/외부 이미지 토픽 수신은 미검증이며 저장 입력으로 실제 모델 연산을 측정했다.
+
+**최신 2026-11-05 운영 적용 완료(3/3): 사용자 승인으로 D epoch6/step1638 + 전체 보강 프롬프트 + 서버·클라이언트16K를 적용했다.** Q epoch6/P best150, 고정 실행 안내, VLM 실패 이유 ON은 유지한다. [적용 결과](2026-11-05_d6_prompt_adoption.md). 실제 vLLM 필수17/17, 누적82턴 중 상태·계획80/82·전체 계약77/82, CPU100개 통과. 짧은 “그걸로 담아줘”의 해석 차이·일부 route 오류·서버 재실행 간 변동은 남는다. 검증 서버는 종료했고 다음 기본 실행부터 적용된다. STT/TTS 동시 GPU 상주는 새16K/.58에서 미검증이다. 아래 운영 미교체 표시는 당시 이력이며 GL 전체 완료를 뜻하지 않는다.
+
+**최신 2026-11-05: D/Q/P 실제 추론 및16K 프롬프트·멀티턴 후속 평가 범위 완료.** [후속 결과](2026-11-05_prompt_multiturn_trial_review.md) → [실제 시연 대본](2026-11-05_verified_multiturn_scenarios.md) → [재개 지점](../training/learning_first_v43/final/goals/GL10/dqp_prompt_multiturn_20261105/NEXT.md). 별도D6/Q6/Pbest150의4조건328턴+실패후속18턴을관측했다. 필수시나리오는통과했지만 일부분류/제한누락/모델안내history뒤실행누락과동일요청의서버실행간변동은남는다. 내부변동원인은UNKNOWN이다. 고정실행안내유지권고, 운영adapter/프롬프트미교체, 학습/ROS/VLM/원격변경없음. 임시서버/GPU반환완료. 아래11월1일이전미실행/active표시는그당시이력이며현재평가로범위를넘어GL전체완료를선언하지않는다.
+
 **최신 인계 2026-11-01: 데이터 감사와 비활성 정제 완료.** [RESULT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/RESULT.md) → [ROOT_FINAL_ADJUDICATION](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/ROOT_FINAL_ADJUDICATION.md) → [NEXT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/NEXT.md) 순서다. source D5319/Q687/P1778 장부결속, 영향검수와 Codex-D/P·Claude-Q 새104행 독립KEEP 완료. 비활성 후보는 고유93행/alias11, 원본대체108(D4/Q104), 계약HOLD12다. 사용자 승인으로 근거 없는 새 추천량103행만normal, Qevent scope3이관. 원본·Runtime·모델은 그대로, 학습/ROS/원격/commit 없음. 최종검증/가상통합 exact충돌0이며 실제모델성공은NOT_RUN, 편향수치DEFERRED·Runtime두공백보존이다. 다음은 **완료 검수 반복 없이 새 학습본 재조립 범위 확정**. 아래대기/active/정책미정은과거이력이다.
 
 **2026-10-31 현재 재개 지점:** [data_reaudit STATE](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/STATE.md) → ORACLE.md → DA01_INPUT_MANIFEST.json → ORCHESTRATION_LIVE.json → ROOT_UPDATE_01.md 순서. 사용자 승인 Goal은 active이고 DA01 완료, D/P/Q 새 기준 영향 검수·계보 연결 및 필수 복합 시연 후보의 독립 검수 진행 단계이다. 현재 데이터/CPU 연결 결과를 실제 모델 성공으로 보고하지 않는다. 기존 GL07~10/장부를 재시작하지 말고 동일 키의 불변 승인을 재사용한다. 아래 계획만/미실행 표시는 과거 이력이다.

@@ -252,3 +252,19 @@ RECOMMENDATION_SYSTEM += render_examples("recommendation")
 TASK_RESPONSE_SYSTEM += render_examples("task")
 GENERAL_RESPONSE_SYSTEM += render_examples("general")
 MIXED_RESPONSE_SYSTEM += render_examples("mixed")
+
+# 2026-11-05 사용자 승인: 실제 vLLM 비교에 사용한 전체 보강 문구.
+DECISION_SERVING_ADDENDUM_VERSION = '20261105_full'
+DECISION_SERVING_ADDENDUM = r'''
+
+출력 직전 구분 규칙 — 상태가 있다는 이유만으로 task를 고르지 않는다.
+1. 인사·감정·일상 이야기·로봇의 일반 역할 설명만 요구하면 general이며 다른 field를 만들지 않는다. 현재 주문/후보/진행을 묻거나 실제 음식 선택을 요청하면 task다. 주문 변경과 별도 상식 질문이 함께 있으면 mixed로 두 의미를 모두 처리한다.
+2. preferences는 맛·양·식감 같은 음식 요구만 담는다. 피곤함·우울함·기분·오늘의 사건은 음식 취향이 아니다. 이런 이야기에 음식 요청이 함께 있어도 음식 요구만 추출한다.
+3. 맵게 먹기 어렵다/매운맛을 감당하지 못한다는 섭취 곤란은 target=매운맛, reason=cannot_eat 제한이다. 추천 요청과 함께 있어도 반드시 restrictions에 남긴다. 단순히 덜 맵거나 담백한 맛을 원한다는 말만으로 cannot_eat를 만들지 않는다.
+4. 소스 후보만 제안한 직후 지시어로 그 소스를 선택한 것을 면 실행 승인으로 확대하지 않는다. 반면 후보 수락과 현재 면을 지금 담으라는 요청이 함께 있으면 confirmation=accept와 commit=true를 함께 출력한다. 지금 담지 말라는 부정·나중 실행·실행 여부 질문에는 commit을 만들지 않는다.
+대조 예시(출력은 JSON 하나):
+- 일상 대화 '오전에 일이 꼬여 속상했어요' → {"route":"general"}
+- 음식 요청 '산뜻한 맛으로 먹고 싶어요' → {"route":"task","preferences":[{"action":"add","value":"산뜻하게"}]}
+- 섭취 곤란 '매운맛을 견디지 못하니 순한 소스를 권해 주세요' → {"route":"task","restrictions":[{"action":"add","target":"매운맛","reason":"cannot_eat"}],"recommendation":{"action":"request"}}
+'''
+DECISION_SYSTEM += DECISION_SERVING_ADDENDUM

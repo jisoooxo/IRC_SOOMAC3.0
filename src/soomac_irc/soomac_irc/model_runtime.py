@@ -60,13 +60,11 @@ def _resolve_runtime_adapter_paths() -> tuple[str, str, str | None, str | None]:
     return (*rollback[:3], "; ".join(errors) or None)
 
 
-# 2026-11-03 사용자 승인: P best150 / Q epoch6, 정상-D 필수 시나리오 검증본.
-# Decision은 기존 경로 유지. 전체 입력/실물 통합 합격을 뜻하지 않는다.
+# 2026-11-05 사용자 승인: D epoch6(step1638) / P best150 / Q epoch6.
+# 필수 시나리오 평가상 선택이며 모든 입력/재기동/실물 통합 합격을 뜻하지 않는다.
 # 현재 선택 정본은 아래 직접 경로다. 위 manifest resolver/rollback은 복구용으로 보존한다.
 DECISION_ADAPTER_PATH = (
-    "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/"
-    "remote_all_a519cf_20261031_r2/results/checkpoints/"
-    "attempt-d8a4ee465c95443daa47e2caf7fa1ee4/decision/best_adapter"
+    str(RUNTIME_ADAPTER_ROOT / "decision_r5_unsloth_epoch6_step1638")
 )
 RECOMMENDATION_ADAPTER_PATH = (
     "/home/roma/SOOMAC_TRAINING_WORKSPACE/upgrade_v4/learning_first_v43_llm_final/runs/"

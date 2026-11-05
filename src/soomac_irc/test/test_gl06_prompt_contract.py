@@ -147,7 +147,13 @@ def test_examples_are_static_independent_system_content_not_live_history():
                    mixed=prompts.MIXED_RESPONSE_SYSTEM)
     for group, system in systems.items():
         assert system.count("[독립 시연 — 현재 사용자 사실이 아님]") == 1
-        assert system.endswith(render_examples(group))
+        # Decision appends the user-approved static serving clarification rules
+        # after the unchanged examples; neither becomes live user history.
+        suffix = render_examples(group)
+        if group == "decision":
+            assert prompts.DECISION_SERVING_ADDENDUM
+            suffix += prompts.DECISION_SERVING_ADDENDUM
+        assert system.endswith(suffix)
         for ex in EXAMPLES[group]:
             assert json.dumps(ex, ensure_ascii=False, separators=(",", ":")) in system
     session = new_session_state()

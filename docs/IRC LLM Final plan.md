@@ -1,5 +1,11 @@
 # IRC LLM Final plan
 
+**최신 VRAM 검증(2026-11-05): 현재16K/.58은 Qwen STT·TTS·LLM 동시 부하에서31.37GiB/여유0.49GiB로 guard 중단했다. 임시12K/.50은28.97GiB/여유2.89GiB로 완주, 필수17/17·추가history trim0이다.** [측정 보고서](2026-11-05_stack_vram_12k_review.md). 운영 기본값은 아직16K/.58이며12K는 미적용 후보이다. 측정노드/GPU는 모두 반환했다. 마이크/외부 이미지 토픽 수신은 미검증이며 저장 입력으로 실제 모델 연산을 측정했다.
+
+**최신 2026-11-05 운영 적용 완료(3/3): 사용자 승인으로 D epoch6/step1638 + 전체 보강 프롬프트 + 서버·클라이언트16K를 적용했다.** Q epoch6/P best150, 고정 실행 안내, VLM 실패 이유 ON은 유지한다. [적용 결과](2026-11-05_d6_prompt_adoption.md). 실제 vLLM 필수17/17, 누적82턴 중 상태·계획80/82·전체 계약77/82, CPU100개 통과. 짧은 “그걸로 담아줘”의 해석 차이·일부 route 오류·서버 재실행 간 변동은 남는다. 검증 서버는 종료했고 다음 기본 실행부터 적용된다. STT/TTS 동시 GPU 상주는 새16K/.58에서 미검증이다. 아래 운영 미교체 표시는 당시 이력이며 GL 전체 완료를 뜻하지 않는다.
+
+**최신 2026-11-05: D/Q/P 실제 추론 및16K 프롬프트·멀티턴 후속 평가 범위 완료.** [후속 결과](2026-11-05_prompt_multiturn_trial_review.md) → [실제 시연 대본](2026-11-05_verified_multiturn_scenarios.md) → [재개 지점](../training/learning_first_v43/final/goals/GL10/dqp_prompt_multiturn_20261105/NEXT.md). 별도D6/Q6/Pbest150의4조건328턴+실패후속18턴을관측했다. 필수시나리오는통과했지만 일부분류/제한누락/모델안내history뒤실행누락과동일요청의서버실행간변동은남는다. 내부변동원인은UNKNOWN이다. 고정실행안내유지권고, 운영adapter/프롬프트미교체, 학습/ROS/VLM/원격변경없음. 임시서버/GPU반환완료. 아래11월1일이전미실행/active표시는그당시이력이며현재평가로범위를넘어GL전체완료를선언하지않는다.
+
 **최신 2026-11-01: 감사·비활성 정제 마감.** [RESULT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/RESULT.md) → [최종 판정](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/ROOT_FINAL_ADJUDICATION.md) → [NEXT](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/NEXT.md). 새고유93행(D59/Q4/P30), 원본대체108(D4/Q104), D계약HOLD12를 저장했다. 사용자 수량정책은 **근거 없는 새 추천량만normal**이며 기존량/후보수락량/명시변경량/취향근거량은 보존한다. 원본39파일·LLM의존불변, actual builder/CPUgold연결/훈련mask/8192·변경관련exact충돌0 확인. 새 학습본 조립/새학습/실모델시연/운영교체는 아직 아니다. 기존두Runtime공백과수치편향DEFERRED는남는다. 아래실행중/의미대기/정책대기는과거상태이며완료된검수를반복하지않는다.
 
 **2026-10-31 실행 갱신:** 사용자 승인으로 데이터 감사 Goal이 active이며 [현재 상태](../training/learning_first_v43/final/goals/GL10/data_reaudit_20261031/STATE.md)에서 이어간다. 필수 목표는 자연스러운 누적 주문이며 크림선택+commit·버섯량변경+commit·게살allergy/소시지high+commit·제외/치즈low+commit을 동시에 놓치지 않는다. DA01 입력동결 완료, Codex-D/Codex-P/Claude-Q 실제 시작. 새7대화64기록83후보는 실제 graph/serializer/훈련mask·8192토큰 구조 대조 통과, 독립 의미검수 전이다. 아래 계획 선보고/미시작 표시는 과거 상태이다. 실제 학습·모델교체·ROS/원격/commit은 현재 범위가 아니다.

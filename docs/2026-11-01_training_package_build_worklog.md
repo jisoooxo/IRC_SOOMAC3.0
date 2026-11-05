@@ -1,5 +1,103 @@
 # Decision 원격 패키지와 로컬 순차 학습 — 실제 작업 기록
 
+## 2026-11-05 — 이미지토픽해상도조회·640/FHD7장실제추론완료
+
+**추가 이미지 크기 시험 완료(2026-11-05):** [7장 해상도별 결과](2026-11-05_vlm_resolution_vram_review.md). 운영domain17의이미지발행자0/45초수신0으로실제토픽해상도는UNKNOWN이다. 로컬640×480설정기반fixture와FHD에서7장VLM추론을실행했고각peak26.54GiB, FHD VLM+Qwen30초STT+긴TTS동시부하는27.83GiB/여유4.03GiB로완주했다. 앞선더높은12K/.50 peak28.97GiB기록은유지한다. 운영16K/.58미변경·시험노드종료.
+
+수신측은CompressedImage를RGB로바꿀뿐원본크기를유지한다. 코드색상스트림640×480을외부overlay실제크기로확정하지않았다. 저장입력으로이전1+관측5장을640×480/FHD로준비하고RAG참고1원본을더했다. 관측5장은실제camera_callback/압축해제/snapshot경로를통과했다. VLM은2,408/2,396토큰·2.17/3.25초,동시부하VLM3.16초. 메모리시험이며실물판정정확도·DDS수신·장시간보장은아니다. 이번run은Decision긴입력으로워밍업했으며17턴DQP전체를반복하지않아직전시험과allocator이력이다르다.
+
+runtime41해시불변,6scope inactive/GPUcompute빈목록/포트반환확인. 운영파일·어댑터·VLM정책변경없음. 원본자료·raw결과보존.
+
+Cause:실시간발행자가없어토픽해상도를직접확인하지못했다.
+Effect:640과FHD의7장메모리부하는검증했으며실제토픽해상도는미확인으로남겼다.
+
+## 2026-11-05 — Qwen STT·TTS 동시 상주와12K 임시 비교 완료 (3/3)
+
+**최신 VRAM 검증(2026-11-05): 현재16K/.58은 Qwen STT·TTS·LLM 동시 부하에서31.37GiB/여유0.49GiB로 guard 중단했다. 임시12K/.50은28.97GiB/여유2.89GiB로 완주, 필수17/17·추가history trim0이다.** [측정 보고서](2026-11-05_stack_vram_12k_review.md). 운영 기본값은 아직16K/.58이며12K는 미적용 후보이다. 측정노드/GPU는 모두 반환했다. 마이크/외부 이미지 토픽 수신은 미검증이며 저장 입력으로 실제 모델 연산을 측정했다.
+
+사용자가 전체 노드 상주/추론peak를 요청했고 이후 카메라 직접사용 없음·외부이미지토픽 방식·마이크 미연결을 확인했다. Qwen3-ASR1.7B BF16(아닌 Nemotron), CosyVoice3 실제 노드, vLLM NF4/BF16 D6/Q6/Pbest150, 실제 LLM/UI/MAIN을 ROS217/localhost에서 실행했다. 모델기반·보강·출력한도는 그대로다. STT 파일10초/30초, DQP17턴, VLM7이미지, STT30초+긴TTS+실제9,067토큰입력 동시부하를 NVML50ms로 기록했다. 실물 제어/판정발행은 없다.
+
+16K는 일반대화17/17 및 VLM호출을 마쳤으나 동시부하중512MiBguard로 중단했다. CUDA OOM/OS정지가 아니라 중단전하한이며 TTS종료중ROScontext무효오류를 보존했다. 12K는 GPU예약.50과 client예산을 프로세스로컬로 함께 변경해 완주. 텍스트HTTP29건 모두stop/예산내, 최대입력+예약출력10,091, 실제17턴history추가삭제0. 보강prompt동일/source변경0. 이17턴으로 앞선82턴미해결오류를해결했다고하지않는다. 16K와12K의전체peak차이에는TTS할당차이도있어토큰상한단독인과로보고하지않는다.
+
+Codex읽기전용검수지적에따라두번째시험UI시작/리셋차단·localhost바인딩·감시오류전파·stale-run금지를추가했다. 운영파일변경없음. 실제12scope inactive/GPUcompute빈목록/5000·8000반환확인.12K운영채택시server/client동시변경필요;현재16K기본값유지.
+
+Cause: 단독vLLM시험으로는Qwen/TTS추론중추가할당이겹치는부하를검증하지못했다.
+Effect:12K/.50이보강문구를보존하면서관측동시부하를완주하는후보임을확인했으며실물입력·장시간보장은분리한다.
+
+## 2026-11-05 — D epoch6·전체 보강 프롬프트 운영 적용 완료 (3/3)
+
+**최신 2026-11-05 운영 적용 완료(3/3): 사용자 승인으로 D epoch6/step1638 + 전체 보강 프롬프트 + 서버·클라이언트16K를 적용했다.** Q epoch6/P best150, 고정 실행 안내, VLM 실패 이유 ON은 유지한다. [적용 결과](2026-11-05_d6_prompt_adoption.md). 실제 vLLM 필수17/17, 누적82턴 중 상태·계획80/82·전체 계약77/82, CPU100개 통과. 짧은 “그걸로 담아줘”의 해석 차이·일부 route 오류·서버 재실행 간 변동은 남는다. 검증 서버는 종료했고 다음 기본 실행부터 적용된다. STT/TTS 동시 GPU 상주는 새16K/.58에서 미검증이다. 아래 운영 미교체 표시는 당시 이력이며 GL 전체 완료를 뜻하지 않는다.
+
+운영 D 원본과 검증된 vLLM 변환본을 별도 복사해 연결했으며 가중치 병합은 없다. 기본 max_model_len/max_num_batched_tokens16,384와 GPU 할당률.58을 적용했다. 전체 보강 문구는 앞선 patched.txt와 문자열 동일하다. 새 운영 경로 그대로13대화82턴·146 HTTP를 검증했고, 입력값/자료형/raw와 토큰 한도를 대조했다. 명시적 “그걸로 하고 면은 바로 담아줘”는 정상이다. 짧은 수락은 재질문 대신 면을 즉시 실행한2턴 차이를 그대로 기록했다. 실패 후에도 실제 상태로 끝까지 관측했으며 실물 완료는 오프라인 fixture이다.
+
+초기 CPU 테스트의 프롬프트 suffix 조건과 검증기의 CUDA 초기화 금지 assertion 실패는 로그를 보존했다. 후자는 model_runtime import에 의한 초기화이며 클라이언트 CPU VllmModel/GPU tensor0바이트를 확인해 검사만 교정했다. Q/P 경로·SHA와 node/VLM 보호 파일은 불변이다. 원본 평가/학습/checkpoint/ROS/원격/commit 변경은 없다. 실제 소유 검증unit2개inactive·GPU compute빈목록·포트 반환을 확인했다. 원본 설정 복구본과 변경 SHA, raw 출력은 [적용 근거](../training/learning_first_v43/final/goals/GL10/d6_prompt_adoption_20261105/FINAL_REPORT.md)에 보존한다.
+
+Cause: D6·보강 문구가 평가 경로에만 있어 기본 운영 실행은 이전 Decision을 읽었다.
+Effect: 사용자 승인 선택을 기본 실행에 연결하고 실제 추론으로 확인했다. 전체 합격으로 올리지 않고 잔여 오류·동시 GPU 미검증을 남겼다.
+
+## 2026-11-05 — 16K 프롬프트·멀티턴·실패 후속 평가 완료 (5/5)
+
+[최종 결과](2026-11-05_prompt_multiturn_trial_review.md) · [실제 시연 후보5개](2026-11-05_verified_multiturn_scenarios.md) · [현재 영수증](../training/learning_first_v43/final/goals/GL10/dqp_prompt_multiturn_20261105/FINAL_REVIEW.json).
+
+사용자 지시대로 추가 문구를 압축하지 않고 평가 server/client를16,384토큰으로 확대했다. D6/Q6/Pbest150은 별도 LoRA이며 운영adapter/프롬프트는 교체하지 않았다. 본4조건328/328턴, 후속실패18턴, 캐시진단을 포함해966 HTTP요청을 관측했다. 고정안내 상태/계획은 기존/보강 각각82/82, 모델안내는 각각81/82였다. 기분 오분류는 개선됐지만 일부general/task와 완곡한 매운맛 제한 누락은 남았다. 필수17턴과 “그걸로 하고 면은 바로 담아줘”는4조건 모두 통과했다. 실패에서멈추지않고 실제상태를 유지했으며 명시적재요청/제한정정으로 회복되는 과정도 기록했다.
+
+동일8,825토큰 요청이 서버실행간commit포함/누락으로 달랐다. 캐시없음/재사용/정확한8,320·8,576캐시 대조에서 각서버 내부는일관됐으나 실행간결과가달라 캐시길이단독원인은지지되지않았다. 내부근본원인UNKNOWN이며batchinvariant1을완전결정성으로해석하지않는다. 결과는조건부단일실행관측이다. 현시연권고는고정실행안내유지이며, 전체prompt보강의운영채택은확정하지않았다. 선택3adapter SHA·source38·processor5·입력불변, 소유임시서버4개inactive·GPUcompute빈목록·18001/8000반환확인. 과거평가점수/실패로그는보존했다.
+
+Cause: 토큰 전송/자료형은 정상이어도 Decision 의미 누락과 서버 실행 간 출력 차이가 남았다.
+Effect: 성공만 선별해 배포 완료로 보고하지 않고, 실제 후속 영향·회복·미해결 원인과 재개 지점을 함께 기록한다.
+
+## 2026-11-05 — 사용자 재판정·프롬프트와 고정 안내 비교 시작
+
+소스 추천 뒤 ‘그걸로 담아줘’의 선택 후 면 실행 재질문을 사용자가 정상으로 인정했다. 이전 raw/점수를 지우지 않고 최신 재판정을 별도 보존한다. D6/Q6/Pbest150의 명시적 면 실행, 다양한 멀티턴, general·기분·제한 추출 prompt 전후, fixed/model 안내4조건을 실제 vLLM에서 비교한다. 운영 어댑터는 아직 기존 경로이며 이번에도 평가만 진행한다. [계획](2026-11-05_prompt_multiturn_trial_plan.md).
+
+Cause: 기존 기대 실행 의미와 사용자의 실제 시나리오 의미가 달랐다.
+Effect: 해당 사례를 모델 오류로 단정하지 않고 명시적 대상 실행과 후속 대화를 새 기준으로 확인한다.
+
+## 2026-11-05 — 신규 Decision 포함 실제 vLLM 최종 평가 완료 (5/5)
+
+[최종 보고서](2026-11-05_dqp_actual_inference_final_review.md) · [필수17턴 실제 입력/답변/계획](../training/learning_first_v43/final/goals/GL10/dqp_adoption_20261105/runs/final_d6_q6_pbest150/REQUIRED_SCENARIO_OUTPUTS.md) · [후보 원본/변환 SHA 및 경로](../training/learning_first_v43/final/goals/GL10/dqp_adoption_20261105/SELECTION.json).
+
+D6/Q6/Pbest150을 **필수 대본용 조건부 후보**로 추천한다. 운영 경로 변경과 LoRA 병합은 없다. D1~6, Q1~6, P1~6+best150을 독립 입력으로 비교하고 epoch별 실제 연결 및 D5/D6+현재QP 두 최종 조합까지 총9run을 완료했다. D6 고정QP 단독 필수17/17, 실제 DQP 필수17/17이다. 최종 연결은 계획67턴 중58통과/1실패/8미도달, 기능대화8/9이다. route3건 불일치까지 포함하면55/59관측턴·6/9대화이다. 실제 P41턴/고정 실행안내18턴을 구분하며 고정 안내를 P생성으로 세지 않았다.
+
+loss best D2는 버섯normal 변경을 누락해 mushroom1(기대2) 계획을 만들었다. D2/P2는 모호한 변경 뒤 clarify 누락으로 ‘응’에 과거 onion1/mushroom3 계획을 승인했다. 실물 실행은 없다. D3~6은 기본17턴을 통과하지만 추천 뒤 ‘그걸로 담아줘’에서 commit 누락이 남는다. D5/6은 기능대화8/9 동점이며 D5 독립 mixed의 면종류 누락을 D6는 맞혀 조건부 D6를 추천했다. D6의 general/task 분류·일부 감정 취향화·매운맛 cannot_eat 누락은 남아 **전체 합격/운영 채택은 보류**한다. Q4 새콤한 소스 빈proposal도 확인했다. P 후반 일부 확인질문 생략은 별도 품질항목이며 현재 Pbest150/fixed를 유지하는 후보로 정리했다.
+
+오염 감사: 전체 input train정확중복0이지만 발화D1/P36·근접템플릿D27/P36·이전선택노출이 있어 깨끗한 비노출 일반화 시험이 아니다. 새50개 입력은 정확중복0, 의미독립보증은 아니다. 평가기의 Q호출/후보저장/clarify 검사 누락을 발견해 원래 점수를 보존하고 모든run에 FIELD_AUDIT을 추가했다. D5/6 엄격불일치21건씩은 동등표현·진짜필드누락·route·runtime repair를 분류했고 정답을 고쳐 통과시키지 않았다.
+
+전송1852건 입력값/타입 일치. raw1851건 trace일치, D2 중복JSON키 오류1건은 trace raw가 없어 직접 대조불가(HTTP원문 보존). CPU3 tests+7 subtests 통과. 소유9scope 종료0/inactive, GPU compute없음,8000/18001 listener없음. source/processor SHA 및 운영config/launcher 불변. 최초pytest는 외부ROS플러그인 lark부재로 수집실패해 플러그인자동로드만 끈 명령으로 검사했고 패키지 변경은 없다.
+
+Cause: loss/엄격 JSON 일치만으로는 실제 수량·commit·모호성·제한 처리 성공을 보장하지 못했다.
+Effect: 실제 추론과 출력 검수를 완료했고 통과 범위/실패/미도달을 분리해 조건부 후보만 선정했다. 원본checkpoint·데이터·VLM·실물ROS·원격·운영adapter는 보존했다.
+
+
+## 2026-11-05 — 오염 감사·동결 완료 / 실제 추론 비교 진행
+
+[감사](../training/learning_first_v43/final/goals/GL10/dqp_adoption_20261105/audit/REVIEW.md). 전체 input train 중복0, 발화 중복 D1/P36 및 템플릿 근접 후보를 확인했다. 기존 평가 노출/정답 교정 이력을 분리하고 D117/Q8/P19와 필수17+확장50턴을 동결했다. 새 문항의 정확 발화/입력 중복0은 의미 독립 보증이 아니다. D/Q/P 프롬프트 전부 학습 정본과 동일하며 D/Q schema도 같다. 원격 결과 레이어 SHA·학습 manifest/base/tokenizer·6epoch commit 및 vLLM 변환 tensor 동일성 확인. LoRA 병합/운영 교체 없음.
+
+첫 실제 조합 D2/Q6/Pbest150: 개별 D엄격100/117(Q8/8, P19/19 자동), 연결54턴 관측. 분리11턴은 통과했으나 복합4에서 D가 버섯 normal 변경을 누락하고 commit만 출력해 mushroom1(기대2) 계획을 생성했다. 추천 뒤 지시어 수락, 제거+실행, 일반→mixed 주문 누락도 발견했다. [원문/검수](../training/learning_first_v43/final/goals/GL10/dqp_adoption_20261105/runs/best2_current/MANUAL_REVIEW.md). 실제 요청242건의 토큰을 CPU복호화하여 입력 값/자료형과 HTTP raw를 대조했다. 동일 표현의 단순 필드 조합 차이는 엄격 불일치와 실제 실패를 구분한다.
+
+D1/Q1/P1도 완료했으나 첫 복합 요청의 면 대신 양파를 변경하는 등 D 실패가 있었다. 다른 epoch 비교는 진행 중이며 최종 선정은 아직 아니다. Q/P를 동결한 Decision 단독 순차 시나리오도 별도 파일에 기록한다. 완료한 개별 D2/Q6 입력은 반복하지 않고 해당 비교 증거를 재사용한다.
+
+평가 서버 종료(exit0) 후 다음 후보 포트 bind가 TIME_WAIT를 점유로 오인해 driver가 멈췄다. listener 없음과 TIME_WAIT를 직접 확인했다. 새 평가 runner의 bind에 SO_REUSEADDR만 적용해 실제 listener는 여전히 거부하고 종료된 연결만 허용했다. 완료 결과·원래 실패 로그를 보존하고2epoch부터 재개했다. 운영 launcher/서비스 변경 및 타 프로세스 종료는 하지 않았다.
+
+Cause: 실제 D를 연결하니 정답 D 주입 시험에서는 드러나지 않던 필드 누락이 관측됐다.
+Effect: loss best를 바로 채택하지 않고6epoch 전체와 독립/연결 범위를 구분해 비교한다.
+
+## 2026-11-05 — Goal 범위 정정: 독립 LoRA 실제 추론·최종 평가
+
+사용자가 GPU 모델+어댑터 실제 추론을 재확인했고, 어댑터를 통합하라는 뜻이 아니라고 정정했다. **각 LoRA를 별도로 유지하고 실제 vLLM 추론까지 평가한다.** D→Q→P 호출 연결은 수행하지만 가중치 병합/base merge 및 운영 경로 교체는 하지 않는다. Goal은 active를 유지하며 최신 plan과 `dqp_adoption_20261105/GOAL.md`에 최종 평가·후보 선정 완료 기준을 반영했다.
+
+Cause: 어댑터 통합과 모델 호출 연결 평가의 범위를 명확히 할 필요가 있었다.
+Effect: 실제 출력과 성능 근거로 후보를 선정하며 기존 운영 모델은 보존한다.
+
+## 2026-11-05 — Decision 도착 / 실제 D/Q/P 평가 Goal 시작
+
+[현재 계획](2026-11-05_decision_arrival_evaluation_plan.md). 사용자가 Downloads의 `9099313a041f420a92b775c23e4d79ea-result.tar` 평가, 기존 평가셋 오염 감사, Decision 단독 필수 시나리오 및 실제 vLLM D/Q/P 통합·멀티턴/general/task/mixed 평가와 통과 어댑터 채택을 요청했다. Goal ACTIVE이다. 최초 원본 목록30항목 확인 결과 OCI 이미지 아카이브이며 총 내부 파일27,973,892,509bytes다. 이미지를 실행하지 않고 결과 레이어·학습 provenance부터 확인한다. 디스크 여유99GiB를 관측했다. 아직 새 후보 추론/채택은 하지 않았다.
+
+기존 필수 시나리오는 학습에 포함된 기능 회귀이며, 기존 P/Q 평가셋은 반복 선택에 사용되어 깨끗한 최종 일반화 시험이 아니다. 정확 중복/의미·정답·자료형/선택 노출을 구분해 감사하고 새 확장 기준을 후보 출력 전에 동결한다. 기존44턴은 정상 D 주입 결과이므로 신규 D 성공 증거로 재사용하지 않는다. 최신 사용자 판정에 따라 이전 알레르기 문장 표현 주의1건은 정상으로 인정한다. 과거 raw/보고서는 당시 이력으로 보존한다.
+
+Cause: 신규 Decision이 도착해 정답 D 가정 없이 실제 추출·누적 상태·실행 계획을 확인할 수 있게 됐다.
+Effect: 오염 감사와 입력/판정 동결을 먼저 수행하며, 필수 시나리오를 통과한 조합만 채택한다.
+
 ## 2026-11-04 — 필드 누락·바로 실행·실제 답변 추가 감사
 
 [상세 대조](../training/learning_first_v43/final/goals/GL10/fixed_history_vllm_20261104/FIELD_EXECUTION_REVIEW.md). 사용자가 필드 누락, ‘바로 담아줘’, 실제 답변까지 확인하도록 요청했다. 저장된 실제44턴을 CPU로 재대조해 정규화 D/session/order 필수키, patch/제한 적용, 미변경 값 보존, 전체 기대 주문, commit/execute/계획, P 입력17키·confirmed_order·reply, Q proposal/reason_tags 구조를 확인했다. **44/44 필드 검사 통과, ‘바로’ 포함8/8 실행, 전체18/18 계획 일치**다. 변경·보존 필드와 실행18턴 답변은 별도 JSON/MD로 남겼다. 원시 추론 기록은 변경하지 않았다.
@@ -1951,3 +2049,8 @@ GC ON batch2×accumulation8은 321.8207초/update로 완료했다. 기존276.348
 Cause: GC OFF는 보관할 활성값이 늘고, 부분 GC도 누적 도중 메모리 확보에 실패했다.
 Effect: 실패 후보의 가상 속도를 성과로 세지 않고, 완료한 optimizer update 시간으로 설정을 선택한다.
 
+
+
+### 2026-11-05 D/Q/P 시작 워밍업 한정 시험
+
+사용자 요청으로 로컬 임시 vLLM에서 현행16K/.58 및 후보12K/.50을 각각37회(총74회) 측정했다. 대표D/Q/P 동일요청 합계는16K7.964→2.610초,12K8.040→2.633초였다. 후속입력25개 뒤12K의Q cache hit0이 관측됐지만 전체3.800초로 정상 완료했다. 운영 시작절차/설정은 미적용이며 원본41파일·adapter SHA불변,시험scope/GPU반환을 확인했다. 첫 interpreter/pynvml 오류와 빈health JSON해석 오류의 로그는 보존하고 r2에서 완료했다. 일반원리만의 Codex교차검수는 조건부 찬성이며 내부코드·실측값 독립검수와 구분한다. [상세 결과](2026-11-05_dqp_warmup_review.md).

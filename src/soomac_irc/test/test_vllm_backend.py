@@ -85,9 +85,9 @@ def test_output_budget_is_capped_to_server_length(monkeypatch):
         model.generate(input_ids=torch.tensor([list(range(10))]), max_new_tokens=8, eos_token_id=1)
 
 
-@pytest.mark.parametrize("served_len", [None, "10240", 8192])
+@pytest.mark.parametrize("served_len", [None, "16384", 8192, 10240])
 def test_backend_refuses_server_without_enough_length(monkeypatch, served_len):
-    # 서버 길이를 모르거나 노드 입력 기준(10240)보다 짧으면 노드 시작을 막는다.
+    # 서버 길이를 모르거나 노드 입력 기준(16384)보다 짧으면 노드 시작을 막는다.
     monkeypatch.setattr(vllm_client, "wait_until_ready", lambda: None)
     monkeypatch.setattr(vllm_client, "served_models",
                         lambda: [{"id": vllm_client.VLLM_BASE_MODEL, "max_model_len": served_len}])

@@ -16,7 +16,7 @@ from soomac_irc.response_contract import (
 )
 
 RESPONSE_MAX_TOKENS = 512
-# 2026-11-01: 서빙 한도(10240) - 출력 512 = 9728. 넘으면 오래된 대화부터 뺀다(현재 실측 최대 8408).
+# 서빙 한도16384 - 출력512 = 입력15872. 한도 내에서는 기존 history를 유지한다.
 RESPONSE_INPUT_MAX_TOKENS = input_token_limit(RESPONSE_MAX_TOKENS)
 RESPONSE_SYSTEM_BY_ROUTE = {
     "task": TASK_RESPONSE_SYSTEM,

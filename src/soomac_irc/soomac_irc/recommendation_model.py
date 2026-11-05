@@ -21,7 +21,7 @@ from soomac_irc.response_contract import build_recommendation_model_input
 
 RECOMMENDATION_MAX_TOKENS = 1024
 RECOMMENDATION_HISTORY_TURNS = 10
-# 2026-11-01: 서빙 한도(10240) - 출력 1024 = 9216. 넘으면 오래된 대화부터 뺀다(현재 실측 최대 약 3.9k).
+# 서빙 한도16384 - 출력1024 = 입력15360. 한도 내에서는 기존 history를 유지한다.
 RECOMMENDATION_INPUT_MAX_TOKENS = input_token_limit(RECOMMENDATION_MAX_TOKENS)
 
 

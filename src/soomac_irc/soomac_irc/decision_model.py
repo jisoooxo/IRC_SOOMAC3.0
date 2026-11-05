@@ -23,8 +23,8 @@ DECISION_MAX_TOKENS = 1024
 # GL06 offline baseline/candidate/repair and 20-message stress measurements:
 # 8192 loses additional history with demos; 16384 is the minimum measured cap
 # preserving at least the GL05 baseline window. GPU cost acceptance is GL11.
-# 2026-11-01: 서빙(vLLM max_model_len 10240) 한도에 맞춰 10240 - 출력 1024 = 9216으로 낮춘다.
-# 학습 max_length(decision 9216)와 같은 기준이다. 현재 실측 최대 입력은 8588토큰이라 평소에는 자르지 않는다.
+# 2026-11-05: 전체 보강 문구용 서빙16384 - 출력1024 = 입력15360.
+# 학습 길이/체크포인트를 변경하지 않고 서빙 입력 여유만 늘린다.
 DECISION_INPUT_MAX_TOKENS = min(16384, input_token_limit(DECISION_MAX_TOKENS))
 DECISION_KEYS_ANY_ORDER = True
 

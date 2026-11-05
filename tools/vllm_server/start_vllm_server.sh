@@ -13,17 +13,18 @@ MODEL_PATH=${MODEL_PATH:-/home/roma/Desktop/sLLM/gemma-4-12B-it}
 ADAPTER_ROOT=${ADAPTER_ROOT:-/home/roma/IRC_SOOMAC3.0/models/vllm_adapters}
 HOST=${VLLM_HOST:-127.0.0.1}
 PORT=${VLLM_PORT:-8000}
-# 2026-11-01 실측(STT·TTS 동시 상주, 동시 처리 2): 0.45 → GPU 전체 최대 26.6GB(상한 27GB), 0.50 → 27.9GB, 0.42 → 기동 실패
-GPU_MEM=${VLLM_GPU_MEM:-0.45}
-# 현재 Decision 입력 최대 약 8.4k + 출력 1024. 프롬프트가 더 길어지면 올려야 한다(메모리 증가)
-MAX_LEN=${VLLM_MAX_LEN:-10240}
+# 2026-11-05 전체 Decision 보강 문구/16K 적용: .45는 KV 부족, .58은 단독 기동·추론 통과.
+# 이전10K/.45의 STT·TTS 동시 상주 측정은 이16K 설정의 동시 실행 보장이 아니다.
+GPU_MEM=${VLLM_GPU_MEM:-0.58}
+# 클라이언트 input_budget.SERVING_MAX_MODEL_LEN과 함께 맞춘다.
+MAX_LEN=${VLLM_MAX_LEN:-16384}
 MAX_LORA_RANK=${VLLM_MAX_LORA_RANK:-16} # 어댑터 rank가 커지면 같이 올린다
 # 서버 기본값(약 2.5k)이면 6~8k 입력을 여러 조각으로 나눠 계산해 HF와 수치가 갈라진다(오프라인 실측 12/14 → 9/14).
 # 한 요청을 한 번에 계산하도록 최대 입력 길이 이상으로 둔다.
 MAX_BATCHED=${VLLM_MAX_BATCHED:-$MAX_LEN}
 # 서버 기본 동시 처리 수(256)만큼 CUDA graph·작업 공간을 잡는다. 노드는 한 번에 1개씩만 보내므로 작게 둔다.
 MAX_SEQS=${VLLM_MAX_SEQS:-2}
-# 실행마다 같은 출력(결과 고정). 2026-11-01 사용자 결정으로 기본 켬.
+# batch invariant는 기본 켬. 2026-11-05 동일 요청의 서버 재기동 간 차이는 남아 완전 결정성을 보장하지 않는다.
 # 0.45 + STT·TTS 상주 실측: 17턴 2회 필드 17/17 일치, 25.8GiB, 17턴 36.0초(끔 37.2초). 끄려면 VLLM_BATCH_INVARIANT=0
 export VLLM_BATCH_INVARIANT=${VLLM_BATCH_INVARIANT:-1}
 # 실험용(기본 꺼짐). MTP 추측 디코딩: VLLM_SPEC_MODEL=/home/roma/models/gemma-4-12B-it-assistant VLLM_SPEC_K=2

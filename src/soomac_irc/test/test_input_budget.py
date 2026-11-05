@@ -20,9 +20,9 @@ def _history(turns):
 
 
 def test_limits_reserve_output_tokens():
-    assert input_budget.SERVING_MAX_MODEL_LEN == 10240
-    assert input_token_limit(1024) == 9216
-    assert input_token_limit(512) == 9728
+    assert input_budget.SERVING_MAX_MODEL_LEN == 16384
+    assert input_token_limit(1024) == 15360
+    assert input_token_limit(512) == 15872
 
 
 def test_under_limit_input_is_unchanged():

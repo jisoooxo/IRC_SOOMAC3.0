@@ -4,7 +4,7 @@ import json
 # vLLM 서버는 "입력 + 출력"이 max_model_len을 넘는 요청을 거부한다. 넘기 전에 가장 오래된 대화부터 뺀다.
 # 학습(r5)은 대화를 자르지 않는다(초과 행은 오류). 학습 행의 최대 입력이 이 한도보다 짧아 학습에서 본 입력은 여기서도 그대로다.
 # HF 경로에도 똑같이 적용해 백엔드가 바뀌어도 모델이 보는 입력이 같게 한다.
-SERVING_MAX_MODEL_LEN = 10240  # tools/vllm_server/start_vllm_server.sh의 VLLM_MAX_LEN과 같아야 한다
+SERVING_MAX_MODEL_LEN = 16384  # tools/vllm_server/start_vllm_server.sh의 VLLM_MAX_LEN과 같아야 한다
 
 # 대화 기록을 모두 뺀 뒤 남는 부분(주문 상태·이번 발화 등)이 커질 여유. 시작 시 검사에 쓴다.
 DYNAMIC_INPUT_RESERVE_TOKENS = 1024
