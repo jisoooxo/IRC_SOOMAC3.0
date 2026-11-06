@@ -2094,3 +2094,33 @@ Effect: 실제 다른 첫 질문에서 D/Q/P 모두 캐시 재사용을 확인�
 
 Cause: 후보의 합성 계산은 빨라졌으나 첫 출력 개선이 작고 불균일하며, 의존성 대조가 정상 동작하지 않았다.
 Effect: 운영을 유지하면서 실행 가능성과 메모리/음성 자료를 확보했다. [계획](2026-11-05_tts_vllm_trial_plan.md) · [최종 보고](2026-11-05_tts_vllm_trial_review.md).
+
+### 2026-11-05 최신 프롬프트·D/Q/P HF/vLLM 재비교 시작
+
+사용자가 최신 Decision까지 포함해 HF/vLLM을 여러 옵션으로 재측정하도록 승인했다. `docs/2026-11-05_hf_vllm_compare_plan.md` 선작성, 도구는 `tools/hf_vllm_compare/`, 증거는 `training/learning_first_v43/final/goals/GL10/hf_vllm_compare_20261105/`이다. HF접두OFF/ON, vLLM16K접두OFF/ON(invariantON),16K invariantOFF,12K/.50의6조건을 순차실행한다. D6/Q6/Pbest150 원본656tensor×3 및 변환본16추가K/V복제×3의실제동일성CPU확인. 원본40source/4환경inventory/adapter/tokenizer를BEFORE로봉인했다.
+
+현재 HF loader의 LoRA1968tensor가FP32이며 vLLM LoRAauto는BF16modeldtype를따르는것을확인했다. 배포기준6조건을유지하고7번째시험용HF캐시ON/LoRA BF16을추가해정밀도차이를구분한다. 새환경설치나원본dtype/설정변경은없다. 조건마다같은12입력(D5/Q2/P5)을3회생성하고,실제생성history를이어36턴closed-loop를수행한다. Qwen STT/기존HF TTS상주, 실물ROS/VLM/음성재생없음. 추가history삭제는실패로기록하며cold/warm·반복입력cache와신규질문효과를구분한다. 일반설계Codex조건부3건을반영했다. 현재실행중이며속도/품질최종판정은아직이다.
+
+### 2026-11-05 18:38 HF/vLLM 비교 재개
+
+완료 전 상태 문의에 따라 로그·호스트를 확인했다. HF캐시ON은36/36턴완료, OFF는36회replay후18턴에서GPU여유가0.70GiB로내려가소유scope만안전중단했다. 첫vLLM캐시OFF는6회replay기록만남고프로세스는없으며종료원인은UNKNOWN이다. 완료로간주하지않고원본부분로그를보존한채미완료5조건을재개했다. 운영40source/tokenizer/input불변확인.
+
+### 2026-11-05 19:04 최신 프롬프트·D/Q/P HF/vLLM 재비교 종료
+
+[최종 비교표](2026-11-05_hf_vllm_compare_review.md) · [계획](2026-11-05_hf_vllm_compare_plan.md). D epoch6/step1638, Q epoch6/step234, P best150을 병합 없이 적재했다. 7조건 각12고정입력×3회=252추론은JSON/stop정상이다. 36턴 closed-loop는6조건이36/36, HF캐시OFF는18/18관측후GPU여유0.70GiB 안전중단으로전체미완료다.
+
+| 조건 | warm24회 합계초 | 36턴 LLM초 | 장치전체peakGiB |
+|---|---:|---:|---:|
+| HF 캐시OFF |115.92|미완료18턴|31.16|
+| HF 캐시ON |34.36|103.16|25.96|
+| HF 캐시ON·LoRA BF16대조 |33.47|96.49|24.40|
+| vLLM16K/.58 캐시OFF·invariantON |55.60|170.15|30.06|
+| vLLM16K/.58 캐시ON·invariantON 현행 |14.76|49.14|29.55|
+| vLLM16K/.58 캐시ON·invariantOFF |11.86|40.88|29.54|
+| vLLM12K/.50 캐시ON·invariantON |16.22|49.58|27.55|
+
+Qwen STT/기존HF TTS를 함께 상주시킨 LLM시간이며 음성재생·VLM·실물시간은 제외한다. 현행HF→vLLM warm합계비율2.33배이나 라이브러리·커널·캐시·dtype차이가 있는 배포비교이다. invariantOFF는반복ID16의실효commit이false→true→false로바뀌므로ON유지권고다. ID49의JSON변동은기존pending해석뒤동일commit=true로정규화돼모두실행오류로세지않았다. 실제최종응답전체는artifact OUTPUTS.md.
+
+원본source40·모델JSON5·입력2·원본/변환adapter SHA 및4환경이름/버전목록불변,각실행adapter경로일치,baseweight크기/mtime일치,시험scope/GPU0·18001해제확인. RustDesk311MiB만남았다. manifest all_gates_pass는원래false이며직접adapter경로가정본이다. 검수코드가true를잘못요구한최초실패를보존하고검수조건만수정해exit0확인했다.
+
+예외: 첫vLLM6회중단원인UNKNOWN, 첫HF BF16준비에서wetext의ModelScope보조FST다운로드/403재시도가있어캐시일부갱신됐다. 소유scope만정리하고원본부분3회보존,시험용로컬캐시wrapper로2조건재개했다. 운영source/package/adapter는수정하지않았으며전체파일시스템불변은주장하지않는다. Codex최종검수는조건부로비교해석을지지했고,재개로그/.50설정의독립검수입력누락은최종보고에한계와직접근거로남겼다.
