@@ -25,7 +25,7 @@ RAIL_ROTATIONS = {
     'sauce_oil': 371,
     'sauce_tomato': 371,
     'cover': 375,
-    'handoff': 180,
+    'handoff': 225,
 }
 
 

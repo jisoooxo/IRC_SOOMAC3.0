@@ -61,15 +61,15 @@ FINISH_TOLERANCE_DEG = 0.2
 
 ENABLE_MOTION = True
 
-PROFILE_VELOCITY = 40
-PROFILE_ACCELERATION = 30
+PROFILE_VELOCITY = 70
+PROFILE_ACCELERATION = 40
 
 JOINT_MIN = np.deg2rad([-200.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([550.0, 120.0, 170.0, 140.0, 120.0, 360.0])
 MAX_Q_STEP = math.radians(2.0)
 
 GRIP_PHASES = {'grip_pick', 'grip_place', 'spoon_pick', 'spoon_place'}
-PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full', 'sauce_full'}
+PACK_PHASES = {'pack_pick', 'pack_place', 'pack_full', 'sauce_full','pack_handoff'}
 
 
 def signed_delta_tick(raw_now, raw_home):
