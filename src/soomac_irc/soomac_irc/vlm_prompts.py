@@ -6,7 +6,11 @@ from soomac_irc.domain import SAUCES
 SAUCE_NAMES = SAUCES
 
 VERDICT_RULE = (
-    "먼저 한두 문장으로 실제로 확인한 시각 근거를 설명한다. "
+    "시각 근거는 짧은 2~3문장으로 쓴다. "
+    "작업 전후 비교 이미지가 있으면 전 상태와 후 변화를 중심으로, 재료별 필수 비교 근거를 포함한다. "
+    "비교 이미지가 없으면 제공된 작업 후 이미지에서 실제로 확인한 근거만 쓴다. "
+    "같은 내용을 반복하거나 불필요한 위치·외형 설명을 덧붙이지 않는다. "
+    "근거 본문에는 PASS, FAIL, UNCERTAIN이라는 말을 쓰지 않는다. "
     "마지막 줄에는 반드시 판정: PASS, 판정: FAIL, "
     "판정: UNCERTAIN 중 하나만 단독으로 출력한다."
 )
@@ -43,7 +47,6 @@ INGREDIENT_RULES = {
         "오른쪽 상단 야채칸의 흰 양파와 게살칸의 흰 속살도 치즈가 아니다. "
         "근거는 먼저 작업 전 치즈칸 바닥이 비어 있었는지 쓰고, 그다음 작업 후 치즈칸 바닥이 "
         "쌓인 조각으로 덮였는지 또는 검은 바닥이 그대로 보이는지 쓴다. "
-        "근거는 2~3문장으로 간단히 쓰며, PASS라는 말 없이 실제로 확인한 시각 근거만 적는다."
     ),
 }
 #  "낱개 한두 조각이나 흩어진 부스러기만 있으면 FAIL이다. "
@@ -174,7 +177,6 @@ def build_ingredient_prompt(expected: str, image_count: int, has_comparison: boo
         f"기대 변화가 없거나 {_subject(expected)} 아닌 다른 재료가 추가됐으면 FAIL이다. "
         "화면의 bounding box, class 글자, 체크 표시 같은 overlay는 실제 변화의 증거로 사용하지 않는다. "
         f"가림이나 흔들림 때문에 비교할 수 없으면 UNCERTAIN이다. {VERDICT_RULE}"
-        "근거는 2~3문장으로 간단히 쓰며, PASS, FAIL, UNCERTAIN이라는 말 없이 실제로 확인한 시각 근거만 적는다."
     )
     user_text = (
         f"비교 이미지 출처는 {comparison_label}이다. "
