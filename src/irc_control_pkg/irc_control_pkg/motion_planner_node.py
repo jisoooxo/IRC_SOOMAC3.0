@@ -5,7 +5,7 @@ import math
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from irc_control_pkg.kinematics_irc import IRCKinematics
+from irc_ws.src.irc_control_pkg.irc_control_pkg.kinematics import IRCKinematics
 from irc_control_pkg.cp_motion import CPMotion
 from irc_control_pkg.reset_motion import ResetMotion
 from std_msgs.msg import Empty, Bool, Float64MultiArray, MultiArrayDimension, String, Int16

@@ -31,14 +31,12 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'motor_motion_control_node = irc_control_pkg.motor_motion_control_node:main',
-            'main_irc_node = irc_control_pkg.main_irc:main',
-            'point_pose_node = irc_control_pkg.point_pose_node:main',
-            'main_vlm_node = irc_control_pkg.main_vlm:main',
-            'point_pose_vlm_node = irc_control_pkg.point_pose_vlm_node:main',
-            'detect_yolo_sam_obb_pub = irc_control_pkg.detect_yolo_sam_obb_pub:main',
+            'main_node = irc_control_pkg.soomac_main_node:main',
+            'controller_node = irc_control_pkg.arm_controller_node:main',
+            'planner_node = irc_control_pkg.motion_planner_node:main',
+            'vision_node = irc_control_pkg.object_detection_node:main',
             'transform_node = irc_control_pkg.transform_node:main',
-            'rail_node = irc_control_pkg.rail_bridge:main',
+            'rail_node = irc_control_pkg.rail_node:main',
         ],
     },
 )
