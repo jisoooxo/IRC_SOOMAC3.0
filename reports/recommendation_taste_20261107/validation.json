@@ -1,0 +1,322 @@
+{
+  "budget": {
+    "old": 3957,
+    "new": 5103,
+    "added": 1146,
+    "output_reserve": 1024,
+    "remaining": 10257,
+    "stress_tokens": 14468,
+    "stress_dropped_messages": 14,
+    "state_preserved": true,
+    "oversized_current_input_rejected": true
+  },
+  "response_budget": {
+    "task": {
+      "tokens": 8055,
+      "remaining": 7817,
+      "stress_tokens": 14044,
+      "stress_dropped": 16,
+      "state_preserved": true
+    },
+    "general": {
+      "tokens": 1964,
+      "remaining": 13908,
+      "stress_tokens": 13985,
+      "stress_dropped": 12,
+      "state_preserved": true
+    },
+    "mixed": {
+      "tokens": 3686,
+      "remaining": 12186,
+      "stress_tokens": 15707,
+      "stress_dropped": 12,
+      "state_preserved": true
+    }
+  },
+  "server_limit": 16384,
+  "method": "Fixed Decision; actual vLLM Recommendation and Response adapters; in-memory graph only, no ROS, no server restart. Not a full end-to-end Decision evaluation.",
+  "cases": [
+    {
+      "name": "original",
+      "text": "면은 얇은 면으로 보통 양으로 주고 소스는 매운 걸로 추천해 줘.",
+      "seconds": 4.369,
+      "recommendation": {
+        "proposal": {
+          "sauce": "토마토",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "페퍼론치노": "normal"
+          }
+        },
+        "accepted_fields": [
+          "sauce",
+          "toppings.페퍼론치노"
+        ],
+        "rejected_fields": [],
+        "raw_proposal": {
+          "sauce": "토마토",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "페퍼론치노": "normal"
+          }
+        },
+        "reason_tags": [
+          "소스 자체의 매운맛은 확인되지 않음",
+          "페퍼르치노를 추가해 매운맛을 내는 대안"
+        ],
+        "reason_validation": {
+          "source": "model",
+          "schema_valid": true,
+          "semantic_status": "unverified"
+        }
+      },
+      "reply": "면은 얇은 면으로 보통 양을 주문에 반영했어요. 소스는 토마토 소스에 페퍼론치노를 보통 양으로 더해 매운맛을 내는 구성을 추천드려요. 이 구성으로 고를까요?",
+      "policy": {
+        "status": "pass",
+        "reason": "recommendation_proposed",
+        "execute": false,
+        "conflicts": []
+      },
+      "tokens": {
+        "recommendation": [
+          {
+            "input": 5103,
+            "output": 71,
+            "error": null
+          }
+        ],
+        "response": [
+          {
+            "input": 8162,
+            "output": 59,
+            "error": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "broad_spicy",
+      "text": "매운 걸로 추천해 줘.",
+      "seconds": 4.092,
+      "recommendation": {
+        "proposal": {
+          "sauce": "오일",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "페퍼론치노": "normal"
+          }
+        },
+        "accepted_fields": [
+          "sauce",
+          "toppings.페퍼론치노"
+        ],
+        "rejected_fields": [],
+        "raw_proposal": {
+          "sauce": "오일",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {
+            "페퍼론치노": "normal"
+          }
+        },
+        "reason_tags": [
+          "오일 소스 자체의 매운맛은 확인되지 않음",
+          "페퍼로치노를 추가해 매운맛을 내는 대안"
+        ],
+        "reason_validation": {
+          "source": "model",
+          "schema_valid": true,
+          "semantic_status": "unverified"
+        }
+      },
+      "reply": "오일 소스 자체의 매운맛은 확인되지 않아요. 대신 페퍼론치노를 추가해 매운맛을 내는 구성을 추천드려요. 이 후보를 선택할까요?",
+      "policy": {
+        "status": "pass",
+        "reason": "recommendation_proposed",
+        "execute": false,
+        "conflicts": []
+      },
+      "tokens": {
+        "recommendation": [
+          {
+            "input": 5090,
+            "output": 73,
+            "error": null
+          }
+        ],
+        "response": [
+          {
+            "input": 8154,
+            "output": 49,
+            "error": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "cannot_eat_spicy",
+      "text": "매운 걸 못 먹는데 소스 추천해 줘.",
+      "seconds": 2.168,
+      "recommendation": {
+        "proposal": {
+          "sauce": "크림",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "accepted_fields": [
+          "sauce"
+        ],
+        "rejected_fields": [],
+        "raw_proposal": {
+          "sauce": "크림",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "reason_tags": [
+          "매운맛 섭취 제한을 지키면서 선택 가능한 안전한 소스 후보"
+        ],
+        "reason_validation": {
+          "source": "model",
+          "schema_valid": true,
+          "semantic_status": "unverified"
+        }
+      },
+      "reply": "매운맛을 피해야 하니 크림 소스를 추천드려요. 크림으로 고를까요?",
+      "policy": {
+        "status": "pass",
+        "reason": "recommendation_proposed",
+        "execute": false,
+        "conflicts": []
+      },
+      "tokens": {
+        "recommendation": [
+          {
+            "input": 5112,
+            "output": 53,
+            "error": null
+          }
+        ],
+        "response": [
+          {
+            "input": 8100,
+            "output": 29,
+            "error": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "sauce_only",
+      "text": "소스만 매운 걸로 추천해 줘. 다른 재료는 추가하지 마.",
+      "seconds": 1.726,
+      "recommendation": {
+        "proposal": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "accepted_fields": [],
+        "rejected_fields": [],
+        "raw_proposal": {
+          "sauce": null,
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "reason_tags": [
+          "소스 자체가 맵다는 정보가 없어 조건에 맞는 소스를 고를 수 없음",
+          "사용자가 추가 재료를 원하지 않으므로 페퍼로치노를 제안하지 않음"
+        ],
+        "reason_validation": {
+          "source": "model",
+          "schema_valid": true,
+          "semantic_status": "unverified"
+        }
+      },
+      "reply": "추천 후보를 만들지 못했어요. 현재부터 선택 가능한 항목은 면: 얇은면, 넓은면; 야채: 양파, 버섯; 육류: 소시지, 게살; 추가 재료: 치즈, 페퍼론치노; 소스: 오일, 토마토, 크림입니다.",
+      "policy": {
+        "status": "clarify",
+        "reason": "recommendation_unavailable",
+        "execute": false,
+        "conflicts": [],
+        "rejected_fields": []
+      },
+      "tokens": {
+        "recommendation": [
+          {
+            "input": 5100,
+            "output": 74,
+            "error": null
+          }
+        ],
+        "response": []
+      }
+    },
+    {
+      "name": "creamy",
+      "text": "느끼한 소스로 추천해 줘.",
+      "seconds": 1.841,
+      "recommendation": {
+        "proposal": {
+          "sauce": "크림",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "accepted_fields": [
+          "sauce"
+        ],
+        "rejected_fields": [],
+        "raw_proposal": {
+          "sauce": "크림",
+          "noodle_type": null,
+          "noodle_portion": null,
+          "toppings": {}
+        },
+        "reason_tags": [
+          "느끼한 소스 요청"
+        ],
+        "reason_validation": {
+          "source": "model",
+          "schema_valid": true,
+          "semantic_status": "unverified"
+        }
+      },
+      "reply": "느끼한 소스는 크림을 추천드려요. 크림 소스로 진행할까요?",
+      "policy": {
+        "status": "pass",
+        "reason": "recommendation_proposed",
+        "execute": false,
+        "conflicts": []
+      },
+      "tokens": {
+        "recommendation": [
+          {
+            "input": 5091,
+            "output": 41,
+            "error": null
+          }
+        ],
+        "response": [
+          {
+            "input": 8043,
+            "output": 26,
+            "error": null
+          }
+        ]
+      }
+    }
+  ],
+  "limits": [
+    "Five scoped examples; arbitrary dialogue correctness not guaranteed.",
+    "Empty valid proposal uses existing verbose fixed menu fallback.",
+    "Token-budget/CPU long-history tests do not establish concurrent GPU peak safety."
+  ],
+  "prompt_file_sha256": "f397503052e7c3c71ab055bd3fc62ca8f51f60f893c09492f933c20abedbb5d3"
+}

@@ -9,3 +9,8 @@
 - 이 범위는 후속 Codex 검수·병렬 작업자에게도 적용한다. 이후 모델은 사용자 지정 `gpt-6-sol / high`를 사용한다. 기존 history·GL04 안전 계약·ROS topic·busy STT를 보존하며 학습·adapter 교체·실물 ROS·원격 변경·commit/push는 별도 승인 없이 하지 않는다.
 
 작업 순서와 완료 조건은 `docs/IRC LLM Final goals.md`, `docs/IRC LLM Final handoff.md`, `docs/IRC LLM Final plan.md`를 따른다. GL05 진행과 GL06 준비만 병렬이며, GL06 최종 통합/완료는 GL05 계약 동결 뒤이다.
+
+## 프롬프트 변경 검증 (사용자 지침, 2026-11-07)
+
+- 프롬프트를 변경할 때마다 실제 서빙 모델의 tokenizer/chat template과 vLLM 입력+출력 한도를 확인한다. 변경 전후 토큰 수, 최대 출력 예약을 제외한 여유, 긴 대화 입력의 절삭·초과 처리 결과를 기록한다.
+- VLM 변경이라면 이미지 토큰도 포함한다. 서버를 조회할 수 없으면 설정 파일 기준 계산과 실제 서버 확인을 구분하고 미확인 사항을 명시한다. 캐시 적중은 입력 한도를 늘리지 않으며, 토큰 적합성 검사만으로 동시 부하의 VRAM 안전성을 보장하지 않는다.

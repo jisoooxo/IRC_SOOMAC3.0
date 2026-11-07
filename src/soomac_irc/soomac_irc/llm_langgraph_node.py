@@ -483,7 +483,10 @@ class LLMLangGraphNode(Node):
             raw_text,
             outcome["policy_reply"],
             speak_reason=VLM_JUDGE_REASON_SPEAK,
-            allow_reason=verdict == "fail",
+            allow_reason=(
+                verdict == "fail"
+                and outcome["policy_result"] == "robot_retry"
+            ),
             reason_action_reply=(
                 "한 번 더 시도할게요."
                 if outcome["policy_result"] == "robot_retry"
@@ -512,7 +515,10 @@ class LLMLangGraphNode(Node):
                 "outcome": copy.deepcopy(outcome),
                 "spoken_reply": reply,
                 "spoken_reason_enabled": VLM_JUDGE_REASON_SPEAK,
-                "spoken_reason_allowed": verdict == "fail",
+                "spoken_reason_allowed": (
+                    verdict == "fail"
+                    and outcome["policy_result"] == "robot_retry"
+                ),
                 "session": copy.deepcopy(self.graph_state),
                 "robot_state": self._build_robot_state(),
             },
