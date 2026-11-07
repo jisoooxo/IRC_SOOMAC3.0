@@ -32,8 +32,6 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
-# `python3 tts_node.py` 로 직접 돌리고, ros2 run 은 colcon shebang 문제로 못 쓴다.
-#   토픽은 publisher·subscription 생성 위치에서 직접 확인할 수 있게 문자열로 적는다.
 
 from cosyvoice.cli.cosyvoice import AutoModel
 
@@ -115,8 +113,8 @@ class TextNormalizer:
                     '조각', '켤레', '자루', '벌', '장', '권', '대', '통', '봉지', '팩')
 
     # 앞글자가 고유어 단위와 겹치지만 실제로는 한자어인 것들.
-    #   '3개월' 의 '개' 만 보면 '세 개월'(X). '삼 개월'(O)
-    #   주의: '시간'/'시경' 은 고유어다(두 시간). 여기 넣으면 안 된다
+    #'3개월' 의 '개' 만 보면 '세 개월'(X). '삼 개월'(O)
+    # 주의: '시간'/'시경' 은 고유어다(두 시간). 여기 넣으면 안 된다
     SINO_EXCEPTIONS = ('개월', '개국')
 
     # 전각 CJK 부호 -> ASCII. CosyVoice 가 중국어 모델이라 실제로 섞여 나온다

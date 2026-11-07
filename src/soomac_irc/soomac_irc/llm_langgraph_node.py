@@ -483,9 +483,13 @@ class LLMLangGraphNode(Node):
             raw_text,
             outcome["policy_reply"],
             speak_reason=VLM_JUDGE_REASON_SPEAK,
-            # 발화 범위만 선택한다. 판정/재시도 outcome과 토픽 발행은 위에서 완료된다.
             allow_reason=verdict == "fail",
-        ) 
+            reason_action_reply=(
+                "한 번 더 시도할게요."
+                if outcome["policy_result"] == "robot_retry"
+                else None
+            ),
+        )
         self._publish_reply(reply) 
         self.get_logger().info(
             f"VLM 결과 : class={expected}, verdict={verdict}, "

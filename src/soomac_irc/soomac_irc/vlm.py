@@ -36,16 +36,52 @@ def parse_vlm_verdict(raw_text: str) -> str:
 
     return VERDICT_LINES.get(last_line, "uncertain") # 형식이 없거나 마지막 줄이 잘렸으면 안전하게 uncertain으로 처리한다.
 
-def build_vlm_spoken_reply(raw_text: str, policy_reply: str, speak_reason: bool, allow_reason: bool, max_reason_chars: int = 300) -> str:
-    # VLM 판단 근거와 Python 고정 안내를 한 번의 TTS 문장으로 합침
-    # 재시도 상황에서는 allow_reason=False로 판단 근거를 말하지 않고 고정 답변으로 ㄱㄱㄱㄱ
+# def build_vlm_spoken_reply(raw_text: str, policy_reply: str, speak_reason: bool, allow_reason: bool, max_reason_chars: int = 300) -> str:
+#     # VLM 판단 근거와 Python 고정 안내를 한 번의 TTS 문장으로 합침
+#     # 재시도 상황에서는 allow_reason=False로 판단 근거를 말하지 않고 고정 답변으로 ㄱㄱㄱㄱ
 
+#     if not isinstance(policy_reply, str) or not policy_reply.strip():
+#         raise ValueError("VLM policy_reply가 없음")
+
+#     policy_reply = policy_reply.strip()
+
+#     if not speak_reason or not allow_reason: # vlm 이유 off나 재시도일때
+#         return policy_reply
+
+#     if not isinstance(raw_text, str) or not raw_text.strip():
+#         return policy_reply
+
+#     if raw_text.lstrip().startswith("ERROR:"):
+#         return policy_reply
+
+#     lines = [line.strip() for line in raw_text.strip().splitlines() if line.strip()] # 줄바꿈 기준으로 나눔.
+
+
+#     if lines and lines[-1] in VERDICT_LINES:
+#         lines.pop()
+
+#     reason = " ".join(lines)[:max_reason_chars].rstrip() # 최대 300자로 이유 출력 ㅇㅇ
+
+#     if not reason:
+#         return policy_reply
+
+
+#     return f"판단 근거를 말씀드리면, {reason} {policy_reply}"
+def build_vlm_spoken_reply(
+    raw_text: str,
+    policy_reply: str,
+    speak_reason: bool,
+    allow_reason: bool,
+    max_reason_chars: int = 300,
+    reason_action_reply: str | None = None,
+) -> str:
+    # 이유가 없거나 토글이 꺼져 있으면 기존 고정 안내를 사용한다.
     if not isinstance(policy_reply, str) or not policy_reply.strip():
         raise ValueError("VLM policy_reply가 없음")
 
     policy_reply = policy_reply.strip()
 
-    if not speak_reason or not allow_reason: # vlm 이유 off나 재시도일때
+    if not speak_reason or not allow_reason:
         return policy_reply
 
     if not isinstance(raw_text, str) or not raw_text.strip():
@@ -54,19 +90,24 @@ def build_vlm_spoken_reply(raw_text: str, policy_reply: str, speak_reason: bool,
     if raw_text.lstrip().startswith("ERROR:"):
         return policy_reply
 
-    lines = [line.strip() for line in raw_text.strip().splitlines() if line.strip()] # 줄바꿈 기준으로 나눔.
+    lines = [
+        line.strip()
+        for line in raw_text.strip().splitlines()
+        if line.strip()
+    ]
 
-
+    # 판정용 마지막 줄은 음성으로 읽지 않는다.
     if lines and lines[-1] in VERDICT_LINES:
         lines.pop()
 
-    reason = " ".join(lines)[:max_reason_chars].rstrip() # 최대 300자로 이유 출력 ㅇㅇ
+    reason = " ".join(lines)[:max_reason_chars].rstrip()
 
     if not reason:
         return policy_reply
 
-
-    return f"판단 근거를 말씀드리면, {reason} {policy_reply}"
+    # 모델의 이유 뒤에 실제 다음 행동만 붙인다.
+    action_reply = (reason_action_reply or policy_reply).strip()
+    return f"{reason} {action_reply}"
 
 
 def build_vlm_request(expected: str, camera_images: list, reference_image=None, comparison_image=None, comparison_source: str | None = None) -> dict | None:

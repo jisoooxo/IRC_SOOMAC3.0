@@ -267,7 +267,6 @@ TASK_RESPONSE_SYSTEM += render_examples("task")
 GENERAL_RESPONSE_SYSTEM += render_examples("general")
 MIXED_RESPONSE_SYSTEM += render_examples("mixed")
 
-# 2026-11-05 사용자 승인: 실제 vLLM 비교에 사용한 전체 보강 문구.
 DECISION_SERVING_ADDENDUM_VERSION = '20261105_full'
 DECISION_SERVING_ADDENDUM = r'''
 
