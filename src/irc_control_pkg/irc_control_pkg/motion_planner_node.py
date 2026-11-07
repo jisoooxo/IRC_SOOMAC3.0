@@ -5,7 +5,7 @@ import math
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from irc_ws.src.irc_control_pkg.irc_control_pkg.kinematics import IRCKinematics
+from irc_control_pkg.kinematics_irc import IRCKinematics
 from irc_control_pkg.cp_motion import CPMotion
 from irc_control_pkg.reset_motion import ResetMotion
 from std_msgs.msg import Empty, Bool, Float64MultiArray, MultiArrayDimension, String, Int16
@@ -22,7 +22,8 @@ VLM_CONFIRM_POINT2 = np.deg2rad([258.0, -5.8, 0.0, 70.0, 114.0, -11.0])
 
 INITIAL_PACK_PICK_POINT = np.array([-0.25, -0.000, 0.025], dtype=float)
 # INITIAL_PACK_PICK_POINT = np.array([-0.245, -0.000, 0.03], dtype=float) # 용기 실제 좌표 x = 0.23.5
-INITIAL_PACK_PLACE_POINT = np.array([-0.005, -0.265, 0.04], dtype=float)
+INITIAL_PACK_PLACE_POINT = np.array([-0.005, -0.255, 0.04], dtype=float)
+# INITIAL_PACK_PLACE_POINT = np.array([-0.005, -0.265, 0.04], dtype=float)
 
 TOMATO_PICK_POINT = np.array([-0.25, 0.14, 0.025], dtype=float)
 CREAM_PICK_POINT = np.array([-0.25, 0.000, 0.025], dtype=float)

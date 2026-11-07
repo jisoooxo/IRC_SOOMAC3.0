@@ -17,18 +17,17 @@ class CPMotion:
     def build_path(self, class_name, repeat_count=1):
         q_start = np.zeros(DOF)
 
-        q_spoon_pick = self.kinematics.solve_cp_path(
+        q_spoon_pick = self.kinematics.solve_cp_path(   ## 숟가락 잡기 자세
             SPOON_PICK_POSITION, q_start, SPOON_Q6
         )
 
-        q_spoon_pre_pick = q_spoon_pick.copy()
+        q_spoon_pre_pick = q_spoon_pick.copy() ## 숟가락 잡기 전 옆에서 대기하는 자세(pick 이전)
         q_spoon_pre_pick[0] += math.radians(18.0)
 
-        q_spoon_pre_pick_2 = q_spoon_pick.copy()
-        q_spoon_pre_pick_2[0] -= math.radians(18.0)
+        q_spoon_pre_pick_2 = q_spoon_pick.copy() ## 숟가락 잡은 후 옆에서 빠지는 자세(place 이후)
+        q_spoon_pre_pick_2[0] -= math.radians(18.0) 
 
-        # 숟가락 잡은 후 lift
-        spoon_lift_position = SPOON_PICK_POSITION.copy()
+        spoon_lift_position = SPOON_PICK_POSITION.copy() ## 숟가락 잡은 후 lift 자세
         spoon_lift_position[2] += 0.10
 
         q_spoon_lift = self.kinematics.solve_cp_path(
@@ -37,8 +36,8 @@ class CPMotion:
 
         # 치즈 / 페퍼론치노 접근
         if class_name == 'cheese':
-            q_approach_lift = np.deg2rad([0.5, -1.4, 0.0, 87.0, 91.5, 0.0])
-            q_approach = np.deg2rad([-94.5, 1.7, 93.0, 107.5, 65.0, 0.0])
+            q_approach_lift = np.deg2rad([0.5, -1.4, 0.0, 87.0, 91.5, 0.0]) ## 치즈 위 대기 자세
+            q_approach = np.deg2rad([-94.5, 1.7, 93.0, 107.5, 65.0, 0.0]) ## 치즈 안쪽으로 내려가기
             # q_approach = np.deg2rad([0.5, 1.7, 0.0, 103, 73.0, 0.0])
         else:
             q_approach_lift = np.deg2rad([1.5, 2.6, 0.0, 85.0, 66.0, 0.0])
@@ -49,24 +48,24 @@ class CPMotion:
 
         if class_name == 'cheese':
             q_touch_1[0] -= math.radians(0.0)
-            q_touch_1[2] = math.radians(93.0)  ###
+            q_touch_1[2] = math.radians(93.0) 
         else:
             q_touch_1 = np.deg2rad([-90.5, 2.3, 90.0, 108.5, 45.5, -30.0])
 
         q_touch_2 = q_touch_1.copy()
-        q_touch_2[1] = math.radians(-90.0)
+        q_touch_2[1] = math.radians(-90.0) ## 치즈 안쪽에서 2번이 돌아가며 바깔쪽으로 치즈 푸기
 
         if class_name != 'cheese':
             q_touch_2[5] = 0.0
 
         # 푸고 나서 lift
         q_lift = q_touch_2.copy()
-        q_lift[2] -= math.radians(40.0)
-        q_lift[5] -= math.radians(40.0)
+        q_lift[2] -= math.radians(40.0) ## place 위치 이동 전 lift 자세 잡기 -> 3번 모터
+        q_lift[5] -= math.radians(40.0) ## place 위치 이동 전 lift 자세 잡기 -> 6번 모터
 
         # place 준비
         if class_name == 'cheese':
-            q_place_ready = np.deg2rad([-119.0, -80.0, 90.0, 130.0, 42.8, 0.0])
+            q_place_ready = np.deg2rad([-119.0, -80.0, 90.0, 130.0, 42.8, 0.0]) ## place 위치
         else:
             q_place_ready = np.deg2rad([-131.7, -80.0, 90.0, 131.2, 46.7, 0.0])
 
@@ -81,7 +80,7 @@ class CPMotion:
         xy = spoon_back_position[:2]
         xy_dir = xy / np.linalg.norm(xy)
 
-        spoon_back_position[:2] -= xy_dir * 0.03
+        spoon_back_position[:2] -= xy_dir * 0.04
 
         q_spoon_back = self.kinematics.solve_cp_path(
             spoon_back_position, q_spoon_pick, SPOON_Q6)

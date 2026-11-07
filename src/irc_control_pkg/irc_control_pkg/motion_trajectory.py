@@ -69,7 +69,7 @@ class MotionTrajectory:
                 f'grip_close:{class_name}'
             )
 
-            self.hold(trajectory, lift, 0.5)
+            self.hold(trajectory, lift, 0.2)
             return trajectory
 
         if phase == 'grip_place':
@@ -118,7 +118,7 @@ class MotionTrajectory:
             pick, pick_lift, place_lift, place = [q.copy() for q in waypoints]
 
             self.move(trajectory, q_start, CONTROL_READY, 2.0)
-            self.hold(trajectory, CONTROL_READY, 1.0)
+            self.hold(trajectory, CONTROL_READY, 0.5)
 
             self.move(trajectory, CONTROL_READY, pick_lift, 2.0, True)
             self.move_cartesian_pack(trajectory,pick_lift, pick, 2.0) ## cartesian 경로로 이동
@@ -171,7 +171,7 @@ class MotionTrajectory:
             q_home2 = CONTROL_READY2.copy()
 
             self.move(trajectory, q_start, q_home2, 2.0)
-            self.hold(trajectory, q_home2, 0.5)
+            self.hold(trajectory, q_home2, 0.2)
 
             self.move(trajectory, q_home2, pick_lift, 2.0, True)
             self.move(trajectory, pick_lift, pick, 2.0, True)
@@ -201,20 +201,20 @@ class MotionTrajectory:
 
     def build_grip_motion(self, trajectory, q_start, approach, target, lift, action):
         self.move(trajectory, q_start, approach, 2.0)
-        self.hold(trajectory, approach, 0.5)
+        self.hold(trajectory, approach, 0.2)
 
         self.move(trajectory, approach, target, 2.0)
         self.hold(
             trajectory, target, 1.5,
             action=action,
-            action_delay=0.3
+            action_delay=0.2
         )
 
         self.move(trajectory, target, lift, 1.0)
 
     def build_pack_motion(self, trajectory, q_start, approach, target, lift, action):
         self.move(trajectory, q_start, approach, 2.0, True)
-        self.hold(trajectory, approach, 0.5, pack_horizontal=True)
+        self.hold(trajectory, approach, 0.2, pack_horizontal=True)
 
         self.move(trajectory, approach, target, 2.0, True)
         self.hold(

@@ -13,7 +13,7 @@ from irc_control_pkg.motion_trajectory import (MotionTrajectory, motion_q_delta,
 
 PORT_XH = '/dev/dynamixel_0'
 PORT_XM = '/dev/dynamixel_1'
-ARDUINO_PORT = '/dev/ttyUSB0'
+ARDUINO_PORT = '/dev/ttyUSB2'
 
 XH_IDS = [1, 2, 3, 4]
 ARM_IDS = [1, 2, 3, 4, 5, 6]
@@ -61,8 +61,8 @@ FINISH_TOLERANCE_DEG = 0.2
 
 ENABLE_MOTION = True
 
-PROFILE_VELOCITY = 70
-PROFILE_ACCELERATION = 40
+PROFILE_VELOCITY = 200
+PROFILE_ACCELERATION = 80
 
 JOINT_MIN = np.deg2rad([-200.0, -120.0, -170.0, -140.0, -120.0, -360.0])
 JOINT_MAX = np.deg2rad([550.0, 120.0, 170.0, 140.0, 120.0, 360.0])
@@ -553,13 +553,13 @@ class HardwareMotionControlNode(Node):
             self._write4(
                 dxl_id,
                 ADDR_PROFILE_ACCELERATION,
-                PROFILE_ACCELERATION
+                100 if dxl_id == 1 else PROFILE_ACCELERATION
             )
 
             self._write4(
                 dxl_id,
                 ADDR_PROFILE_VELOCITY,
-                PROFILE_VELOCITY
+                250 if dxl_id == 1 else PROFILE_VELOCITY
             )
 
     def set_all_torque(self, enabled):

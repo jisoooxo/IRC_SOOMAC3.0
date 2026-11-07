@@ -19,13 +19,13 @@ RAIL_ROTATIONS = {
     'crab': 285,
     'onion': 60,
     'mushroom': 138,
-    'pepperoncino': 375,
+    'pepperoncino': 385,
     'cheese': 385,
     'sauce_cream': 371,
     'sauce_oil': 371,
     'sauce_tomato': 371,
     'cover': 375,
-    'handoff': 225,
+    'handoff': 275,
 }
 
 

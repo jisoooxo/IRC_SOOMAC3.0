@@ -173,7 +173,7 @@ class MainNode(Node):
 
         self.start_rail_motion()
 
-    def publish_llm_confirm_start(self):  ### 씹히고 있음 ㅜㅜ ###
+    def publish_llm_confirm_start(self):
         msg = Bool()
         msg.data = True
 

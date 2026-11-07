@@ -404,9 +404,19 @@ void parseCmd(char* s) {
 
     default:
 
-      Serial.println(
-        F("ERR cmd")
-      );
+      Serial.print(F("ERR cmd RX HEX:"));
+
+      Serial.print(F(" first=0x"));
+      Serial.print((uint8_t)s[0], HEX);
+
+      Serial.print(F(" data="));
+
+      for (uint8_t i = 0; s[i] != '\0'; i++) {
+        Serial.print((uint8_t)s[i], HEX);
+        Serial.print(' ');
+      }
+
+      Serial.println();
 
       break;
   }

@@ -32,7 +32,7 @@ class MainNode(Node):
 
     def __init__(self):
         super().__init__('main_node')
-
+        
         # MAIN -> LLM
         self.llm_next_pub = self.create_publisher(Int16, '/llm/next', 10)
         self.llm_reset_pub = self.create_publisher(String, '/llm/reset', 10)
