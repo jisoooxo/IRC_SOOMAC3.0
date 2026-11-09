@@ -21,9 +21,9 @@ SOURCES = {
 }
 
 plt.rcParams.update({
-    "font.family": "DejaVu Sans", "font.size": 10,
-    "axes.titlesize": 12, "axes.titleweight": "normal",
-    "axes.labelsize": 10, "xtick.labelsize": 9, "ytick.labelsize": 9,
+    "font.family": "DejaVu Sans", "font.size": 11,
+    "axes.titlesize": 11, "axes.titleweight": "normal",
+    "axes.labelsize": 11, "xtick.labelsize": 11, "ytick.labelsize": 11,
     "axes.spines.top": True, "axes.spines.right": True,
     "axes.edgecolor": "black",
     "svg.fonttype": "none", "savefig.facecolor": "white",

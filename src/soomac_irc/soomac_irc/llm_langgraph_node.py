@@ -37,6 +37,7 @@ from soomac_irc.llm_langgraph import (
     build_preselected_section_confirmation,
     generate_section_event_response,
     _record_question_delivery,
+    _with_particle,
 )
 from soomac_irc.llm_policy import is_future_recommendation_pending, pending_blocks_execution, section_execution_items
 from soomac_irc.llm_runtime_logger import LLMSessionJsonlLogger
@@ -495,7 +496,7 @@ class LLMLangGraphNode(Node):
         )
         self._publish_reply(reply) 
         self.get_logger().info(
-            f"VLM 결과 : class={expected}, verdict={verdict}, "
+            f"VLM 결과 : class={expected}, verdict={verdict}, " 
             f"policy={outcome['policy_result']}, attempt={outcome['attempt']}"
         )
 
@@ -825,7 +826,15 @@ class LLMLangGraphNode(Node):
         self.get_logger().info(f"active task 완료 : {completed_task}")
 
         if self.task_queue:
-            self._publish_next_task()
+            # 같은 단계의 후속 재료는 작업 발행 성공 뒤 별도로 시작을 안내한다.
+            if self._publish_next_task():
+                task_name = self.active_task["class"]
+                reply = f"이제 {_with_particle(task_name, '을', '를')} 담을게요."
+                self._publish_reply(reply)
+                self.runtime_log.log_event(
+                    "task_start_reply",
+                    {"task": copy.deepcopy(self.active_task), "reply": reply},
+                )
             return
 
         reply = self._advance_after_section(self.section)

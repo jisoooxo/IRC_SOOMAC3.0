@@ -239,8 +239,9 @@ def decide_vlm_outcome(expected: str, verdict: str, previous_failures: int, enab
             "trusted_pass": True,
             "allow_spoken_reason": True,
             "policy_reply": ( # 판정 답변
-                f"{expected_label} 작업을 확인했어요. "
-                "현재 작업을 마무리할게요."
+                f"{expected_label}를 도시락 위에 올려드렸어요."
+                if expected in SAUCE_NAMES
+                else f"{expected_label} 작업을 확인했어요. 현재 작업을 마무리할게요."
             ),
         }
 
