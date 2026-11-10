@@ -1,5 +1,5 @@
 {
-  "definition": "Train ONLY: last logged training interval within each epoch, NOT epoch-average loss.",
+  "definition": "Last logged train and validation values within each epoch. Train is an interval loss, NOT epoch-average loss.",
   "rows": [
     {
       "epoch": 1,
@@ -8,6 +8,11 @@
           "step": 270,
           "epoch": 0.9908256880733946,
           "loss": 0.12683862447738647
+        },
+        "validation_last_logged": {
+          "step": 273,
+          "epoch": 1.0,
+          "loss": 0.22966048121452332
         }
       },
       "Recommendation": {
@@ -15,6 +20,11 @@
           "step": 35,
           "epoch": 0.898876404494382,
           "loss": 0.09087850451469422
+        },
+        "validation_last_logged": {
+          "step": 39,
+          "epoch": 1.0,
+          "loss": 0.16721415519714355
         }
       },
       "Response": {
@@ -22,6 +32,11 @@
           "step": 100,
           "epoch": 0.9615384615384616,
           "loss": 0.2768789052963257
+        },
+        "validation_last_logged": {
+          "step": 104,
+          "epoch": 1.0,
+          "loss": 0.8582091331481934
         }
       }
     },
@@ -32,6 +47,11 @@
           "step": 545,
           "epoch": 1.998165137614679,
           "loss": 0.03102967143058777
+        },
+        "validation_last_logged": {
+          "step": 546,
+          "epoch": 2.0,
+          "loss": 0.04737081751227379
         }
       },
       "Recommendation": {
@@ -39,6 +59,11 @@
           "step": 75,
           "epoch": 1.9245585874799358,
           "loss": 0.04822766184806824
+        },
+        "validation_last_logged": {
+          "step": 78,
+          "epoch": 2.0,
+          "loss": 0.13131602108478546
         }
       },
       "Response": {
@@ -46,6 +71,11 @@
           "step": 205,
           "epoch": 1.9711538461538463,
           "loss": 0.19005801677703857
+        },
+        "validation_last_logged": {
+          "step": 208,
+          "epoch": 2.0,
+          "loss": 0.9426263570785522
         }
       }
     },
@@ -56,6 +86,11 @@
           "step": 815,
           "epoch": 2.9871559633027522,
           "loss": 0.005721080303192139
+        },
+        "validation_last_logged": {
+          "step": 819,
+          "epoch": 3.0,
+          "loss": 0.10249557346105576
         }
       },
       "Recommendation": {
@@ -63,6 +98,11 @@
           "step": 115,
           "epoch": 2.9502407704654896,
           "loss": 0.019777707755565643
+        },
+        "validation_last_logged": {
+          "step": 117,
+          "epoch": 3.0,
+          "loss": 0.10413022339344025
         }
       },
       "Response": {
@@ -70,6 +110,11 @@
           "step": 310,
           "epoch": 2.980769230769231,
           "loss": 0.10411456823349
+        },
+        "validation_last_logged": {
+          "step": 312,
+          "epoch": 3.0,
+          "loss": 0.9553046226501465
         }
       }
     },
@@ -80,6 +125,11 @@
           "step": 1090,
           "epoch": 3.994495412844037,
           "loss": 0.016170063614845277
+        },
+        "validation_last_logged": {
+          "step": 1092,
+          "epoch": 4.0,
+          "loss": 0.06548251211643219
         }
       },
       "Recommendation": {
@@ -87,6 +137,11 @@
           "step": 155,
           "epoch": 3.975922953451043,
           "loss": 0.03358396291732788
+        },
+        "validation_last_logged": {
+          "step": 156,
+          "epoch": 4.0,
+          "loss": 0.12510709464550018
         }
       },
       "Response": {
@@ -94,6 +149,11 @@
           "step": 415,
           "epoch": 3.9903846153846154,
           "loss": 0.08116068243980408
+        },
+        "validation_last_logged": {
+          "step": 416,
+          "epoch": 4.0,
+          "loss": 1.0190191268920898
         }
       }
     },
@@ -104,6 +164,11 @@
           "step": 1365,
           "epoch": 5.0,
           "loss": 0.004435860738158226
+        },
+        "validation_last_logged": {
+          "step": 1365,
+          "epoch": 5.0,
+          "loss": 0.04883277416229248
         }
       },
       "Recommendation": {
@@ -111,6 +176,11 @@
           "step": 195,
           "epoch": 5.0,
           "loss": 0.01482207179069519
+        },
+        "validation_last_logged": {
+          "step": 195,
+          "epoch": 5.0,
+          "loss": 0.11171972006559372
         }
       },
       "Response": {
@@ -118,6 +188,11 @@
           "step": 520,
           "epoch": 5.0,
           "loss": 0.03545824289321899
+        },
+        "validation_last_logged": {
+          "step": 520,
+          "epoch": 5.0,
+          "loss": 1.123960018157959
         }
       }
     },
@@ -128,6 +203,11 @@
           "step": 1635,
           "epoch": 5.990825688073395,
           "loss": 0.00022399132139980794
+        },
+        "validation_last_logged": {
+          "step": 1638,
+          "epoch": 6.0,
+          "loss": 0.05171775445342064
         }
       },
       "Recommendation": {
@@ -135,6 +215,11 @@
           "step": 230,
           "epoch": 5.898876404494382,
           "loss": 0.01587754040956497
+        },
+        "validation_last_logged": {
+          "step": 234,
+          "epoch": 6.0,
+          "loss": 0.11286281794309616
         }
       },
       "Response": {
@@ -142,6 +227,11 @@
           "step": 620,
           "epoch": 5.961538461538462,
           "loss": 0.03112020492553711
+        },
+        "validation_last_logged": {
+          "step": 624,
+          "epoch": 6.0,
+          "loss": 1.1994315385818481
         }
       }
     }

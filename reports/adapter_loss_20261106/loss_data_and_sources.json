@@ -3,9 +3,11 @@
     "Recorded log_history epoch coordinates; no smoothing or fabricated epoch-zero point.",
     "Training Loss is the Trainer logged interval loss, not an epoch mean.",
     "Validation Loss is the historical training-time evaluation, not scenario accuracy or a newly audited evaluation.",
-    "Figures and epoch table contain training loss ONLY. Validation records are retained only as source evidence; original files are unchanged.",
+    "Figures overlay training and validation loss. The epoch table includes both; original source files are unchanged.",
     "All runs trained for six epochs. Runtime selection: Decision step1638, Recommendation step234, Response step150 (epoch1.4423076923).",
-    "One panel per adapter, logarithmic loss axis with four-decimal tick labels. Full observed loss range is retained.",
+    "One panel per adapter, logarithmic loss axis with four major ticks and four-decimal labels. Display maximum is 10.0000; full observed loss range is retained.",
+    "Individual figures are 16 x 6.5 cm for insertion at full text width; x ticks are 0, 2, 4, 6. Titles are 11 pt, axis labels 10 pt, tick labels and legends 9 pt.",
+    "Combined figure size is 13 x 6 cm, matching the report box aspect ratio. Import without changing aspect ratio.",
     "Training curves end at their last logged training point; source values are unchanged."
   ],
   "adapters": {
