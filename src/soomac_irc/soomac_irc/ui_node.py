@@ -35,6 +35,9 @@ else:
     ROS_IMPORT_ERROR = None
 
 
+UI_RESET_TIMER_SECONDS = 3.0
+
+
 
 PUBLISH_QUEUE_SIZE = 10
 SUBSCRIPTION_QUEUE_SIZE = 10
@@ -254,11 +257,13 @@ class UiNode(Node):
         return True
 
     def main_reset_callback(self, message):
-        # MAIN은 전체 작업 완료 후 JSON이 아닌 문자열 reset을 보낸다.
-        if message.data != 'reset' or not is_ui_session_active():
+        if message.data != 'final_reset' or not is_ui_session_active():
             return
-        self.complete_reset_pending = True
-        self.get_logger().info('최종 TTS 종료 후 UI를 초기화할 예정입니다.')
+
+        self.complete_reset_pending = False
+        timer = threading.Timer(UI_RESET_TIMER_SECONDS, reset_ui_session, args=("complete",))
+        timer.daemon = True
+        timer.start()
 
     def stt_question_callback(self, message):
         try:
