@@ -537,8 +537,6 @@ def build_graph(
             decision["understanding"] = "clarify"
             return {"decision": decision}
 
-        # 실제 모델 함수는 정규화 전 sparse JSON을 별도로 보존한다.
-        # 주입형 함수가 해당 값을 제공하지 않을 때만 외부 key 이름으로 안전하게 복원한다.
         external_output = getattr(call_decision, "last_external_output", None)
         if not isinstance(external_output, dict):
             external_output = _external_decision_view(decision)
@@ -547,7 +545,7 @@ def build_graph(
         if not errors:
             return {"decision": decision}
 
-        # 자연어를 Python이 다시 판단하지 않고, 모델이 만든 field 조합의 자기모순만 알려준다.
+        # 자연어를 Python이 다시 판단하지 않고, 모델이 만든 field 조합의 자기모순만 판단한다.
         repair = {
             "reason": "structural_contradiction",
             "errors": errors,
@@ -1140,8 +1138,6 @@ def build_graph(
         return {"session": session, "policy": state["policy"], "reply": reply,
                 "recommendation_result": recommendation_result, "_task_context": None}
 
-    # 모델 역할을 노드로 드러내되 상태 반영·추천·실행 검사의 순서는 보존한다.
-    # 임시 문맥은 내부 채널에만 두고, invoke 입출력은 기존 8개 공개 필드로 투영한다.
     graph = StateGraph(_GraphTurnState, input_schema=_TurnState, output_schema=_TurnState)
     graph.add_node("interpret_decision", interpret_decision)
     graph.add_node("process_general", process_general)

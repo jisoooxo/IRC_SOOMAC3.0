@@ -60,9 +60,6 @@ def _resolve_runtime_adapter_paths() -> tuple[str, str, str | None, str | None]:
     return (*rollback[:3], "; ".join(errors) or None)
 
 
-# 2026-11-05 사용자 승인: D epoch6(step1638) / P best150 / Q epoch6.
-# 필수 시나리오 평가상 선택이며 모든 입력/재기동/실물 통합 합격을 뜻하지 않는다.
-# 현재 선택 정본은 아래 직접 경로다. 위 manifest resolver/rollback은 복구용으로 보존한다.
 DECISION_ADAPTER_PATH = (
     str(RUNTIME_ADAPTER_ROOT / "decision_r5_unsloth_epoch6_step1638")
 )

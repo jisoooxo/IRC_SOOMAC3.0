@@ -50,22 +50,20 @@ from soomac_irc.vlm import (
     decide_vlm_outcome,
     parse_vlm_verdict,
 )
-# lid section이 cover(뚜껑) task를 만든다. main_vlm.py는 소스(마지막 작업) 완료 뒤 /llm/reset을 보낸다.
+
 from soomac_irc.domain import SECTION_ORDER
 
 
-# 단계 전환의 대화 안내만 선택한다. True: 기존 고정 안내, False: Q/P 모델 안내.
-# lid/sauce 자동 실행 안내와 안전 fallback, 사용자 주문 턴은 이 토글과 별개다.
 hard_cording_response = True
 
 # 사용자 실행 턴의 안내: "model"은 검증된 P 출력, "fixed"는 항목·수량 고정 안내.
-# 2026-11-03 확장 멀티턴에서 P가 버섯 low를 high로 발화하여 fixed로 복귀. model은 시험용.
+
 EXECUTION_REPLY_MODE = "fixed"
 
 # 모델 실행 위치. "hf": 이 노드가 모델을 직접 GPU에 올림(기존).
-# "vllm": tools/vllm_server/start_vllm_server.sh로 띄운 서버에 요청(노드는 모델을 올리지 않음).
+# "vllm": tools/vllm_server/start_vllm_server.sh로 띄운 서버에 요청
 LLM_BACKEND = "vllm"
-# 노드 입력 수신 전에 D/Q/P를 각 1회 호출. False는 기존 시작 동작.
+
 LLM_STARTUP_WARMUP = True
 
 ENABLE_VLM = True
