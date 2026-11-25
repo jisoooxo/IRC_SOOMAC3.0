@@ -25,6 +25,8 @@
 |---|---|---|
 | 주문·수정·추천·확인·실행 의도 | 재료 검출·좌표 변환·레일·매니퓰레이터 | 참조 이미지·작업 전·작업 후 비교 |
 
+**구성:** [AI·대화 — llm_final_2](https://github.com/jisoooxo/IRC_SOOMAC3.0/tree/llm_final_2/src/soomac_irc) · [비전·레일·제어 — main](https://github.com/jisoooxo/IRC_SOOMAC3.0/tree/main/src/irc_control_pkg)
+
 **문서 바로가기:** [실행 환경 명세](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/llm_final_2/docs/ENVIRONMENT.ko.md) · [상세 기술 설명](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/llm_final_2/docs/PROJECT_OVERVIEW.ko.md) · [실제 대화 예시](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/llm_final_2/docs/2026-11-05_verified_multiturn_scenarios.md)
 
 ## 개발 환경
@@ -59,7 +61,13 @@ git clone --branch llm_final_2 https://github.com/jisoooxo/IRC_SOOMAC3.0.git
 cd IRC_SOOMAC3.0
 ```
 
-이 자리에서 살아있는 변수: 사용자 정의 변수 없음. 최종 LLM 코드가 있는 `llm_final_2`를 명시한다.
+이 자리에서 살아있는 변수: 사용자 정의 변수 없음. AI·대화 코드가 있는 `llm_final_2`를 명시한다. 비전·레일·제어 코드는 아래처럼 `main`을 별도 작업공간에 받는다.
+
+```bash
+git clone --branch main https://github.com/jisoooxo/IRC_SOOMAC3.0.git IRC_SOOMAC3.0-control
+```
+
+이 자리에서 살아있는 변수: 사용자 정의 변수 없음. 두 브랜치를 별도 폴더에 받아 각각의 실행 환경에서 사용한다.
 
 모델 가중치·역할별 어댑터·음성 모델·참조 이미지 DB는 별도로 준비한다. **기존 개발 PC는 이미 준비된 환경과 자산을 재사용한다.** [자산 경로 확인 →](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/llm_final_2/docs/ENVIRONMENT.ko.md#3-모델외부-자산과-파일-경로)
 
@@ -98,7 +106,7 @@ curl --fail http://127.0.0.1:8000/v1/models
 
 12K/0.50은 별도 시험 후보이며 운영 기본값에 적용하지 않았다. [동시 부하 결과](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/llm_final_2/docs/2026-11-05_stack_vram_12k_review.md)를 참고한다.
 
-MAIN·레일·비전·로봇 제어 프로세스가 연결돼야 실물 포장이 진행된다. TTS 실행 함수에는 기존 장치 프로필 전환·복구도 포함돼 있다. 셸 함수 없이 실행하는 명령과 외부 제어 자산은 [환경 명세서 §5](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/llm_final_2/docs/ENVIRONMENT.ko.md#5-준비와-실행-순서)에 있다.
+`main`의 제어 패키지는 **MAIN·레일·비전·좌표 변환·경로 계획·모터 제어** 여섯 노드를 등록한다. TTS 실행 함수에는 기존 장치 프로필 전환·복구도 포함돼 있다. AI 직접 실행 명령은 [환경 명세서 §5](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/llm_final_2/docs/ENVIRONMENT.ko.md#5-준비와-실행-순서), 제어 패키지의 빌드·실행 명령은 [main 제어 스택 실행](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/llm_final_2/docs/ENVIRONMENT.ko.md#54-main-브랜치-비전레일제어-스택)에 있다.
 
 </details>
 
@@ -146,6 +154,32 @@ MAIN·레일·비전·로봇 제어 프로세스가 연결돼야 실물 포장�
 
 ## 전체 로직
 
+### 주문부터 최종 전달까지
+
+**AI·대화는 `llm_final_2`, 비전·레일·매니퓰레이터 제어는 `main`의 구현을 기준으로 설명한다.** MAIN 상태 머신이 두 영역을 연결한다.
+
+```mermaid
+flowchart LR
+    U[UI 시작 · 음성 주문] --> M[MAIN · 주문 계획과 용기 준비 동기화]
+    M --> R[레일 원점 · 재료 위치 이동]
+    R --> V[RGB-D · YOLO OBB · 재료별 검출]
+    V --> P[좌표 변환 · 역기구학 · 궤적 생성]
+    P --> A[그리퍼 · 흡착 · 전용 동작]
+    A --> C[VLM 작업 전후 검증]
+    C -->|다음 재료| M
+    C -->|실패| T[재료별 재작업 경로]
+    T --> A
+    C -->|주문 완료| H[전달 위치 이동 · 용기 전달 · 원점 복귀]
+```
+
+| 단계 | 실제 처리 |
+|---|---|
+| **1. 주문·초기 준비** | 레일 원점을 잡고, LLM의 첫 계획과 로봇의 초기 용기 이동을 함께 진행한다. |
+| **2. 재료 위치 이동** | 재료별 레일 목표 위치로 이동한다. 레일 도착·팔 이동 완료·복귀 준비가 맞춰지면 다음 동작을 시작한다. |
+| **3. 검출·좌표 변환** | RGB-D 영상에서 재료별 방식으로 파지점과 방향을 구하고, 카메라 좌표를 로봇 베이스 좌표로 바꾼다. |
+| **4. 파지·투입·검증** | 접근·파지·상승·투입 경로를 실행한다. 재료에 따라 그리퍼·흡착·스푼·소스 전용 경로를 사용하고 VLM 결과를 반영한다. |
+| **5. 다음 작업·최종 전달** | 성공 시 다음 재료로, 실패 시 기존 재작업 경로로 연결한다. 주문 완료 후 전달 위치에서 용기를 건네고 레일 원점 복귀·상태 초기화를 수행한다. |
+
 ### LangGraph 기반 멀티에이전트 구조
 
 ```mermaid
@@ -173,15 +207,57 @@ flowchart LR
 
 **추천 후보 → 주문 확정 → 실행 허용 → 실제 완료**를 별도로 관리한다. 역할별 모델 호출은 순차 진행하며, 다음 턴에는 이전 대화와 갱신된 상태를 전달한다.
 
-(내가 의역해보자면, “치즈를 추천받음”과 “지금 치즈를 담음”을 같은 상태로 취급하지 않는 것이다.)
-
 ### 참조 이미지 선정 / 작업 전후 이미지 검증
 
 **재료 이미지 crop → SigLIP2 임베딩 → Chroma DB → 대표 참조 선정**으로 검증 자료를 준비한다. VLM은 **참조·작업 전·현재 이미지**를 비교해 성공·실패·불확실을 판단한다.
 
-### 개별 재료 검출 / 뚜껑 인식
+### 개별 재료 검출 — RGB-D · YOLO OBB · SAM2
 
-개별 재료는 **YOLO OBB → 깊이 기반 후보점 → SAM2 분할 → 실제 크기 비교 → 좌표 변환**을 거쳐 제어에 전달한다. 뚜껑 인식은 색상·깊이 마스크·모폴로지·컨투어·평면 fitting으로 구성한다.
+`main`의 [object_detection_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/object_detection_node.py)는 RealSense 컬러·깊이 영상(640×480, 30fps)을 정렬하고, 요청된 재료만 처리한다. **모든 재료에 같은 SAM2 경로를 적용하지 않는다.**
+
+| 대상 | 검출·파지점 선정 방식 |
+|---|---|
+| **소시지·게살 등 개별 재료** | YOLO 회전 경계 상자(OBB) → 가까운 깊이의 후보점 → SAM2 분할 → 실제 크기 검증 → 가까운 물체 선택 |
+| **얇은면·넓은면** | 면 OBB 안에서 띠지의 HSV 색상을 구분 → k-means 후보점 15개 → SAM2 분할·크기 검증 |
+| **버섯·양파·치즈·소스류의 비전 경로** | SAM2를 건너뛰고 OBB 장축의 1/3·2/3 후보를 번갈아 사용 → 주변 패치의 최소 유효 깊이로 3D 위치 계산 |
+| **뚜껑** | 검정색 HSV·깊이·관심 영역 마스크 → 컨투어 → 3D 평면 피팅 → 실제 크기·거리 기준 후보 선정 |
+
+검출 결과는 **6프레임 누적 후 위치·각도의 중앙값**으로 정리해 전달한다. 비전에서 좌표를 구하는 경로와 실제 제어가 선택하는 파지·전용 동작 경로는 구분한다. 특히 소스는 제어부의 전용 좌표 경로를 사용한다.
+
+### 레일 이동과 공정 동기화
+
+[rail_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/rail_node.py)는 재료 이름을 **원점 기준 절대 회전수**로 바꿔 Arduino에 전달한다. 펌웨어는 **NEMA17 + TB6560 + AccelStepper**로 원점 센서와 가감속 이동을 처리한다.
+
+| 기능 | 처리 방식 |
+|---|---|
+| **원점 정렬** | 원점 센서 감지 위치를 0으로 설정하고 완료 응답을 보낸다. |
+| **재료·전달 위치 이동** | 재료별 고정 목표값 또는 최종 `handoff` 위치로 이동한다. |
+| **선행 이동·대기열** | 미리 이동하는 요청을 지원하며, 이동 중 받은 명령은 큐에 보관한다. |
+| **MAIN과 동기화** | 일반 이동 완료를 MAIN에 알리고, MAIN은 팔 복귀·이동 완료 조건과 함께 다음 동작을 결정한다. |
+
+### 좌표 변환 · 경로 계획 · 매니퓰레이터 제어
+
+**카메라 3D 좌표 + 현재 관절각 → 베이스 좌표 → 역기구학(IK) → 접근·파지·상승·투입 궤적 → 모터·도구 동작**으로 연결한다.
+
+| 구성 | 담당 기능 |
+|---|---|
+| **좌표 변환** | 현재 관절각의 순기구학(FK)과 카메라 장착 변환을 적용해 위치·방향을 로봇 좌표로 변환한다. |
+| **경로 계획·기구학** | 재료별 파지 방식과 목표 자세를 선택하고, 관절 제한·연속성을 고려해 웨이포인트를 계산한다. |
+| **궤적·하드웨어 제어** | 5차 다항식 궤적으로 관절 이동을 보간하고 Dynamixel·그리퍼·Arduino 흡착 명령을 실행한다. |
+| **추가 재료·소스·전달** | 치즈·페퍼론치노의 스푼 경로, 소스 전용 픽앤플레이스, 최종 용기 전달·복귀를 별도 경로로 처리한다. |
+
+<details>
+<summary><strong>main 브랜치 구현 파일 보기</strong></summary>
+
+| 기능 | 구현 파일 |
+|---|---|
+| 전체 공정 상태 머신 | [soomac_main_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/soomac_main_node.py) |
+| 재료 검출 / 뚜껑 인식 | [object_detection_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/object_detection_node.py) · [cover_detect.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/cover_detect.py) |
+| 레일 ROS 노드 / 펌웨어 | [rail_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/rail_node.py) · [rail_v2.ino](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/arduino/rail_v2/rail_v2.ino) |
+| 좌표 변환 / 경로 계획 / 기구학 | [transform_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/transform_node.py) · [motion_planner_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/motion_planner_node.py) · [kinematics_irc.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/kinematics_irc.py) |
+| 궤적 / 모터·도구 제어 | [motion_trajectory.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/motion_trajectory.py) · [arm_controller_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/arm_controller_node.py) |
+
+</details>
 
 <details>
 <summary><strong>전체 노드 연결 도식 보기</strong></summary>
@@ -218,7 +294,7 @@ flowchart LR
 | 경로 | 역할 |
 |---|---|
 | [src/soomac_irc](https://github.com/jisoooxo/IRC_SOOMAC3.0/tree/llm_final_2/src/soomac_irc) | LLM·VLM·음성·UI·상태 계약·관련 테스트 |
-| [src/irc_control_pkg](https://github.com/jisoooxo/IRC_SOOMAC3.0/tree/llm_final_2/src/irc_control_pkg) | MAIN·제어·비전·좌표 변환 |
+| [main: src/irc_control_pkg](https://github.com/jisoooxo/IRC_SOOMAC3.0/tree/main/src/irc_control_pkg) | 공정 상태 머신·레일·비전·SAM2·좌표 변환·경로 계획·하드웨어 제어 |
 | [tools](https://github.com/jisoooxo/IRC_SOOMAC3.0/tree/llm_final_2/tools) | vLLM 시작·어댑터 변환·학습·평가 도구 |
 | [docs](https://github.com/jisoooxo/IRC_SOOMAC3.0/tree/llm_final_2/docs) | 실행 명세·설계·이력·검증 결과 |
 | [models](https://github.com/jisoooxo/IRC_SOOMAC3.0/tree/llm_final_2/models) | 모델 선택 기록과 로컬 어댑터 배치 |
