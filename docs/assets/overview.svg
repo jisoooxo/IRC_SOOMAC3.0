@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="330" viewBox="0 0 1200 330" role="img" aria-labelledby="title desc">
+  <title id="title">SOOMAC 3.0 system overview</title>
+  <desc id="desc">Voice order flows through language agents, robot packing, and visual verification.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L7 4L0 8" fill="none" stroke="#94a3b8" stroke-width="1.5"/></marker></defs>
+  <rect x="1" y="1" width="1198" height="328" rx="18" fill="#f8fafc" stroke="#dbe4ed"/>
+  <g font-family="Arial, sans-serif">
+    <text x="40" y="42" fill="#64748b" font-size="13" font-weight="700" letter-spacing="2">SOOMAC 3.0 / SYSTEM OVERVIEW</text>
+    <text x="40" y="78" fill="#0f172a" font-size="25" font-weight="700">One order. Shared intelligence. Verified packing.</text>
+    <g transform="translate(40 108)">
+      <rect width="244" height="152" rx="12" fill="#ffffff" stroke="#dbe4ed"/>
+      <rect x="18" y="18" width="34" height="30" rx="8" fill="#eef2ff"/>
+      <text x="35" y="39" text-anchor="middle" fill="#4f46e5" font-size="14" font-weight="700">01</text>
+      <text x="18" y="80" fill="#0f172a" font-size="22" font-weight="700">Voice order</text>
+      <text x="18" y="107" fill="#475569" font-size="14">Qwen3-ASR + Silero VAD</text>
+      <text x="18" y="131" fill="#64748b" font-size="12">Ingredients / amounts / preferences</text>
+    </g>
+    <g transform="translate(332 108)">
+      <rect width="244" height="152" rx="12" fill="#ffffff" stroke="#dbe4ed"/>
+      <rect x="18" y="18" width="34" height="30" rx="8" fill="#eef2ff"/>
+      <text x="35" y="39" text-anchor="middle" fill="#4f46e5" font-size="14" font-weight="700">02</text>
+      <text x="18" y="80" fill="#0f172a" font-size="22" font-weight="700">Language agents</text>
+      <text x="18" y="107" fill="#475569" font-size="14">Decision / Recommend / Respond</text>
+      <text x="18" y="131" fill="#64748b" font-size="12">Gemma 4 + LoRA / LangGraph</text>
+    </g>
+    <g transform="translate(624 108)">
+      <rect width="244" height="152" rx="12" fill="#ffffff" stroke="#dbe4ed"/>
+      <rect x="18" y="18" width="34" height="30" rx="8" fill="#e0f2fe"/>
+      <text x="35" y="39" text-anchor="middle" fill="#0369a1" font-size="14" font-weight="700">03</text>
+      <text x="18" y="80" fill="#0f172a" font-size="22" font-weight="700">Robot packing</text>
+      <text x="18" y="107" fill="#475569" font-size="14">Vision / rail / manipulator</text>
+      <text x="18" y="131" fill="#64748b" font-size="12">ROS 2 / YOLO OBB / SAM2</text>
+    </g>
+    <g transform="translate(916 108)">
+      <rect width="244" height="152" rx="12" fill="#ffffff" stroke="#dbe4ed"/>
+      <rect x="18" y="18" width="34" height="30" rx="8" fill="#dcfce7"/>
+      <text x="35" y="39" text-anchor="middle" fill="#15803d" font-size="14" font-weight="700">04</text>
+      <text x="18" y="80" fill="#0f172a" font-size="22" font-weight="700">Visual verification</text>
+      <text x="18" y="107" fill="#475569" font-size="14">Reference / before / after</text>
+      <text x="18" y="131" fill="#64748b" font-size="12">Shared Gemma base / VLM</text>
+    </g>
+    <g fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"><path d="M294 184h26"/><path d="M586 184h26"/><path d="M878 184h26"/></g>
+    <text x="40" y="301" fill="#475569" font-size="13">Conversation state + execution feedback</text>
+    <text x="1160" y="301" text-anchor="end" fill="#64748b" font-size="13">TTS + Web UI</text>
+  </g>
+</svg>
