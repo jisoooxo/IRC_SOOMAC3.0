@@ -1,6 +1,6 @@
 # IRC_SOOMAC3.0 실행 환경 명세서
 
-참고: [README 수록 항목](README_CONTENT_PLAN.ko.md) → 개발 환경·변천사·전체 로직을 설명할 README의 구성안이다.
+참고: [프로젝트 README](../README.md) → AI·대화와 main의 비전·레일·제어를 함께 설명한다.
 
 참고: [서버 실행 스크립트](../tools/vllm_server/start_vllm_server.sh), [모델 경로](../src/soomac_irc/soomac_irc/model_runtime.py), [ROS 패키지 설정](../src/soomac_irc/setup.py) → 이 명세의 실행 기준이다.
 
@@ -18,6 +18,15 @@
 | `cosyvoice3` | 229 | [cosyvoice3.requirements.txt](environment/cosyvoice3.requirements.txt) |
 
 이번에 조회한 주요 패키지 버전은 당시 목록과 네 환경 모두 일치했다. 따라서 아래 표는 **기존 실행 버전의 요약**이며 11월 25일 조회는 보조 대조 자료이다. requirements 파일은 당시 설치 패키지 목록 그대로이며, Conda·ROS·시스템 라이브러리·로컬 wheel 출처까지 포함한 설치 잠금 파일은 아니다. 기존 환경을 재사용할 때에는 재설치하지 않는다.
+
+### 코드 구성 범위
+
+| 브랜치 | 역할 | 코드 기준 |
+|---|---|---|
+| `llm_final_2` | LLM·VLM·STT·TTS·UI | 대회 최종본 `b80a8cb`와 후속 문서 변경 |
+| `main` | 비전·SAM2·레일·좌표 변환·경로 계획·하드웨어 제어 | 제어 소스 변경 기준 `28488fc`(2026-11-08) |
+
+아래 기존 AI 실행 버전은 그대로 유지한다. 제어 기능은 `main`의 실제 파일·진입점을 별도로 명시한다. 브랜치의 코드를 합치거나 모델·VLM 정책을 변경하지 않았다.
 
 ## 1. 운영체제와 장비
 
@@ -67,6 +76,10 @@ GPU 메모리 최소 요구량을 단일 수치로 보장하지 않는다. 현�
 
 학습을 다시 할 때 사용하는 Unsloth 환경·Dockerfile은 별도이다. 프로젝트 실행을 위해 학습 환경까지 설치할 필요는 없다.
 
+### 2.3 main 비전·제어 의존성
+
+`main`의 `object_detection_node.py`는 OpenCV, NumPy, PyTorch, Ultralytics, SAM2, pyrealsense2, cv_bridge와 ROS 메시지를 사용한다. 경로 계획·좌표 변환은 NumPy·SciPy·ikpy, 모터·레일은 dynamixel_sdk·pyserial을 사용한다. 레일 Arduino 펌웨어는 AccelStepper 라이브러리를 사용한다. **이 제어 PC의 전체 패키지 버전은 저장소 코드만으로 확정하지 않는다.** AI 환경의 버전을 제어 환경의 실측 버전으로 대신하지 않는다.
+
 ## 3. 모델·외부 자산과 파일 경로
 
 ### 3.1 LLM / VLM
@@ -97,8 +110,20 @@ GPU 메모리 최소 요구량을 단일 수치로 보장하지 않는다. 현�
 | TTS 출력 | `/home/roma/ros2_ws/src/soomac_ai/src/tts_out` | 실행 시 생성·쓰기 권한 필요 |
 | 참조 이미지 원본 | `/home/roma/ros2_ws/src/soomac_irc/vlm_data/mealkit_coco_v15` | 디렉터리 존재 |
 | 참조 이미지 DB | `/home/roma/ros2_ws/src/soomac_irc/vlm_data/chroma_refs_v15`, Chroma 컬렉션 `mealkit_refs` | 디렉터리 존재; 컬렉션 내용·이미지 참조 유효성 미검증 |
-| YOLO 가중치 | `/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_6.pt` | 현재 PC에는 없음 |
-| SAM2 가중치·설정 | `/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt`, `configs/sam2.1/sam2.1_hiera_b+.yaml` | 가중치 현재 PC에 없음; 외부 SAM2 설치 필요 |
+| 구 LLM 브랜치 검출 코드의 YOLO 가중치 | `/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_6.pt` | 현재 PC에는 없음 |
+| 구 LLM 브랜치 검출 코드의 SAM2 가중치·설정 | `/home/pc/sam2/checkpoints/sam2.1_hiera_base_plus.pt`, `configs/sam2.1/sam2.1_hiera_b+.yaml` | 가중치 현재 PC에 없음; 외부 SAM2 설치 필요 |
+
+### 3.3 main 비전 설정
+
+| 설정 | main의 활성 JISU 분기 |
+|---|---|
+| YOLO | `best_15.pt`, 코드 경로 `/home/pc/irc_ws/irc_ws/src/irc_control_pkg/irc_control_pkg/best_15.pt`; 가중치 파일은 main에 추적됨 |
+| SAM2 | `sam2.1_hiera_small.pt`, `configs/sam2.1/sam2.1_hiera_s.yaml`; 외부 SAM2 설치·가중치 필요 |
+| RGB-D | RealSense 컬러·깊이 640×480, 30fps; 컬러 기준 깊이 정렬 |
+| 결과 안정화 | 요청 재료별 6프레임 누적, 위치·방향 중앙값 |
+| 검증 이미지 | `object_detection_node.py`가 `/vision/overlay_image`에 JPEG `CompressedImage`를 발행; 구현은 원본 컬러 프레임을 보냄 |
+
+`default_bbox_cord.py`의 `get_default_obb`를 기본 OBB 보조 경로로 import하지만, 해당 모듈은 확인한 main 트리에 없다. 새 PC 실행에는 현장 보조 파일도 함께 준비해야 한다. 이는 README의 기능 설명을 막는 조건이 아니라 배치 자산에 관한 기록이다.
 
 대용량 모델과 어댑터 가중치는 `.gitignore` 대상이다. **현재 PC에 파일이 있어도 새 clone에 포함되는 것은 아니다.** 다른 PC에서는 외부 자산을 별도로 전달받고, 소스의 `/home/roma`·`/home/pc` 경로와 서버 경로를 실제 배치에 맞춰야 한다. 참조 DB와 원본 이미지도 함께 준비한다.
 
@@ -141,7 +166,8 @@ GPU 메모리 최소 요구량을 단일 수치로 보장하지 않는다. 현�
 | STT 샘플 | 16kHz·모노·PCM 16비트, VAD 32ms, 사전 버퍼 300ms, 무음 종료 0.8초 |
 | TTS 출력 | 모델 24kHz → 출력 48kHz, `TTS_DEVICE` 미지정 시 `sysdefault`; 기존 운영 wrapper는 `soomac_speaker` 사용 |
 | 오디오 로컬 설정 | 기존 `~/.asoundrc`, PulseAudio 프로필·공유 메모리 우회 설정은 Git 밖에 있음; 새 PC에서 해당 장치에 맞게 구성 |
-| 모터·흡착 시리얼 | `/dev/ttyUSB0`·`1`은 모터 버스, Dynamixel Protocol 2.0·1,000,000baud; `/dev/ttyUSB2`는 Arduino·115200baud |
+| main 모터·흡착 시리얼 | `/dev/dynamixel_0`·`/dev/dynamixel_1`은 모터 버스, Dynamixel Protocol 2.0·1,000,000baud; `/dev/ttyUSB2`는 흡착 Arduino·115200baud |
+| main 레일 시리얼·펌웨어 | `/dev/ttyACM0`, 115200baud; NEMA17 42HS48-1404·TB6560·4분주·AccelStepper, 원점 센서 |
 
 자세한 오디오 장치 복원은 [기존 오디오 문서](2026-10-25_audio_pulseaudio_shm_and_device_paths.md)를 따른다. 문서에 기록된 `PCH`·MATA 장치 이름을 새 PC에 그대로 적용할 수 있다고 가정하지 않는다.
 
@@ -224,7 +250,7 @@ source /opt/ros/humble/setup.bash
 
 이 자리에서 살아있는 변수: 사용자 정의 변수 없음. 템플릿·정적 자산은 소스 파일 기준으로 찾는다. UI 시작 버튼은 주문·제어 흐름의 시작 신호이므로, 실물 제어를 연결한 환경에서는 구동 준비 후 누른다.
 
-### 5.3 로봇 제어 스택
+### 5.3 llm_final_2에 남아 있는 이전 제어 진입점
 
 | 구성 | 저장소에서 확인한 진입점 | 실행 준비 조건 |
 |---|---|---|
@@ -232,17 +258,44 @@ source /opt/ros/humble/setup.bash
 | VLM 연동 MAIN | `irc_control_pkg.main_vlm` | 이 흐름과 짝이 맞는 제어 구현 필요; 기본 MAIN과 동시에 시작하지 않음 |
 | 경로·모터·좌표 변환 | `point_pose_node`, `motor_motion_control_node`, `transform_node` | 실제 장치 연결·보정·시리얼 설정 필요 |
 | 비전 | `detect_yolo_sam_obb_pub` | 별도 비전 환경·YOLO/SAM2 가중치·RGB-D 장치 필요 |
-| 외부 레일·검증 카메라 | 레일 제어 프로세스, `/vision/overlay_image` 이미지 공급 프로세스 | 현재 저장소만으로 전체 실행 명령을 확정할 수 없음 |
+| 외부 레일·검증 카메라 | 레일 제어 프로세스, `/vision/overlay_image` 이미지 공급 프로세스 | llm_final_2에는 이전 구성이며, main의 현재 구현은 §5.4에 명시 |
 
 **AI 노드 실행 성공과 로봇 포장 전체 실행 성공은 다른 완료 조건이다.** 실제 장치를 자동 구동하는 일괄 명령은 이 문서 작성 과정에서 실행하지 않았다.
+
+### 5.4 main 브랜치 비전·레일·제어 스택
+
+main을 받은 작업공간의 루트에서 빌드한다. 이 명령은 빌드만 수행하며 장치 노드를 시작하지 않는다.
+
+```bash
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install --packages-select irc_control_pkg
+source install/setup.bash
+```
+
+이 자리에서 살아있는 변수: 사용자 정의 변수 없음. 현재 작업 위치가 `main`을 받은 ROS 작업공간 루트여야 한다.
+
+장치·가중치·보정값을 준비한 제어 환경에서 각 노드를 별도 터미널로 실행한다. 각 터미널에서 ROS와 해당 작업공간의 `install/setup.bash`를 먼저 source한다. 아래는 main `setup.py`에 실제 등록된 실행 파일이다. 이번 문서 작성에서는 장치를 실행하지 않았다.
+
+| 역할 | 등록된 명령 | 구현 |
+|---|---|---|
+| 하드웨어 제어 | `ros2 run irc_control_pkg controller_node` | `arm_controller_node.py` |
+| 경로 계획 | `ros2 run irc_control_pkg planner_node` | `motion_planner_node.py` |
+| 좌표 변환 | `ros2 run irc_control_pkg transform_node` | `transform_node.py` |
+| 비전 | `ros2 run irc_control_pkg vision_node` | `object_detection_node.py` |
+| 레일 | `ros2 run irc_control_pkg rail_node` | `rail_node.py` |
+| 전체 공정 | `ros2 run irc_control_pkg main_node` | `soomac_main_node.py` |
+
+이 자리에서 살아있는 명령: `ros2`는 ROS 환경을 source해 정의하고, 여섯 실행 파일은 main의 패키지를 빌드·source해 등록한다. LLM 브랜치의 이전 `irc_control_pkg` overlay와 섞지 않는다. AI·제어 프로세스는 같은 ROS domain과 통신 가능한 DDS 설정을 사용한다.
+
+main의 공정은 원점 정렬 → 첫 주문·용기 이동 동기화 → 재료별 레일 이동 → 검출·파지·투입 → VLM 결과 처리 → 최종 전달 → 원점 복귀·초기화이다. 치즈·페퍼론치노는 스푼 전용 경로, 소스는 전용 픽앤플레이스 경로를 사용한다.
 
 ## 6. 실행 전 보완해야 할 항목
 
 | 위치 | 현재 확인한 조건 | 실행에 필요한 보완 |
 |---|---|---|
-| `irc_control_pkg/setup.py` | `point_pose_vlm_node`, `rail_node`가 등록돼 있으나 대응 `point_pose_vlm_node.py`, `rail_bridge.py`가 없음 | 현장 제어·레일 코드 확보와 사용할 MAIN 조합 확정 |
-| VLM 이미지 입력 | 기본 입력은 `/vision/overlay_image`의 `CompressedImage`; 확인한 검출 소스에는 이 발행자가 없음 | 별도 이미지 공급 프로세스 확보 |
-| 비전 가중치 경로 | `/home/pc/...` YOLO·SAM2 파일이 현재 PC에 없음 | 비전 PC의 모델·설정 전달과 경로 구성 |
+| 브랜치별 제어 패키지 | llm_final_2의 이전 등록 항목과 main의 실제 구현이 다름 | 현행 제어는 main의 여섯 진입점 사용; §5.4 참고 |
+| VLM 이미지 입력 | main의 비전 노드에 `CompressedImage` 발행자가 구현돼 있음 | main의 vision_node와 AI의 ROS domain·통신 설정 연결 |
+| 비전 자산·보조 파일 | main의 best_15.pt는 추적됨; SAM2 가중치·default_bbox_cord 보조 모듈은 별도 준비 | main 활성 분기의 가중치·설정·장치 경로와 현장 파일 복원 |
 | Python 패키지 배포 | `setup.py`가 전체 실행 의존성을 선언하지 않으며 TTS `tts_prompts/*.wav`도 `package_data`에 없음 | 현재 명령처럼 소스에서 실행하거나 패키지 배포용 자산·의존성 명세 보완 |
 | 재현성·GPU | 전체 런타임 lockfile·기반 모델 revision 고정 없음, 현재 NVIDIA 조회 실패 | 환경별 완전한 내보내기·자산 identity 확보, 대상 장비의 실제 GPU·동시 부하 확인 |
 

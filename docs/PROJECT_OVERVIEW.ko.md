@@ -73,6 +73,34 @@
 | 2026-11-05 | Decision epoch6·Recommendation epoch6·Response step150 운영 적용, 공통 접두 워밍업 |
 | 2026-11-19 | 대회 최종본 `b80a8cb` |
 
+## 전체 시스템 공정
+
+### 주문부터 최종 전달까지
+
+**AI·대화는 `llm_final_2`, 비전·레일·매니퓰레이터 제어는 `main`의 구현을 기준으로 설명한다.** MAIN 상태 머신이 두 영역을 연결한다.
+
+```mermaid
+flowchart LR
+    U[UI 시작 · 음성 주문] --> M[MAIN · 주문 계획과 용기 준비 동기화]
+    M --> R[레일 원점 · 재료 위치 이동]
+    R --> V[RGB-D · YOLO OBB · 재료별 검출]
+    V --> P[좌표 변환 · 역기구학 · 궤적 생성]
+    P --> A[그리퍼 · 흡착 · 전용 동작]
+    A --> C[VLM 작업 전후 검증]
+    C -->|다음 재료| M
+    C -->|실패| T[재료별 재작업 경로]
+    T --> A
+    C -->|주문 완료| H[전달 위치 이동 · 용기 전달 · 원점 복귀]
+```
+
+| 단계 | 실제 처리 |
+|---|---|
+| **1. 주문·초기 준비** | 레일 원점을 잡고, LLM의 첫 계획과 로봇의 초기 용기 이동을 함께 진행한다. |
+| **2. 재료 위치 이동** | 재료별 레일 목표 위치로 이동한다. 레일 도착·팔 이동 완료·복귀 준비가 맞춰지면 다음 동작을 시작한다. |
+| **3. 검출·좌표 변환** | RGB-D 영상에서 재료별 방식으로 파지점과 방향을 구하고, 카메라 좌표를 로봇 베이스 좌표로 바꾼다. |
+| **4. 파지·투입·검증** | 접근·파지·상승·투입 경로를 실행한다. 재료에 따라 그리퍼·흡착·스푼·소스 전용 경로를 사용하고 VLM 결과를 반영한다. |
+| **5. 다음 작업·최종 전달** | 성공 시 다음 재료로, 실패 시 기존 재작업 경로로 연결한다. 주문 완료 후 전달 위치에서 용기를 건네고 레일 원점 복귀·상태 초기화를 수행한다. |
+
 ## LangGraph 기반 멀티에이전트 구조
 
 ```mermaid
@@ -100,8 +128,6 @@ flowchart LR
 | 상태·실행 관리 | 모델 출력 형식과 실행 조건을 검사하고 공유 상태를 갱신한다. | 실행 계획과 응답 경로를 결정한다. 실행 시작 안내에는 기존 고정 문장을 사용한다. |
 
 **확정 주문과 추천 후보를 구분하며, 실행 허용과 실제 작업 완료도 따로 관리한다.** 이전 턴의 발화와 응답을 다음 턴에 전달하므로 수량 정정·추천 수락·지시어를 대화 흐름 안에서 처리한다. 구조적 모순은 한 번 재검토하고 해결되지 않으면 확인 질문으로 연결한다.
-
-(내가 의역해보자면, “치즈를 추천받음”, “치즈를 주문에 넣음”, “지금 치즈를 담기로 함”, “실제로 치즈를 담음”을 서로 다른 상태로 다루는 것이다.)
 
 ## 대화 로그 기반 데이터셋 구성 및 QLoRA 파인튜닝
 
@@ -135,9 +161,53 @@ flowchart LR
 
 VLM에는 **참조 이미지·작업 전 이미지·현재 이미지**를 제공한다. 기존에 들어 있던 재료와 이번 작업으로 새로 들어간 재료를 비교해 성공·실패·불확실을 판단하고, 기존 제어 흐름에 따라 진행·재시도에 연결한다.
 
-## 개별 재료 검출 / 뚜껑 인식
+## 개별 재료 검출 — RGB-D · YOLO OBB · SAM2
 
-발표 자료의 개별 재료 검출 흐름은 **YOLO OBB 영역 검출 → 깊이 기반 후보점 생성 → SAM2 분할 → 실제 크기 비교**이다. 검출 위치는 좌표 변환을 거쳐 로봇 제어에 전달한다. 뚜껑 인식은 색상·깊이 마스크, 모폴로지 연산, 컨투어 추출과 평면 fitting으로 설명한다. 현장 비전·레일 구현과 가중치는 별도 자산도 포함한다.
+`main`의 [object_detection_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/object_detection_node.py)는 RealSense 컬러·깊이 영상(640×480, 30fps)을 정렬하고, 요청된 재료만 처리한다. **모든 재료에 같은 SAM2 경로를 적용하지 않는다.**
+
+| 대상 | 검출·파지점 선정 방식 |
+|---|---|
+| **소시지·게살 등 개별 재료** | YOLO 회전 경계 상자(OBB) → 가까운 깊이의 후보점 → SAM2 분할 → 실제 크기 검증 → 가까운 물체 선택 |
+| **얇은면·넓은면** | 면 OBB 안에서 띠지의 HSV 색상을 구분 → k-means 후보점 15개 → SAM2 분할·크기 검증 |
+| **버섯·양파·치즈·소스류의 비전 경로** | SAM2를 건너뛰고 OBB 장축의 1/3·2/3 후보를 번갈아 사용 → 주변 패치의 최소 유효 깊이로 3D 위치 계산 |
+| **뚜껑** | 검정색 HSV·깊이·관심 영역 마스크 → 컨투어 → 3D 평면 피팅 → 실제 크기·거리 기준 후보 선정 |
+
+검출 결과는 **6프레임 누적 후 위치·각도의 중앙값**으로 정리해 전달한다. 비전에서 좌표를 구하는 경로와 실제 제어가 선택하는 파지·전용 동작 경로는 구분한다. 특히 소스는 제어부의 전용 좌표 경로를 사용한다.
+
+### 레일 이동과 공정 동기화
+
+[rail_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/rail_node.py)는 재료 이름을 **원점 기준 절대 회전수**로 바꿔 Arduino에 전달한다. 펌웨어는 **NEMA17 + TB6560 + AccelStepper**로 원점 센서와 가감속 이동을 처리한다.
+
+| 기능 | 처리 방식 |
+|---|---|
+| **원점 정렬** | 원점 센서 감지 위치를 0으로 설정하고 완료 응답을 보낸다. |
+| **재료·전달 위치 이동** | 재료별 고정 목표값 또는 최종 `handoff` 위치로 이동한다. |
+| **선행 이동·대기열** | 미리 이동하는 요청을 지원하며, 이동 중 받은 명령은 큐에 보관한다. |
+| **MAIN과 동기화** | 일반 이동 완료를 MAIN에 알리고, MAIN은 팔 복귀·이동 완료 조건과 함께 다음 동작을 결정한다. |
+
+### 좌표 변환 · 경로 계획 · 매니퓰레이터 제어
+
+**카메라 3D 좌표 + 현재 관절각 → 베이스 좌표 → 역기구학(IK) → 접근·파지·상승·투입 궤적 → 모터·도구 동작**으로 연결한다.
+
+| 구성 | 담당 기능 |
+|---|---|
+| **좌표 변환** | 현재 관절각의 순기구학(FK)과 카메라 장착 변환을 적용해 위치·방향을 로봇 좌표로 변환한다. |
+| **경로 계획·기구학** | 재료별 파지 방식과 목표 자세를 선택하고, 관절 제한·연속성을 고려해 웨이포인트를 계산한다. |
+| **궤적·하드웨어 제어** | 5차 다항식 궤적으로 관절 이동을 보간하고 Dynamixel·그리퍼·Arduino 흡착 명령을 실행한다. |
+| **추가 재료·소스·전달** | 치즈·페퍼론치노의 스푼 경로, 소스 전용 픽앤플레이스, 최종 용기 전달·복귀를 별도 경로로 처리한다. |
+
+<details>
+<summary><strong>main 브랜치 구현 파일 보기</strong></summary>
+
+| 기능 | 구현 파일 |
+|---|---|
+| 전체 공정 상태 머신 | [soomac_main_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/soomac_main_node.py) |
+| 재료 검출 / 뚜껑 인식 | [object_detection_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/object_detection_node.py) · [cover_detect.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/cover_detect.py) |
+| 레일 ROS 노드 / 펌웨어 | [rail_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/rail_node.py) · [rail_v2.ino](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/arduino/rail_v2/rail_v2.ino) |
+| 좌표 변환 / 경로 계획 / 기구학 | [transform_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/transform_node.py) · [motion_planner_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/motion_planner_node.py) · [kinematics_irc.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/kinematics_irc.py) |
+| 궤적 / 모터·도구 제어 | [motion_trajectory.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/motion_trajectory.py) · [arm_controller_node.py](https://github.com/jisoooxo/IRC_SOOMAC3.0/blob/main/src/irc_control_pkg/irc_control_pkg/arm_controller_node.py) |
+
+</details>
 
 ## STT 모델 선정 과정
 
