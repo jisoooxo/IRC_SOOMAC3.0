@@ -1,0 +1,145 @@
+{
+  "observed_date": "2026-11-25",
+  "timezone": "Asia/Seoul",
+  "source_commit": "b80a8cb",
+  "method": "Existing environment interpreters queried with importlib.metadata; no third-party imports or model loads.",
+  "scope": "Selected package metadata only. Not a lockfile, install recipe, compatibility test, or proof of production environment assignment.",
+  "gpu_observation": "nvidia-smi failed to communicate with the NVIDIA driver; current GPU availability is unverified.",
+  "environments": {
+    "soomac_llm": {
+      "python": "3.10.20",
+      "packages": {
+        "torch": "2.12.1+cu130",
+        "torchvision": "0.27.1+cu130",
+        "transformers": "5.14.1",
+        "peft": "0.21.0",
+        "accelerate": "1.14.0",
+        "bitsandbytes": "0.50.2",
+        "xgrammar": "0.2.8",
+        "langgraph": "1.0.8",
+        "langchain-core": "1.7.3",
+        "jsonschema": "4.26.0",
+        "numpy": "2.2.6",
+        "Pillow": "12.3.0",
+        "chromadb": "1.5.9",
+        "grpcio": "1.85.1",
+        "protobuf": "7.36.2",
+        "requests": "2.34.2",
+        "httpx": "0.28.1",
+        "pytest": "9.1.1"
+      }
+    },
+    "soomac_vllm_server": {
+      "python": "3.12.16",
+      "packages": {
+        "torch": "2.13.0",
+        "torchvision": "0.28.0",
+        "transformers": "5.19.0",
+        "bitsandbytes": "0.50.2",
+        "vllm": "0.32.0",
+        "xgrammar": "0.2.8",
+        "jsonschema": "4.26.0",
+        "numpy": "2.3.5",
+        "Pillow": "13.0.0",
+        "grpcio": "1.85.1",
+        "protobuf": "7.36.2",
+        "requests": "2.34.2",
+        "httpx": "0.28.1"
+      }
+    },
+    "gemma4_env": {
+      "python": "3.10.20",
+      "packages": {
+        "torch": "2.12.1+cu130",
+        "torchvision": "0.27.1+cu130",
+        "transformers": "5.13.1",
+        "peft": "0.19.1",
+        "accelerate": "1.14.0",
+        "bitsandbytes": "0.49.2",
+        "xgrammar": "0.2.5",
+        "langgraph": "1.0.8",
+        "langchain-core": "1.4.8",
+        "jsonschema": "4.26.0",
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "Pillow": "12.3.0",
+        "chromadb": "1.5.9",
+        "soundfile": "0.14.0",
+        "Flask": "3.1.3",
+        "grpcio": "1.83.0",
+        "protobuf": "7.35.1",
+        "requests": "2.34.2",
+        "httpx": "0.28.1",
+        "pytest": "9.1.1"
+      }
+    },
+    "cosyvoice3": {
+      "python": "3.10.19",
+      "packages": {
+        "torch": "2.10.0",
+        "torchvision": "0.25.0",
+        "transformers": "4.51.3",
+        "jsonschema": "4.26.0",
+        "numpy": "1.26.4",
+        "scipy": "1.15.3",
+        "Pillow": "10.4.0",
+        "sounddevice": "0.5.5",
+        "soundfile": "0.12.1",
+        "Flask": "3.1.3",
+        "Flask-SocketIO": "5.6.1",
+        "grpcio": "1.57.0",
+        "protobuf": "4.25.0",
+        "requests": "2.32.5",
+        "httpx": "0.28.1"
+      }
+    },
+    "camera_env": {
+      "python": "3.10.20",
+      "packages": {
+        "torch": "2.11.0+cu128",
+        "torchvision": "0.26.0+cu128",
+        "transformers": "4.44.2",
+        "accelerate": "1.14.0",
+        "vllm": "0.23.0",
+        "xgrammar": "0.2.2",
+        "jsonschema": "4.26.0",
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "Pillow": "12.2.0",
+        "pyrealsense2": "2.58.3.10794",
+        "grpcio": "1.81.1",
+        "protobuf": "7.35.1",
+        "requests": "2.34.2",
+        "httpx": "0.28.1"
+      }
+    },
+    "ros_env": {
+      "python": "3.10.19",
+      "packages": {
+        "torch": "2.9.1+cu130",
+        "torchvision": "0.24.1+cu130",
+        "transformers": "4.57.6",
+        "peft": "0.18.1",
+        "accelerate": "1.12.0",
+        "bitsandbytes": "0.49.2",
+        "vllm": "0.15.1",
+        "xgrammar": "0.1.29",
+        "langgraph": "1.0.8",
+        "langchain-core": "1.4.8",
+        "jsonschema": "4.26.0",
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "Pillow": "12.3.0",
+        "sounddevice": "0.5.5",
+        "soundfile": "0.14.0",
+        "pyserial": "3.5",
+        "ultralytics": "8.4.14",
+        "pyrealsense2": "2.56.5.9235",
+        "grpcio": "1.83.0",
+        "protobuf": "7.35.1",
+        "requests": "2.34.2",
+        "httpx": "0.28.1"
+      }
+    }
+  }
+}
